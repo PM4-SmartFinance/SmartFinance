@@ -22,7 +22,7 @@ Format: `<type>/<JIRA-ID>-<description>`
   Example: `bugfix/KAN-22-postgres-connection-timeout`
 * **docs/** - For documentation updates.
   Example: `docs/KAN-23-define-branching-strategy`
-* **refactor/** - For code changes that neither fix a bug nor add a feature.
+* **refactor/** - For code changes that neither fix a bug nor add a feature
   Example: `refactor/KAN-25-api-service-layer`
 
 ## 3. Commit Message Conventions
@@ -31,6 +31,21 @@ We follow Conventional Commits to make our history readable. You must include th
 
 Format: `<type>(<scope>): [<JIRA-ID>] <subject>`
 
+- **Types:**
+  - `feat`: A new feature
+  - `fix`: A bug fix
+  - `docs`: Documentation only changes
+  - `style`: Changes that do not affect the meaning of the code (formatting)
+  - `refactor`: A code change that neither fixes a bug nor adds a feature
+  - `test`: Adding missing tests or correcting existing tests
+  - `chore`: Changes to the build process or auxiliary tools
+
+- **Scopes (Optional):** Indicate the part of the monorepo affected (e.g., `frontend`, `backend`, `docker`, `db`, `root`).
+
+- **Examples:**
+  - `feat(backend): [KAN-10] implement RBAC middleware for protected routes`
+  - `fix(frontend): [KAN-15] resolve layout shift on mobile dashboard`
+  - `docs(root): [KAN-23] add CONTRIBUTING.md with team branching strategy`
 * **Types:**
   * `feat`: A new feature
   * `fix`: A bug fix
@@ -56,3 +71,11 @@ Format: `<type>(<scope>): [<JIRA-ID>] <subject>`
 5. Address any feedback and update the branch.
 6. Once approved, use **Squash and Merge** to integrate your code into `main`.
 7. Delete the feature branch after merging.
+
+## 5. Pre-commit Hooks and Linting
+
+We use Husky and lint-staged to automatically format and lint code before it is committed.
+
+- When you run `git commit`, Prettier will format your staged files, and ESLint will check for structural errors.
+- If ESLint finds severe, unfixable errors, your commit will be safely blocked.
+- **How to handle failures:** Read the terminal output to locate the specific line causing the linting error. Fix the issue in your IDE, stage the file again using `git add <file>`, and re-run your `git commit` command. Do not use the `--no-verify` flag to bypass these checks.
