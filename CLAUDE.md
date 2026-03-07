@@ -94,3 +94,12 @@ docker-compose up
 ## Git
 
 - Never add a Co-Authored-By line to commit messages.
+- No direct commits to `main`. All work happens on feature branches.
+- Branch naming: `<type>/<JIRA-ID>-<description>` (e.g., `feature/KAN-19-import-adapter-interface`, `bugfix/KAN-22-postgres-connection-timeout`)
+  - Types: `feature/`, `bugfix/`, `docs/`, `refactor/`
+- Commit messages follow Conventional Commits with Jira ID: `<type>(<scope>): [<JIRA-ID>] <subject>`
+  - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+  - Scopes: `frontend`, `backend`, `docker`, `db`, `root`
+  - Example: `feat(backend): [KAN-10] implement RBAC middleware for protected routes`
+- PRs: include Jira ID in title (e.g., `[KAN-23] Define branching strategy`), squash and merge into `main`, delete branch after merge
+- Pre-commit hooks (Husky + lint-staged) auto-format and lint staged files. Never bypass with `--no-verify`.

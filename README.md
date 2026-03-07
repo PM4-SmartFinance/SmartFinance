@@ -33,7 +33,7 @@ This is a **Bun workspaces monorepo**. The root `package.json` defines two works
 bun install
 ```
 
-This installs all dependencies for the root and both workspaces in one step.
+This installs all dependencies for the root and both workspaces in one step. It also runs the `prepare` script, which sets up Husky git hooks so that ESLint and Prettier run automatically on every commit via lint-staged.
 
 ### 2. Run the project
 
