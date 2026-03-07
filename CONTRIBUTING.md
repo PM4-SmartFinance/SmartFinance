@@ -1,6 +1,6 @@
 # Git and Branching Strategy
 
-To ensure a stable `main` branch for our Docker builds and maintain a clean history across the frontend and backend monorepo, SmartFinance uses a continuous delivery workflow based on GitHub Flow.
+To ensure a stable `main` branch for our Docker builds and maintain a clean history across the frontend and backend monorepo, SmartFinance uses a continuous delivery workflow based on GitHub Flow. 
 
 We tightly integrate GitHub with Jira. By including Jira ticket IDs in our branches and commits, Jira will automatically track our development progress, link code changes to requirements, and update ticket statuses.
 
@@ -16,13 +16,13 @@ Prefix your branches to indicate the type of work being done, followed by the Ji
 
 Format: `<type>/<JIRA-ID>-<description>`
 
-- **feature/** - For new functionalities or modules.
+* **feature/** - For new functionalities or modules.
   Example: `feature/KAN-19-import-adapter-interface`
-- **bugfix/** - For fixing bugs found in the application.
+* **bugfix/** - For fixing bugs found in the application.
   Example: `bugfix/KAN-22-postgres-connection-timeout`
-- **docs/** - For documentation updates.
+* **docs/** - For documentation updates.
   Example: `docs/KAN-23-define-branching-strategy`
-- **refactor/** - For code changes that neither fix a bug nor add a feature.
+* **refactor/** - For code changes that neither fix a bug nor add a feature
   Example: `refactor/KAN-25-api-service-layer`
 
 ## 3. Commit Message Conventions
@@ -46,6 +46,21 @@ Format: `<type>(<scope>): [<JIRA-ID>] <subject>`
   - `feat(backend): [KAN-10] implement RBAC middleware for protected routes`
   - `fix(frontend): [KAN-15] resolve layout shift on mobile dashboard`
   - `docs(root): [KAN-23] add CONTRIBUTING.md with team branching strategy`
+* **Types:**
+  * `feat`: A new feature
+  * `fix`: A bug fix
+  * `docs`: Documentation only changes
+  * `style`: Changes that do not affect the meaning of the code (formatting)
+  * `refactor`: A code change that neither fixes a bug nor adds a feature
+  * `test`: Adding missing tests or correcting existing tests
+  * `chore`: Changes to the build process or auxiliary tools
+
+* **Scopes (Optional):** Indicate the part of the monorepo affected (e.g., `frontend`, `backend`, `docker`, `db`, `root`).
+
+* **Examples:**
+  * `feat(backend): [KAN-10] implement RBAC middleware for protected routes`
+  * `fix(frontend): [KAN-15] resolve layout shift on mobile dashboard`
+  * `docs(root): [KAN-23] add CONTRIBUTING.md with team branching strategy`
 
 ## 4. Pull Request (PR) Process
 
