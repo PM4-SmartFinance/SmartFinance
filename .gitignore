@@ -3,7 +3,10 @@ node_modules/
 
 # Build output
 dist/
+dist-ssr/
 build/
+*.tsbuildinfo
+*.local
 
 # Environment variables
 .env
