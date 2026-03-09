@@ -35,15 +35,21 @@ bun install
 
 This installs all dependencies for the root and both workspaces in one step.
 
-### 2. Run the project
+### 2. Run the frontend
 
-For production/full-stack with Docker:
+```bash
+bun run --filter @smartfinance/frontend dev
+```
+
+Opens the Vite dev server at `http://localhost:5173`. Since authentication isn't wired up yet, `/` redirects to `/login`.
+
+### 3. Run the full stack (Docker)
 
 ```bash
 docker-compose up
 ```
 
-For local development, run frontend and backend separately (once they are scaffolded):
+For local development without Docker, run frontend and backend in separate terminals:
 
 ```bash
 # Terminal 1 — Backend
@@ -117,7 +123,9 @@ ESLint 10 flat config using `defineConfig()` with:
 
 - `@eslint/js` recommended rules
 - `typescript-eslint` recommended rules
-- `eslint-plugin-react-hooks` v7 (`recommended-latest`) — scoped to `frontend/**/*.{ts,tsx}` only, includes React Compiler rules
+- `@eslint-react/eslint-plugin` recommended rules — scoped to `frontend/**/*.{ts,tsx}`
+- `eslint-plugin-react-hooks` v7 — scoped to `frontend/**/*.{ts,tsx}`, includes React Compiler rules
+- `eslint-plugin-react-refresh` — validates fast refresh compatibility
 - `eslint-config-prettier` — disables rules that conflict with Prettier
 
 ### Prettier (`.prettierrc`)
@@ -132,13 +140,17 @@ ESLint 10 flat config using `defineConfig()` with:
 
 ### Frontend (`frontend/`)
 
-The frontend workspace is for the React + Vite + PWA application. To scaffold it:
+React 19 + TypeScript + Vite application with react-router v7 (data router API).
 
-1. Add dependencies to `frontend/package.json` (React, Vite, etc.)
-2. Create a `frontend/tsconfig.json` extending `../tsconfig.base.json` (add `DOM` lib, `jsx: react-jsx`)
-3. Create a `frontend/vite.config.ts`
-4. Add source code under `frontend/src/`
-5. Add scripts (`dev`, `build`, `preview`) to `frontend/package.json`
+```
+frontend/src/
+├── components/    # Shared UI components (e.g. ProtectedRoute)
+├── contexts/      # React context providers (e.g. AuthProvider)
+├── pages/         # Route-level page components
+├── router.tsx     # Route config (createBrowserRouter)
+├── App.tsx        # Root component (AuthProvider + RouterProvider)
+└── main.tsx       # Entry point
+```
 
 Key conventions:
 
