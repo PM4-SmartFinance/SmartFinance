@@ -63,6 +63,30 @@ All endpoints under `/api/v1`. Authentication via httpOnly cookie session. RBAC 
 - Semantic HTML, accessible form controls
 - English is primary language, German as fallback; text resources separated from logic
 
+## Frontend Best Practices
+
+- **Every component must earn its place** — do not create wrapper components, layout components, or abstractions unless they encapsulate real logic or are reused in multiple places. Inline JSX is fine; premature componentization is not.
+- **Colocation over separation** — keep styles, types, and helpers close to where they are used. Only extract shared code when there are two or more consumers.
+- **Semantic HTML first** — use the correct HTML element before reaching for ARIA attributes. `<button>`, `<nav>`, `<main>`, `<section>`, `<dialog>` over `<div>` with roles.
+- **CSS Modules or utility classes** — avoid CSS-in-JS runtime overhead. Keep styles scoped and predictable.
+- **No barrel files** (`index.ts` re-exports) — import directly from the source file. Barrel files hurt tree-shaking and slow down builds.
+- **Prefer `fetch`** — no Axios. The Fetch API is sufficient and avoids an extra dependency.
+- **TypeScript strict mode** — no `any`, no type assertions unless truly unavoidable. Infer types where possible; annotate function signatures.
+
+## React Best Practices
+
+This project uses **React 19** (`react@^19.2.0`). Always use React 19 syntax and APIs.
+
+- **`use()` over `useContext()`** — React 19's `use` hook is preferred for reading context. It is more flexible (can be called conditionally).
+- **`<Context>` over `<Context.Provider>`** — React 19 supports rendering context directly as a provider.
+- **Function components only** — no class components.
+- **Named exports for components** — `export function DashboardPage()`, not `export default`.
+- **No `React.FC`** — type props inline: `function Foo({ bar }: { bar: string })` or with a named `Props` interface for complex cases.
+- **Server state via TanStack Query** — no `useEffect` + `useState` for data fetching. Use `useQuery` / `useMutation`.
+- **Client state via Zustand** — no prop drilling or Context for global client state.
+- **Minimize `useEffect`** — most effects are unnecessary. Derive values during render, use event handlers for side effects, use TanStack Query for data fetching.
+- **Keep components pure** — no business logic in components. Components receive data and render UI.
+
 ## Security Requirements
 
 - All communication over HTTPS (TLS 1.2+)
