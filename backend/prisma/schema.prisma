@@ -1,0 +1,85 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  name         String?
+  transactions Transaction[]
+  categories   Category[]
+  budgets      Budget[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Category {
+  id            String         @id @default(uuid())
+  name          String
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lineItems     LineItem[]
+  categoryRules CategoryRule[]
+  budgets       Budget[]
+
+  @@index([userId])
+}
+
+model Transaction {
+  id          String     @id @default(uuid())
+  date        DateTime
+  merchant    String
+  totalAmount Decimal    // Decimal is best practice for financial amounts
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lineItems   LineItem[]
+
+  @@index([userId])
+  @@index([date])
+}
+
+model LineItem {
+  id            String      @id @default(uuid())
+  description   String
+  amount        Decimal
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  categoryId    String?     // Optional, as a line item might not be categorized yet
+  category      Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([transactionId])
+  @@index([categoryId])
+}
+
+model CategoryRule {
+  id            String   @id @default(uuid())
+  merchantMatch String   // e.g., "Starbucks" always maps to the "Coffee" category
+  categoryId    String
+  category      Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([categoryId])
+}
+
+model Budget {
+  id         String   @id @default(uuid())
+  amount     Decimal
+  month      Int      // e.g., 1 for January
+  year       Int      // e.g., 2026
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  // A user should only have one budget per category per month
+  @@unique([userId, categoryId, month, year])
+  @@index([userId])
+}
