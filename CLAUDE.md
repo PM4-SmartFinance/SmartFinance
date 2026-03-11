@@ -5,7 +5,7 @@ A self-hosted personal finance management platform for importing, categorizing, 
 ## Tech Stack
 
 - **Frontend:** React (TypeScript), Vite, PWA
-- **Backend:** Node.js, Express or Fastify, REST API
+- **Backend:** Node.js, Fastify 5, REST API
 - **Database:** PostgreSQL with ORM (Prisma or TypeORM)
 - **State Management:** Zustand (client state), TanStack Query (server state)
 - **Deployment:** Docker / Docker Compose
@@ -86,6 +86,33 @@ This project uses **React 19** (`react@^19.2.0`). Always use React 19 syntax and
 - **Client state via Zustand** — no prop drilling or Context for global client state.
 - **Minimize `useEffect`** — most effects are unnecessary. Derive values during render, use event handlers for side effects, use TanStack Query for data fetching.
 - **Keep components pure** — no business logic in components. Components receive data and render UI.
+
+## Backend Best Practices
+
+- **Layered architecture** — controllers handle HTTP, services hold business logic, repositories abstract data access. Never skip layers (e.g. no DB queries from controllers).
+- **Controllers are thin** — parse request, call service, send response. No business logic, no direct DB access.
+- **Services are framework-agnostic** — services must not import Fastify types. They receive plain data and return plain data. This keeps business logic testable without HTTP concerns.
+- **Repository pattern** — all database access goes through repository functions. No raw SQL or ORM calls outside the repository layer.
+- **All write operations use DB transactions** — wrap multi-step writes in explicit transactions to ensure atomicity.
+- **Validate at the boundary** — validate all incoming request data (body, params, query) in controllers or via schemas. Services trust their inputs.
+- **Centralized error handling** — throw errors in services, catch them in the error handler middleware. No try/catch in controllers unless there's controller-specific recovery logic.
+- **No secrets in code** — all configuration via environment variables. Use `process.env` with a clear config module, never inline.
+- **No stack traces in production** — the error handler returns generic messages for 5xx errors when `NODE_ENV=production`.
+- **Named exports only** — `export function`, `export const`, never `export default`.
+
+## Fastify Best Practices
+
+This project uses **Fastify 5** (`fastify@^5.3.0`). Always use Fastify 5 APIs.
+
+- **Plugin architecture** — register routes and features as Fastify plugins via `app.register()`. Group related routes into a single plugin with a shared prefix.
+- **Use `buildApp()` pattern** — the app factory is in `src/app.ts`. Tests and the server entry point both call `buildApp()` to get a configured instance.
+- **Route registration via plugins** — each controller file exports an `async function(app: FastifyInstance)` that defines its routes. Register it in `app.ts` with a prefix.
+- **Use Fastify's built-in JSON schema validation** — define request/response schemas using JSON Schema. Fastify validates automatically and returns 400 on failure.
+- **Type-safe routes** — use Fastify's generic route types for typed request bodies, params, querystrings, and replies.
+- **`setErrorHandler` over middleware try/catch** — Fastify's `setErrorHandler` is the centralized place for error formatting. Do not add per-route error handling.
+- **Prefer Fastify plugins over Express-style middleware** — use `fastify-plugin` for cross-cutting concerns (auth, rate limiting) instead of `preHandler` chains.
+- **Logging via Fastify's built-in logger** — use `request.log` and `app.log` (Pino). No `console.log` in production code.
+- **Graceful shutdown** — use `app.close()` on `SIGTERM`/`SIGINT` to drain connections before exiting.
 
 ## Security Requirements
 

@@ -13,7 +13,7 @@ A self-hosted personal finance management platform for importing, categorizing, 
 ```
 SmartFinance/
 ├── frontend/          # React + TypeScript + Vite (PWA)
-├── backend/           # Node.js REST API (Express/Fastify)
+├── backend/           # Node.js REST API (Fastify)
 ├── docker/            # Dockerfiles and Docker Compose config
 ├── wiki/              # Project documentation (separate git repo)
 ├── package.json       # Root workspace config and shared scripts
@@ -163,7 +163,7 @@ Key conventions:
 
 The backend workspace is for the Node.js REST API. To scaffold it:
 
-1. Add dependencies to `backend/package.json` (Express or Fastify, Prisma, etc.)
+1. Add dependencies to `backend/package.json` (Fastify, Prisma, etc.)
 2. Create a `backend/tsconfig.json` extending `../tsconfig.base.json` (set `module: nodenext`, `moduleResolution: nodenext`)
 3. Add source code under `backend/src/` following the layered architecture:
    - `controllers/` — HTTP request/response handling
@@ -183,7 +183,7 @@ Key conventions:
 ## Tech Stack
 
 - **Frontend:** React (TypeScript), Vite, PWA
-- **Backend:** Node.js, Express or Fastify, REST API
+- **Backend:** Node.js, Fastify, REST API
 - **Database:** PostgreSQL with Prisma or TypeORM
 - **State Management:** Zustand (client), TanStack Query (server)
 - **Deployment:** Docker / Docker Compose
