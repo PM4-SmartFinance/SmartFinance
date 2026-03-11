@@ -154,3 +154,32 @@ docker-compose up
   - Example: `feat(backend): [KAN-10] implement RBAC middleware for protected routes`
 - PRs: include Jira ID in title (e.g., `[KAN-23] Define branching strategy`), squash and merge into `main`, delete branch after merge
 - Pre-commit hooks (Husky + lint-staged) auto-format and lint staged files. Never bypass with `--no-verify`.
+
+### Pull Request Description Template
+
+When asked to generate a PR description, use this format:
+
+```markdown
+## Summary
+
+< 1–3 sentences: what was done and why >
+
+## Changes
+
+< bulleted list of concrete changes, each prefixed with **bold scope** >
+
+## Verified
+
+< checklist with [x] of what was verified: build, lint, tests, manual checks >
+
+## Notes
+
+< optional: anything reviewers should know — follow-ups, open questions, trade-offs >
+```
+
+Rules:
+
+- Keep it concise — no filler, no restating the ticket title.
+- **Changes** list actual code/config changes, not intentions.
+- **Verified** only includes checks that were actually run or confirmed.
+- If a Jira ticket exists, reference it in the summary (e.g. "Implements KAN-36").
