@@ -6,12 +6,13 @@
     "backend"
   ],
   "scripts": {
-    "dev": "concurrently --names fe,be --prefix-colors cyan,green \"npm run dev --workspace=frontend\" \"npm run dev --workspace=backend\"",
+    "dev": "concurrently --names fe,be --prefix-colors cyan,green \"bun run dev --cwd frontend\" \"bun run dev --cwd backend\"",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test": "bun run --cwd=backend test"
   },
   "devDependencies": {
     "@eslint-react/eslint-plugin": "^2.13.0",

@@ -5,7 +5,8 @@
     "moduleResolution": "NodeNext",
     "lib": ["ES2024"],
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "src",
+    "types": ["vitest/globals"]
   },
   "include": ["src"]
 }
