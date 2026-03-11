@@ -30,7 +30,7 @@ export function useAuth() {
   const { data: user, isPending } = useQuery(AUTH_QUERY);
   return {
     user: user ?? null,
-    isAuthenticated: user !== undefined,
+    isAuthenticated: !isPending && user !== undefined,
     isLoading: isPending,
   };
 }
