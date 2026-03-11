@@ -87,6 +87,44 @@ This project uses **React 19** (`react@^19.2.0`). Always use React 19 syntax and
 - **Minimize `useEffect`** — most effects are unnecessary. Derive values during render, use event handlers for side effects, use TanStack Query for data fetching.
 - **Keep components pure** — no business logic in components. Components receive data and render UI.
 
+## State Management
+
+This project separates **server state** (data from the API) and **client state** (UI-only flags) into two dedicated tools. Never mix them — do not duplicate server data into Zustand, and do not fetch API data from a Zustand action.
+
+### TanStack Query — server state
+
+All data that originates from the backend is managed by TanStack Query (`@tanstack/react-query`).
+
+- **Use `useQuery` for reads, `useMutation` for writes** — no `useEffect` + `useState` for data fetching.
+- **Always use the `api` utility** (`src/lib/api.ts`) as the `queryFn` — it handles credentials, error normalization, and base URL.
+- **`queryKey` conventions** — use descriptive arrays: `["dashboard", "summary"]`, `["transactions", { page, filter }]`. Nest by resource, then parameters.
+- **Extract shared query config** — when multiple components need the same query, extract the config object so `queryKey` and `queryFn` stay in sync:
+  ```ts
+  const AUTH_QUERY = {
+    queryKey: ["auth", "me"] as const,
+    queryFn: () => api.get<User>("/auth/me"),
+    retry: false,
+  } as const;
+  ```
+- **Global defaults** are in `src/lib/queryClient.ts` — 30s `staleTime`, no retry on 401/403. Override per-query only when needed.
+- **Error handling** — check `error instanceof ApiError` for typed access to `status` and `body`. The `api` utility throws `ApiError` for all non-2xx responses.
+
+### Zustand — client state
+
+Zustand manages UI-only state that has no server counterpart: sidebar visibility, modal flags, theme preference, etc.
+
+- **Single store** in `src/store/appStore.ts` — add new slices as the app grows, keep it flat.
+- **Use selectors** — always select the minimal slice: `useAppStore((s) => s.sidebarOpen)`, not `useAppStore()`. This prevents unnecessary re-renders.
+- **No async actions** — Zustand stores should be synchronous. Data fetching belongs in TanStack Query.
+- **No auth state** — authentication is server state owned by TanStack Query (see `useAuth()` in `src/contexts/AuthProvider.tsx`).
+
+### API utility (`src/lib/api.ts`)
+
+- Wraps `fetch` with `credentials: "include"` for cookie-based auth.
+- Methods: `api.get<T>()`, `api.post<T>()`, `api.patch<T>()`, `api.delete<T>()`.
+- Throws `ApiError` (with `status`, `body`, `message`) on non-2xx responses.
+- Handles `204 No Content` by returning `undefined`.
+
 ## Backend Best Practices
 
 - **Layered architecture** — controllers handle HTTP, services hold business logic, repositories abstract data access. Never skip layers (e.g. no DB queries from controllers).
@@ -154,3 +192,32 @@ docker-compose up
   - Example: `feat(backend): [KAN-10] implement RBAC middleware for protected routes`
 - PRs: include Jira ID in title (e.g., `[KAN-23] Define branching strategy`), squash and merge into `main`, delete branch after merge
 - Pre-commit hooks (Husky + lint-staged) auto-format and lint staged files. Never bypass with `--no-verify`.
+
+### Pull Request Description Template
+
+When asked to generate a PR description, use this format:
+
+```markdown
+## Summary
+
+< 1–3 sentences: what was done and why >
+
+## Changes
+
+< bulleted list of concrete changes, each prefixed with **bold scope** >
+
+## Verified
+
+< checklist with [x] of what was verified: build, lint, tests, manual checks >
+
+## Notes
+
+< optional: anything reviewers should know — follow-ups, open questions, trade-offs >
+```
+
+Rules:
+
+- Keep it concise — no filler, no restating the ticket title.
+- **Changes** list actual code/config changes, not intentions.
+- **Verified** only includes checks that were actually run or confirmed.
+- If a Jira ticket exists, reference it in the summary (e.g. "Implements KAN-36").
