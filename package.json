@@ -12,7 +12,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky",
-    "test": "bun run --cwd=backend test"
+    "test": "bun run --cwd=backend test",
+    "test:coverage": "bun run --cwd=backend test:coverage"
   },
   "devDependencies": {
     "@eslint-react/eslint-plugin": "^2.13.0",
