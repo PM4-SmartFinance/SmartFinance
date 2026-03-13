@@ -45,8 +45,12 @@ Opens the Vite dev server at `http://localhost:5173`. Since authentication isn't
 
 ### 3. Run the full stack (Docker)
 
+Requires Docker v29+ with the Compose plugin installed.
+
 ```bash
-docker-compose up
+cp .env.example .env   # Copy the example env file
+nano .env              # Fill in your settings
+docker compose up      # Start all services
 ```
 
 For local development without Docker, run frontend and backend in separate terminals:
