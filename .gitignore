@@ -34,5 +34,8 @@ package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
+# MCP
+.mcp.json
+
 # Wiki (separate git repo)
 wiki/
