@@ -1,10 +1,10 @@
 /**
  * Wireframe: Budgets Page
  *
- * Layout: Summary widgets + budget cards grid with progress bars +
+ * Layout: Top banner nav + summary widgets + budget cards grid with progress bars +
  *         create-budget form panel.
- * Desktop: Sidebar + main content with 2-col budget card grid.
- * Mobile:  Budget cards stack to 1 column.
+ * Desktop: 2-column budget card grid.
+ * Mobile: Budget cards stack to 1 column.
  *
  * Future components (Mantine): AppShell › Card › Progress › Badge ›
  *   TextInput › Select › NumberInput › Button › Modal
@@ -50,22 +50,6 @@ export default function BudgetsWireframe() {
       </nav>
 
       <div className="wf-dashboard-layout">
-        <aside className="wf-sidebar">
-          <div className="wf-sidebar-section">Menu</div>
-          {[
-            { icon: "▤", label: "Dashboard" },
-            { icon: "↔", label: "Transactions" },
-            { icon: "◑", label: "Reports" },
-            { icon: "▣", label: "Budgets", active: true },
-            { icon: "⚙", label: "Settings" },
-          ].map(({ icon, label, active }) => (
-            <div key={label} className={`wf-sidebar-item${active ? " active" : ""}`}>
-              <span>{icon}</span>
-              {label}
-            </div>
-          ))}
-        </aside>
-
         <main className="wf-main-content">
           <div
             style={{

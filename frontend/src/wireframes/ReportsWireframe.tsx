@@ -1,9 +1,8 @@
 /**
  * Wireframe: Reports Page
  *
- * Layout: Date range selector + 2-column chart grid + category breakdown table.
- * Desktop: Sidebar + main content.
- * Mobile:  Charts stack to 1 column.
+ * Layout: Top banner nav + date range selector + 2-column chart grid + category table.
+ * Mobile: Charts stack to 1 column.
  *
  * Future components (Mantine): AppShell › SegmentedControl › DateRangePicker ›
  *   Card › RingChart › BarChart › Table
@@ -42,22 +41,6 @@ export default function ReportsWireframe() {
       </nav>
 
       <div className="wf-dashboard-layout">
-        <aside className="wf-sidebar">
-          <div className="wf-sidebar-section">Menu</div>
-          {[
-            { icon: "▤", label: "Dashboard" },
-            { icon: "↔", label: "Transactions" },
-            { icon: "◑", label: "Reports", active: true },
-            { icon: "▣", label: "Budgets" },
-            { icon: "⚙", label: "Settings" },
-          ].map(({ icon, label, active }) => (
-            <div key={label} className={`wf-sidebar-item${active ? " active" : ""}`}>
-              <span>{icon}</span>
-              {label}
-            </div>
-          ))}
-        </aside>
-
         <main className="wf-main-content">
           <p className="wf-section-title">Reports</p>
 

@@ -1,10 +1,9 @@
 /**
  * Wireframe: Main Dashboard
  *
- * Desktop: Top nav bar + left sidebar + main content grid.
- * Tablet (641–1024px): Sidebar narrows to 160px; 2-column widget grid.
- * Mobile (≤640px): Top nav hidden → hamburger bar; sidebar collapses;
- *                  widgets stack in 1-column full-width cards.
+ * Desktop: Top banner nav + main content grid.
+ * Tablet (641–1024px): 2-column widget grid.
+ * Mobile (≤640px): Top banner wraps; widgets stack in 1-column cards.
  *
  * Widget placement:
  *   Row 1 — Balance summary  |  Expense overview   (2-col grid)
@@ -64,26 +63,12 @@ const BUDGETS = [
   { label: "Household", used: 34, current: "CHF 68", budget: "CHF 200" },
 ];
 
-const SIDEBAR_ITEMS = [
-  { icon: "▤", label: "Dashboard", active: true },
-  { icon: "↔", label: "Transactions", active: false },
-  { icon: "◑", label: "Reports", active: false },
-  { icon: "▣", label: "Budgets", active: false },
-  { icon: "⚙", label: "Settings", active: false },
-];
-
 const NAV_LINKS = ["Dashboard", "Transactions", "Reports", "Budgets"];
 
 export default function DashboardWireframe() {
   return (
     <div className="wf-page">
-      {/* ── Mobile top bar (visible ≤640px) ── */}
-      <div className="wf-mobile-topbar">
-        <span className="wf-hamburger">☰</span>
-        <span>◈ SmartFinance</span>
-      </div>
-
-      {/* ── Desktop top nav (hidden on mobile) ── */}
+      {/* ── Primary top nav ── */}
       <nav className="wf-topnav">
         <span className="wf-topnav-logo">◈ SmartFinance</span>
         <div className="wf-topnav-links">
@@ -96,20 +81,7 @@ export default function DashboardWireframe() {
         <span className="wf-topnav-profile">👤 User</span>
       </nav>
 
-      {/* ── Sidebar + Main ── */}
       <div className="wf-dashboard-layout">
-        {/* Sidebar (collapses on mobile) */}
-        <aside className="wf-sidebar">
-          <div className="wf-sidebar-section">Menu</div>
-          {SIDEBAR_ITEMS.map(({ icon, label, active }) => (
-            <div key={label} className={`wf-sidebar-item${active ? " active" : ""}`}>
-              <span>{icon}</span>
-              {label}
-            </div>
-          ))}
-        </aside>
-
-        {/* Main content */}
         <main className="wf-main-content">
           <p className="wf-section-title">
             Dashboard

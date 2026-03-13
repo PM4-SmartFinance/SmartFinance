@@ -1,9 +1,8 @@
 /**
  * Wireframe: Transactions Page
  *
- * Layout: Top filter bar + full-width transactions table with pagination.
- * Desktop: Sidebar + main content (inherited from AppShell).
- * Mobile:  Filters stack vertically; table scrolls horizontally.
+ * Layout: Top banner nav + filter bar + full-width transactions table with pagination.
+ * Mobile: Filters stack vertically; table scrolls horizontally.
  *
  * Future components (Mantine): AppShell › Select › TextInput › DatePickerInput ›
  *   Button › Table › Pagination › Badge
@@ -92,23 +91,6 @@ export default function TransactionsWireframe() {
       </nav>
 
       <div className="wf-dashboard-layout">
-        {/* Sidebar */}
-        <aside className="wf-sidebar">
-          <div className="wf-sidebar-section">Menu</div>
-          {[
-            { icon: "▤", label: "Dashboard" },
-            { icon: "↔", label: "Transactions", active: true },
-            { icon: "◑", label: "Reports" },
-            { icon: "▣", label: "Budgets" },
-            { icon: "⚙", label: "Settings" },
-          ].map(({ icon, label, active }) => (
-            <div key={label} className={`wf-sidebar-item${active ? " active" : ""}`}>
-              <span>{icon}</span>
-              {label}
-            </div>
-          ))}
-        </aside>
-
         <main className="wf-main-content">
           <p className="wf-section-title">Transactions</p>
 
