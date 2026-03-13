@@ -46,7 +46,7 @@ Opens the Vite dev server at `http://localhost:5173`. Since authentication isn't
 ### 3. Run the full stack (Docker)
 
 ```bash
-docker-compose up
+docker compose up
 ```
 
 For local development without Docker, run frontend and backend in separate terminals:
