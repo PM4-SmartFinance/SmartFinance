@@ -1,5 +1,5 @@
 // backend/prisma/seed.ts
-import "dotenv/config"; 
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
@@ -19,8 +19,8 @@ async function main() {
   const today = new Date();
   const dateId = parseInt(
     `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(
-      today.getDate()
-    ).padStart(2, "0")}`
+      today.getDate(),
+    ).padStart(2, "0")}`,
   );
 
   const dimDate = await prisma.dimDate.upsert({
