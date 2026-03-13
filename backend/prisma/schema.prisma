@@ -6,138 +6,82 @@ datasource db {
   provider = "postgresql"
 }
 
-model Currency {
-  code         String        @id @db.VarChar(3) // ISO 4217: "CHF", "EUR", "USD"
-  symbol       String        @db.VarChar(5)     // "Fr.", "€", "$"
-  format       String        // e.g., "de-CH", "de-DE", "en-US" — Intl.NumberFormat locale
-  users        User[]
-  accounts     Account[]
-  transactions Transaction[]
-}
+// --- FACT TABLE ---
 
-enum TransactionType {
-  INCOME
-  EXPENSE
-  TRANSFER
-}
+model FactSpending {
+  id     String  @id @default(uuid())
+  amount Decimal @db.Decimal(12, 2)
 
-model User {
-  id             String         @id @default(uuid())
-  email          String         @unique
-  name           String?
-  passwordHash   String
-  role           String         @default("user") // "user" | "admin"
-  totpSecret     String?
-  currencyCode   String         @default("CHF") @db.VarChar(3)
-  currency       Currency       @relation(fields: [currencyCode], references: [code])
-  accounts       Account[]
-  transactions   Transaction[]
-  categories     Category[]
-  categoryRules  CategoryRule[]
-  budgets        Budget[]
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-}
+  userId String
+  user   DimUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-model Account {
-  id           String        @id @default(uuid())
-  label        String        // e.g., "ZKB Privatkonto", "Revolut CHF"
-  currencyCode String        @default("CHF") @db.VarChar(3)
-  currency     Currency      @relation(fields: [currencyCode], references: [code])
-  userId       String
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  merchantId String
+  merchant   DimMerchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, label])
-  @@index([userId])
-}
-
-model Category {
-  id            String         @id @default(uuid())
-  name          String
-  userId        String
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions  Transaction[]
-  lineItems     LineItem[]
-  categoryRules CategoryRule[]
-  budgets       Budget[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-
-  @@unique([userId, name])
-  @@index([userId])
-}
-
-model Transaction {
-  id          String     @id @default(uuid())
-  date        DateTime
-  type        TransactionType
-  description String
-  amount       Decimal    @db.Decimal(12, 2)
-  currencyCode String     @default("CHF") @db.VarChar(3)
-  currency     Currency   @relation(fields: [currencyCode], references: [code])
-  accountId    String
-  account     Account    @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  categoryId  String?
-  category    Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  lineItems   LineItem[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  dateId Int
+  date   DimDate @relation(fields: [dateId], references: [id])
 
   @@index([userId])
-  @@index([accountId])
-  @@index([categoryId])
-  @@index([date])
+  @@index([merchantId])
+  @@index([dateId])
 }
 
-model LineItem {
-  id            String    @id @default(uuid())
-  description   String
-  amount        Decimal   @db.Decimal(12, 2)
-  transactionId String
-  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
-  categoryId    String?
-  category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+// --- MAPPING BRIDGE ---
 
-  @@index([transactionId])
-  @@index([categoryId])
-}
+model UserMerchantMapping {
+  userId String
+  user   DimUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-model CategoryRule {
-  id         String   @id @default(uuid())
-  pattern    String   // matched case-insensitively via LIKE against transaction description
+  merchantId String
+  merchant   DimMerchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
   categoryId String
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  category   DimCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, pattern])
-  @@index([userId])
+  @@id([userId, merchantId])
   @@index([categoryId])
 }
 
-model Budget {
-  id            String   @id @default(uuid())
-  dailyAmount   Decimal  @db.Decimal(12, 2) // all three stored; backend calculates the other two from whichever the user sets
-  monthlyAmount Decimal  @db.Decimal(12, 2)
-  yearlyAmount  Decimal  @db.Decimal(12, 2)
-  month         Int      // 1–12
-  year          Int
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  categoryId    String
-  category      Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+// --- DIMENSION TABLES ---
 
-  @@unique([userId, categoryId, month, year])
+model DimMerchant {
+  id   String @id @default(uuid())
+  name String
+
+  spendings FactSpending[]
+  mappings  UserMerchantMapping[]
+}
+
+model DimCategory {
+  id           String  @id @default(uuid())
+  categoryName String
+  budgetLimit  Decimal @db.Decimal(12, 2)
+
+  userId String
+  user   DimUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  mappings UserMerchantMapping[]
+
+  @@unique([userId, categoryName])
   @@index([userId])
+}
+
+model DimUser {
+  id       String  @id @default(uuid())
+  email    String  @unique
+  name     String?
+  password String
+
+  spendings  FactSpending[]
+  mappings   UserMerchantMapping[]
+  categories DimCategory[]
+}
+
+model DimDate {
+  id        Int    @id // YYYYMMDD
+  dayOfWeek String
+  month     Int
+  year      Int
+
+  spendings FactSpending[]
 }
