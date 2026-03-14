@@ -10,12 +10,7 @@
 
 ## Verified
 - [ ] `bun install` succeeds.
-- [ ] `docker compose up -d postgres` runs healthy.
-- [ ] `npx prisma migrate dev` successfully generates and applies SQL migrations.
-- [ ] `npx prisma generate` produces valid TypeScript types in `node_modules`.
-- [ ] `npx prisma db seed` successfully populates all 6 tables without constraint errors.
-- [ ] Verified via **Prisma Studio** that `FactSpending` correctly links to all relevant dimension IDs.
-- [ ] Verified that `DATABASE_URL` is correctly parsed from `.env`.
+*(Add checks that prove the stability of your contribution)*
 
 ---
 
