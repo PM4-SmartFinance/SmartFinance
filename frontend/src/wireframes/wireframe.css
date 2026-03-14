@@ -1,0 +1,630 @@
+/* ── Wireframe Design Tokens ─────────────────────────────── */
+:root {
+  --wf-bg: #fafafa;
+  --wf-surface: #ffffff;
+  --wf-border: #9e9e9e;
+  --wf-border-dash: #bdbdbd;
+  --wf-fill: #eeeeee;
+  --wf-fill-dark: #e0e0e0;
+  --wf-text: #212121;
+  --wf-text-muted: #757575;
+  --wf-accent: #546e7a;
+  --wf-btn-bg: #455a64;
+  --wf-btn-text: #ffffff;
+  --wf-nav-bg: #37474f;
+  --wf-nav-text: #eceff1;
+  --wf-radius: 4px;
+  --wf-font: "Courier New", Courier, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--wf-bg);
+  font-family: var(--wf-font);
+  color: var(--wf-text);
+}
+
+/* ── Prototype Navigation Strip ──────────────────────────── */
+.wf-app-nav {
+  background: #263238;
+  color: #fff;
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  font-family: var(--wf-font);
+  border-bottom: 2px solid #1a2329;
+}
+
+.wf-app-nav > span {
+  font-weight: bold;
+  margin-right: 8px;
+  color: #b2dfdb;
+}
+
+.wf-app-nav button {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #b0bec5;
+  padding: 4px 10px;
+  border-radius: 3px;
+  font-family: var(--wf-font);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.wf-app-nav button.active,
+.wf-app-nav button:hover {
+  background: #455a64;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LOGIN WIREFRAME
+═══════════════════════════════════════════════════════════ */
+
+.wf-login-page {
+  min-height: calc(100vh - 36px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--wf-fill);
+  padding: 24px 16px;
+}
+
+.wf-login-logo {
+  font-size: 22px;
+  font-weight: bold;
+  letter-spacing: 1.5px;
+  color: var(--wf-accent);
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  border-bottom: 2px solid var(--wf-border);
+}
+
+.wf-login-card {
+  background: var(--wf-surface);
+  border: 2px solid var(--wf-border);
+  border-radius: var(--wf-radius);
+  padding: 32px 28px;
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.wf-login-card-label {
+  font-size: 11px;
+  font-weight: bold;
+  text-align: center;
+  color: var(--wf-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  background: var(--wf-fill);
+  border: 1px dashed var(--wf-border-dash);
+  padding: 6px;
+  border-radius: 2px;
+}
+
+.wf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.wf-field label {
+  font-size: 11px;
+  color: var(--wf-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.wf-input {
+  height: 38px;
+  border: 1px solid var(--wf-border);
+  background: var(--wf-fill);
+  border-radius: var(--wf-radius);
+  padding: 0 12px;
+  font-family: var(--wf-font);
+  font-size: 13px;
+  color: var(--wf-text-muted);
+  display: flex;
+  align-items: center;
+}
+
+.wf-btn {
+  height: 42px;
+  background: var(--wf-btn-bg);
+  color: var(--wf-btn-text);
+  border: none;
+  border-radius: var(--wf-radius);
+  font-family: var(--wf-font);
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 0.8px;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wf-login-footer {
+  text-align: center;
+  font-size: 11px;
+  color: var(--wf-text-muted);
+  border-top: 1px solid var(--wf-border-dash);
+  padding-top: 14px;
+}
+
+.wf-link {
+  color: var(--wf-accent);
+  text-decoration: underline;
+  cursor: default;
+}
+
+.wf-component-hint {
+  margin-top: 16px;
+  font-size: 10px;
+  color: #9e9e9e;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DASHBOARD WIREFRAME
+═══════════════════════════════════════════════════════════ */
+
+.wf-page {
+  min-height: calc(100vh - 36px);
+  background: var(--wf-bg);
+}
+
+/* Primary top nav */
+.wf-topnav {
+  background: var(--wf-nav-bg);
+  color: var(--wf-nav-text);
+  display: flex;
+  align-items: center;
+  min-height: 50px;
+  padding: 10px 20px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.wf-topnav-logo {
+  font-weight: bold;
+  font-size: 15px;
+  letter-spacing: 1.2px;
+  margin-right: 12px;
+}
+
+.wf-topnav-links {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.wf-topnav-link {
+  padding: 6px 14px;
+  font-size: 12px;
+  border-radius: 3px;
+  color: #b0bec5;
+  border: 1px solid transparent;
+  cursor: default;
+}
+
+.wf-topnav-link.active {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.wf-topnav-link:not(.active):hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.wf-topnav-profile {
+  font-size: 12px;
+  background: var(--wf-fill-dark);
+  color: var(--wf-text);
+  padding: 5px 12px;
+  border-radius: 50px;
+  border: 1px solid var(--wf-border);
+  margin-left: auto;
+}
+
+/* Content shell */
+.wf-dashboard-layout {
+  min-height: calc(100vh - 50px - 36px);
+}
+
+/* Main content area */
+.wf-main-content {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px;
+  overflow-y: auto;
+  width: 100%;
+}
+
+.wf-section-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--wf-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 0 0 16px 0;
+}
+
+/* Responsive label badge */
+.wf-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  background: var(--wf-fill-dark);
+  border: 1px solid var(--wf-border);
+  padding: 3px 8px;
+  border-radius: 10px;
+  color: var(--wf-text-muted);
+  margin-left: 8px;
+  font-weight: normal;
+  vertical-align: middle;
+}
+
+/* Widget Grid — Desktop: 2 col, Tablet: 2 col, Mobile: 1 col */
+.wf-widget-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.wf-widget {
+  background: var(--wf-surface);
+  border: 2px solid var(--wf-border);
+  border-radius: var(--wf-radius);
+  padding: 18px;
+  min-height: 120px;
+}
+
+.wf-widget-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+  color: var(--wf-text-muted);
+  border-bottom: 1px solid var(--wf-fill-dark);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.wf-widget-value {
+  font-size: 30px;
+  font-weight: bold;
+  color: var(--wf-accent);
+  margin-bottom: 4px;
+}
+
+.wf-widget-sub {
+  font-size: 11px;
+  color: var(--wf-text-muted);
+}
+
+/* Full-width panel */
+.wf-panel {
+  background: var(--wf-surface);
+  border: 2px solid var(--wf-border);
+  border-radius: var(--wf-radius);
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+/* Chart placeholder */
+.wf-chart-area {
+  height: 160px;
+  background: var(--wf-fill);
+  border: 2px dashed var(--wf-border-dash);
+  border-radius: var(--wf-radius);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--wf-text-muted);
+  font-size: 12px;
+}
+
+.wf-chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+  height: 70px;
+}
+
+.wf-chart-bar {
+  width: 20px;
+  background: var(--wf-border);
+  border-radius: 3px 3px 0 0;
+}
+
+.wf-chart-x-label {
+  font-size: 10px;
+  color: #bdbdbd;
+}
+
+/* Transactions table */
+.wf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.wf-table th {
+  background: var(--wf-fill);
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--wf-text-muted);
+  border-bottom: 2px solid var(--wf-border);
+}
+
+.wf-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--wf-fill-dark);
+  color: var(--wf-text);
+}
+
+.wf-table tr:last-child td {
+  border-bottom: none;
+}
+
+.wf-amount-positive {
+  color: #2e7d32;
+  font-weight: bold;
+}
+
+.wf-amount-negative {
+  color: #c62828;
+}
+
+/* Budget bars */
+.wf-budget-row {
+  margin-bottom: 14px;
+}
+
+.wf-budget-row:last-child {
+  margin-bottom: 0;
+}
+
+.wf-budget-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--wf-text-muted);
+  margin-bottom: 5px;
+}
+
+.wf-budget-track {
+  height: 8px;
+  background: var(--wf-fill-dark);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.wf-budget-fill {
+  height: 100%;
+  border-radius: 4px;
+}
+
+/* ── Filter bar (Transactions / Reports / Budgets) ───────── */
+.wf-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.wf-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+}
+
+.wf-filter-field label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--wf-text-muted);
+}
+
+.wf-select {
+  cursor: default;
+  color: var(--wf-text-muted);
+}
+
+.wf-filter-actions {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  padding-bottom: 1px;
+}
+
+.wf-btn-sm {
+  height: 34px;
+  padding: 0 14px;
+  font-size: 11px;
+}
+
+.wf-btn-outline {
+  background: transparent;
+  color: var(--wf-accent);
+  border: 1.5px solid var(--wf-accent);
+}
+
+/* ── Pagination ───────────────────────────────────────────── */
+.wf-pagination {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--wf-fill-dark);
+  font-size: 12px;
+}
+
+.wf-page-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--wf-border);
+  border-radius: var(--wf-radius);
+  cursor: default;
+  color: var(--wf-text-muted);
+  background: var(--wf-fill);
+}
+
+.wf-page-btn-active {
+  background: var(--wf-btn-bg);
+  color: #fff;
+  border-color: var(--wf-btn-bg);
+}
+
+.wf-page-info {
+  margin-left: 8px;
+  color: var(--wf-text-muted);
+  font-size: 11px;
+}
+
+/* ── Category pill ───────────────────────────────────────── */
+.wf-category-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--wf-fill-dark);
+  border: 1px solid var(--wf-border-dash);
+  font-size: 10px;
+  color: var(--wf-text-muted);
+  white-space: nowrap;
+}
+
+/* ── Action links ────────────────────────────────────────── */
+.wf-action-link {
+  font-size: 11px;
+  color: var(--wf-accent);
+  text-decoration: underline;
+  cursor: default;
+}
+
+.wf-action-delete {
+  color: #c62828;
+}
+
+/* ── Segmented control (Reports period selector) ────────── */
+.wf-segmented {
+  display: flex;
+  border: 1px solid var(--wf-border);
+  border-radius: var(--wf-radius);
+  overflow: hidden;
+}
+
+.wf-seg-item {
+  padding: 6px 14px;
+  font-size: 11px;
+  color: var(--wf-text-muted);
+  background: var(--wf-fill);
+  border-right: 1px solid var(--wf-border);
+  cursor: default;
+  white-space: nowrap;
+}
+
+.wf-seg-item:last-child {
+  border-right: none;
+}
+
+.wf-seg-item.active {
+  background: var(--wf-btn-bg);
+  color: #fff;
+}
+
+/* ── Donut chart placeholder ─────────────────────────────── */
+.wf-donut {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: conic-gradient(
+    #546e7a 0% 19%,
+    #607d8b 19% 32%,
+    #78909c 32% 39%,
+    #90a4ae 39% 54%,
+    #b0bec5 54% 60%,
+    #455a64 60% 82%,
+    #37474f 82% 91%,
+    #cfd8dc 91% 100%
+  );
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════════════════════ */
+
+/* Tablet (641–1024px): tighten content spacing */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .wf-main-content {
+    padding: 20px;
+  }
+}
+
+/* Mobile (≤640px): keep top nav and stack widgets */
+@media (max-width: 640px) {
+  .wf-topnav {
+    padding: 12px 16px;
+    row-gap: 10px;
+  }
+
+  .wf-topnav-links {
+    order: 3;
+    flex-basis: 100%;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .wf-topnav-profile {
+    margin-left: 0;
+  }
+
+  .wf-dashboard-layout {
+    min-height: calc(100vh - 50px - 36px);
+  }
+
+  .wf-widget-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .wf-main-content {
+    padding: 16px;
+  }
+
+  .wf-segmented {
+    flex-wrap: wrap;
+  }
+
+  .wf-login-card {
+    padding: 24px 18px;
+  }
+}

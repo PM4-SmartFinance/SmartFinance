@@ -1,17 +1,39 @@
-import { QueryClientProvider } from "@tanstack/react-query";
-import { RouterProvider } from "react-router";
-import { AuthProvider } from "./contexts/AuthProvider";
-import { queryClient } from "./lib/queryClient";
-import { router } from "./router";
+import { useState } from "react";
+import LoginWireframe from "./wireframes/LoginWireframe";
+import DashboardWireframe from "./wireframes/DashboardWireframe";
+import TransactionsWireframe from "./wireframes/TransactionsWireframe";
+import ReportsWireframe from "./wireframes/ReportsWireframe";
+import BudgetsWireframe from "./wireframes/BudgetsWireframe";
+import "./wireframes/wireframe.css";
 
-function App() {
+type View = "login" | "dashboard" | "transactions" | "reports" | "budgets";
+
+const VIEWS: { id: View; label: string }[] = [
+  { id: "login", label: "Login" },
+  { id: "dashboard", label: "Dashboard" },
+  { id: "transactions", label: "Transactions" },
+  { id: "reports", label: "Reports" },
+  { id: "budgets", label: "Budgets" },
+];
+
+export default function App() {
+  const [view, setView] = useState<View>("login");
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <RouterProvider router={router} />
-      </AuthProvider>
-    </QueryClientProvider>
+    <>
+      <div className="wf-app-nav">
+        <span>⬡ SmartFinance — Wireframes</span>
+        {VIEWS.map(({ id, label }) => (
+          <button key={id} className={view === id ? "active" : ""} onClick={() => setView(id)}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {view === "login" && <LoginWireframe />}
+      {view === "dashboard" && <DashboardWireframe />}
+      {view === "transactions" && <TransactionsWireframe />}
+      {view === "reports" && <ReportsWireframe />}
+      {view === "budgets" && <BudgetsWireframe />}
+    </>
   );
 }
-
-export default App;
