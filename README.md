@@ -43,6 +43,21 @@ bun run --filter @smartfinance/frontend dev
 
 Opens the Vite dev server at `http://localhost:5173`. Since authentication isn't wired up yet, `/` redirects to `/login`.
 
+### 2a. Display the wireframes
+
+The frontend currently renders a wireframe preview shell in development.
+
+1. Start the frontend dev server:
+
+```bash
+bun run --filter @smartfinance/frontend dev
+```
+
+2. Open `http://localhost:5173` in your browser.
+3. Use the top navigation bar (`Login`, `Dashboard`, `Transactions`, `Reports`, `Budgets`) to switch between wireframe views.
+
+Wireframe source files are located in `frontend/src/wireframes/`.
+
 ### 3. Run the full stack (Docker)
 
 Requires Docker v29+ with the Compose plugin installed.

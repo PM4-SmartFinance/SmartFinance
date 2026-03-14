@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { api, ApiError } from "../lib/api";
-import { useAppStore } from "../store/appStore";
 
 interface DashboardSummary {
   totalTransactions: number;
@@ -15,17 +14,9 @@ export function DashboardPage() {
     queryFn: () => api.get<DashboardSummary>("/dashboard/summary"),
   });
 
-  // Client state — Zustand owns UI-only flags
-  const sidebarOpen = useAppStore((s) => s.sidebarOpen);
-  const toggleSidebar = useAppStore((s) => s.toggleSidebar);
-
   return (
     <main>
       <h1>Dashboard</h1>
-
-      <button type="button" onClick={toggleSidebar}>
-        Sidebar: {sidebarOpen ? "open" : "closed"}
-      </button>
 
       {isLoading && <p>Loading summary…</p>}
       {isError && (
