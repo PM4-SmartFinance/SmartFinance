@@ -1,0 +1,3 @@
+"TransferWise ID",Date,"Date Time",Amount,Currency,Description,"Payment Reference","Running Balance","Exchange From","Exchange To","Exchange Rate","Payer Name","Payee Name","Payee Account Number",Merchant,"Card Last Four Digits","Card Holder Full Name",Attachment,Note,"Total fees","Exchange To Amount","Transaction Type","Transaction Details Type"
+TRANSFER-1394444852,29-01-2025,"29-01-2025 17:23:16.284",-211.27,EUR,"Geld überwiesen an Max Muster",,0.00,,,,,"Max Muster",DE00000000000000000000,,,,,,0.00,,DEBIT,TRANSFER
+BALANCE-3012848488,29-01-2025,"29-01-2025 17:22:40.348",211.27,EUR,"200,00 CHF zu 211,27 EUR umgetauscht",,211.27,CHF,EUR,1.05877,,,,,,,,,0.00,211.27,CREDIT,CONVERSION
