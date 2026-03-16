@@ -58,17 +58,43 @@ bun run --filter @smartfinance/frontend dev
 
 Wireframe source files are located in `frontend/src/wireframes/`.
 
-### 3. Run the full stack (Docker)
+### 3. Start the local development database
 
-Requires Docker v29+ with the Compose plugin installed.
+Start a PostgreSQL instance via Docker:
 
 ```bash
-cp .env.example .env   # Copy the example env file
-nano .env              # Fill in your settings
-docker compose up      # Start all services
+docker compose -f docker-compose.dev.yml up -d
 ```
 
-For local development without Docker, run frontend and backend in separate terminals:
+Then set up the backend environment:
+
+```bash
+cp backend/.env.dev backend/.env
+```
+
+Run Prisma migrations and seed the database:
+
+```bash
+cd backend
+bunx prisma migrate deploy
+bunx prisma db seed
+```
+
+To stop the database:
+
+```bash
+docker compose -f docker-compose.dev.yml down
+```
+
+To stop and **delete all data**:
+
+```bash
+docker compose -f docker-compose.dev.yml down -v
+```
+
+### 4. Run the full stack locally
+
+Run frontend and backend in separate terminals:
 
 ```bash
 # Terminal 1 — Backend
@@ -76,6 +102,16 @@ bun run --filter @smartfinance/backend dev
 
 # Terminal 2 — Frontend
 bun run --filter @smartfinance/frontend dev
+```
+
+### 5. Production deployment (Docker)
+
+Requires Docker v29+ with the Compose plugin installed.
+
+```bash
+cp .env.example .env   # Copy the example env file
+nano .env              # Fill in your settings
+docker compose up -d   # Start all services
 ```
 
 ## Available Scripts
