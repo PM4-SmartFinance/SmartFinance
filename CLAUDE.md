@@ -171,9 +171,7 @@ This project uses **Fastify 5** (`fastify@^5.3.0`). Always use Fastify 5 APIs.
 
 ## Running the Project
 
-```bash
-docker-compose up
-```
+See `README.md` for two setup paths: **Quick Start (Docker)** for running from pre-built images, or **Development Setup** for local development with Bun.
 
 ## Links
 

@@ -25,7 +25,23 @@ SmartFinance/
 
 This is a **Bun workspaces monorepo**. The root `package.json` defines two workspaces: `frontend/` and `backend/`. Shared dev dependencies (TypeScript, ESLint, Prettier) are installed at the root. Each workspace manages its own application dependencies.
 
-## Getting Started
+## Quick Start (Docker)
+
+Run the full stack from pre-built images — no local toolchain needed. This is what the CD pipeline does on the server.
+
+**Requirements:** Docker v29+ with the Compose plugin.
+
+```bash
+cp .env.example .env   # Copy the example env file and fill in your values
+docker compose up -d   # Start Traefik, PostgreSQL, backend, and frontend
+docker compose exec -T backend npx prisma migrate deploy   # Apply database migrations
+```
+
+See `.env.example` for all required variables (domain, DB credentials, session secret, GHCR repository).
+
+## Development Setup
+
+For contributors working on the codebase locally.
 
 ### 1. Install dependencies
 
@@ -33,42 +49,26 @@ This is a **Bun workspaces monorepo**. The root `package.json` defines two works
 bun install
 ```
 
-This installs all dependencies for the root and both workspaces in one step. It also runs the `prepare` script, which sets up Husky git hooks so that ESLint and Prettier run automatically on every commit via lint-staged.
+This installs all dependencies for the root and both workspaces in one step. It also sets up Husky git hooks so that ESLint and Prettier run automatically on every commit via lint-staged.
 
-### 2. Run the frontend
-
-```bash
-bun run --filter @smartfinance/frontend dev
-```
-
-Opens the Vite dev server at `http://localhost:5173`. Since authentication isn't wired up yet, `/` redirects to `/login`.
-
-### 2a. Display the wireframes
-
-The frontend currently renders a wireframe preview shell in development.
-
-1. Start the frontend dev server:
+### 2. Start the local database
 
 ```bash
-bun run --filter @smartfinance/frontend dev
+docker compose -f docker-compose.dev.yml up -d
+cp backend/.env.dev backend/.env
 ```
 
-2. Open `http://localhost:5173` in your browser.
-3. Use the top navigation bar (`Login`, `Dashboard`, `Transactions`, `Reports`, `Budgets`) to switch between wireframe views.
-
-Wireframe source files are located in `frontend/src/wireframes/`.
-
-### 3. Run the full stack (Docker)
-
-Requires Docker v29+ with the Compose plugin installed.
+Run Prisma migrations and seed:
 
 ```bash
-cp .env.example .env   # Copy the example env file
-nano .env              # Fill in your settings
-docker compose up      # Start all services
+cd backend
+bunx prisma migrate deploy
+bunx prisma db seed
 ```
 
-For local development without Docker, run frontend and backend in separate terminals:
+### 3. Run the full stack
+
+Run frontend and backend in separate terminals:
 
 ```bash
 # Terminal 1 — Backend
@@ -76,6 +76,19 @@ bun run --filter @smartfinance/backend dev
 
 # Terminal 2 — Frontend
 bun run --filter @smartfinance/frontend dev
+```
+
+The frontend dev server runs at `http://localhost:5173`.
+
+### Wireframe preview
+
+The frontend renders a wireframe preview shell in development. Start the frontend dev server and open `http://localhost:5173` — use the top navigation bar to switch between wireframe views. Source files are in `frontend/src/wireframes/`.
+
+### Stop / reset the database
+
+```bash
+docker compose -f docker-compose.dev.yml down      # Stop PostgreSQL
+docker compose -f docker-compose.dev.yml down -v    # Stop and delete all data
 ```
 
 ## Available Scripts

@@ -1,0 +1,149 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --- FACT TABLE ---
+
+model FactTransactions {
+  id     String  @id @default(uuid())
+  amount Decimal @db.Decimal(12, 2)
+
+  userId String
+  user   DimUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  accountId String
+  account   DimAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  merchantId String
+  merchant   DimMerchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  dateId Int
+  date   DimDate @relation(fields: [dateId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([accountId])
+  @@index([merchantId])
+  @@index([dateId])
+}
+
+// --- MAPPING BRIDGE ---
+
+model UserMerchantMapping {
+  userId String
+  user   DimUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  merchantId String
+  merchant   DimMerchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  categoryId String
+  category   DimCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([userId, merchantId])
+  @@index([categoryId])
+}
+
+// --- DIMENSION TABLES ---
+
+model DimMerchant {
+  id   String @id @default(uuid())
+  name String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  spendings FactTransactions[]
+  mappings  UserMerchantMapping[]
+}
+
+model DimCategory {
+  id               String   @id @default(uuid())
+  categoryName     String
+  budgetLimitDay   Decimal? @db.Decimal(12, 2)
+  budgetLimitMonth Decimal? @db.Decimal(12, 2)
+  budgetLimitYear  Decimal? @db.Decimal(12, 2)
+
+  userId String
+  user   DimUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mappings UserMerchantMapping[]
+
+  @@unique([userId, categoryName])
+  @@index([userId])
+}
+
+model DimAccount {
+  id   String @id @default(uuid())
+  name String
+  iban String
+
+  currencyId String
+  currency   DimCurrency @relation(fields: [currencyId], references: [id])
+
+  userId String
+  user   DimUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions FactTransactions[]
+
+  @@unique([userId, iban])
+  @@index([userId])
+  @@index([currencyId])
+}
+
+model DimCurrency {
+  id     String @id @default(uuid())
+  code   String @unique @db.VarChar(3) // ISO 4217 (e.g. CHF, EUR, USD)
+  name   String
+  format String // e.g. "CHF 1'234.56", "1.234,56 €", "$1,234.56"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts DimAccount[]
+  users    DimUser[]
+}
+
+model DimUser {
+  id       String  @id @default(uuid())
+  email    String  @unique
+  name     String?
+  password String
+
+  defaultCurrencyId String
+  defaultCurrency   DimCurrency @relation(fields: [defaultCurrencyId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  spendings  FactTransactions[]
+  mappings   UserMerchantMapping[]
+  categories DimCategory[]
+  accounts   DimAccount[]
+}
+
+model DimDate {
+  id        Int    @id // YYYYMMDD
+  dayOfWeek String
+  month     Int
+  year      Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  spendings FactTransactions[]
+}
