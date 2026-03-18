@@ -1,7 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
 import { prisma } from "../prisma.js";
-
-type TransactionClient = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 
 export async function findByEmail(email: string) {
   return prisma.dimUser.findUnique({ where: { email } });
@@ -16,7 +13,7 @@ export async function createUser(data: {
   password: string;
   defaultCurrencyId: string;
 }): Promise<{ id: string; email: string; role: string; createdAt: Date }> {
-  return prisma.$transaction(async (tx: TransactionClient) => {
+  return prisma.$transaction(async (tx) => {
     const count = await tx.dimUser.count();
     const role = count === 0 ? "ADMIN" : "USER";
     return tx.dimUser.create({
