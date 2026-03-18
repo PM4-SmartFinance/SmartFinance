@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "DimUser" ADD COLUMN     "role" TEXT NOT NULL DEFAULT 'USER';

@@ -61,7 +61,8 @@ All endpoints under `/api/v1`. Authentication via httpOnly cookie session. RBAC 
 - Input validation on all API endpoints (server-side)
 - At least 70% test coverage on core business logic
 - Semantic HTML, accessible form controls
-- English is primary language, German as fallback; text resources separated from logic
+- **All documentation, code comments, commit messages, and PR descriptions must be in English** — no exceptions
+- Text resources (UI strings) separated from logic
 
 ## Frontend Best Practices
 
