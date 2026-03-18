@@ -223,5 +223,6 @@ Key conventions:
 
 ## Links
 
+- **API Documentation:** See [`backend/API.md`](backend/API.md) for all endpoints, request/response formats, and a Postman collection
 - **Jira:** https://smartfinancepm4.atlassian.net/jira/software/projects/KAN/boards/2
 - **Wiki:** See `wiki/` directory for full software guidebook documentation
