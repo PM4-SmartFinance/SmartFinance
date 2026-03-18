@@ -1,4 +1,5 @@
-import { FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyRequest } from "fastify";
+import { ServiceError } from "../errors.js";
 
 export const ROLES = {
   ADMIN: 2,
@@ -8,14 +9,17 @@ export const ROLES = {
 export type RoleType = keyof typeof ROLES;
 
 export function requireRole(requiredRole: RoleType) {
-  return async (request: FastifyRequest, reply: FastifyReply) => {
+  return async (request: FastifyRequest) => {
     const user = request.session.get("user");
     if (!user) {
-      return reply.status(401).send({ error: "Unauthorized" });
+      throw new ServiceError(401, "Unauthorized");
+    }
+    if (!(user.role in ROLES)) {
+      throw new ServiceError(403, "Forbidden");
     }
     const hasRole = ROLES[user.role as RoleType] >= ROLES[requiredRole];
     if (!hasRole) {
-      return reply.status(403).send({ error: "Forbidden" });
+      throw new ServiceError(403, "Forbidden");
     }
   };
 }
