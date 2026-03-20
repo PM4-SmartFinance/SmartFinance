@@ -2,9 +2,10 @@ import { prisma } from "../prisma.js";
 import { ServiceError } from "../errors.js";
 import { parseNeonCSV } from "./importers/neon.parser.js";
 import { parseZKBCSV } from "./importers/zkb.parser.js";
+import { parseWiseCSV } from "./importers/wise.parser.js";
 import * as transactionRepository from "../repositories/transaction.repository.js";
 
-export const SUPPORTED_FORMATS = ["neon", "zkb"] as const;
+export const SUPPORTED_FORMATS = ["neon", "zkb", "wise"] as const;
 export type ImportFormat = (typeof SUPPORTED_FORMATS)[number];
 
 interface ImportParams {
@@ -30,6 +31,8 @@ export async function importTransactions({
     parsed = parseNeonCSV(csvText);
   } else if (format === "zkb") {
     parsed = parseZKBCSV(csvText);
+  } else if (format === "wise") {
+    parsed = parseWiseCSV(csvText);
   } else {
     throw new ServiceError(400, `Unsupported import format: ${format}`);
   }
