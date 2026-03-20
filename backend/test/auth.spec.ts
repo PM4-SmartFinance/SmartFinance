@@ -60,7 +60,7 @@ afterAll(async () => {
 });
 
 describe("Auth acceptance tests", () => {
-  it("assigns ADMIN role to first registered user", async () => {
+  it("assigns ADMIN role to first registered user and logs the creation event", async () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/v1/auth/register",
@@ -74,6 +74,11 @@ describe("Auth acceptance tests", () => {
     const user = await prisma.dimUser.findUnique({ where: { email: TEST_USERS.firstAdmin } });
     expect(user).toBeTruthy();
     expect(user?.role).toBe("ADMIN");
+
+    const auditLog = await prisma.auditLog.findFirst({
+      where: { userId: user?.id, action: "USER_CREATED" },
+    });
+    expect(auditLog).toBeTruthy();
   });
 
   it("assigns USER role to second registered user", async () => {
