@@ -8,6 +8,26 @@ import type { ImportFormat } from "../services/import.service.js";
 export async function importTransactionRoutes(app: FastifyInstance): Promise<void> {
   await app.register(multipart);
 
+  app.get(
+    "/transactions/import/formats",
+    {
+      preHandler: requireRole("USER"),
+      schema: {
+        response: {
+          200: {
+            type: "object",
+            properties: {
+              formats: { type: "array", items: { type: "string" } },
+            },
+          },
+        },
+      },
+    },
+    async (_request, reply) => {
+      return reply.status(200).send({ formats: SUPPORTED_FORMATS });
+    },
+  );
+
   app.post<{ Querystring: { accountId: string; format: string } }>(
     "/transactions/import",
     {
