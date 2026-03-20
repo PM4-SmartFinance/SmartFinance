@@ -123,6 +123,7 @@ model DimUser {
   email    String  @unique
   name     String?
   password String
+  role     String  @default("USER")
 
   defaultCurrencyId String
   defaultCurrency   DimCurrency @relation(fields: [defaultCurrencyId], references: [id])

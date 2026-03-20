@@ -48,7 +48,6 @@ services:
       HOST: 0.0.0.0
       DATABASE_URL: postgresql://${POSTGRES_USER:-smartfinance}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-smartfinance}
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
-      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
     depends_on:
       postgres:
         condition: service_healthy

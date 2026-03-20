@@ -1,10 +1,13 @@
 import { defineConfig } from "vitest/config";
+import { config } from "dotenv";
+
+config({ path: ".env.test" });
 
 export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "test/**/*.spec.ts"],
     typecheck: {
       tsconfig: "./tsconfig.test.json",
     },

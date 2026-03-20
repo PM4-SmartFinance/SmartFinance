@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: smartfinance_test
+      POSTGRES_USER: smartfinance
+      POSTGRES_PASSWORD: smartfinance
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartfinance"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres_test_data:
