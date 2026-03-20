@@ -1,5 +1,6 @@
 import { ServiceError } from "../../errors.js";
 import type { ParsedTransaction } from "./neon.parser.js";
+import { parseCSVLine } from "./csv.utils.js";
 
 // Column indices for the ZKB CSV format
 const COL = {
@@ -24,40 +25,6 @@ const EXPECTED_HEADERS = [
   "Details",
 ];
 
-function parseCSVLine(line: string): string[] {
-  const fields: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i]!;
-    if (inQuotes) {
-      if (ch === '"') {
-        if (line[i + 1] === '"') {
-          current += '"';
-          i++;
-        } else {
-          inQuotes = false;
-        }
-      } else {
-        current += ch;
-      }
-    } else {
-      if (ch === '"') {
-        inQuotes = true;
-      } else if (ch === ";") {
-        fields.push(current);
-        current = "";
-      } else {
-        current += ch;
-      }
-    }
-  }
-
-  fields.push(current);
-  return fields;
-}
-
 export function parseZKBCSV(csv: string): ParsedTransaction[] {
   const lines = csv.split(/\r?\n/).filter((l) => l.trim() !== "");
 
@@ -65,7 +32,7 @@ export function parseZKBCSV(csv: string): ParsedTransaction[] {
     throw new ServiceError(422, "CSV file contains no data rows");
   }
 
-  const header = parseCSVLine(lines[0]!);
+  const header = parseCSVLine(lines[0]!, ";");
   for (let i = 0; i < EXPECTED_HEADERS.length; i++) {
     if (header[i] !== EXPECTED_HEADERS[i]) {
       throw new ServiceError(
@@ -78,7 +45,7 @@ export function parseZKBCSV(csv: string): ParsedTransaction[] {
   const transactions: ParsedTransaction[] = [];
 
   for (let i = 1; i < lines.length; i++) {
-    const fields = parseCSVLine(lines[i]!);
+    const fields = parseCSVLine(lines[i]!, ";");
     const rowNum = i + 1;
 
     const rawDate = fields[COL.DATE] ?? "";

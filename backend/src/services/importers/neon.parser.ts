@@ -1,4 +1,5 @@
 import { ServiceError } from "../../errors.js";
+import { parseCSVLine } from "./csv.utils.js";
 
 export interface ParsedTransaction {
   date: Date;
@@ -23,41 +24,11 @@ const EXPECTED_HEADERS = [
   "Exchange rate",
   "Description",
   "Subject",
+  "Category",
+  "Tags",
+  "Wise",
+  "Spaces",
 ];
-
-function parseCSVLine(line: string, delimiter: string): string[] {
-  const fields: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i]!;
-    if (inQuotes) {
-      if (ch === '"') {
-        if (line[i + 1] === '"') {
-          current += '"';
-          i++;
-        } else {
-          inQuotes = false;
-        }
-      } else {
-        current += ch;
-      }
-    } else {
-      if (ch === '"') {
-        inQuotes = true;
-      } else if (ch === delimiter) {
-        fields.push(current);
-        current = "";
-      } else {
-        current += ch;
-      }
-    }
-  }
-
-  fields.push(current);
-  return fields;
-}
 
 export function parseNeonCSV(csv: string): ParsedTransaction[] {
   const lines = csv.split(/\r?\n/).filter((l) => l.trim() !== "");
