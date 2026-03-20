@@ -1,9 +1,10 @@
 import { prisma } from "../prisma.js";
 import { ServiceError } from "../errors.js";
 import { parseNeonCSV } from "./importers/neon.parser.js";
+import { parseZKBCSV } from "./importers/zkb.parser.js";
 import * as transactionRepository from "../repositories/transaction.repository.js";
 
-export const SUPPORTED_FORMATS = ["neon"] as const;
+export const SUPPORTED_FORMATS = ["neon", "zkb"] as const;
 export type ImportFormat = (typeof SUPPORTED_FORMATS)[number];
 
 interface ImportParams {
@@ -24,12 +25,14 @@ export async function importTransactions({
     throw new ServiceError(404, "Account not found");
   }
 
-  const parsed =
-    format === "neon"
-      ? parseNeonCSV(csvText)
-      : (() => {
-          throw new ServiceError(400, `Unsupported import format: ${format}`);
-        })();
+  let parsed;
+  if (format === "neon") {
+    parsed = parseNeonCSV(csvText);
+  } else if (format === "zkb") {
+    parsed = parseZKBCSV(csvText);
+  } else {
+    throw new ServiceError(400, `Unsupported import format: ${format}`);
+  }
 
   if (parsed.length === 0) {
     return { imported: 0 };
