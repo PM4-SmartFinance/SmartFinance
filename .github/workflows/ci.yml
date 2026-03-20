@@ -46,6 +46,20 @@ jobs:
     name: Backend Tests (≥70% coverage)
     runs-on: ubuntu-24.04
     needs: lint
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: smartfinance_test
+          POSTGRES_USER: smartfinance
+          POSTGRES_PASSWORD: smartfinance
+        options: >-
+          --health-cmd "pg_isready -U smartfinance"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+        ports:
+          - 5433:5432
     steps:
       - uses: actions/checkout@v4
 
@@ -70,9 +84,27 @@ jobs:
           HUSKY: "0"
         run: bun install --frozen-lockfile
 
-      - name: Generate Prisma client
-        run: DATABASE_URL="postgresql://localhost:5432/dummy" bun --bun run prisma generate
+      - name: Wait for Postgres to be reachable
+        shell: bash
+        run: |
+          echo "Waiting for Postgres on localhost:5433..."
+          for i in {1..60}; do
+            if (echo > /dev/tcp/127.0.0.1/5433) >/dev/null 2>&1; then
+              echo "Postgres is reachable"; break
+            fi
+            echo "Postgres not reachable yet, sleeping... ($i/60)";
+            sleep 1
+          done
+
+      - name: Set DATABASE_URL for backend
+        run: echo "DATABASE_URL=postgresql://smartfinance:smartfinance@localhost:5433/smartfinance_test" >> $GITHUB_ENV
+
+      - name: Apply Prisma schema and generate client
         working-directory: backend
+        run: |
+          echo "Applying Prisma schema to test DB"
+          bun --bun run prisma db push --schema=prisma/schema.prisma
+          bun --bun run prisma generate --schema=prisma/schema.prisma
 
       - name: Run backend tests with coverage
         run: bun run --filter @smartfinance/backend test

@@ -148,3 +148,16 @@ model DimDate {
 
   spendings FactTransactions[]
 }
+
+// --- AUDIT LOG ---
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  userId    String?
+  details   String? // JSON string
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+}
