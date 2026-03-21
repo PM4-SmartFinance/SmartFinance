@@ -74,8 +74,8 @@ export default function ReportsWireframe() {
                       key={m}
                       style={{
                         display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
+                        flexDirection: "row",
+                        alignItems: "flex-end",
                         gap: 1,
                       }}
                     >
