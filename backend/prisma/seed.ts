@@ -8,29 +8,51 @@ const adapter = new PrismaPg({
 
 const prisma = new PrismaClient({ adapter });
 
-async function main() {
-  console.log("Starting database seeding...");
+const DEFAULT_CATEGORIES = [
+  { categoryName: "Groceries" },
+  { categoryName: "Rent" },
+  { categoryName: "Transport" },
+  { categoryName: "Dining" },
+  { categoryName: "Entertainment" },
+  { categoryName: "Insurance" },
+  { categoryName: "Salary" },
+];
 
-  // 1. Seed currencies
+async function main() {
+  console.log("🌱 Starting database seeding...");
+
+  // 1. Seed Global Categories (Available to everyone)
+  console.log("Creating global categories...");
+  for (const cat of DEFAULT_CATEGORIES) {
+    // Check if this global category already exists
+    const existing = await prisma.dimCategory.findFirst({
+      where: {
+        categoryName: cat.categoryName,
+        userId: null,
+      },
+    });
+
+    if (!existing) {
+      await prisma.dimCategory.create({
+        data: {
+          categoryName: cat.categoryName,
+          userId: null,
+        },
+      });
+      console.log(`  + Created global category: ${cat.categoryName}`);
+    } else {
+      console.log(`  - Global category already exists: ${cat.categoryName}`);
+    }
+  }
+
+  // 2. Seed currencies
   const chf = await prisma.dimCurrency.upsert({
     where: { code: "CHF" },
     update: {},
     create: { code: "CHF", name: "Swiss Franc", format: "CHF 1'234.56" },
   });
 
-  const eur = await prisma.dimCurrency.upsert({
-    where: { code: "EUR" },
-    update: {},
-    create: { code: "EUR", name: "Euro", format: "1.234,56 €" },
-  });
-
-  const usd = await prisma.dimCurrency.upsert({
-    where: { code: "USD" },
-    update: {},
-    create: { code: "USD", name: "US Dollar", format: "$1,234.56" },
-  });
-
-  // 2. Seed date dimension
+  // 3. Seed date dimension
   const today = new Date();
   const dateId = parseInt(
     `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`,
@@ -47,7 +69,7 @@ async function main() {
     },
   });
 
-  // 3. Seed user
+  // 4. Seed user
   const user = await prisma.dimUser.upsert({
     where: { email: "dev@smartfinance.local" },
     update: {},
@@ -59,7 +81,7 @@ async function main() {
     },
   });
 
-  // 4. Seed account
+  // 5. Seed account
   const account = await prisma.dimAccount.upsert({
     where: { userId_iban: { userId: user.id, iban: "CH93 0076 2011 6238 5295 7" } },
     update: {},
@@ -71,32 +93,37 @@ async function main() {
     },
   });
 
-  // 5. Seed category
-  const category = await prisma.dimCategory.upsert({
-    where: { userId_categoryName: { userId: user.id, categoryName: "Groceries" } },
+  // 6. Seed a specific User-Owned Category (Example of custom category)
+  const userCategory = await prisma.dimCategory.upsert({
+    where: { userId_categoryName: { userId: user.id, categoryName: "Hobby" } },
     update: {},
     create: {
-      categoryName: "Groceries",
-      budgetLimitMonth: 500.0,
+      categoryName: "Hobby",
+      budgetLimitMonth: 200.0,
       userId: user.id,
     },
   });
 
-  // 6. Seed merchant
-  const merchant = await prisma.dimMerchant.create({
-    data: { name: "Coop" },
+  // 7. Seed merchant
+  const merchant = await prisma.dimMerchant.upsert({
+    where: { id: "some-uuid-for-coop" }, // Using upsert to prevent unique constraint errors on rerun
+    update: {},
+    create: { name: "Coop" },
   });
 
-  // 7. Seed merchant-category mapping
-  await prisma.userMerchantMapping.create({
-    data: {
+  // 8. Seed merchant-category mapping
+  // Note: We use the user-owned category created in step 6
+  await prisma.userMerchantMapping.upsert({
+    where: { userId_merchantId: { userId: user.id, merchantId: merchant.id } },
+    update: { categoryId: userCategory.id },
+    create: {
       userId: user.id,
       merchantId: merchant.id,
-      categoryId: category.id,
+      categoryId: userCategory.id,
     },
   });
 
-  // 8. Seed transaction
+  // 9. Seed transaction
   await prisma.factTransactions.create({
     data: {
       amount: 85.5,
@@ -107,12 +134,7 @@ async function main() {
     },
   });
 
-  console.log("Seeded database successfully!");
-  console.log(`  User: ${user.email}`);
-  console.log(`  Account: ${account.name} (${account.iban})`);
-  console.log(`  Currencies: ${chf.code}, ${eur.code}, ${usd.code}`);
-  console.log(`  Mapping: ${merchant.name} -> ${category.categoryName}`);
-  console.log(`  Transaction: 85.50 at ${merchant.name}`);
+  console.log("✅ Seeded database successfully!");
 }
 
 main()
