@@ -16,6 +16,7 @@
     "@fastify/secure-session": "^8.3.0",
     "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
+    "prisma": "^7.5.0",
     "argon2": "^0.44.0",
     "dotenv": "^17.3.1",
     "fastify": "^5.8.2",
