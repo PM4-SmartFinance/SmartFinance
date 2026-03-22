@@ -135,6 +135,9 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Verify Docker Compose Build
+        env:
+          DOMAIN: "example.com"
+          ACME_EMAIL: "test@example.com"
         run: |
           echo "Testing Docker infrastructure..."
           docker compose build
