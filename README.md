@@ -4,224 +4,126 @@ A self-hosted personal finance management platform for importing, categorizing, 
 
 ## Prerequisites
 
-- [Bun](https://bun.sh/) (v1.2+) — used as package manager and script runner
-- [Node.js](https://nodejs.org/) (v22 LTS) — runtime for backend tooling (pinned via `.tool-versions`)
-- [Docker](https://www.docker.com/) & Docker Compose — for running PostgreSQL and production deployment
+Before running or developing the application, ensure your system meets the necessary requirements:
 
-## Project Structure
+- **Docker & Docker Compose:** Required for running the database and the production stack. Docker v29+ is recommended.
+- **Bun (v1.2+):** Used as the package manager and script runner (Required for development). Note: Windows users should run Bun via WSL2.
+- **Node.js (v22 LTS):** Runtime for backend tooling.
 
-```
-SmartFinance/
-├── frontend/          # React + TypeScript + Vite (PWA)
-├── backend/           # Node.js REST API (Fastify)
-├── docker/            # Dockerfiles and Docker Compose config
-├── wiki/              # Project documentation (separate git repo)
-├── package.json       # Root workspace config and shared scripts
-├── tsconfig.base.json # Shared TypeScript base config (strict mode)
-├── eslint.config.mjs  # Shared ESLint flat config
-├── .prettierrc        # Shared Prettier config
-└── .editorconfig      # Editor settings (indent, charset, line endings)
-```
+---
 
-This is a **Bun workspaces monorepo**. The root `package.json` defines two workspaces: `frontend/` and `backend/`. Shared dev dependencies (TypeScript, ESLint, Prettier) are installed at the root. Each workspace manages its own application dependencies.
+## User Installation (Self-Hosting)
 
-## Quick Start (Docker)
+The deployment strategy relies on a highly automated, single-host Docker Compose environment. This is the fastest way to get SmartFinance running on your own server or local machine.
 
-Run the full stack from pre-built images — no local toolchain needed. This is what the CD pipeline does on the server.
+### Automated Setup
 
-**Requirements:** Docker v29+ with the Compose plugin.
+We provide setup scripts that duplicate the `.env.example` file to `.env`, populate the required configuration values, and start the container network.
+
+**For Linux and macOS:**
+
+1. Open your terminal.
+2. Run the user setup script:
 
 ```bash
-cp .env.example .env   # Copy the example env file and fill in your values
-docker compose up -d   # Start Traefik, PostgreSQL, backend, and frontend
+./scripts/setup-user.sh
 ```
 
-See `.env.example` for all required variables (domain, DB credentials, session secret, GHCR repository).
+**For Windows:**
 
-## Development Setup
+1. Open PowerShell or Command Prompt.
+2. Run the user setup batch file:
 
-For contributors working on the codebase locally.
-
-### 1. Install dependencies
-
-```bash
-bun install
+```DOS
+scripts\setup-user.bat
 ```
 
-This installs all dependencies for the root and both workspaces in one step. It also sets up Husky git hooks so that ESLint and Prettier run automatically on every commit via lint-staged.
+Once the script finishes, access the application by navigating to http://localhost (or your configured domain) in your web browser.
 
-### 2. Start the local database
+### Manual Setup
 
-```bash
-docker compose -f docker-compose.dev.yml up -d
-cp backend/.env.dev backend/.env
+If you prefer to configure the environment variables and start the Docker containers manually, please refer to [Chapter 11.2 of the Wiki](wiki/Chapter-11.md#112-user-installation-self-hosting)
+
+---
+
+## Developer Setup (Contributing)
+
+Contributors working on the SmartFinance codebase locally require a different local environment utilizing Bun workspaces and Node.js.
+
+### Automated Setup
+
+The developer script configures the local `.env` files, installs workspace dependencies, and starts the local database container required for development.
+
+**For Linux and macOS:**
+
+1. Open your terminal.
+2. Run the developer setup script:
+
+```Bash
+./scripts/setup-dev.sh
 ```
 
-Run Prisma migrations and seed:
+**For Windows (via WSL2):**
 
-```bash
-cd backend
-bunx prisma migrate deploy
-bunx prisma db seed
+1. Open your WSL2 terminal.
+2. Run the developer setup script:
+
+```Bash
+./scripts/setup-dev.sh
 ```
 
-### 3. Run the full stack
+After the script completes, you can start the development servers by running following command in separate terminals.
 
-Run frontend and backend in separate terminals:
-
-```bash
-# Terminal 1 — Backend
+```
 bun run --filter @smartfinance/backend dev
+```
 
-# Terminal 2 — Frontend
+```
 bun run --filter @smartfinance/frontend dev
 ```
 
-The frontend dev server runs at `http://localhost:5173`.
+### Manual Setup
 
-### Wireframe preview
+If you need to manually install dependencies, configure the local database, or run database migrations, please read [Chapter 11.5 of the Wiki](wiki/Chapter-11.md#115-developer-onboarding--local-setup).
 
-The frontend renders a wireframe preview shell in development. Start the frontend dev server and open `http://localhost:5173` — use the top navigation bar to switch between wireframe views. Source files are in `frontend/src/wireframes/`.
+---
 
-### Stop / reset the database
+## Troubleshooting
 
-```bash
-docker compose -f docker-compose.dev.yml down      # Stop PostgreSQL
-docker compose -f docker-compose.dev.yml down -v    # Stop and delete all data
-```
+If you encounter issues during setup, check these common solutions:
 
-## Available Scripts
+### 1. Port Conflicts (Port already in use)
 
-Run these from the **project root**:
+**Error:** Docker fails to start because port 5432, 3000, 80, or 443 is bound.
 
-| Command                | Description                      |
-| ---------------------- | -------------------------------- |
-| `bun run lint`         | Lint all files with ESLint       |
-| `bun run lint:fix`     | Lint and auto-fix issues         |
-| `bun run format`       | Format all files with Prettier   |
-| `bun run format:check` | Check formatting without writing |
+**Fix:** You likely have a local Postgres instance or web server running. Stop the conflicting service or modify the ports in your `.env` file to map to different host ports.
 
-Workspace-specific scripts (defined in each workspace's `package.json`) can be run with `--filter`:
+### 2. Docker Daemon Issues
 
-```bash
-bun run --filter @smartfinance/frontend <script>
-bun run --filter @smartfinance/backend <script>
-```
+**Error:** Cannot connect to the Docker daemon. Docker commands fail immediately.
 
-## Shared Configuration
+**Fix:** Ensure the Docker application is running. On Linux, ensure your user is in the docker group or run the command with `sudo`.
 
-### TypeScript (`tsconfig.base.json`)
+### 3. Database Connection Refused
 
-Strict base config that both workspaces extend. Key settings:
+**Error:** The backend crashes citing a Prisma connection error during local development.
 
-- `strict: true` — all strict checks enabled
-- `target: ES2022`, `lib: ES2024` — modern JS output with access to latest APIs (`Object.groupBy`, `Promise.withResolvers`, etc.)
-- `moduleResolution: bundler` — for Vite/bundler compatibility
-- `noUncheckedIndexedAccess: true` — forces null checks on array/object indexed access
-- `exactOptionalPropertyTypes: true` — distinguishes `undefined` from missing properties
+**Fix:** Ensure the dev database container is running (`docker ps`). Verify that the `DATABASE_URL` in `backend/.env` exactly matches the credentials in `docker-compose.dev.yml`.
 
-Each workspace should create its own `tsconfig.json` that extends the base:
+---
 
-```jsonc
-// frontend/tsconfig.json
-{
-  "extends": "../tsconfig.base.json",
-  "compilerOptions": {
-    "lib": ["ES2024", "DOM", "DOM.Iterable"],
-    "jsx": "react-jsx",
-    // ... workspace-specific overrides
-  },
-  "include": ["src"],
-}
-```
+## Project Architecture & Scripts
 
-```jsonc
-// backend/tsconfig.json
-{
-  "extends": "../tsconfig.base.json",
-  "compilerOptions": {
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
-    // ... workspace-specific overrides
-  },
-  "include": ["src"],
-}
-```
+### Workspaces
 
-### ESLint (`eslint.config.mjs`)
+This is a Bun workspaces monorepo.
 
-ESLint 10 flat config using `defineConfig()` with:
+- **frontend/**: React 19 + TypeScript + Vite application with react-router v7.
+- **backend/**: Node.js REST API using Fastify and Prisma.
 
-- `@eslint/js` recommended rules
-- `typescript-eslint` recommended rules
-- `@eslint-react/eslint-plugin` recommended rules — scoped to `frontend/**/*.{ts,tsx}`
-- `eslint-plugin-react-hooks` v7 — scoped to `frontend/**/*.{ts,tsx}`, includes React Compiler rules
-- `eslint-plugin-react-refresh` — validates fast refresh compatibility
-- `eslint-config-prettier` — disables rules that conflict with Prettier
+## Documentation & Architecture
 
-### Prettier (`.prettierrc`)
+For detailed technical guidelines, architecture diagrams, Git workflows, and testing strategies, please refer to the official documentation:
 
-- Semicolons, double quotes, 2-space indent, trailing commas, 100 char print width
-
-### EditorConfig (`.editorconfig`)
-
-- 2-space indent, LF line endings, UTF-8, trim trailing whitespace
-
-## Implementing Frontend and Backend
-
-### Frontend (`frontend/`)
-
-React 19 + TypeScript + Vite application with react-router v7 (data router API).
-
-```
-frontend/src/
-├── components/    # Shared UI components (e.g. ProtectedRoute)
-├── contexts/      # React context providers (e.g. AuthProvider)
-├── pages/         # Route-level page components
-├── router.tsx     # Route config (createBrowserRouter)
-├── App.tsx        # Root component (AuthProvider + RouterProvider)
-└── main.tsx       # Entry point
-```
-
-Key conventions:
-
-- No business logic in React components — all processing happens in the backend
-- Use Zustand for client state, TanStack Query for server state
-- All data flows through the REST API (`/api/v1`)
-- Semantic HTML, accessible form controls
-
-### Backend (`backend/`)
-
-The backend workspace is for the Node.js REST API. To scaffold it:
-
-1. Add dependencies to `backend/package.json` (Fastify, Prisma, etc.)
-2. Create a `backend/tsconfig.json` extending `../tsconfig.base.json` (set `module: nodenext`, `moduleResolution: nodenext`)
-3. Add source code under `backend/src/` following the layered architecture:
-   - `controllers/` — HTTP request/response handling
-   - `services/` — business logic
-   - `repositories/` — data access (Prisma/TypeORM)
-   - `middleware/` — auth, validation, error handling
-4. Add scripts (`dev`, `build`, `start`) to `backend/package.json`
-
-Key conventions:
-
-- All endpoints under `/api/v1`
-- Repository pattern for all database access
-- All write operations within explicit DB transactions
-- Centralized error handling middleware
-- Input validation on all endpoints (server-side)
-
-## Tech Stack
-
-- **Frontend:** React (TypeScript), Vite, PWA
-- **Backend:** Node.js, Fastify, REST API
-- **Database:** PostgreSQL with Prisma or TypeORM
-- **State Management:** Zustand (client), TanStack Query (server)
-- **Deployment:** Docker / Docker Compose
-- **CI:** GitHub Actions (lint, test, build on every PR)
-
-## Links
-
-- **API Documentation:** See [`backend/API.md`](backend/API.md) for all endpoints, request/response formats, and a Postman collection
-- **Jira:** https://smartfinancepm4.atlassian.net/jira/software/projects/KAN/boards/2
-- **Wiki:** See `wiki/` directory for full software guidebook documentation
+- **[Software Guidebook (Wiki)](wiki/)**: Contains the complete C4 architecture, domain models, and deployment strategies.
+- **[CONTRIBUTING.md](CONTRIBUTING.md)**: Contains branch protection rules, commit standards, and pull request workflows.
