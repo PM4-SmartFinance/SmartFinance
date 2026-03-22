@@ -138,6 +138,8 @@ jobs:
         env:
           DOMAIN: "example.com"
           ACME_EMAIL: "test@example.com"
+          POSTGRES_PASSWORD: "dummy_password"
+          SESSION_SECRET: "dummy_secret"
         run: |
           echo "Testing Docker infrastructure..."
           docker compose build
