@@ -5,6 +5,7 @@ import TransactionsWireframe from "./wireframes/TransactionsWireframe";
 import ReportsWireframe from "./wireframes/ReportsWireframe";
 import BudgetsWireframe from "./wireframes/BudgetsWireframe";
 import "./wireframes/wireframe.css";
+import { Button } from "@/components/ui/button";
 
 type View = "login" | "dashboard" | "transactions" | "reports" | "budgets";
 
@@ -21,6 +22,8 @@ export default function App() {
 
   return (
     <>
+      <Button>Test shadcn</Button>
+
       <div className="wf-app-nav">
         <span>⬡ SmartFinance — Wireframes</span>
         {VIEWS.map(({ id, label }) => (
