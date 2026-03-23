@@ -88,6 +88,44 @@ If you need to manually install dependencies, configure the local database, or r
 
 ---
 
+### 4. Test database setup
+
+Integration tests require a dedicated PostgreSQL instance. A separate test database runs on port **5433** to avoid conflicts with the dev database on port 5432.
+
+**Start the test database:**
+
+```bash
+bun run --filter @smartfinance/backend test:db:up
+```
+
+This starts a PostgreSQL 17 container using `docker-compose.test.yml`. Migrations are applied automatically by Vitest's global setup (`backend/test/global-setup.ts`) before tests run — no manual migration step needed.
+
+**Run backend tests:**
+
+```bash
+bun run --filter @smartfinance/backend test
+```
+
+**Stop the test database:**
+
+```bash
+bun run --filter @smartfinance/backend test:db:down
+```
+
+The test database uses `backend/.env.test` for its connection string. This file is checked into the repo since it contains only local development credentials.
+
+> **CI:** GitHub Actions provisions its own PostgreSQL service container automatically — no manual setup needed. See `.github/workflows/ci.yml`.
+
+### Stop / reset the databases
+
+```bash
+docker compose -f docker-compose.dev.yml down      # Stop dev PostgreSQL
+docker compose -f docker-compose.dev.yml down -v    # Stop and delete all dev data
+docker compose -f docker-compose.test.yml down -v   # Stop and delete test data
+```
+
+---
+
 ## Troubleshooting
 
 If you encounter issues during setup, check these common solutions:
