@@ -30,6 +30,9 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}/backend
           tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
             type=sha,prefix=,format=short
             type=raw,value=latest
 
@@ -50,6 +53,9 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}/frontend
           tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
             type=sha,prefix=,format=short
             type=raw,value=latest
 
