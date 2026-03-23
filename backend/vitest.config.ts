@@ -8,6 +8,7 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["src/**/*.test.ts", "test/**/*.spec.ts"],
+    globalSetup: ["test/global-setup.ts"],
     typecheck: {
       tsconfig: "./tsconfig.test.json",
     },

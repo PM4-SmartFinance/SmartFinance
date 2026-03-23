@@ -1,4 +1,3 @@
-// TODO: Re-enable when CI/CD has a test database (separate Jira issue)
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as argon2 from "argon2";
 import { buildApp } from "../src/app.js";
@@ -60,7 +59,7 @@ afterAll(async () => {
   await app.close();
 });
 
-describe.skip("Auth acceptance tests", () => {
+describe("Auth acceptance tests", () => {
   it("assigns ADMIN role to first registered user", async () => {
     const res = await app.inject({
       method: "POST",
