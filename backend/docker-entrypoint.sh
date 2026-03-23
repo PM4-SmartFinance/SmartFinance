@@ -1,9 +1,7 @@
 #!/bin/sh
 set -e
 
-if [ -f "node_modules/.bin/prisma" ]; then
-  echo "Running database migrations..."
-  node_modules/.bin/prisma migrate deploy
-fi
+echo "Running database migrations..."
+node_modules/.bin/prisma migrate deploy
 
 exec node dist/index.js
