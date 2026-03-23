@@ -36,7 +36,7 @@ jobs:
       - name: Install dependencies
         env:
           HUSKY: "0"
-        run: bun install --frozen-lockfile
+        run: bun install
 
       - name: Lint
         run: bun run lint
@@ -70,7 +70,7 @@ jobs:
       - name: Install dependencies
         env:
           HUSKY: "0"
-        run: bun install --frozen-lockfile
+        run: bun install
 
       - name: Generate Prisma client
         run: DATABASE_URL="postgresql://localhost:5432/dummy" bun --bun run prisma generate
@@ -113,7 +113,7 @@ jobs:
       - name: Install dependencies
         env:
           HUSKY: "0"
-        run: bun install --frozen-lockfile
+        run: bun install
 
       - name: Generate Prisma client
         run: DATABASE_URL="postgresql://localhost:5432/dummy" bun --bun run prisma generate
