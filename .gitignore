@@ -39,3 +39,4 @@ pnpm-lock.yaml
 
 # Wiki (separate git repo)
 wiki/
+.claude
