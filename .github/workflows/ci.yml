@@ -87,10 +87,6 @@ jobs:
         run: bun --bun run prisma generate
         working-directory: backend
 
-      - name: Run database migrations
-        run: bunx prisma migrate deploy
-        working-directory: backend
-
       - name: Run backend tests with coverage
         run: bun run --filter @smartfinance/backend test
 
