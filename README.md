@@ -34,7 +34,6 @@ Run the full stack from pre-built images — no local toolchain needed. This is 
 ```bash
 cp .env.example .env   # Copy the example env file and fill in your values
 docker compose up -d   # Start Traefik, PostgreSQL, backend, and frontend
-docker compose exec -T backend npx prisma migrate deploy   # Apply database migrations
 ```
 
 See `.env.example` for all required variables (domain, DB credentials, session secret, GHCR repository).

@@ -11,6 +11,8 @@ RUN bun install --frozen-lockfile
 
 COPY tsconfig.base.json ./
 COPY frontend/tsconfig.json ./frontend/
+COPY frontend/tsconfig.app.json ./frontend/
+COPY frontend/tsconfig.node.json ./frontend/
 COPY frontend/src ./frontend/src
 COPY frontend/index.html ./frontend/
 COPY frontend/vite.config.ts ./frontend/

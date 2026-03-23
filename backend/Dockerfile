@@ -12,9 +12,8 @@ RUN bun install --frozen-lockfile
 COPY tsconfig.base.json ./
 COPY backend/tsconfig.json ./backend/
 COPY backend/src ./backend/src
-# When Prisma is added, uncomment the next two lines:
-# COPY backend/prisma ./backend/prisma
-# RUN cd backend && bunx prisma generate
+COPY backend/prisma ./backend/prisma
+RUN cd backend && bunx prisma generate
 
 WORKDIR /app/backend
 RUN bun run build
@@ -25,9 +24,8 @@ ENV NODE_ENV=production
 
 COPY --from=builder /app/backend/dist ./dist
 COPY --from=builder /app/backend/package.json ./
-# When Prisma is added, uncomment:
-# COPY --from=builder /app/backend/prisma ./prisma
-RUN npm install --omit=dev --ignore-scripts
+COPY --from=builder /app/backend/prisma ./prisma
+RUN npm install --omit=dev --ignore-scripts && npx prisma generate
 
 COPY backend/docker-entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
