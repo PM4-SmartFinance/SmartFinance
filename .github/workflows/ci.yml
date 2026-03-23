@@ -44,6 +44,25 @@ jobs:
     name: Backend Tests (≥70% coverage)
     runs-on: ubuntu-24.04
     needs: lint
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: smartfinance_test
+          POSTGRES_USER: smartfinance
+          POSTGRES_PASSWORD: smartfinance
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U smartfinance"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://smartfinance:smartfinance@localhost:5433/smartfinance_test
+
     steps:
       - uses: actions/checkout@v4
 
@@ -65,7 +84,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Generate Prisma client
-        run: DATABASE_URL="postgresql://localhost:5432/dummy" bun --bun run prisma generate
+        run: bun --bun run prisma generate
         working-directory: backend
 
       - name: Run backend tests with coverage
