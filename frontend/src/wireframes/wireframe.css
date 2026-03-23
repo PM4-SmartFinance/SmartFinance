@@ -21,8 +21,14 @@
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  width: 100%;
+}
 body {
   margin: 0;
+  display: block;
   background: var(--wf-bg);
   font-family: var(--wf-font);
   color: var(--wf-text);
@@ -352,7 +358,8 @@ body {
   display: flex;
   align-items: flex-end;
   gap: 7px;
-  height: 70px;
+  height: 90px;
+  overflow: hidden;
 }
 
 .wf-chart-bar {
