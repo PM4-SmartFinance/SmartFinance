@@ -20,7 +20,7 @@ const DEFAULT_CATEGORIES = [
 ];
 
 async function main() {
-  console.log("🌱 Starting database seeding...");
+  console.log("Starting database seeding...");
 
   await prisma.$transaction(async (prisma) => {
     // 1. Seed Global Categories (Available to everyone)
@@ -167,7 +167,7 @@ async function main() {
     }
   });
 
-  console.log("✅ Seeded database successfully!");
+  console.log("Seeded database successfully!");
 }
 
 main()
