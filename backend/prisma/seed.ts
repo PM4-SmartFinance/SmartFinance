@@ -54,6 +54,18 @@ async function main() {
       create: { code: "CHF", name: "Swiss Franc", format: "CHF 1'234.56" },
     });
 
+    await prisma.dimCurrency.upsert({
+      where: { code: "EUR" },
+      update: {},
+      create: { code: "EUR", name: "Euro", format: "1.234,56 €" },
+    });
+
+    await prisma.dimCurrency.upsert({
+      where: { code: "USD" },
+      update: {},
+      create: { code: "USD", name: "US Dollar", format: "$1,234.56" },
+    });
+
     // 3. Seed date dimension
     const today = new Date();
     const dateId = parseInt(
