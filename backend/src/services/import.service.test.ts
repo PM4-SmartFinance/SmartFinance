@@ -4,15 +4,7 @@ import { ServiceError } from "../errors.js";
 
 vi.mock("../repositories/transaction.repository.js", () => ({
   findAccountByIdAndUser: vi.fn(),
-  upsertDate: vi.fn(),
-  findOrCreateMerchant: vi.fn(),
-  insertTransactions: vi.fn(),
-}));
-
-vi.mock("../prisma.js", () => ({
-  prisma: {
-    $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) => fn({})),
-  },
+  bulkImport: vi.fn(),
 }));
 
 import * as repo from "../repositories/transaction.repository.js";
@@ -25,9 +17,7 @@ const mockRepo = vi.mocked(repo);
 beforeEach(() => {
   vi.clearAllMocks();
   mockRepo.findAccountByIdAndUser.mockResolvedValue({ id: "acc-1" } as never);
-  mockRepo.upsertDate.mockResolvedValue({ id: 20250115 } as never);
-  mockRepo.findOrCreateMerchant.mockResolvedValue({ id: "merchant-1" } as never);
-  mockRepo.insertTransactions.mockResolvedValue(undefined);
+  mockRepo.bulkImport.mockImplementation((parsed: unknown[]) => Promise.resolve(parsed.length));
 });
 
 describe("importTransactions", () => {
@@ -57,7 +47,7 @@ describe("importTransactions", () => {
     expect(result).toEqual({ imported: 3 });
   });
 
-  it("calls insertTransactions with the correct number of rows", async () => {
+  it("calls bulkImport with the parsed transactions and correct ids", async () => {
     const csv = [NEON_HEADER, NEON_ROW, NEON_ROW].join("\n");
 
     await importTransactions({
@@ -67,9 +57,11 @@ describe("importTransactions", () => {
       userId: "user-1",
     });
 
-    const rows = mockRepo.insertTransactions.mock.calls[0]![0];
-    expect(rows).toHaveLength(2);
-    expect(rows[0]).toMatchObject({ accountId: "acc-1", userId: "user-1", amount: 42 });
+    const [parsedArg, userIdArg, accountIdArg] = mockRepo.bulkImport.mock.calls[0]!;
+    expect(parsedArg).toHaveLength(2);
+    expect(parsedArg[0]).toMatchObject({ amount: 42, description: "Grocery Store" });
+    expect(userIdArg).toBe("user-1");
+    expect(accountIdArg).toBe("acc-1");
   });
 
   it("propagates a parser ServiceError without wrapping it", async () => {
@@ -83,8 +75,7 @@ describe("importTransactions", () => {
     ).rejects.toThrow(ServiceError);
   });
 
-  it("wraps the writes in a single DB transaction", async () => {
-    const { prisma } = await import("../prisma.js");
+  it("delegates all writes to bulkImport exactly once", async () => {
     const csv = [NEON_HEADER, NEON_ROW].join("\n");
 
     await importTransactions({
@@ -94,7 +85,7 @@ describe("importTransactions", () => {
       userId: "user-1",
     });
 
-    expect(prisma.$transaction).toHaveBeenCalledOnce();
+    expect(mockRepo.bulkImport).toHaveBeenCalledOnce();
   });
 
   it("works correctly for the zkb format", async () => {
