@@ -1,20 +1,25 @@
-import { prisma } from "../prisma.js";
+import type { FastifyBaseLogger } from "fastify";
+
+import * as auditRepo from "../repositories/audit.repository.js";
 
 export async function logEvent(
   action: string,
   userId: string | null,
   details?: Record<string, unknown> | null,
+  logger?: FastifyBaseLogger,
 ) {
   try {
-    await prisma.auditLog.create({
-      data: {
-        action,
-        userId: userId ?? null,
-        details: details ? JSON.stringify(details) : null,
-      },
+    await auditRepo.createAuditLog({
+      action,
+      userId: userId ?? null,
+      details: details ? JSON.stringify(details) : null,
     });
   } catch (err) {
-    // In production, we might want to log this to a file logger (e.g., pino) or a monitoring service
-    console.error("Failed to write to audit log:", err);
+    // Use Fastify logger when available to produce structured logs
+    if (logger) {
+      logger.error({ err, action, userId }, "Failed to write to audit log");
+    } else {
+      console.error("Failed to write to audit log:", err);
+    }
   }
 }

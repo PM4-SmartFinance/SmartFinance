@@ -139,6 +139,13 @@ describe("Auth acceptance tests", () => {
     });
     expect(resLogin.statusCode).toBe(200);
 
+    // audit: LOGIN_SUCCESS should be recorded
+    const user = await prisma.dimUser.findUnique({ where: { email } });
+    const loginAudit = await prisma.auditLog.findFirst({
+      where: { userId: user?.id, action: "LOGIN_SUCCESS" },
+    });
+    expect(loginAudit).toBeTruthy();
+
     const cookies = (resLogin.cookies as SessionCookie[] | undefined) ?? [];
     const sessionCookie = cookies.find((c) => c.name === "session");
     expect(sessionCookie).toBeDefined();
@@ -191,6 +198,13 @@ describe("Auth acceptance tests", () => {
     expect(resLogout.statusCode).toBe(200);
     expect(resLogout.json()).toEqual({ ok: true });
 
+    // audit: LOGOUT recorded
+    const loggedOutUser = await prisma.dimUser.findUnique({ where: { email } });
+    const logoutAudit = await prisma.auditLog.findFirst({
+      where: { userId: loggedOutUser?.id, action: "LOGOUT" },
+    });
+    expect(logoutAudit).toBeTruthy();
+
     // attempt protected route without cookie -> should be unauthorized
     const resProtected = await app.inject({
       method: "GET",
@@ -229,6 +243,15 @@ describe("Auth acceptance tests", () => {
     });
     expect(res.statusCode).toBe(401);
     expect(res.json().error).toHaveProperty("message", "Invalid credentials");
+
+    // audit: LOGIN_FAILED should be recorded
+    const failedAudit = await prisma.auditLog.findFirst({
+      where: {
+        action: "LOGIN_FAILED",
+        details: { contains: '"email":"nonexistent@example.com"' },
+      } as never,
+    });
+    expect(failedAudit).toBeTruthy();
   });
 
   it("prevents login with wrong password (401)", async () => {
@@ -250,6 +273,15 @@ describe("Auth acceptance tests", () => {
     });
     expect(res.statusCode).toBe(401);
     expect(res.json().error).toHaveProperty("message", "Invalid credentials");
+
+    // audit: LOGIN_FAILED should be recorded for this email
+    const failedAudit = await prisma.auditLog.findFirst({
+      where: {
+        action: "LOGIN_FAILED",
+        details: { contains: '"email":"wrongpass@example.com"' },
+      } as never,
+    });
+    expect(failedAudit).toBeTruthy();
   });
 
   it("requires session for GET /api/v1/auth/me (401)", async () => {
