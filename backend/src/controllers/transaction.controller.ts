@@ -6,9 +6,9 @@ import { importTransactions, SUPPORTED_FORMATS } from "../services/import.servic
 import type { ImportFormat } from "../services/import.service.js";
 
 export async function importTransactionRoutes(app: FastifyInstance): Promise<void> {
-  await app.register(multipart);
+  await app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } }); // 10 MB
 
-  app.post<{ Querystring: { accountId: string; format: string } }>(
+  app.post<{ Querystring: { accountId: string; format: ImportFormat } }>(
     "/transactions/import",
     {
       preHandler: requireRole("USER"),
@@ -38,7 +38,7 @@ export async function importTransactionRoutes(app: FastifyInstance): Promise<voi
 
       const result = await importTransactions({
         csvText,
-        format: format as ImportFormat,
+        format,
         accountId,
         userId: user.id,
       });
