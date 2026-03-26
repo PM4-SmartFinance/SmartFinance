@@ -1,12 +1,8 @@
 import { ServiceError } from "../../errors.js";
 import { parseCSVLine } from "./csv.utils.js";
+import type { ParsedTransaction } from "./types.js";
 
-export interface ParsedTransaction {
-  date: Date;
-  amount: number;
-  description: string;
-  subject: string;
-}
+export type { ParsedTransaction };
 
 // Column indices for the Neon CSV format
 const COL = {

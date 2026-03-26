@@ -1,5 +1,5 @@
 import { ServiceError } from "../../errors.js";
-import type { ParsedTransaction } from "./neon.parser.js";
+import type { ParsedTransaction } from "./types.js";
 import { parseCSVLine } from "./csv.utils.js";
 
 // Column indices for the Wise CSV format
