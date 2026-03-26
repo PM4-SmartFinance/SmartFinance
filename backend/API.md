@@ -104,6 +104,34 @@ Returns the currently authenticated user. Requires a valid session.
 
 ---
 
+## Transactions
+
+### POST /transactions/import
+
+Imports transactions from a CSV file into the specified account. Requires an authenticated session with the `USER` role.
+
+**Query Parameters:**
+
+| Parameter   | Type   | Required | Description                                      |
+| ----------- | ------ | -------- | ------------------------------------------------ |
+| `accountId` | string | yes      | ID of the account to import transactions into    |
+| `format`    | string | yes      | CSV format: `neon`, `zkb`, or `wise`             |
+
+**Request Body:** `multipart/form-data` with a single file field containing the CSV file. Maximum file size: 10 MB.
+
+**Response 200:**
+
+```json
+{ "imported": 42 }
+```
+
+**Response 400:** No file uploaded or missing query parameters
+**Response 401:** Not authenticated
+**Response 404:** Account not found or does not belong to the authenticated user
+**Response 422:** CSV file is malformed, has an unrecognized format, or contains invalid data rows
+
+---
+
 ## Error Format
 
 All errors are formatted uniformly by the centralized error handler:
