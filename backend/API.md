@@ -112,10 +112,10 @@ Imports transactions from a CSV file into the specified account. Requires an aut
 
 **Query Parameters:**
 
-| Parameter   | Type   | Required | Description                                      |
-| ----------- | ------ | -------- | ------------------------------------------------ |
-| `accountId` | string | yes      | ID of the account to import transactions into    |
-| `format`    | string | yes      | CSV format: `neon`, `zkb`, or `wise`             |
+| Parameter   | Type   | Required | Description                                   |
+| ----------- | ------ | -------- | --------------------------------------------- |
+| `accountId` | string | yes      | ID of the account to import transactions into |
+| `format`    | string | yes      | CSV format: `neon`, `zkb`, or `wise`          |
 
 **Request Body:** `multipart/form-data` with a single file field containing the CSV file. Maximum file size: 10 MB.
 

@@ -56,7 +56,13 @@ export async function bulkImport(
     for (const t of parsed) {
       const dateRecord = await upsertDate(t.date, tx);
       const merchant = await findOrCreateMerchant(t.description, tx);
-      rows.push({ amount: t.amount, userId, accountId, merchantId: merchant.id, dateId: dateRecord.id });
+      rows.push({
+        amount: t.amount,
+        userId,
+        accountId,
+        merchantId: merchant.id,
+        dateId: dateRecord.id,
+      });
     }
 
     await insertTransactions(rows, tx);
