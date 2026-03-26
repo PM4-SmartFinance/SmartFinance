@@ -159,6 +159,60 @@ This is a Bun workspaces monorepo.
 - **frontend/**: React 19 + TypeScript + Vite application with react-router v7.
 - **backend/**: Node.js REST API using Fastify and Prisma.
 
+---
+
+## Testing & Responsive Design
+
+### Responsive Layout Testing
+
+SmartFinance uses **Tailwind CSS** with mobile-first responsive design. To verify the dashboard and UI components adapt correctly across devices:
+
+#### Chrome/Firefox DevTools Responsive Mode
+
+1. **Open the dashboard:**
+
+   ```bash
+   bun run --filter @smartfinance/frontend dev
+   # Navigate to http://localhost:5173/dashboard
+   ```
+
+2. **Toggle responsive mode**: Press **Ctrl+Shift+M** (or **Cmd+Shift+M** on macOS)
+
+3. **Test these viewport sizes:**
+   - **360px** — Mobile (iPhone SE)
+   - **480px** — Android phone
+   - **768px** — iPad
+   - **1024px** — iPad Landscape / Tablet
+   - **1366px** — HD Desktop
+   - **1920px** — Full HD Monitor
+   - **2560px** — 4K Monitor
+
+#### Tailwind Responsive Breakpoints
+
+| Breakpoint | Width   | Layout        |
+| ---------- | ------- | ------------- |
+| **None**   | <640px  | 1-column grid |
+| **sm**     | ≥640px  | 2-column grid |
+| **lg**     | ≥1024px | 3-column grid |
+
+**Example:** Dashboard uses `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3` to adapt the widget grid across screen sizes.
+
+#### Running Tests
+
+```bash
+# Frontend unit and integration tests
+bun run test:frontend
+
+# Backend tests with dedicated test database
+bun run test:backend
+
+# All tests (entire suite)
+bun run test
+
+# Test coverage report
+bun run test:coverage
+```
+
 ## Documentation & Architecture
 
 For detailed technical guidelines, architecture diagrams, Git workflows, and testing strategies, please refer to the official documentation:
