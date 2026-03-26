@@ -106,6 +106,58 @@ Returns the currently authenticated user. Requires a valid session.
 
 ## Transactions
 
+### GET /transactions
+
+Returns a paginated, filtered, and sorted list of transactions belonging to the authenticated user. Requires a valid session with the `USER` role.
+
+**Query Parameters:**
+
+| Parameter    | Type    | Required | Default | Description                                                      |
+| ------------ | ------- | -------- | ------- | ---------------------------------------------------------------- |
+| `page`       | integer | no       | `1`     | Page number (minimum: 1)                                         |
+| `limit`      | integer | no       | `20`    | Results per page (minimum: 1, maximum: 100)                      |
+| `sortBy`     | string  | no       | `date`  | Sort field: `date`, `amount`, or `merchant`                      |
+| `sortOrder`  | string  | no       | `desc`  | Sort direction: `asc` or `desc`                                  |
+| `startDate`  | string  | no       | —       | Filter from date inclusive, format `YYYY-MM-DD`                  |
+| `endDate`    | string  | no       | —       | Filter to date inclusive, format `YYYY-MM-DD`                    |
+| `categoryId` | string  | no       | —       | Filter by category ID (matches user's merchant→category mapping) |
+| `minAmount`  | number  | no       | —       | Filter transactions with amount ≥ value                          |
+| `maxAmount`  | number  | no       | —       | Filter transactions with amount ≤ value                          |
+
+All filters are optional and can be combined. `minAmount` must not exceed `maxAmount`.
+
+**Response 200:**
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "amount": "42.00",
+      "date": "2025-01-15",
+      "accountId": "uuid",
+      "merchantId": "uuid",
+      "merchant": "Grocery Store",
+      "categoryId": "uuid",
+      "categoryName": "Food"
+    }
+  ],
+  "meta": {
+    "totalCount": 150,
+    "totalPages": 8,
+    "page": 1,
+    "limit": 20
+  }
+}
+```
+
+`amount` is returned as a string to preserve decimal precision. `categoryId` and `categoryName` are `null` when the merchant has no category mapping for the authenticated user.
+
+**Response 400:** Invalid query parameters (wrong type, out-of-range values, or `minAmount > maxAmount`)
+**Response 401:** Not authenticated
+
+---
+
 ### POST /transactions/import
 
 Imports transactions from a CSV file into the specified account. Requires an authenticated session with the `USER` role.

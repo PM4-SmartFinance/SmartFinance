@@ -83,3 +83,45 @@ export async function bulkImport(
 
   return parsed.length;
 }
+
+export interface ListTransactionsArgs {
+  userId: string;
+  skip: number;
+  take: number;
+  orderBy: Prisma.FactTransactionsOrderByWithRelationInput;
+  where: Prisma.FactTransactionsWhereInput;
+}
+
+export async function listTransactions(args: ListTransactionsArgs) {
+  const { userId, skip, take, orderBy, where } = args;
+  return prisma.$transaction([
+    prisma.factTransactions.findMany({
+      where,
+      orderBy,
+      skip,
+      take,
+      select: {
+        id: true,
+        amount: true,
+        dateId: true,
+        accountId: true,
+        merchant: {
+          select: {
+            id: true,
+            name: true,
+            mappings: {
+              where: { userId },
+              select: {
+                category: {
+                  select: { id: true, categoryName: true },
+                },
+              },
+              take: 1,
+            },
+          },
+        },
+      },
+    }),
+    prisma.factTransactions.count({ where }),
+  ]);
+}
