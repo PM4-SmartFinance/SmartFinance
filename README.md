@@ -176,7 +176,10 @@ SmartFinance uses **Tailwind CSS** with mobile-first responsive design. To verif
    # Navigate to http://localhost:5173/dashboard
    ```
 
-2. **Toggle responsive mode**: Press **Ctrl+Shift+M** (or **Cmd+Shift+M** on macOS)
+2. **Enable responsive mode:**
+   - Press **F12** to open DevTools
+   - Click the **device icon** (mobile/tablet icon) in the DevTools toolbar (top-left corner)
+   - This toggles responsive design mode and shows a device selector
 
 3. **Test these viewport sizes:**
    - **360px** — Mobile (iPhone SE)
