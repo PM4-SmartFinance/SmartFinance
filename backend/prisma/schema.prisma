@@ -80,6 +80,7 @@ model DimCategory {
   updatedAt DateTime @updatedAt
 
   mappings UserMerchantMapping[]
+  budgets  Budget[]
 
   @@unique([userId, categoryName])
   @@index([userId])
@@ -136,6 +137,7 @@ model DimUser {
   mappings   UserMerchantMapping[]
   categories DimCategory[]
   accounts   DimAccount[]
+  budgets    Budget[]
 }
 
 model DimDate {
@@ -161,4 +163,24 @@ model AuditLog {
 
   @@index([userId])
   @@index([action])
+}
+
+model Budget {
+  id          String  @id @default(uuid())
+  month       Int     // 1–12
+  year        Int
+  limitAmount Decimal @db.Decimal(12, 2)
+
+  categoryId String
+  category   DimCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   DimUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, categoryId, month, year])
+  @@index([userId])
+  @@index([categoryId])
 }

@@ -5,6 +5,7 @@ import { healthRoutes } from "./controllers/health.controller.js";
 import { authRoutes } from "./controllers/auth.controller.js";
 import { importTransactionRoutes } from "./controllers/transaction.controller.js";
 import { setLogger } from "./logger.js";
+import { budgetRoutes } from "./controllers/budget.controller.js";
 
 export async function buildApp() {
   const app = Fastify({ logger: true });
@@ -32,6 +33,7 @@ export async function buildApp() {
   await app.register(healthRoutes, { prefix: "/api/v1" });
   await app.register(authRoutes, { prefix: "/api/v1" });
   await app.register(importTransactionRoutes, { prefix: "/api/v1" });
+  await app.register(budgetRoutes, { prefix: "/api/v1" });
 
   return app;
 }
