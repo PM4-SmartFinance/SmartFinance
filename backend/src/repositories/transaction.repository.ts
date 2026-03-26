@@ -1,5 +1,6 @@
 import { prisma } from "../prisma.js";
 import type { Prisma } from "@prisma/client";
+import type { ParsedTransaction } from "../services/importers/types.js";
 
 export async function findAccountByIdAndUser(accountId: string, userId: string) {
   return prisma.dimAccount.findFirst({ where: { id: accountId, userId } });
@@ -36,4 +37,30 @@ export async function insertTransactions(
   tx: Prisma.TransactionClient,
 ) {
   await tx.factTransactions.createMany({ data: rows });
+}
+
+export async function bulkImport(
+  parsed: ParsedTransaction[],
+  userId: string,
+  accountId: string,
+): Promise<number> {
+  await prisma.$transaction(async (tx) => {
+    const rows: Array<{
+      amount: number;
+      userId: string;
+      accountId: string;
+      merchantId: string;
+      dateId: number;
+    }> = [];
+
+    for (const t of parsed) {
+      const dateRecord = await upsertDate(t.date, tx);
+      const merchant = await findOrCreateMerchant(t.description, tx);
+      rows.push({ amount: t.amount, userId, accountId, merchantId: merchant.id, dateId: dateRecord.id });
+    }
+
+    await insertTransactions(rows, tx);
+  });
+
+  return parsed.length;
 }

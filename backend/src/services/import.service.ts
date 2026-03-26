@@ -1,4 +1,3 @@
-import { prisma } from "../prisma.js";
 import { ServiceError } from "../errors.js";
 import { parseNeonCSV } from "./importers/neon.parser.js";
 import { parseZKBCSV } from "./importers/zkb.parser.js";
@@ -41,29 +40,6 @@ export async function importTransactions({
     return { imported: 0 };
   }
 
-  await prisma.$transaction(async (tx) => {
-    const rows: Array<{
-      amount: number;
-      userId: string;
-      accountId: string;
-      merchantId: string;
-      dateId: number;
-    }> = [];
-
-    for (const t of parsed) {
-      const dateRecord = await transactionRepository.upsertDate(t.date, tx);
-      const merchant = await transactionRepository.findOrCreateMerchant(t.description, tx);
-      rows.push({
-        amount: t.amount,
-        userId,
-        accountId,
-        merchantId: merchant.id,
-        dateId: dateRecord.id,
-      });
-    }
-
-    await transactionRepository.insertTransactions(rows, tx);
-  });
-
-  return { imported: parsed.length };
+  const imported = await transactionRepository.bulkImport(parsed, userId, accountId);
+  return { imported };
 }
