@@ -114,29 +114,55 @@ async function computeSpendingBatch(
   const uniquePeriods = [...new Set(entries.map((e) => `${e.month}:${e.year}`))];
   const uniqueCategories = [...new Set(entries.map((e) => e.categoryId))];
 
+  const dateFilters = uniquePeriods.map((p) => {
+    const parts = p.split(":");
+    return { date: { month: Number(parts[0]), year: Number(parts[1]) } };
+  });
+
   const transactions = await prisma.factTransactions.findMany({
     where: {
       userId,
       merchant: { mappings: { some: { userId, categoryId: { in: uniqueCategories } } } },
-      date: {
-        OR: uniquePeriods.map((p) => {
-          const [month, year] = p.split(":").map(Number);
-          return { month, year };
-        }),
-      },
+      OR: dateFilters,
     },
     select: {
       amount: true,
-      merchant: {
-        select: { mappings: { where: { userId }, select: { categoryId: true } } },
-      },
-      date: { select: { month: true, year: true } },
+      merchantId: true,
+      dateId: true,
     },
   });
 
+  // Batch-fetch related merchants' category mappings and dates
+  const merchantIds = [...new Set(transactions.map((t) => t.merchantId))];
+  const dateIds = [...new Set(transactions.map((t) => t.dateId))];
+
+  const [mappings, dates] = await Promise.all([
+    prisma.userMerchantMapping.findMany({
+      where: { userId, merchantId: { in: merchantIds } },
+      select: { merchantId: true, categoryId: true },
+    }),
+    prisma.dimDate.findMany({
+      where: { id: { in: dateIds } },
+      select: { id: true, month: true, year: true },
+    }),
+  ]);
+
+  const mappingsByMerchant = new Map<string, string[]>();
+  for (const m of mappings) {
+    const cats = mappingsByMerchant.get(m.merchantId) ?? [];
+    cats.push(m.categoryId);
+    mappingsByMerchant.set(m.merchantId, cats);
+  }
+
+  const dateById = new Map(dates.map((d) => [d.id, d]));
+
   for (const tx of transactions) {
-    for (const mapping of tx.merchant.mappings) {
-      const key = `${mapping.categoryId}:${tx.date.month}:${tx.date.year}`;
+    const date = dateById.get(tx.dateId);
+    const cats = mappingsByMerchant.get(tx.merchantId);
+    if (!date || !cats) continue;
+
+    for (const categoryId of cats) {
+      const key = `${categoryId}:${date.month}:${date.year}`;
       const current = result.get(key) ?? new Prisma.Decimal(0);
       result.set(key, current.add(tx.amount));
     }
