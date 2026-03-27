@@ -69,10 +69,6 @@ model DimMerchant {
 model DimCategory {
   id               String   @id @default(uuid())
   categoryName     String
-  budgetLimitDay   Decimal? @db.Decimal(12, 2)
-  budgetLimitMonth Decimal? @db.Decimal(12, 2)
-  budgetLimitYear  Decimal? @db.Decimal(12, 2)
-
   userId String?
   user   DimUser? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -80,7 +76,7 @@ model DimCategory {
   updatedAt DateTime @updatedAt
 
   mappings UserMerchantMapping[]
-  budgets  Budget[]
+  budgets  DimBudget[]
 
   @@unique([userId, categoryName])
   @@index([userId])
@@ -137,7 +133,7 @@ model DimUser {
   mappings   UserMerchantMapping[]
   categories DimCategory[]
   accounts   DimAccount[]
-  budgets    Budget[]
+  budgets    DimBudget[]
 }
 
 model DimDate {
@@ -165,11 +161,15 @@ model AuditLog {
   @@index([action])
 }
 
-model Budget {
-  id          String  @id @default(uuid())
-  month       Int     // 1–12
-  year        Int
-  limitAmount Decimal @db.Decimal(12, 2)
+model DimBudget {
+  id               String   @id @default(uuid())
+  month            Int      // 1–12
+  year             Int
+  limitAmount      Decimal  @db.Decimal(12, 2)
+  budgetLimitDay   Decimal? @db.Decimal(12, 2)
+  budgetLimitMonth Decimal? @db.Decimal(12, 2)
+  budgetLimitYear  Decimal? @db.Decimal(12, 2)
+  active           Boolean  @default(true)
 
   categoryId String
   category   DimCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)

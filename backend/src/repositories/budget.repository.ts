@@ -17,7 +17,7 @@ async function computeSpending(userId: string, categoryId: string, month: number
 }
 
 export async function findAllByUser(userId: string) {
-  const budgets = await prisma.budget.findMany({
+  const budgets = await prisma.dimBudget.findMany({
     where: { userId },
     orderBy: [{ year: "desc" }, { month: "desc" }],
   });
@@ -31,7 +31,7 @@ export async function findAllByUser(userId: string) {
 }
 
 export async function findById(id: string, userId: string) {
-  const budget = await prisma.budget.findFirst({ where: { id, userId } });
+  const budget = await prisma.dimBudget.findFirst({ where: { id, userId } });
   if (!budget) {
     throw new ServiceError(404, "Budget not found");
   }
@@ -49,7 +49,7 @@ export async function create(data: {
   limitAmount: number;
 }) {
   try {
-    const budget = await prisma.budget.create({
+    const budget = await prisma.dimBudget.create({
       data: {
         userId: data.userId,
         categoryId: data.categoryId,
@@ -68,14 +68,14 @@ export async function create(data: {
 }
 
 export async function update(id: string, userId: string, limitAmount: number) {
-  const result = await prisma.budget.updateMany({
+  const result = await prisma.dimBudget.updateMany({
     where: { id, userId },
     data: { limitAmount: new Prisma.Decimal(limitAmount) },
   });
   if (result.count === 0) {
     throw new ServiceError(404, "Budget not found");
   }
-  const budget = await prisma.budget.findUniqueOrThrow({ where: { id } });
+  const budget = await prisma.dimBudget.findUniqueOrThrow({ where: { id } });
   return {
     ...budget,
     currentSpending: await computeSpending(userId, budget.categoryId, budget.month, budget.year),
@@ -83,7 +83,7 @@ export async function update(id: string, userId: string, limitAmount: number) {
 }
 
 export async function remove(id: string, userId: string) {
-  const result = await prisma.budget.deleteMany({ where: { id, userId } });
+  const result = await prisma.dimBudget.deleteMany({ where: { id, userId } });
   if (result.count === 0) {
     throw new ServiceError(404, "Budget not found");
   }

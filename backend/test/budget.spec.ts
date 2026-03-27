@@ -72,7 +72,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await prisma.budget.deleteMany({
+  await prisma.dimBudget.deleteMany({
     where: { userId: { in: [testUserId, testUserId2] } },
   });
   await prisma.dimCategory.deleteMany({ where: { userId: testUserId } });
