@@ -14,15 +14,6 @@ export function calculateBudgetStatus(
   return { percentageUsed, remainingAmount, isOverBudget };
 }
 
-function validateMonthYear(month: number, year: number) {
-  if (!Number.isInteger(month) || month < 1 || month > 12) {
-    throw new ServiceError(400, "month must be an integer between 1 and 12");
-  }
-  if (!Number.isInteger(year) || year < 2000) {
-    throw new ServiceError(400, "year must be an integer >= 2000");
-  }
-}
-
 export async function listBudgets(userId: string) {
   const budgets = await budgetRepository.findAllByUser(userId);
   return budgets.map((b) => ({ ...b, ...calculateBudgetStatus(b.currentSpending, b.limitAmount) }));
