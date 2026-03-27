@@ -290,6 +290,9 @@ describe("Budget CRUD", () => {
     const found = listRes.json().budgets.find((b: { id: string }) => b.id === budgetId);
     expect(found).toBeDefined();
     expect(Number(found.currentSpending)).toBe(200);
+    expect(found.percentageUsed).toBe(20);
+    expect(Number(found.remainingAmount)).toBe(800);
+    expect(found.isOverBudget).toBe(false);
 
     // Clean up fixtures
     await prisma.factTransactions.deleteMany({ where: { accountId: account.id } });
