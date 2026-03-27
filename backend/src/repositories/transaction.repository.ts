@@ -45,26 +45,39 @@ export async function bulkImport(
   accountId: string,
 ): Promise<number> {
   await prisma.$transaction(async (tx) => {
-    const rows: Array<{
-      amount: number;
-      userId: string;
-      accountId: string;
-      merchantId: string;
-      dateId: number;
-    }> = [];
-
+    // 1. Deduplicate and upsert dates
+    const uniqueDates = new Map<number, Date>();
     for (const t of parsed) {
-      const dateRecord = await upsertDate(t.date, tx);
-      const merchant = await findOrCreateMerchant(t.description, tx);
-      rows.push({
+      const year = t.date.getUTCFullYear();
+      const month = t.date.getUTCMonth() + 1;
+      const day = t.date.getUTCDate();
+      const id = year * 10000 + month * 100 + day;
+      if (!uniqueDates.has(id)) uniqueDates.set(id, t.date);
+    }
+    await Promise.all([...uniqueDates.values()].map((date) => upsertDate(date, tx)));
+
+    // 2. Deduplicate and find-or-create merchants
+    const uniqueMerchantNames = new Set(parsed.map((t) => t.description));
+    const merchants = await Promise.all(
+      [...uniqueMerchantNames].map((name) => findOrCreateMerchant(name, tx)),
+    );
+    const merchantByName = new Map(merchants.map((m) => [m.name, m.id]));
+
+    // 3. Build rows (sync lookups only)
+    const rows = parsed.map((t) => {
+      const year = t.date.getUTCFullYear();
+      const month = t.date.getUTCMonth() + 1;
+      const day = t.date.getUTCDate();
+      return {
         amount: t.amount,
         userId,
         accountId,
-        merchantId: merchant.id,
-        dateId: dateRecord.id,
-      });
-    }
+        merchantId: merchantByName.get(t.description)!,
+        dateId: year * 10000 + month * 100 + day,
+      };
+    });
 
+    // 4. Bulk insert
     await insertTransactions(rows, tx);
   });
 
