@@ -1,4 +1,3 @@
-import type { FastifyLoggerInstance } from "fastify";
 import argon2 from "argon2";
 import { ServiceError } from "../errors.js";
 import * as userRepository from "../repositories/user.repository.js";
@@ -6,7 +5,7 @@ import * as auditService from "./audit.service.js";
 
 const DEFAULT_CURRENCY_CODE = "CHF";
 
-export async function register(email: string, password: string, logger?: FastifyLoggerInstance) {
+export async function register(email: string, password: string) {
   const existing = await userRepository.findByEmail(email);
   if (existing) {
     throw new ServiceError(409, "User exists");
@@ -25,39 +24,31 @@ export async function register(email: string, password: string, logger?: Fastify
     defaultCurrencyId: currency.id,
   });
 
-  // Audit USER_CREATED
-  await auditService.logEvent(
-    "USER_CREATED",
-    user.id,
-    { email: user.email, role: user.role },
-    logger,
-  );
+  await auditService.logEvent("USER_CREATED", user.id, { email: user.email, role: user.role });
 
   return user;
 }
 
-export async function login(email: string, password: string, logger?: FastifyLoggerInstance) {
+export async function login(email: string, password: string) {
   const user = await userRepository.findByEmail(email);
   if (!user) {
-    // Log failed login
-    await auditService.logEvent("LOGIN_FAILED", null, { email }, logger);
+    await auditService.logEvent("LOGIN_FAILED", null, { email });
     throw new ServiceError(401, "Invalid credentials");
   }
 
   const valid = await argon2.verify(user.password, password);
   if (!valid) {
-    await auditService.logEvent("LOGIN_FAILED", null, { email }, logger);
+    await auditService.logEvent("LOGIN_FAILED", null, { email });
     throw new ServiceError(401, "Invalid credentials");
   }
 
-  // Successful login
-  await auditService.logEvent("LOGIN_SUCCESS", user.id, { email }, logger);
+  await auditService.logEvent("LOGIN_SUCCESS", user.id, { email });
 
   return { id: user.id, role: user.role, email: user.email };
 }
 
-export async function recordLogout(userId: string | null, logger?: FastifyLoggerInstance) {
+export async function recordLogout(userId: string | null) {
   if (userId) {
-    await auditService.logEvent("LOGOUT", userId, undefined, logger);
+    await auditService.logEvent("LOGOUT", userId);
   }
 }

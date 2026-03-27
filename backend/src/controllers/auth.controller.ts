@@ -21,11 +21,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     "/auth/register",
     { schema: { body: authBodySchema } },
     async (request, reply) => {
-      const user = await authService.register(
-        request.body.email,
-        request.body.password,
-        request.log,
-      );
+      const user = await authService.register(request.body.email, request.body.password);
       request.session.set("user", { id: user.id, role: user.role, email: user.email });
       return reply.status(201).send({ user });
     },
@@ -35,7 +31,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     "/auth/login",
     { schema: { body: authBodySchema } },
     async (request, reply) => {
-      const user = await authService.login(request.body.email, request.body.password, request.log);
+      const user = await authService.login(request.body.email, request.body.password);
       request.session.set("user", { id: user.id, role: user.role, email: user.email });
       return reply.send({ ok: true });
     },
@@ -43,7 +39,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
   app.post("/auth/logout", async (request, reply) => {
     const user = request.session.get("user");
-    await authService.recordLogout(user?.id ?? null, request.log);
+    await authService.recordLogout(user?.id ?? null);
     request.session.delete();
     return reply.send({ ok: true });
   });
