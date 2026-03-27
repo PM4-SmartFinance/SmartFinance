@@ -5,6 +5,7 @@ config({ path: ".env.test" });
 
 export default defineConfig({
   test: {
+    fileParallelism: false,
     globals: true,
     environment: "node",
     include: ["src/**/*.test.ts", "test/**/*.spec.ts"],
