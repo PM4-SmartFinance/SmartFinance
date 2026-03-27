@@ -138,7 +138,7 @@ All budget endpoints require an authenticated session with the `USER` role.
 
 ### GET /budgets
 
-Returns all budgets for the authenticated user, ordered by year and month descending. Each budget includes a dynamically calculated `currentSpending` amount.
+Returns all budgets for the authenticated user, ordered by year and month descending. Each budget includes dynamically calculated status fields: `currentSpending`, `percentageUsed`, `remainingAmount`, and `isOverBudget`.
 
 **Response 200:**
 
@@ -156,6 +156,9 @@ Returns all budgets for the authenticated user, ordered by year and month descen
       "budgetLimitYear": null,
       "active": true,
       "currentSpending": "142.50",
+      "percentageUsed": 28.5,
+      "remainingAmount": "357.50",
+      "isOverBudget": false,
       "createdAt": "2026-03-27T10:00:00.000Z",
       "updatedAt": "2026-03-27T10:00:00.000Z"
     }
@@ -195,6 +198,9 @@ Creates a new budget for a category and calendar month.
     "budgetLimitYear": null,
     "active": true,
     "currentSpending": "0",
+    "percentageUsed": 0,
+    "remainingAmount": "500.00",
+    "isOverBudget": false,
     "createdAt": "2026-03-27T10:00:00.000Z",
     "updatedAt": "2026-03-27T10:00:00.000Z"
   }
@@ -239,6 +245,9 @@ Updates the spending limit of an existing budget. Only budgets owned by the auth
     "budgetLimitYear": null,
     "active": true,
     "currentSpending": "142.50",
+    "percentageUsed": 19,
+    "remainingAmount": "607.50",
+    "isOverBudget": false,
     "createdAt": "2026-03-27T10:00:00.000Z",
     "updatedAt": "2026-03-27T10:30:00.000Z"
   }
