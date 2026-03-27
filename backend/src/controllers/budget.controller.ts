@@ -40,7 +40,10 @@ const budgetParamsSchema = {
   type: "object",
   required: ["id"],
   properties: {
-    id: { type: "string" },
+    id: {
+      type: "string",
+      pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    },
   },
 } as const;
 

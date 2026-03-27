@@ -229,4 +229,75 @@ describe("Budget CRUD", () => {
     });
     expect(res.statusCode).toBe(404);
   });
+
+  it("GET /budgets reflects currentSpending from transactions", async () => {
+    // Create a budget for month 6
+    const createRes = await app.inject({
+      method: "POST",
+      url: "/api/v1/budgets",
+      cookies: { session: sessionCookie },
+      payload: { categoryId: testCategoryId, month: 6, year: 2026, limitAmount: 1000 },
+    });
+    expect(createRes.statusCode).toBe(201);
+    const budgetId = createRes.json().budget.id;
+
+    // Set up transaction fixtures: merchant, mapping, date, account, transaction
+    const currency = await prisma.dimCurrency.findFirstOrThrow({ where: { code: "CHF" } });
+    const merchant = await prisma.dimMerchant.create({ data: { name: "Test Grocery Store" } });
+    await prisma.userMerchantMapping.create({
+      data: { userId: testUserId, merchantId: merchant.id, categoryId: testCategoryId },
+    });
+    const dateId = 20260615;
+    await prisma.dimDate.upsert({
+      where: { id: dateId },
+      create: { id: dateId, dayOfWeek: "Monday", month: 6, year: 2026 },
+      update: {},
+    });
+    const account = await prisma.dimAccount.create({
+      data: {
+        name: "Test Account",
+        iban: "CH00 0000 0000 0000 0001 0",
+        currencyId: currency.id,
+        userId: testUserId,
+      },
+    });
+    await prisma.factTransactions.createMany({
+      data: [
+        {
+          amount: 50.25,
+          userId: testUserId,
+          accountId: account.id,
+          merchantId: merchant.id,
+          dateId,
+        },
+        {
+          amount: 149.75,
+          userId: testUserId,
+          accountId: account.id,
+          merchantId: merchant.id,
+          dateId,
+        },
+      ],
+    });
+
+    // GET /budgets should reflect total spending of 200.00
+    const listRes = await app.inject({
+      method: "GET",
+      url: "/api/v1/budgets",
+      cookies: { session: sessionCookie },
+    });
+    expect(listRes.statusCode).toBe(200);
+    const found = listRes.json().budgets.find((b: { id: string }) => b.id === budgetId);
+    expect(found).toBeDefined();
+    expect(Number(found.currentSpending)).toBe(200);
+
+    // Clean up fixtures
+    await prisma.factTransactions.deleteMany({ where: { accountId: account.id } });
+    await prisma.dimAccount.delete({ where: { id: account.id } });
+    await prisma.userMerchantMapping.delete({
+      where: { userId_merchantId: { userId: testUserId, merchantId: merchant.id } },
+    });
+    await prisma.dimMerchant.delete({ where: { id: merchant.id } });
+    await prisma.dimBudget.delete({ where: { id: budgetId } });
+  });
 });
