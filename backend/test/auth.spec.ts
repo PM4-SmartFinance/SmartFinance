@@ -7,6 +7,9 @@ import { requireRole } from "../src/middleware/rbac.js";
 
 type SessionCookie = { name: string; value: string; httpOnly?: boolean };
 
+/** Wait for fire-and-forget audit writes to flush before asserting. */
+const flushAuditWrites = () => new Promise((r) => setTimeout(r, 50));
+
 let app: FastifyInstance;
 
 const TEST_USERS = {
@@ -75,6 +78,7 @@ describe("Auth acceptance tests", () => {
     expect(user).toBeTruthy();
     expect(user?.role).toBe("ADMIN");
 
+    await flushAuditWrites();
     const auditLog = await prisma.auditLog.findFirst({
       where: { userId: user?.id, action: "USER_CREATED" },
     });
@@ -140,6 +144,7 @@ describe("Auth acceptance tests", () => {
     expect(resLogin.statusCode).toBe(200);
 
     // audit: LOGIN_SUCCESS should be recorded
+    await flushAuditWrites();
     const user = await prisma.dimUser.findUnique({ where: { email } });
     const loginAudit = await prisma.auditLog.findFirst({
       where: { userId: user?.id, action: "LOGIN_SUCCESS" },
@@ -199,6 +204,7 @@ describe("Auth acceptance tests", () => {
     expect(resLogout.json()).toEqual({ ok: true });
 
     // audit: LOGOUT recorded
+    await flushAuditWrites();
     const loggedOutUser = await prisma.dimUser.findUnique({ where: { email } });
     const logoutAudit = await prisma.auditLog.findFirst({
       where: { userId: loggedOutUser?.id, action: "LOGOUT" },
@@ -245,11 +251,12 @@ describe("Auth acceptance tests", () => {
     expect(res.json().error).toHaveProperty("message", "Invalid credentials");
 
     // audit: LOGIN_FAILED should be recorded
+    await flushAuditWrites();
     const failedAudit = await prisma.auditLog.findFirst({
       where: {
         action: "LOGIN_FAILED",
         details: { contains: '"email":"nonexistent@example.com"' },
-      } as never,
+      },
     });
     expect(failedAudit).toBeTruthy();
   });
@@ -275,11 +282,12 @@ describe("Auth acceptance tests", () => {
     expect(res.json().error).toHaveProperty("message", "Invalid credentials");
 
     // audit: LOGIN_FAILED should be recorded for this email
+    await flushAuditWrites();
     const failedAudit = await prisma.auditLog.findFirst({
       where: {
         action: "LOGIN_FAILED",
         details: { contains: '"email":"wrongpass@example.com"' },
-      } as never,
+      },
     });
     expect(failedAudit).toBeTruthy();
   });

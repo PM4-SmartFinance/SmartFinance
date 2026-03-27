@@ -24,7 +24,7 @@ export async function register(email: string, password: string) {
     defaultCurrencyId: currency.id,
   });
 
-  await auditService.logEvent("USER_CREATED", user.id, { email: user.email, role: user.role });
+  void auditService.logEvent("USER_CREATED", user.id, { email: user.email, role: user.role });
 
   return user;
 }
@@ -32,23 +32,23 @@ export async function register(email: string, password: string) {
 export async function login(email: string, password: string) {
   const user = await userRepository.findByEmail(email);
   if (!user) {
-    await auditService.logEvent("LOGIN_FAILED", null, { email });
+    void auditService.logEvent("LOGIN_FAILED", null, { email });
     throw new ServiceError(401, "Invalid credentials");
   }
 
   const valid = await argon2.verify(user.password, password);
   if (!valid) {
-    await auditService.logEvent("LOGIN_FAILED", null, { email });
+    void auditService.logEvent("LOGIN_FAILED", null, { email });
     throw new ServiceError(401, "Invalid credentials");
   }
 
-  await auditService.logEvent("LOGIN_SUCCESS", user.id, { email });
+  void auditService.logEvent("LOGIN_SUCCESS", user.id, { email });
 
   return { id: user.id, role: user.role, email: user.email };
 }
 
 export async function recordLogout(userId: string | null) {
   if (userId) {
-    await auditService.logEvent("LOGOUT", userId);
+    void auditService.logEvent("LOGOUT", userId);
   }
 }
