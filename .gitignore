@@ -39,4 +39,9 @@ pnpm-lock.yaml
 
 # Wiki (separate git repo)
 wiki/
-.claude
+
+# Claude Code (developer-specific)
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/issues/
+.claude/review/

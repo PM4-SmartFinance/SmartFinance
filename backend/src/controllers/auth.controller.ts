@@ -38,6 +38,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   );
 
   app.post("/auth/logout", async (request, reply) => {
+    const user = request.session.get("user");
+    await authService.recordLogout(user?.id ?? null);
     request.session.delete();
     return reply.send({ ok: true });
   });

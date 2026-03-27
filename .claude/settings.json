@@ -1,0 +1,72 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Glob(**)",
+      "Grep(**)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git branch:*)",
+      "Bash(git show:*)",
+      "Bash(bun run lint:*)",
+      "Bash(bun run lint)",
+      "Bash(bun run format:*)",
+      "Bash(bun run format)",
+      "Bash(bun run test:*)",
+      "Bash(bun run test)",
+      "Bash(bun run --cwd=frontend:*)",
+      "Bash(bun run --cwd=backend:*)",
+      "Bash(bun run --filter:*)",
+      "Bash(bunx prisma:*)",
+      "Bash(bun install:*)",
+      "Bash(bun install)",
+      "Bash(bun outdated:*)",
+      "Bash(docker compose:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh issue:*)"
+    ],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/.env.local)",
+      "Bash(git push:*)",
+      "Bash(git push)",
+      "Bash(rm -rf:*)",
+      "Bash(rm -r:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/lint-changed.sh $CLAUDE_FILE_PATHS"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/check-before-stop.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "excludedFiles": [
+    "node_modules/**",
+    ".git/**",
+    "dist/**",
+    "build/**",
+    "coverage/**",
+    "bun.lock",
+    "wiki/**",
+    ".idea/**"
+  ]
+}

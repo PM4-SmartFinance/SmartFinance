@@ -3,9 +3,11 @@ import secureSession from "@fastify/secure-session";
 import { errorHandler } from "./middleware/error-handler.js";
 import { healthRoutes } from "./controllers/health.controller.js";
 import { authRoutes } from "./controllers/auth.controller.js";
+import { setLogger } from "./logger.js";
 
 export async function buildApp() {
   const app = Fastify({ logger: true });
+  setLogger(app.log);
 
   const sessionSecret = process.env["SESSION_SECRET"] ?? "";
   if (process.env["NODE_ENV"] === "production" && sessionSecret.length < 32) {
