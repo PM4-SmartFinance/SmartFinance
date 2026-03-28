@@ -1,4 +1,5 @@
 import Fastify from "fastify";
+import cors from "@fastify/cors";
 import secureSession from "@fastify/secure-session";
 import { errorHandler } from "./middleware/error-handler.js";
 import { healthRoutes } from "./controllers/health.controller.js";
@@ -10,6 +11,13 @@ import { budgetRoutes } from "./controllers/budget.controller.js";
 export async function buildApp() {
   const app = Fastify({ logger: true });
   setLogger(app.log);
+
+  if (process.env.NODE_ENV == "development") {
+    await app.register(cors, {
+      origin: process.env["CORS_ORIGIN"]!,
+      credentials: true,
+    });
+  }
 
   const sessionSecret = process.env["SESSION_SECRET"] ?? "";
   if (process.env["NODE_ENV"] === "production" && sessionSecret.length < 32) {
