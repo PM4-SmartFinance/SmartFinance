@@ -45,5 +45,3 @@ CLAUDE.local.md
 .claude/settings.local.json
 .claude/issues/
 .claude/review/
-
-bun.lock

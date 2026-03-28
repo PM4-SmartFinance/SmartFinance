@@ -8,6 +8,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
+const TEXT = {
+  brand: "⬡ SmartFinance",
+  title: "Sign in",
+  description: "Enter your credentials to access your account",
+  submit: "Sign in",
+  submitting: "Signing in…",
+  genericError: "Something went wrong. Please try again.",
+  emailLabel: "Email",
+  passwordLabel: "Password",
+} as const;
+
 export function LoginPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -26,12 +37,7 @@ export function LoginPage() {
   if (isLoading) return null;
   if (isAuthenticated) return <Navigate to="/" replace />;
 
-  const errorMessage =
-    error instanceof ApiError
-      ? error.message
-      : error
-        ? "Something went wrong. Please try again."
-        : null;
+  const errorMessage = error instanceof ApiError ? error.message : error ? TEXT.genericError : null;
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -42,13 +48,13 @@ export function LoginPage() {
     <main className="min-h-screen flex items-center justify-center p-4 bg-muted/40">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <div className="text-2xl font-bold tracking-wide mb-1">⬡ SmartFinance</div>
-          <CardTitle className="text-xl">Sign in</CardTitle>
-          <CardDescription>Enter your credentials to access your account</CardDescription>
+          <div className="text-2xl font-bold tracking-wide mb-1">{TEXT.brand}</div>
+          <CardTitle className="text-xl">{TEXT.title}</CardTitle>
+          <CardDescription>{TEXT.description}</CardDescription>
         </CardHeader>
 
         <CardContent>
-          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {errorMessage && (
               <p
                 role="alert"
@@ -59,7 +65,7 @@ export function LoginPage() {
             )}
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{TEXT.emailLabel}</Label>
               <Input
                 id="email"
                 type="email"
@@ -72,7 +78,7 @@ export function LoginPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{TEXT.passwordLabel}</Label>
               <Input
                 id="password"
                 type="password"
@@ -85,7 +91,7 @@ export function LoginPage() {
             </div>
 
             <Button type="submit" className="w-full mt-1" disabled={isPending}>
-              {isPending ? "Signing in…" : "Sign in"}
+              {isPending ? TEXT.submitting : TEXT.submit}
             </Button>
           </form>
         </CardContent>
