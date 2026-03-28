@@ -22,8 +22,14 @@ docker compose -f docker-compose.dev.yml up -d
 # 4. Database Initialization
 echo "Running Prisma migrations and seeding..."
 cd backend
-bunx prisma migrate deploy
-bunx prisma db seed
+
+# Bun workspaces may not materialize backend-local links that Prisma expects.
+mkdir -p node_modules
+ln -sfn ../../node_modules/@prisma node_modules/@prisma
+ln -sfn ../../node_modules/prisma node_modules/prisma
+
+bunx --bun prisma migrate deploy
+bunx --bun prisma db seed
 cd ..
 
 echo ""
