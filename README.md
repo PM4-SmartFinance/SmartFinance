@@ -198,7 +198,7 @@ SmartFinance uses **Tailwind CSS** with mobile-first responsive design. To verif
 | **sm**     | ≥640px  | 2-column grid |
 | **lg**     | ≥1024px | 3-column grid |
 
-**Example:** Dashboard uses `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3` to adapt the widget grid across screen sizes.
+**Example:** Dashboard uses `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3` to adapt the widget grid across screen sizes. Container width is constrained to `max-w-7xl` (1280px) centered for optimal readability.
 
 #### Running Tests
 
