@@ -12,9 +12,10 @@ export async function buildApp() {
   const app = Fastify({ logger: true });
   setLogger(app.log);
 
-  if (process.env.NODE_ENV == "development") {
+  const corsOrigin = process.env["CORS_ORIGIN"];
+  if (process.env["NODE_ENV"] === "development" && corsOrigin) {
     await app.register(cors, {
-      origin: process.env["CORS_ORIGIN"]!,
+      origin: corsOrigin,
       credentials: true,
     });
   }
