@@ -1,42 +1,26 @@
-import { useState } from "react";
-import LoginWireframe from "./wireframes/LoginWireframe";
-import DashboardWireframe from "./wireframes/DashboardWireframe";
-import TransactionsWireframe from "./wireframes/TransactionsWireframe";
-import ReportsWireframe from "./wireframes/ReportsWireframe";
-import BudgetsWireframe from "./wireframes/BudgetsWireframe";
+import { NavLink, Outlet } from "react-router";
 import "./wireframes/wireframe.css";
-import { Button } from "@/components/ui/button";
 
-type View = "login" | "dashboard" | "transactions" | "reports" | "budgets";
-
-const VIEWS: { id: View; label: string }[] = [
-  { id: "login", label: "Login" },
-  { id: "dashboard", label: "Dashboard" },
-  { id: "transactions", label: "Transactions" },
-  { id: "reports", label: "Reports" },
-  { id: "budgets", label: "Budgets" },
+const VIEWS = [
+  { path: "/wireframes/login", label: "Login" },
+  { path: "/wireframes/dashboard", label: "Dashboard" },
+  { path: "/wireframes/transactions", label: "Transactions" },
+  { path: "/wireframes/reports", label: "Reports" },
+  { path: "/wireframes/budgets", label: "Budgets" },
 ];
 
-export default function App() {
-  const [view, setView] = useState<View>("login");
-
+export function WireframesLayout() {
   return (
     <>
-      <Button>Test shadcn</Button>
-
       <div className="wf-app-nav">
         <span>⬡ SmartFinance — Wireframes</span>
-        {VIEWS.map(({ id, label }) => (
-          <button key={id} className={view === id ? "active" : ""} onClick={() => setView(id)}>
+        {VIEWS.map(({ path, label }) => (
+          <NavLink key={path} to={path} className={({ isActive }) => (isActive ? "active" : "")}>
             {label}
-          </button>
+          </NavLink>
         ))}
       </div>
-      {view === "login" && <LoginWireframe />}
-      {view === "dashboard" && <DashboardWireframe />}
-      {view === "transactions" && <TransactionsWireframe />}
-      {view === "reports" && <ReportsWireframe />}
-      {view === "budgets" && <BudgetsWireframe />}
+      <Outlet />
     </>
   );
 }
