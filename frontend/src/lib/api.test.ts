@@ -1,4 +1,5 @@
 import { ApiError } from "./api";
+import { describe, expect, it } from "vitest";
 
 describe("ApiError", () => {
   it("stores status, body, and message", () => {

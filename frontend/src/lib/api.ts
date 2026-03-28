@@ -1,4 +1,4 @@
-const BASE_URL = "/api/v1";
+const BASE_URL = `${import.meta.env.VITE_API_BASE_URL ?? ""}/api/v1`;
 
 export class ApiError extends Error {
   constructor(
@@ -28,7 +28,8 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       // non-JSON error body — leave as null
     }
-    const message = (body as { message?: string } | null)?.message ?? response.statusText;
+    const message =
+      (body as { error?: { message?: string } } | null)?.error?.message ?? response.statusText;
     throw new ApiError(response.status, body, message);
   }
 

@@ -1,33 +1,43 @@
-import { useQuery } from "@tanstack/react-query";
-import { api, ApiError } from "../lib/api";
-
-interface DashboardSummary {
-  totalTransactions: number;
-  totalIncome: number;
-  totalExpenses: number;
-}
+import { useNavigate } from "react-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "../contexts/AuthProvider";
+import { api } from "../lib/api";
+import { Button } from "@/components/ui/button";
 
 export function DashboardPage() {
-  // Server state — TanStack Query owns data from the API
-  const { data, isLoading, isError, error } = useQuery<DashboardSummary>({
-    queryKey: ["dashboard", "summary"],
-    queryFn: () => api.get<DashboardSummary>("/dashboard/summary"),
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const { mutate: logout, isPending } = useMutation({
+    mutationFn: () => api.post<{ ok: boolean }>("/auth/logout", {}),
+    onSuccess: () => {
+      queryClient.clear();
+      navigate("/login");
+    },
   });
 
   return (
-    <main>
-      <h1>Dashboard</h1>
+    <main className="min-h-screen p-8">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-semibold">Dashboard</h1>
+        <Button variant="outline" size="sm" disabled={isPending} onClick={() => logout()}>
+          {isPending ? "Signing out…" : "Sign out"}
+        </Button>
+      </div>
 
-      {isLoading && <p>Loading summary…</p>}
-      {isError && (
-        <p>Failed to load summary: {error instanceof ApiError ? error.message : "Unknown error"}</p>
-      )}
-      {data && (
-        <ul>
-          <li>Transactions: {data.totalTransactions}</li>
-          <li>Income: {data.totalIncome}</li>
-          <li>Expenses: {data.totalExpenses}</li>
-        </ul>
+      {user && (
+        <div className="space-y-1 text-sm">
+          <p>
+            <span className="font-medium">ID:</span> {user.id}
+          </p>
+          <p>
+            <span className="font-medium">Email:</span> {user.email}
+          </p>
+          <p>
+            <span className="font-medium">Role:</span> {user.role}
+          </p>
+        </div>
       )}
     </main>
   );
