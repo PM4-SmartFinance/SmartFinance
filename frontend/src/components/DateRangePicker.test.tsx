@@ -5,16 +5,49 @@ import { queryClient } from "../lib/queryClient";
 import { DateRangePicker } from "../components/DateRangePicker";
 import { SummaryMetricsWidget } from "../components/SummaryMetricsWidget";
 
+// Comprehensive mock data
+const mockSummaryData = {
+  accountBalance: 15250.75,
+  monthlyExpenses: 2840.5,
+  incomeThisMonth: 6500.0,
+};
+
+const mockTrendData = [
+  { date: "2025-12-01", amount: 2150.25 },
+  { date: "2025-12-08", amount: 1875.5 },
+  { date: "2025-12-15", amount: 2340.75 },
+  { date: "2025-12-22", amount: 2100.0 },
+  { date: "2025-12-29", amount: 1950.25 },
+  { date: "2026-01-05", amount: 2500.75 },
+  { date: "2026-01-12", amount: 2200.0 },
+  { date: "2026-01-19", amount: 2600.5 },
+  { date: "2026-01-26", amount: 2450.25 },
+  { date: "2026-02-02", amount: 2100.75 },
+  { date: "2026-02-09", amount: 2800.0 },
+  { date: "2026-02-16", amount: 2400.25 },
+];
+
+const mockCategoryData = [
+  { category: "Groceries", amount: 450.75 },
+  { category: "Transport", amount: 280.0 },
+  { category: "Dining", amount: 320.5 },
+  { category: "Entertainment", amount: 195.25 },
+  { category: "Utilities", amount: 125.0 },
+  { category: "Shopping", amount: 473.0 },
+];
+
 // Mock the api module
 vi.mock("../lib/api", () => ({
   api: {
     get: vi.fn((path) => {
       if (path.includes("/dashboard/summary")) {
-        return Promise.resolve({
-          accountBalance: 5000,
-          monthlyExpenses: 1200,
-          incomeThisMonth: 3500,
-        });
+        return Promise.resolve(mockSummaryData);
+      }
+      if (path.includes("/dashboard/trends")) {
+        return Promise.resolve(mockTrendData);
+      }
+      if (path.includes("/dashboard/categories")) {
+        return Promise.resolve(mockCategoryData);
       }
       return Promise.resolve({});
     }),
@@ -102,7 +135,7 @@ describe("Dashboard Date Filter Integration", () => {
     // Wait for data to load and display
     await waitFor(
       () => {
-        expect(screen.getByText("$5,000.00")).toBeInTheDocument();
+        expect(screen.getByText("$15,250.75")).toBeInTheDocument();
       },
       { timeout: 3000 },
     );
@@ -117,9 +150,9 @@ describe("Dashboard Date Filter Integration", () => {
 
     await waitFor(
       () => {
-        expect(screen.getByText("$5,000.00")).toBeInTheDocument();
-        expect(screen.getByText("$1,200.00")).toBeInTheDocument();
-        expect(screen.getByText("$3,500.00")).toBeInTheDocument();
+        expect(screen.getByText("$15,250.75")).toBeInTheDocument();
+        expect(screen.getByText("$2,840.50")).toBeInTheDocument();
+        expect(screen.getByText("$6,500.00")).toBeInTheDocument();
       },
       { timeout: 3000 },
     );
