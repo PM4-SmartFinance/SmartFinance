@@ -114,7 +114,6 @@ async function main() {
       update: {},
       create: {
         categoryName: "Hobby",
-        budgetLimitMonth: 200.0,
         userId: user.id,
       },
     });
