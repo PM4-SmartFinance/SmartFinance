@@ -31,3 +31,34 @@ export async function updateUserRole(email: string, role: string) {
 export async function deleteUsersByEmails(emails: string[]) {
   return prisma.dimUser.deleteMany({ where: { email: { in: emails } } });
 }
+
+export async function findById(id: string) {
+  return prisma.dimUser.findUnique({
+    where: { id },
+    select: { id: true, email: true, name: true, role: true, createdAt: true },
+  });
+}
+
+export async function findByIdWithPassword(id: string) {
+  return prisma.dimUser.findUnique({ where: { id } });
+}
+
+export async function findByEmailExcluding(email: string, excludeId: string) {
+  return prisma.dimUser.findFirst({ where: { email, NOT: { id: excludeId } } });
+}
+
+export async function updateProfile(id: string, data: { name?: string; email?: string }) {
+  return prisma.dimUser.update({
+    where: { id },
+    data,
+    select: { id: true, email: true, name: true, role: true },
+  });
+}
+
+export async function updatePassword(id: string, hashedPassword: string) {
+  return prisma.dimUser.update({
+    where: { id },
+    data: { password: hashedPassword },
+    select: { id: true },
+  });
+}
