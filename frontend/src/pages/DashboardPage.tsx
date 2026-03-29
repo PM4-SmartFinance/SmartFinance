@@ -8,12 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 const TEXT = {
   heading: "Dashboard",
   subtitle: "View your financial overview at a glance",
+  greeting: "Welcome back",
   signOut: "Sign out",
   signingOut: "Signing out…",
 } as const;
 
 export function DashboardPage() {
-  useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -32,7 +33,9 @@ export function DashboardPage() {
         <header className="mb-8 flex items-center justify-between">
           <div className="flex flex-col gap-2">
             <h1 className="text-4xl font-bold text-foreground">{TEXT.heading}</h1>
-            <p className="text-sm text-muted-foreground">{TEXT.subtitle}</p>
+            <p className="text-sm text-muted-foreground">
+              {user ? `${TEXT.greeting}, ${user.email}` : TEXT.subtitle}
+            </p>
           </div>
           <Button variant="outline" size="sm" disabled={isPending} onClick={() => logout()}>
             {isPending ? TEXT.signingOut : TEXT.signOut}
