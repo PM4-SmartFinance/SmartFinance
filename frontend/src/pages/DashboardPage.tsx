@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthProvider";
 import { api } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CsvImportCard } from "../components/CsvImportCard";
 
 const TEXT = {
   heading: "Dashboard",
@@ -130,6 +131,9 @@ export function DashboardPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* ── Widget 7: CSV Import ── */}
+          <CsvImportCard />
         </section>
       </div>
     </main>
