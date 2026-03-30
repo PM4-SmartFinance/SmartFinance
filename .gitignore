@@ -37,6 +37,9 @@ pnpm-lock.yaml
 # MCP
 .mcp.json
 
+# Docker
+docker-compose.local.yml
+
 # Wiki (separate git repo)
 wiki/
 

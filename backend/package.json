@@ -16,16 +16,15 @@
     "test:db:down": "docker compose -f ../docker-compose.test.yml down -v"
   },
   "dependencies": {
-    "@fastify/cors": "^10.0.2",
     "@fastify/multipart": "^9.4.0",
     "@fastify/secure-session": "^8.3.0",
     "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
-    "prisma": "^7.5.0",
     "argon2": "^0.44.0",
     "dotenv": "^17.3.1",
     "fastify": "^5.8.4",
-    "pg": "^8.20.0"
+    "pg": "^8.20.0",
+    "prisma": "^7.5.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
