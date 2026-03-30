@@ -1,13 +1,29 @@
 import { useState } from "react";
-import { useBudgets, Budget } from "../lib/queries/budgets";
+import { useBudgets, useDeleteBudget, Budget } from "../lib/queries/budgets";
+import { useCategories } from "../lib/queries/categories";
 import { BudgetProgressCard } from "../components/BudgetProgressCard";
 import { CreateEditBudgetDialog } from "../components/CreateEditBudgetDialog";
+import { DeleteBudgetDialog } from "../components/DeleteBudgetDialog";
 import { Button } from "@/components/ui/button";
 
 export function BudgetsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [budgetToDelete, setBudgetToDelete] = useState<{
+    id: string;
+    categoryName: string;
+    monthYear: string;
+  } | null>(null);
+
   const { data: budgets = [], isLoading, error } = useBudgets();
+  const { data: categories = [] } = useCategories();
+  const { mutate: deleteBudget, isPending: isDeleting } = useDeleteBudget();
+
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find((c) => c.id === categoryId);
+    return category?.name || categoryId;
+  };
 
   const handleCreate = () => {
     setSelectedBudget(null);
@@ -22,6 +38,30 @@ export function BudgetsPage() {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setSelectedBudget(null);
+  };
+
+  const handleDeleteClick = (budget: Budget) => {
+    const monthYear = new Date(budget.year, budget.month - 1).toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+    });
+    setBudgetToDelete({
+      id: budget.id,
+      categoryName: getCategoryName(budget.categoryId),
+      monthYear,
+    });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = (budgetId: string) => {
+    deleteBudget(budgetId);
+    setDeleteDialogOpen(false);
+    setBudgetToDelete(null);
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setBudgetToDelete(null);
   };
 
   if (isLoading) {
@@ -73,9 +113,9 @@ export function BudgetsPage() {
               <BudgetProgressCard
                 key={budget.id}
                 budget={budget}
-                categoryName={budget.categoryId} // TODO: Fetch category name from categories API
+                categoryName={getCategoryName(budget.categoryId)}
                 onEdit={handleEdit}
-                onDelete={() => {}} // TODO: Implement delete
+                onDelete={handleDeleteClick}
               />
             ))}
           </div>
@@ -88,6 +128,19 @@ export function BudgetsPage() {
         budget={selectedBudget}
         onClose={handleCloseDialog}
       />
+
+      {/* Delete Confirmation Dialog */}
+      {budgetToDelete && (
+        <DeleteBudgetDialog
+          isOpen={deleteDialogOpen}
+          budgetId={budgetToDelete.id}
+          categoryName={budgetToDelete.categoryName}
+          monthYear={budgetToDelete.monthYear}
+          isDeleting={isDeleting}
+          onConfirm={handleConfirmDelete}
+          onCancel={handleCancelDelete}
+        />
+      )}
     </main>
   );
 }

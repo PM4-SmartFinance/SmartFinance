@@ -6,7 +6,7 @@ interface BudgetProgressCardProps {
   budget: Budget;
   categoryName: string;
   onEdit: (budget: Budget) => void;
-  onDelete: (budgetId: string) => void;
+  onDelete: (budget: Budget) => void;
   isDeleting?: boolean;
 }
 
@@ -64,7 +64,7 @@ export function BudgetProgressCard({
               size="sm"
               className="text-destructive hover:text-destructive"
               disabled={isDeleting}
-              onClick={() => onDelete(budget.id)}
+              onClick={() => onDelete(budget)}
             >
               {isDeleting ? "Deleting…" : "Delete"}
             </Button>
