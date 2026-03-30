@@ -216,7 +216,7 @@ describe("BudgetProgressCard", () => {
     const deleteButton = screen.getByRole("button", { name: "Delete" });
     deleteButton.click();
 
-    expect(mockOnDelete).toHaveBeenCalledWith("budget-1");
+    expect(mockOnDelete).toHaveBeenCalledWith(mockBudget);
   });
 
   it("disables Delete button when isDeleting is true", () => {
