@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { queryClient } from "../lib/queryClient";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BudgetProgressCard } from "./BudgetProgressCard";
 import { Budget } from "../lib/queries/budgets";
+
+let queryClient: QueryClient;
 
 const mockBudget: Budget = {
   id: "budget-1",
@@ -44,6 +45,7 @@ describe("BudgetProgressCard", () => {
   const mockOnDelete = vi.fn();
 
   beforeEach(() => {
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     mockOnEdit.mockClear();
     mockOnDelete.mockClear();
   });
