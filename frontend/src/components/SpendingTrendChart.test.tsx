@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { queryClient } from "../lib/queryClient";
+import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { SpendingTrendChart } from "./SpendingTrendChart";
 
 const mockTrendData = [
@@ -31,12 +30,14 @@ vi.mock("../lib/api", () => ({
 }));
 
 function renderWithQuery(component: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return render(<QueryClientProvider client={queryClient}>{component}</QueryClientProvider>);
 }
 
 describe("SpendingTrendChart", () => {
   beforeEach(() => {
-    queryClient.clear();
     vi.clearAllMocks();
   });
 
@@ -62,5 +63,19 @@ describe("SpendingTrendChart", () => {
 
     // Component should show loading state or attempt to fetch
     expect(screen.getByText("Monthly Spending Trend")).toBeInTheDocument();
+  });
+
+  it("displays error state when data fetch fails", async () => {
+    // Mock API to return error
+    const apiMock = await vi.importMock("../lib/api");
+    apiMock.api.get.mockRejectedValueOnce(new Error("Failed to fetch"));
+
+    renderWithQuery(<SpendingTrendChart />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Failed to load spending trend data. Please try again."),
+      ).toBeInTheDocument();
+    });
   });
 });

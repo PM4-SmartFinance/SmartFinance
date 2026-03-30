@@ -15,12 +15,16 @@ const getDefaultDateRange = (): DateRange => {
   const startDate = new Date();
   startDate.setDate(endDate.getDate() - 30);
 
-  const startDateStr = startDate.toISOString().split("T")[0];
-  const endDateStr = endDate.toISOString().split("T")[0];
+  const formatLocalDate = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
 
   return {
-    startDate: startDateStr as string,
-    endDate: endDateStr as string,
+    startDate: formatLocalDate(startDate),
+    endDate: formatLocalDate(endDate),
   };
 };
 

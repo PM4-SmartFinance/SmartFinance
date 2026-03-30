@@ -27,6 +27,12 @@ export function DashboardPage() {
       queryClient.clear();
       navigate("/login");
     },
+    onError: () => {
+      // Clear client state and navigate to login even if server call fails
+      // This ensures the user gets back to login screen with feedback
+      queryClient.clear();
+      navigate("/login");
+    },
   });
 
   return (

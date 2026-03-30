@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { queryClient } from "../lib/queryClient";
+import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { CategoryBreakdownChart } from "./CategoryBreakdownChart";
 
 const mockCategoryData = [
@@ -25,12 +24,14 @@ vi.mock("../lib/api", () => ({
 }));
 
 function renderWithQuery(component: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return render(<QueryClientProvider client={queryClient}>{component}</QueryClientProvider>);
 }
 
 describe("CategoryBreakdownChart", () => {
   beforeEach(() => {
-    queryClient.clear();
     vi.clearAllMocks();
   });
 
@@ -56,5 +57,19 @@ describe("CategoryBreakdownChart", () => {
 
     // Component should show loading state or attempt to fetch
     expect(screen.getByText("Spending by Category")).toBeInTheDocument();
+  });
+
+  it("displays error state when data fetch fails", async () => {
+    // Mock API to return error
+    const apiMock = await vi.importMock("../lib/api");
+    apiMock.api.get.mockRejectedValueOnce(new Error("Failed to fetch"));
+
+    renderWithQuery(<CategoryBreakdownChart />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Failed to load category breakdown data. Please try again."),
+      ).toBeInTheDocument();
+    });
   });
 });

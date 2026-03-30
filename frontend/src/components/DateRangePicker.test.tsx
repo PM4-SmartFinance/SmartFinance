@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { queryClient } from "../lib/queryClient";
+import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { DateRangePicker } from "../components/DateRangePicker";
 import { SummaryMetricsWidget } from "../components/SummaryMetricsWidget";
 
@@ -55,12 +54,14 @@ vi.mock("../lib/api", () => ({
 }));
 
 function renderWithQuery(component: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return render(<QueryClientProvider client={queryClient}>{component}</QueryClientProvider>);
 }
 
 describe("Dashboard Date Filter Integration", () => {
   beforeEach(() => {
-    queryClient.clear();
     vi.clearAllMocks();
   });
 
