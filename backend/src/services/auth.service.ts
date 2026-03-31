@@ -2,7 +2,6 @@ import argon2 from "argon2";
 import { ServiceError } from "../errors.js";
 import * as userRepository from "../repositories/user.repository.js";
 import * as auditService from "./audit.service.js";
-
 const DEFAULT_CURRENCY_CODE = "CHF";
 
 export async function register(email: string, password: string) {
@@ -34,6 +33,12 @@ export async function login(email: string, password: string) {
   if (!user) {
     void auditService.logEvent("LOGIN_FAILED", null, { email });
     throw new ServiceError(401, "Invalid credentials");
+  }
+
+  // Deny login if account deactivated
+  if (user.active === false) {
+    void auditService.logEvent("LOGIN_FAILED", user.id, { email, reason: "Account deactivated" });
+    throw new ServiceError(403, "Account deactivated");
   }
 
   const valid = await argon2.verify(user.password, password);

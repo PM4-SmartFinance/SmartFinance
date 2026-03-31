@@ -130,6 +130,7 @@ model DimUser {
   name     String?
   password String
   role     String  @default("USER")
+  active   Boolean @default(true)
 
   defaultCurrencyId String
   defaultCurrency   DimCurrency @relation(fields: [defaultCurrencyId], references: [id])
