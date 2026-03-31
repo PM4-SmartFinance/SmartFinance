@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate, Link } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "../lib/api";
@@ -6,6 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { CheckCircle2, AlertCircle, ChevronLeft, User, Lock } from "lucide-react";
 
 interface ProfileData {
   id: string;
@@ -20,7 +26,7 @@ const PROFILE_QUERY = {
 } as const;
 
 const TEXT = {
-  backToDashboard: "← Dashboard",
+  backToDashboard: "Dashboard",
   pageTitle: "Profile",
   pageDescription: "Manage your account details",
   profileCard: {
@@ -48,6 +54,18 @@ const TEXT = {
   genericError: "Something went wrong. Please try again.",
 } as const;
 
+function getInitials(name: string | null | undefined, email: string | undefined): string {
+  if (name) {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  }
+  return email?.[0]?.toUpperCase() ?? "U";
+}
+
 export function ProfilePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -56,25 +74,15 @@ export function ProfilePage() {
   const profile = data?.user;
 
   // ── Profile form state ─────────────────────────────────────────────────────
-  const [displayName, setDisplayName] = useState("");
-  const [email, setEmail] = useState("");
   const [profileSuccess, setProfileSuccess] = useState(false);
-
-  // Populate form once profile loads
-  useEffect(() => {
-    if (profile) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setDisplayName(profile.name ?? "");
-      setEmail(profile.email);
-    }
-  }, [profile]);
 
   const {
     mutate: saveProfile,
     isPending: isSaving,
     error: profileError,
   } = useMutation({
-    mutationFn: () => api.patch<{ user: ProfileData }>("/users/me", { displayName, email }),
+    mutationFn: (data: { displayName: string; email: string }) =>
+      api.patch<{ user: ProfileData }>("/users/me", data),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["users", "me"] });
       void queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
@@ -109,7 +117,11 @@ export function ProfilePage() {
   function handleProfileSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setProfileSuccess(false);
-    saveProfile();
+    const fd = new FormData(e.currentTarget);
+    saveProfile({
+      displayName: (fd.get("displayName") as string) ?? "",
+      email: (fd.get("email") as string) ?? "",
+    });
   }
 
   function handlePasswordSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -140,41 +152,84 @@ export function ProfilePage() {
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mb-6">
-          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
-            {TEXT.backToDashboard}
-          </Link>
-        </div>
+        <Link
+          to="/"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6"
+        >
+          <ChevronLeft className="size-4" />
+          {TEXT.backToDashboard}
+        </Link>
 
-        <header className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground">{TEXT.pageTitle}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{TEXT.pageDescription}</p>
+        {/* ── Page header with avatar ── */}
+        <header className="mb-8 flex items-center gap-4">
+          {isProfileLoading ? (
+            <>
+              <Skeleton className="size-14 rounded-full" />
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-32" />
+                <Skeleton className="h-4 w-48" />
+              </div>
+            </>
+          ) : (
+            <>
+              <Avatar className="size-14">
+                <AvatarFallback className="text-lg font-semibold">
+                  {getInitials(profile?.name, profile?.email)}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold text-foreground">
+                    {profile?.name ?? profile?.email ?? TEXT.pageTitle}
+                  </h1>
+                  {profile?.role && (
+                    <Badge variant="secondary" className="capitalize">
+                      {profile.role}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground">{profile?.email}</p>
+              </div>
+            </>
+          )}
         </header>
 
         <div className="flex flex-col gap-6">
           {/* ── Profile info form ── */}
           <Card>
             <CardHeader>
-              <CardTitle>{TEXT.profileCard.title}</CardTitle>
+              <div className="flex items-center gap-2">
+                <User className="size-4 text-muted-foreground" />
+                <CardTitle className="text-base">{TEXT.profileCard.title}</CardTitle>
+              </div>
               <CardDescription>{TEXT.profileCard.description}</CardDescription>
             </CardHeader>
-            <CardContent>
+            <Separator />
+            <CardContent className="pt-6">
               {isProfileLoading ? (
-                <p className="text-sm text-muted-foreground">Loading…</p>
+                <div className="flex flex-col gap-4">
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-9 w-full" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-9 w-full" />
+                  </div>
+                  <Skeleton className="h-9 w-28" />
+                </div>
               ) : (
                 <form onSubmit={handleProfileSubmit} className="flex flex-col gap-4">
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor="display-name">{TEXT.profileCard.nameLabel}</Label>
                     <Input
                       id="display-name"
+                      name="displayName"
                       type="text"
-                      value={displayName}
+                      defaultValue={profile?.name ?? ""}
                       placeholder={TEXT.profileCard.namePlaceholder}
                       autoComplete="name"
-                      onChange={(e) => {
-                        setDisplayName(e.target.value);
-                        setProfileSuccess(false);
-                      }}
+                      onChange={() => setProfileSuccess(false)}
                     />
                   </div>
 
@@ -182,26 +237,26 @@ export function ProfilePage() {
                     <Label htmlFor="profile-email">{TEXT.profileCard.emailLabel}</Label>
                     <Input
                       id="profile-email"
+                      name="email"
                       type="email"
-                      value={email}
+                      defaultValue={profile?.email ?? ""}
                       required
                       autoComplete="email"
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        setProfileSuccess(false);
-                      }}
+                      onChange={() => setProfileSuccess(false)}
                     />
                   </div>
 
                   {profileErrorMessage && (
-                    <p role="alert" className="text-sm text-destructive">
-                      {profileErrorMessage}
-                    </p>
+                    <Alert variant="destructive">
+                      <AlertCircle className="size-4" />
+                      <AlertDescription>{profileErrorMessage}</AlertDescription>
+                    </Alert>
                   )}
                   {profileSuccess && (
-                    <p role="status" className="text-sm text-green-600 dark:text-green-400">
-                      {TEXT.profileCard.successMsg}
-                    </p>
+                    <Alert className="border-green-500/50 text-green-700 dark:text-green-400 [&>svg]:text-green-600">
+                      <CheckCircle2 className="size-4" />
+                      <AlertDescription>{TEXT.profileCard.successMsg}</AlertDescription>
+                    </Alert>
                   )}
 
                   <Button type="submit" disabled={isSaving} className="self-start">
@@ -215,10 +270,14 @@ export function ProfilePage() {
           {/* ── Change password form ── */}
           <Card>
             <CardHeader>
-              <CardTitle>{TEXT.passwordCard.title}</CardTitle>
+              <div className="flex items-center gap-2">
+                <Lock className="size-4 text-muted-foreground" />
+                <CardTitle className="text-base">{TEXT.passwordCard.title}</CardTitle>
+              </div>
               <CardDescription>{TEXT.passwordCard.description}</CardDescription>
             </CardHeader>
-            <CardContent>
+            <Separator />
+            <CardContent className="pt-6">
               <form onSubmit={handlePasswordSubmit} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="current-password">{TEXT.passwordCard.currentLabel}</Label>
@@ -260,20 +319,17 @@ export function ProfilePage() {
                   />
                 </div>
 
-                {confirmError && (
-                  <p role="alert" className="text-sm text-destructive">
-                    {confirmError}
-                  </p>
-                )}
-                {passwordErrorMessage && (
-                  <p role="alert" className="text-sm text-destructive">
-                    {passwordErrorMessage}
-                  </p>
+                {(confirmError ?? passwordErrorMessage) && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="size-4" />
+                    <AlertDescription>{confirmError ?? passwordErrorMessage}</AlertDescription>
+                  </Alert>
                 )}
                 {passwordSuccess && (
-                  <p role="status" className="text-sm text-green-600 dark:text-green-400">
-                    {TEXT.passwordCard.successMsg}
-                  </p>
+                  <Alert className="border-green-500/50 text-green-700 dark:text-green-400 [&>svg]:text-green-600">
+                    <CheckCircle2 className="size-4" />
+                    <AlertDescription>{TEXT.passwordCard.successMsg}</AlertDescription>
+                  </Alert>
                 )}
 
                 <Button
