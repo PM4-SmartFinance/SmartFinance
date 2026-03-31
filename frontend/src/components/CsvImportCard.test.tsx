@@ -117,6 +117,17 @@ describe("accounts", () => {
     });
   });
 
+  it("shows an error message when the accounts query fails", async () => {
+    mockGet.mockRejectedValue(new Error("Network error"));
+    renderCard();
+    await waitFor(() =>
+      expect(screen.getByText("Failed to load accounts. Please try again.")).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByText("No accounts found. Create an account first."),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows the no-accounts message when the user has no accounts", async () => {
     mockGet.mockResolvedValue({ accounts: [] });
     renderCard();

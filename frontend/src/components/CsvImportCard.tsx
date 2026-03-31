@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/select";
 
 type ImportFormat = "neon" | "zkb" | "wise";
+// TODO: KAN-34 – Jira AC requires skipped and failed counts. Update this type
+// and the result messages once the backend returns those fields.
 type UploadResult = { imported: number };
 
 interface Account {
@@ -37,6 +39,7 @@ const TEXT = {
   uploadBtn: "Upload",
   uploading: "Uploading…",
   noAccounts: "No accounts found. Create an account first.",
+  accountsError: "Failed to load accounts. Please try again.",
   invalidType: "Only .csv files are accepted.",
   resultSuccess: (n: number) => `${n} transaction${n !== 1 ? "s" : ""} imported successfully.`,
   resultZero: "No new transactions found (all rows may be duplicates).",
@@ -52,16 +55,16 @@ export function CsvImportCard() {
   const [typeError, setTypeError] = useState<string | null>(null);
   const [result, setResult] = useState<UploadResult | null>(null);
 
-  const { data: accountsData } = useQuery({
+  const { data: accountsData, isError: isAccountsError } = useQuery({
     queryKey: ["accounts"],
     queryFn: () => api.get<{ accounts: Account[] }>("/accounts"),
   });
   const accounts = accountsData?.accounts ?? [];
 
-  const firstAccount = accounts[0];
-  if (firstAccount && accountId === "") {
-    setAccountId(firstAccount.id);
-  }
+  // Derive the active account without writing to state during render.
+  // If the user has made an explicit selection it wins; otherwise fall back to
+  // the first account returned by the query.
+  const effectiveAccountId = accountId || accounts[0]?.id || "";
 
   const {
     mutate: uploadFile,
@@ -107,8 +110,8 @@ export function CsvImportCard() {
   }
 
   function handleUpload() {
-    if (!file || !accountId) return;
-    uploadFile({ f: file, fmt: format, acId: accountId });
+    if (!file || !effectiveAccountId) return;
+    uploadFile({ f: file, fmt: format, acId: effectiveAccountId });
   }
 
   function handleReset() {
@@ -121,7 +124,7 @@ export function CsvImportCard() {
   const uploadErrorMessage =
     uploadError instanceof ApiError ? uploadError.message : uploadError ? "Upload failed." : null;
 
-  const canUpload = file !== null && accountId !== "" && !isUploading;
+  const canUpload = file !== null && effectiveAccountId !== "" && !isUploading;
 
   return (
     <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
@@ -242,10 +245,14 @@ export function CsvImportCard() {
                 <Label htmlFor="csv-account" className="text-xs text-muted-foreground">
                   {TEXT.accountLabel}
                 </Label>
-                {accounts.length === 0 ? (
+                {isAccountsError ? (
+                  <p role="alert" className="py-1.5 text-sm text-destructive">
+                    {TEXT.accountsError}
+                  </p>
+                ) : accounts.length === 0 ? (
                   <p className="py-1.5 text-sm text-muted-foreground">{TEXT.noAccounts}</p>
                 ) : (
-                  <Select value={accountId} onValueChange={(e) => setAccountId(e || "")}>
+                  <Select value={effectiveAccountId} onValueChange={(v) => setAccountId(v ?? "")}>
                     <SelectTrigger id="csv-account" className="w-64">
                       <SelectValue />
                     </SelectTrigger>

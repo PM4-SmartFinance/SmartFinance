@@ -12,13 +12,13 @@ let sessionUser: { id: string; role: string; email: string } | undefined = {
   email: "test@example.com",
 };
 
-vi.mock("../repositories/account.repository.js", () => ({
-  findAccountsByUser: vi.fn(),
+vi.mock("../services/account.service.js", () => ({
+  getAccountsByUser: vi.fn(),
 }));
 
-import * as accountRepo from "../repositories/account.repository.js";
+import * as accountService from "../services/account.service.js";
 
-const mockFindAccountsByUser = vi.mocked(accountRepo.findAccountsByUser);
+const mockGetAccountsByUser = vi.mocked(accountService.getAccountsByUser);
 
 describe("GET /api/v1/accounts", () => {
   let app: FastifyInstance;
@@ -52,7 +52,7 @@ describe("GET /api/v1/accounts", () => {
   });
 
   it("returns 200 with the accounts list", async () => {
-    mockFindAccountsByUser.mockResolvedValue([
+    mockGetAccountsByUser.mockResolvedValue([
       { id: "acc-1", name: "Main Account", iban: "CH93 0076 2011 6238 5295 7" },
     ] as never);
 
@@ -65,7 +65,7 @@ describe("GET /api/v1/accounts", () => {
   });
 
   it("returns 200 with an empty array when the user has no accounts", async () => {
-    mockFindAccountsByUser.mockResolvedValue([]);
+    mockGetAccountsByUser.mockResolvedValue([]);
 
     const response = await app.inject({ method: "GET", url: "/api/v1/accounts" });
 
@@ -74,11 +74,11 @@ describe("GET /api/v1/accounts", () => {
   });
 
   it("calls findAccountsByUser with the session user id", async () => {
-    mockFindAccountsByUser.mockResolvedValue([]);
+    mockGetAccountsByUser.mockResolvedValue([]);
 
     await app.inject({ method: "GET", url: "/api/v1/accounts" });
 
-    expect(mockFindAccountsByUser).toHaveBeenCalledExactlyOnceWith("user-1");
+    expect(mockGetAccountsByUser).toHaveBeenCalledExactlyOnceWith("user-1");
   });
 
   it("returns 401 when there is no session user", async () => {
@@ -87,11 +87,11 @@ describe("GET /api/v1/accounts", () => {
     const response = await app.inject({ method: "GET", url: "/api/v1/accounts" });
 
     expect(response.statusCode).toBe(401);
-    expect(mockFindAccountsByUser).not.toHaveBeenCalled();
+    expect(mockGetAccountsByUser).not.toHaveBeenCalled();
   });
 
   it("returns multiple accounts in the response", async () => {
-    mockFindAccountsByUser.mockResolvedValue([
+    mockGetAccountsByUser.mockResolvedValue([
       { id: "acc-1", name: "Checking", iban: "CH93 0076 2011 6238 5295 7" },
       { id: "acc-2", name: "Savings", iban: "CH56 0483 5012 3456 7800 9" },
     ] as never);
