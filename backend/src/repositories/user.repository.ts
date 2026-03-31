@@ -47,6 +47,27 @@ export async function findByEmailExcluding(email: string, excludeId: string) {
   return prisma.dimUser.findFirst({ where: { email, NOT: { id: excludeId } } });
 }
 
+export class EmailConflictError extends Error {
+  constructor() {
+    super("Email already in use");
+    this.name = "EmailConflictError";
+  }
+}
+
+export async function updateProfileAtomic(id: string, data: { name?: string; email?: string }) {
+  return prisma.$transaction(async (tx) => {
+    if (data.email !== undefined) {
+      const conflict = await tx.dimUser.findFirst({ where: { email: data.email, NOT: { id } } });
+      if (conflict) throw new EmailConflictError();
+    }
+    return tx.dimUser.update({
+      where: { id },
+      data,
+      select: { id: true, email: true, name: true, role: true },
+    });
+  });
+}
+
 export async function updateProfile(id: string, data: { name?: string; email?: string }) {
   return prisma.dimUser.update({
     where: { id },

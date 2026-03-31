@@ -277,6 +277,87 @@ Deletes a budget. Only budgets owned by the authenticated user can be deleted.
 
 ---
 
+## Users
+
+All user endpoints require an authenticated session with the `USER` role.
+
+### GET /users/me
+
+Returns the full profile of the currently authenticated user.
+
+**Response 200:**
+
+```json
+{
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "Jane Doe",
+    "role": "USER",
+    "createdAt": "2026-03-18T10:00:00.000Z"
+  }
+}
+```
+
+**Response 401:** Not authenticated
+**Response 404:** User record not found
+
+---
+
+### PATCH /users/me
+
+Updates the display name and/or email address of the authenticated user. The session cookie is refreshed automatically when the email changes.
+
+**Request Body:**
+
+| Field         | Type   | Required | Validation                              |
+| ------------- | ------ | -------- | --------------------------------------- |
+| `displayName` | string | no       | 1–100 characters                        |
+| `email`       | string | no       | Must match `^[^\s@]+@[^\s@]+\.[^\s@]+$` |
+
+At least one field must be present; an empty body returns the current profile unchanged.
+
+**Response 200:**
+
+```json
+{
+  "user": {
+    "id": "uuid",
+    "email": "new@example.com",
+    "name": "Jane Doe",
+    "role": "USER"
+  }
+}
+```
+
+**Response 400:** Validation failure (field too short, invalid email pattern)
+**Response 401:** Not authenticated
+**Response 409:** Email already in use by another account
+
+---
+
+### POST /users/me/change-password
+
+Changes the password of the authenticated user. The current session is invalidated on success — the client must re-authenticate.
+
+**Request Body:**
+
+| Field             | Type   | Required | Validation           |
+| ----------------- | ------ | -------- | -------------------- |
+| `currentPassword` | string | yes      | Must not be empty    |
+| `newPassword`     | string | yes      | Minimum 8 characters |
+
+**Response 200:**
+
+```json
+{ "ok": true }
+```
+
+**Response 400:** Validation failure (newPassword too short)
+**Response 401:** Not authenticated or current password incorrect
+
+---
+
 ## Error Format
 
 All errors are formatted uniformly by the centralized error handler:
@@ -558,6 +639,78 @@ The following JSON can be imported directly into Postman: **Import > Raw text > 
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"WrongPassword!\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has user', () => pm.expect(pm.response.json().user).to.have.property('id'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/me"
+          }
+        },
+        {
+          "name": "Update Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has updated name', () => pm.expect(pm.response.json().user.name).to.equal('Jane Doe'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/users/me",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Jane Doe\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Change Password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ok is true', () => pm.expect(pm.response.json().ok).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/users/me/change-password",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{password}}\",\n  \"newPassword\": \"NewPassword123!\"\n}"
             }
           }
         }

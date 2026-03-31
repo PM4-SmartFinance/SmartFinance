@@ -1,6 +1,7 @@
 import argon2 from "argon2";
 import { ServiceError } from "../errors.js";
 import * as userRepository from "../repositories/user.repository.js";
+import { EmailConflictError } from "../repositories/user.repository.js";
 import * as auditService from "./audit.service.js";
 
 export async function getProfile(userId: string) {
@@ -13,11 +14,6 @@ export async function updateProfile(
   userId: string,
   data: { displayName?: string; email?: string },
 ) {
-  if (data.email !== undefined) {
-    const conflict = await userRepository.findByEmailExcluding(data.email, userId);
-    if (conflict) throw new ServiceError(409, "Email already in use");
-  }
-
   const updateData: { name?: string; email?: string } = {};
   if (data.displayName !== undefined) updateData.name = data.displayName;
   if (data.email !== undefined) updateData.email = data.email;
@@ -26,9 +22,17 @@ export async function updateProfile(
     return userRepository.findById(userId);
   }
 
-  const updated = await userRepository.updateProfile(userId, updateData);
+  let updated;
+  try {
+    updated = await userRepository.updateProfileAtomic(userId, updateData);
+  } catch (err) {
+    if (err instanceof EmailConflictError) throw new ServiceError(409, err.message);
+    throw err;
+  }
 
-  void auditService.logEvent("PROFILE_UPDATED", userId, { fields: Object.keys(updateData) });
+  void auditService
+    .logEvent("PROFILE_UPDATED", userId, { fields: Object.keys(updateData) })
+    .catch((err) => console.error("[audit] PROFILE_UPDATED failed:", err));
 
   return updated;
 }
@@ -43,5 +47,7 @@ export async function changePassword(userId: string, currentPassword: string, ne
   const hashed = await argon2.hash(newPassword);
   await userRepository.updatePassword(userId, hashed);
 
-  void auditService.logEvent("PASSWORD_CHANGED", userId);
+  void auditService
+    .logEvent("PASSWORD_CHANGED", userId)
+    .catch((err) => console.error("[audit] PASSWORD_CHANGED failed:", err));
 }

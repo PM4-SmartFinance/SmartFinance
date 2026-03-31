@@ -52,6 +52,7 @@ const TEXT = {
     mismatchError: "New passwords do not match.",
   },
   genericError: "Something went wrong. Please try again.",
+  fetchError: "Failed to load your profile. Please refresh the page.",
 } as const;
 
 function getInitials(name: string | null | undefined, email: string | undefined): string {
@@ -70,7 +71,7 @@ export function ProfilePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data, isPending: isProfileLoading } = useQuery(PROFILE_QUERY);
+  const { data, isPending: isProfileLoading, isError: isProfileError } = useQuery(PROFILE_QUERY);
   const profile = data?.user;
 
   // ── Profile form state ─────────────────────────────────────────────────────
@@ -170,6 +171,8 @@ export function ProfilePage() {
                 <Skeleton className="h-4 w-48" />
               </div>
             </>
+          ) : isProfileError ? (
+            <h1 className="text-2xl font-bold text-foreground">{TEXT.pageTitle}</h1>
           ) : (
             <>
               <Avatar className="size-14">
@@ -218,6 +221,11 @@ export function ProfilePage() {
                   </div>
                   <Skeleton className="h-9 w-28" />
                 </div>
+              ) : isProfileError ? (
+                <Alert variant="destructive">
+                  <AlertCircle className="size-4" />
+                  <AlertDescription>{TEXT.fetchError}</AlertDescription>
+                </Alert>
               ) : (
                 <form onSubmit={handleProfileSubmit} className="flex flex-col gap-4">
                   <div className="flex flex-col gap-1.5">
