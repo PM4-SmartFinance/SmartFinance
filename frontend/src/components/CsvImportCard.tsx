@@ -245,7 +245,7 @@ export function CsvImportCard() {
                 {accounts.length === 0 ? (
                   <p className="py-1.5 text-sm text-muted-foreground">{TEXT.noAccounts}</p>
                 ) : (
-                  <Select value={accountId} onValueChange={setAccountId}>
+                  <Select value={accountId} onValueChange={(e) => setAccountId(e || "")}>
                     <SelectTrigger id="csv-account" className="w-64">
                       <SelectValue />
                     </SelectTrigger>
