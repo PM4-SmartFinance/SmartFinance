@@ -69,16 +69,18 @@ describe("initial render", () => {
 
   it("renders all three format options", async () => {
     renderCard();
-    const select = screen.getByLabelText("Bank format");
-    expect(select).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Neon" })).toBeInTheDocument();
+    await userEvent.click(screen.getByLabelText("Bank format"));
+    await waitFor(() => expect(screen.getByRole("option", { name: "Neon" })).toBeInTheDocument());
     expect(screen.getByRole("option", { name: "ZKB" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Wise" })).toBeInTheDocument();
   });
 
-  it("defaults format selection to Neon", () => {
+  it("defaults format selection to Neon", async () => {
     renderCard();
-    expect(screen.getByLabelText<HTMLSelectElement>("Bank format").value).toBe("neon");
+    await userEvent.click(screen.getByLabelText("Bank format"));
+    await waitFor(() =>
+      expect(screen.getByRole("option", { name: "Neon" })).toHaveAttribute("aria-selected", "true"),
+    );
   });
 
   it("renders the upload button as disabled when no file is selected", () => {
@@ -98,6 +100,8 @@ describe("accounts", () => {
 
   it("renders the account selector once accounts load", async () => {
     renderCard();
+    await waitFor(() => expect(screen.getByLabelText("Account")).toBeInTheDocument());
+    await userEvent.click(screen.getByLabelText("Account"));
     await waitFor(() =>
       expect(screen.getByRole("option", { name: /Main Account/ })).toBeInTheDocument(),
     );
@@ -105,6 +109,8 @@ describe("accounts", () => {
 
   it("renders all accounts as options", async () => {
     renderCard();
+    await waitFor(() => expect(screen.getByLabelText("Account")).toBeInTheDocument());
+    await userEvent.click(screen.getByLabelText("Account"));
     await waitFor(() => {
       expect(screen.getByRole("option", { name: /Main Account/ })).toBeInTheDocument();
       expect(screen.getByRole("option", { name: /Savings/ })).toBeInTheDocument();
@@ -211,8 +217,10 @@ describe("drag and drop", () => {
 describe("format selector", () => {
   it("changes the selected format", async () => {
     renderCard();
-    await userEvent.selectOptions(screen.getByLabelText("Bank format"), "zkb");
-    expect(screen.getByLabelText<HTMLSelectElement>("Bank format").value).toBe("zkb");
+    await userEvent.click(screen.getByLabelText("Bank format"));
+    await waitFor(() => expect(screen.getByRole("option", { name: "ZKB" })).toBeInTheDocument());
+    await userEvent.click(screen.getByRole("option", { name: "ZKB" }));
+    expect(screen.getByLabelText("Bank format")).toHaveTextContent(/zkb/i);
   });
 });
 

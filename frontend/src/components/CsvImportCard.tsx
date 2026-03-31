@@ -3,6 +3,14 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { api, ApiError } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type ImportFormat = "neon" | "zkb" | "wise";
 type UploadResult = { imported: number };
@@ -212,43 +220,43 @@ export function CsvImportCard() {
 
             {/* ── Selectors row ── */}
             <div className="flex flex-wrap gap-4">
-              <div className="flex flex-col gap-1">
-                <label htmlFor="csv-format" className="text-xs font-medium text-muted-foreground">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="csv-format" className="text-xs text-muted-foreground">
                   {TEXT.formatLabel}
-                </label>
-                <select
-                  id="csv-format"
-                  value={format}
-                  onChange={(e) => setFormat(e.target.value as ImportFormat)}
-                  className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
-                >
-                  {FORMATS.map((f) => (
-                    <option key={f.value} value={f.value}>
-                      {f.label}
-                    </option>
-                  ))}
-                </select>
+                </Label>
+                <Select value={format} onValueChange={(v) => setFormat(v as ImportFormat)}>
+                  <SelectTrigger id="csv-format" className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FORMATS.map((f) => (
+                      <SelectItem key={f.value} value={f.value}>
+                        {f.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div className="flex flex-col gap-1">
-                <label htmlFor="csv-account" className="text-xs font-medium text-muted-foreground">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="csv-account" className="text-xs text-muted-foreground">
                   {TEXT.accountLabel}
-                </label>
+                </Label>
                 {accounts.length === 0 ? (
                   <p className="py-1.5 text-sm text-muted-foreground">{TEXT.noAccounts}</p>
                 ) : (
-                  <select
-                    id="csv-account"
-                    value={accountId}
-                    onChange={(e) => setAccountId(e.target.value)}
-                    className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
-                  >
-                    {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name} — {a.iban}
-                      </option>
-                    ))}
-                  </select>
+                  <Select value={accountId} onValueChange={setAccountId}>
+                    <SelectTrigger id="csv-account" className="w-64">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {accounts.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.name} — {a.iban}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
               </div>
             </div>
