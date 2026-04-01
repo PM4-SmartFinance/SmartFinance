@@ -15,7 +15,20 @@
  *   AppShell › Navbar › NavLink › Grid › Card › Text › Table › Progress › Badge
  */
 
-const CHART_BARS = [40, 65, 45, 80, 55, 70, 50, 60, 75, 48, 85, 62];
+const CHART_BARS = [
+  { id: "bar-0", height: 40 },
+  { id: "bar-1", height: 65 },
+  { id: "bar-2", height: 45 },
+  { id: "bar-3", height: 80 },
+  { id: "bar-4", height: 55 },
+  { id: "bar-5", height: 70 },
+  { id: "bar-6", height: 50 },
+  { id: "bar-7", height: 60 },
+  { id: "bar-8", height: 75 },
+  { id: "bar-9", height: 48 },
+  { id: "bar-10", height: 85 },
+  { id: "bar-11", height: 62 },
+];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const TRANSACTIONS = [
@@ -108,8 +121,8 @@ export default function DashboardWireframe() {
             <div className="wf-widget-title">Monthly Spending Chart</div>
             <div className="wf-chart-area">
               <div className="wf-chart-bars">
-                {CHART_BARS.map((h, i) => (
-                  <div key={`chart-bar-${i}`} className="wf-chart-bar" style={{ height: h }} />
+                {CHART_BARS.map((bar) => (
+                  <div key={bar.id} className="wf-chart-bar" style={{ height: bar.height }} />
                 ))}
               </div>
               <div className="wf-chart-x-label">
