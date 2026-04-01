@@ -25,7 +25,6 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
 
   // Sync form state with budget prop when dialog opens
-
   useEffect(() => {
     const syncFormState = () => {
       if (budget) {
