@@ -66,7 +66,7 @@ export function BudgetsPage() {
       });
       setDeleteDialogOpen(false);
       setBudgetToDelete(null);
-    } catch {
+    } catch (err) {
       setDeleteError("Failed to delete budget. Please try again.");
     }
   };

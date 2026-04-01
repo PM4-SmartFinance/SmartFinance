@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CreateEditBudgetDialog } from "./CreateEditBudgetDialog";
 import * as api from "../lib/api";
@@ -27,9 +27,7 @@ const mockBudget: Budget = {
 };
 
 function renderDialog(props: React.ComponentProps<typeof CreateEditBudgetDialog>) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
       <CreateEditBudgetDialog {...props} />
@@ -58,22 +56,14 @@ describe("CreateEditBudgetDialog", () => {
 
       // Close dialog
       rerender(
-        <QueryClientProvider
-          client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
-        >
+        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
           <CreateEditBudgetDialog isOpen={false} budget={mockBudget} onClose={onClose} />
         </QueryClientProvider>,
       );
 
       // Switch to create mode (budget is null)
       rerender(
-        <QueryClientProvider
-          client={
-            new QueryClient({
-              defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-            })
-          }
-        >
+        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>
           <CreateEditBudgetDialog isOpen={true} budget={null} onClose={onClose} />
         </QueryClientProvider>,
       );
@@ -94,13 +84,7 @@ describe("CreateEditBudgetDialog", () => {
 
       // Change budget prop
       rerender(
-        <QueryClientProvider
-          client={
-            new QueryClient({
-              defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-            })
-          }
-        >
+        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>
           <CreateEditBudgetDialog isOpen={true} budget={newBudget} onClose={onClose} />
         </QueryClientProvider>,
       );
