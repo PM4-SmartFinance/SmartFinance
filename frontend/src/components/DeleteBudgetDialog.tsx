@@ -65,7 +65,12 @@ export function DeleteBudgetDialog({
           >
             {isDeleting ? "Deleting…" : "Delete"}
           </Button>
-          <Button variant="outline" disabled={isDeleting} onClick={handleDialogClose} className="flex-1">
+          <Button
+            variant="outline"
+            disabled={isDeleting}
+            onClick={handleDialogClose}
+            className="flex-1"
+          >
             Cancel
           </Button>
         </div>
