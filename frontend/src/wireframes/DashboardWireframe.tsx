@@ -109,7 +109,7 @@ export default function DashboardWireframe() {
             <div className="wf-chart-area">
               <div className="wf-chart-bars">
                 {CHART_BARS.map((h, i) => (
-                  <div key={i} className="wf-chart-bar" style={{ height: h }} />
+                  <div key={`chart-bar-${i}`} className="wf-chart-bar" style={{ height: h }} />
                 ))}
               </div>
               <div className="wf-chart-x-label">
