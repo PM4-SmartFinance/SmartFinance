@@ -50,6 +50,9 @@ export function useCreateBudget() {
         return old ? [response.budget, ...old] : [response.budget];
       });
     },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: BUDGETS_QUERY_KEY });
+    },
   });
 }
 
@@ -66,6 +69,9 @@ export function useUpdateBudget() {
           : [response.budget];
       });
     },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: BUDGETS_QUERY_KEY });
+    },
   });
 }
 
@@ -78,6 +84,9 @@ export function useDeleteBudget() {
       queryClient.setQueryData<Budget[]>(BUDGETS_QUERY_KEY, (old) => {
         return old ? old.filter((b) => b.id !== id) : [];
       });
+    },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: BUDGETS_QUERY_KEY });
     },
   });
 }
