@@ -10,6 +10,7 @@ export function BudgetsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [budgetToDelete, setBudgetToDelete] = useState<{
     id: string;
     categoryName: string;
@@ -17,7 +18,7 @@ export function BudgetsPage() {
   } | null>(null);
 
   const { data: budgets = [], isLoading, error } = useBudgets();
-  const { data: categories = [] } = useCategories();
+  const { data: categories = [], error: categoriesError } = useCategories();
   const { mutate: deleteBudget, isPending: isDeleting } = useDeleteBudget();
 
   const getCategoryName = (categoryId: string) => {
@@ -53,10 +54,21 @@ export function BudgetsPage() {
     setDeleteDialogOpen(true);
   };
 
-  const handleConfirmDelete = (budgetId: string) => {
-    deleteBudget(budgetId);
-    setDeleteDialogOpen(false);
-    setBudgetToDelete(null);
+  const handleConfirmDelete = async (budgetId: string) => {
+    setDeleteError("");
+    try {
+      // Wait for the mutation to complete
+      await new Promise<void>((resolve, reject) => {
+        deleteBudget(budgetId, {
+          onSuccess: () => resolve(),
+          onError: (error) => reject(error),
+        });
+      });
+      setDeleteDialogOpen(false);
+      setBudgetToDelete(null);
+    } catch (err) {
+      setDeleteError("Failed to delete budget. Please try again.");
+    }
   };
 
   const handleCancelDelete = () => {
@@ -81,6 +93,17 @@ export function BudgetsPage() {
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <h1 className="text-4xl font-bold text-foreground">Budgets</h1>
           <div className="mt-8 text-center text-destructive">Failed to load budgets</div>
+        </div>
+      </main>
+    );
+  }
+
+  if (categoriesError) {
+    return (
+      <main className="min-h-screen bg-background">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          <h1 className="text-4xl font-bold text-foreground">Budgets</h1>
+          <div className="mt-8 text-center text-destructive">Failed to load categories</div>
         </div>
       </main>
     );
@@ -116,6 +139,7 @@ export function BudgetsPage() {
                 categoryName={getCategoryName(budget.categoryId)}
                 onEdit={handleEdit}
                 onDelete={handleDeleteClick}
+                isDeleting={isDeleting && budgetToDelete?.id === budget.id}
               />
             ))}
           </div>
@@ -137,6 +161,7 @@ export function BudgetsPage() {
           categoryName={budgetToDelete.categoryName}
           monthYear={budgetToDelete.monthYear}
           isDeleting={isDeleting}
+          error={deleteError}
           onConfirm={handleConfirmDelete}
           onCancel={handleCancelDelete}
         />

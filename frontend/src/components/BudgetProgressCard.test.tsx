@@ -1,10 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BudgetProgressCard } from "./BudgetProgressCard";
 import { Budget } from "../lib/queries/budgets";
-
-let queryClient: QueryClient;
 
 const mockBudget: Budget = {
   id: "budget-1",
@@ -36,8 +33,8 @@ const mockBudgetExceeded: Budget = {
   isOverBudget: true,
 };
 
-function renderWithQuery(component: React.ReactElement) {
-  return render(<QueryClientProvider client={queryClient}>{component}</QueryClientProvider>);
+function renderCard(component: React.ReactElement) {
+  return render(component);
 }
 
 describe("BudgetProgressCard", () => {
@@ -45,13 +42,12 @@ describe("BudgetProgressCard", () => {
   const mockOnDelete = vi.fn();
 
   beforeEach(() => {
-    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     mockOnEdit.mockClear();
     mockOnDelete.mockClear();
   });
 
   it("renders the category name and month/year", () => {
-    renderWithQuery(
+    renderCard(
       <BudgetProgressCard
         budget={mockBudget}
         categoryName="Groceries"
@@ -65,7 +61,7 @@ describe("BudgetProgressCard", () => {
   });
 
   it("displays spending information (spent, limit, remaining)", () => {
-    renderWithQuery(
+    renderCard(
       <BudgetProgressCard
         budget={mockBudget}
         categoryName="Groceries"
@@ -80,7 +76,7 @@ describe("BudgetProgressCard", () => {
   });
 
   it("displays percentage used correctly", () => {
-    renderWithQuery(
+    renderCard(
       <BudgetProgressCard
         budget={mockBudget}
         categoryName="Groceries"
@@ -93,7 +89,7 @@ describe("BudgetProgressCard", () => {
   });
 
   it("renders progress bar with correct width for normal state", () => {
-    const { container } = renderWithQuery(
+    const { container } = renderCard(
       <BudgetProgressCard
         budget={mockBudget}
         categoryName="Groceries"
@@ -108,7 +104,7 @@ describe("BudgetProgressCard", () => {
   });
 
   it("renders progress bar with yellow/orange color at 80% threshold", () => {
-    const { container } = renderWithQuery(
+    const { container } = renderCard(
       <BudgetProgressCard
         budget={mockBudgetWarning}
         categoryName="Groceries"
@@ -122,7 +118,7 @@ describe("BudgetProgressCard", () => {
   });
 
   it("displays warning state text when at 80%", () => {
-    renderWithQuery(
+    renderCard(
       <BudgetProgressCard
         budget={mockBudgetWarning}
         categoryName="Groceries"
@@ -135,7 +131,7 @@ describe("BudgetProgressCard", () => {
   });
 
   it("renders progress bar with red color when budget is exceeded", () => {
-    const { container } = renderWithQuery(
+    const { container } = renderCard(
       <BudgetProgressCard
         budget={mockBudgetExceeded}
         categoryName="Groceries"
@@ -149,7 +145,7 @@ describe("BudgetProgressCard", () => {
   });
 
   it("displays 'Over Budget' message when budge is exceeded", () => {
-    renderWithQuery(
+    renderCard(
       <BudgetProgressCard
         budget={mockBudgetExceeded}
         categoryName="Groceries"
@@ -162,7 +158,7 @@ describe("BudgetProgressCard", () => {
   });
 
   it("caps progress bar at 100% when exceeded", () => {
-    const { container } = renderWithQuery(
+    const { container } = renderCard(
       <BudgetProgressCard
         budget={mockBudgetExceeded}
         categoryName="Groceries"
@@ -176,7 +172,7 @@ describe("BudgetProgressCard", () => {
   });
 
   it("renders Edit and Delete buttons", () => {
-    renderWithQuery(
+    renderCard(
       <BudgetProgressCard
         budget={mockBudget}
         categoryName="Groceries"
@@ -190,7 +186,7 @@ describe("BudgetProgressCard", () => {
   });
 
   it("calls onEdit when Edit button is clicked", () => {
-    renderWithQuery(
+    renderCard(
       <BudgetProgressCard
         budget={mockBudget}
         categoryName="Groceries"
@@ -206,7 +202,7 @@ describe("BudgetProgressCard", () => {
   });
 
   it("calls onDelete when Delete button is clicked", () => {
-    renderWithQuery(
+    renderCard(
       <BudgetProgressCard
         budget={mockBudget}
         categoryName="Groceries"
@@ -222,7 +218,7 @@ describe("BudgetProgressCard", () => {
   });
 
   it("disables Delete button when isDeleting is true", () => {
-    renderWithQuery(
+    renderCard(
       <BudgetProgressCard
         budget={mockBudget}
         categoryName="Groceries"
@@ -237,7 +233,7 @@ describe("BudgetProgressCard", () => {
   });
 
   it("changes color states dynamically based on percentage", () => {
-    const { container, rerender } = renderWithQuery(
+    const { container, rerender } = renderCard(
       <BudgetProgressCard
         budget={mockBudget}
         categoryName="Groceries"
@@ -251,28 +247,24 @@ describe("BudgetProgressCard", () => {
 
     // Rerender with warning state
     rerender(
-      <QueryClientProvider client={queryClient}>
-        <BudgetProgressCard
-          budget={mockBudgetWarning}
-          categoryName="Groceries"
-          onEdit={mockOnEdit}
-          onDelete={mockOnDelete}
-        />
-      </QueryClientProvider>,
+      <BudgetProgressCard
+        budget={mockBudgetWarning}
+        categoryName="Groceries"
+        onEdit={mockOnEdit}
+        onDelete={mockOnDelete}
+      />,
     );
 
     expect(container.querySelector("div.bg-yellow-500")).toBeInTheDocument();
 
     // Rerender with exceeded state
     rerender(
-      <QueryClientProvider client={queryClient}>
-        <BudgetProgressCard
-          budget={mockBudgetExceeded}
-          categoryName="Groceries"
-          onEdit={mockOnEdit}
-          onDelete={mockOnDelete}
-        />
-      </QueryClientProvider>,
+      <BudgetProgressCard
+        budget={mockBudgetExceeded}
+        categoryName="Groceries"
+        onEdit={mockOnEdit}
+        onDelete={mockOnDelete}
+      />,
     );
 
     expect(container.querySelector("div.bg-red-500")).toBeInTheDocument();
