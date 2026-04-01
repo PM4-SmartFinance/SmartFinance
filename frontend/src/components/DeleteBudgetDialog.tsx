@@ -1,11 +1,5 @@
+import { useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 
 interface DeleteBudgetDialogProps {
   isOpen: boolean;
@@ -28,22 +22,39 @@ export function DeleteBudgetDialog({
   onConfirm,
   onCancel,
 }: DeleteBudgetDialogProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      dialogRef.current?.showModal();
+    } else {
+      dialogRef.current?.close();
+    }
+  }, [isOpen]);
+
   const handleConfirmClick = () => {
     onConfirm(budgetId);
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onCancel}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Delete Budget?</DialogTitle>
-          <DialogDescription>
-            Are you sure you want to delete the budget for <strong>{categoryName}</strong> in{" "}
-            <strong>{monthYear}</strong>? This action cannot be undone.
-          </DialogDescription>
-        </DialogHeader>
+  const handleDialogClose = () => {
+    onCancel();
+  };
 
-        {error && <div className="rounded bg-red-50 p-2 text-sm text-red-600">{error}</div>}
+  return (
+    <dialog
+      ref={dialogRef}
+      className="w-full max-w-sm rounded-lg shadow-lg backdrop:bg-black/50 open:flex open:items-center open:justify-center"
+      onClose={handleDialogClose}
+    >
+      <div className="rounded-lg bg-background p-6 shadow-lg">
+        <h2 className="mb-4 text-xl font-semibold text-foreground">Delete Budget?</h2>
+
+        {error && <div className="mb-4 rounded bg-red-50 p-2 text-sm text-red-600">{error}</div>}
+
+        <p className="mb-6 text-sm text-muted-foreground">
+          Are you sure you want to delete the budget for <strong>{categoryName}</strong> in{" "}
+          <strong>{monthYear}</strong>? This action cannot be undone.
+        </p>
 
         <div className="flex gap-2">
           <Button
@@ -54,11 +65,11 @@ export function DeleteBudgetDialog({
           >
             {isDeleting ? "Deleting…" : "Delete"}
           </Button>
-          <Button variant="outline" disabled={isDeleting} onClick={onCancel} className="flex-1">
+          <Button variant="outline" disabled={isDeleting} onClick={handleDialogClose} className="flex-1">
             Cancel
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </dialog>
   );
 }
