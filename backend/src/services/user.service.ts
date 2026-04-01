@@ -4,7 +4,6 @@ import * as userRepository from "../repositories/user.repository.js";
 import { EmailConflictError } from "../repositories/user.repository.js";
 import * as auditService from "./audit.service.js";
 import { logEvent } from "./audit.service.js";
-import type { DimUser } from "@prisma/client";
 
 // --- Profile functions (from develop) ---
 
@@ -70,10 +69,9 @@ export async function getUserById(requestingUser: { id: string; role: string } |
   if (requestingUser.role !== "ADMIN" && requestingUser.id !== id) {
     throw new ServiceError(403, "Forbidden");
   }
-  const user = (await userRepository.findById(id)) as DimUser | null;
+  const user = await userRepository.findById(id);
   if (!user) throw new ServiceError(404, "Not found");
-  // hide sensitive fields (password)
-  return user as Omit<typeof user, "password">;
+  return user;
 }
 
 export async function updateUser(
@@ -115,21 +113,20 @@ export async function updateUser(
 
   if (Object.keys(data).length === 0) throw new ServiceError(400, "No updatable fields");
 
-  const existing = (await userRepository.findById(id)) as DimUser | null;
+  const existing = await userRepository.findById(id);
   if (!existing) throw new ServiceError(404, "Not found");
 
   const oldRole = existing.role;
-  const updated = (await userRepository.updateUserById(id, data as never)) as DimUser;
+  const updated = await userRepository.updateUserById(id, data as never);
 
   // Emit ROLE_CHANGED audit event if role changed
   if ("role" in data) {
     const newRole = typeof data.role === "string" ? data.role : undefined;
     if (newRole && newRole !== oldRole) {
-      await logEvent("ROLE_CHANGED", requestingUser.id, { targetUserId: id, oldRole, newRole });
+      void logEvent("ROLE_CHANGED", requestingUser.id, { targetUserId: id, oldRole, newRole });
     }
   }
-  // Hide password in response
-  return updated as Omit<typeof updated, "password">;
+  return updated;
 }
 
 export async function deleteUser(requestingUser: { id: string; role: string } | null, id: string) {
@@ -139,12 +136,12 @@ export async function deleteUser(requestingUser: { id: string; role: string } | 
     throw new ServiceError(403, "Forbidden");
   }
 
-  const existing = (await userRepository.findById(id)) as DimUser | null;
+  const existing = await userRepository.findById(id);
   if (!existing) throw new ServiceError(404, "Not found");
 
   await userRepository.updateUserById(id, { active: false });
 
-  await logEvent("USER_DELETED", requestingUser.id, { targetUserId: id, email: existing.email });
+  void logEvent("USER_DELETED", requestingUser.id, { targetUserId: id, email: existing.email });
 
   return;
 }

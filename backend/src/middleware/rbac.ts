@@ -30,6 +30,9 @@ export function requireOwnerOrAdmin(paramIdName = "id") {
     if (!user) {
       throw new ServiceError(401, "Unauthorized");
     }
+    if (!(user.role in ROLES)) {
+      throw new ServiceError(403, "Forbidden");
+    }
     // Admins are always allowed
     if (user.role && ROLES[user.role as RoleType] >= ROLES["ADMIN"]) {
       return;

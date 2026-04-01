@@ -9,7 +9,10 @@ export async function findCurrencyByCode(code: string) {
   return prisma.dimCurrency.findUnique({ where: { code } });
 }
 export async function findById(id: string) {
-  return prisma.dimUser.findUnique({ where: { id } });
+  return prisma.dimUser.findUnique({
+    where: { id },
+    select: { id: true, email: true, name: true, role: true, active: true, createdAt: true },
+  });
 }
 
 export async function listUsers(opts: { limit?: number; offset?: number } = {}) {
@@ -57,7 +60,11 @@ export async function updateUserById(
     active?: boolean;
   }>,
 ) {
-  return prisma.dimUser.update({ where: { id }, data });
+  return prisma.dimUser.update({
+    where: { id },
+    data,
+    select: { id: true, email: true, name: true, role: true, active: true, createdAt: true },
+  });
 }
 
 export async function deleteUserById(id: string) {

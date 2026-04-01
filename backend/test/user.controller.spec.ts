@@ -74,6 +74,7 @@ describe("User management endpoints", () => {
       url: "/api/v1/users?limit=2&offset=0",
       cookies: { session: session!.value },
     });
+    console.log("LIST ERROR:", res.json());
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body).toHaveProperty("items");
@@ -133,6 +134,87 @@ describe("User management endpoints", () => {
     expect(res.statusCode).toBe(403);
   });
 
+  it("regular user can fetch their own profile (200) and no password leak", async () => {
+    const login = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: { email: USER_A_EMAIL, password: "UserPass1!" },
+    });
+    const cookies = login.cookies as unknown as Array<{ name: string; value: string }>;
+    const session = cookies.find((c) => c.name === "session");
+
+    const userA = await prisma.dimUser.findUnique({ where: { email: USER_A_EMAIL } });
+
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/v1/users/${userA!.id}`,
+      cookies: { session: session!.value },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.user.email).toBe(USER_A_EMAIL);
+    expect(body.user).not.toHaveProperty("password");
+  });
+
+  it("admin can fetch any user's profile (200) and no password leak", async () => {
+    const login = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: { email: ADMIN_EMAIL, password: "AdminPass1!" },
+    });
+    const cookies = login.cookies as unknown as Array<{ name: string; value: string }>;
+    const session = cookies.find((c) => c.name === "session");
+
+    const userA = await prisma.dimUser.findUnique({ where: { email: USER_A_EMAIL } });
+
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/v1/users/${userA!.id}`,
+      cookies: { session: session!.value },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.user.email).toBe(USER_A_EMAIL);
+    expect(body.user).not.toHaveProperty("password");
+  });
+
+  it("regular user cannot fetch someone else's profile (403)", async () => {
+    const login = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: { email: USER_A_EMAIL, password: "UserPass1!" },
+    });
+    const cookies = login.cookies as unknown as Array<{ name: string; value: string }>;
+    const session = cookies.find((c) => c.name === "session");
+
+    const userB = await prisma.dimUser.findUnique({ where: { email: USER_B_EMAIL } });
+
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/v1/users/${userB!.id}`,
+      cookies: { session: session!.value },
+    });
+    console.log("DEBUG ERROR:", res.json());
+    expect(res.statusCode).toBe(403);
+  });
+
+  it("fetching a non-existent user ID returns 404", async () => {
+    const login = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: { email: ADMIN_EMAIL, password: "AdminPass1!" },
+    });
+    const cookies = login.cookies as unknown as Array<{ name: string; value: string }>;
+    const session = cookies.find((c) => c.name === "session");
+
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/v1/users/00000000-0000-0000-0000-000000000000`,
+      cookies: { session: session!.value },
+    });
+    expect(res.statusCode).toBe(404);
+  });
+
   it("admin can change role and ROLE_CHANGED audit is emitted", async () => {
     // spy on audit.logEvent
     const spy = vi.spyOn(auditService, "logEvent");
@@ -159,6 +241,9 @@ describe("User management endpoints", () => {
       cookies: { session: session!.value },
     });
     expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.user).not.toHaveProperty("password");
+
     expect(spy).toHaveBeenCalled();
     const calledWith = spy.mock.calls.find((c) => c[0] === "ROLE_CHANGED");
     expect(calledWith).toBeDefined();
@@ -196,5 +281,13 @@ describe("User management endpoints", () => {
     expect(calledWith).toBeDefined();
 
     spy.mockRestore();
+
+    // Verify logging in as deactivated (deleted) user returns 403
+    const deactivatedLogin = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: { email: USER_A_EMAIL, password: "UserPass1!" },
+    });
+    expect(deactivatedLogin.statusCode).toBe(403);
   });
 });

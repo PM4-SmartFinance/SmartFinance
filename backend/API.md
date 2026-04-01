@@ -104,6 +104,135 @@ Returns the currently authenticated user. Requires a valid session.
 
 ---
 
+## Users
+
+All user endpoints (except creation which is handled via `/auth/register`) require an authenticated session.
+
+### GET /users
+
+Returns a paginated list of all users. Requires an authenticated session with the `ADMIN` role.
+
+**Query Parameters:**
+
+| Parameter | Type    | Required | Description                             |
+| --------- | ------- | -------- | --------------------------------------- |
+| `limit`   | integer | no       | Number of users to return (default: 50) |
+| `offset`  | integer | no       | Number of users to skip (default: 0)    |
+
+**Response 200:**
+
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "email": "user@example.com",
+      "name": "John Doe",
+      "role": "USER",
+      "active": true,
+      "createdAt": "2026-03-18T10:00:00.000Z"
+    }
+  ],
+  "total": 1,
+  "limit": 50,
+  "offset": 0
+}
+```
+
+**Response 401:** Not authenticated
+**Response 403:** Forbidden (requires ADMIN role)
+
+---
+
+### GET /users/:id
+
+Returns the profile of a specific user. Users can read their own profile; admins can read any profile.
+
+**Path Parameters:**
+
+| Parameter | Type   | Validation |
+| --------- | ------ | ---------- |
+| `id`      | string | UUID       |
+
+**Response 200:**
+
+```json
+{
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "USER",
+    "active": true,
+    "createdAt": "2026-03-18T10:00:00.000Z"
+  }
+}
+```
+
+**Response 401:** Not authenticated
+**Response 403:** Forbidden
+**Response 404:** User not found
+
+---
+
+### PATCH /users/:id
+
+Updates a user's profile. Users can update their own `name`. Admins can update `name`, `role`, and `active` status.
+
+**Path Parameters:**
+
+| Parameter | Type   | Validation |
+| --------- | ------ | ---------- |
+| `id`      | string | UUID       |
+
+**Request Body:**
+
+| Field    | Type    | Required | Validation                     |
+| -------- | ------- | -------- | ------------------------------ |
+| `name`   | string  | no       | Max length 255                 |
+| `role`   | string  | no       | `ADMIN` or `USER` (admin only) |
+| `active` | boolean | no       | true or false (admin only)     |
+
+**Response 200:**
+
+```json
+{
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "Jane Doe",
+    "role": "USER",
+    "active": true,
+    "createdAt": "2026-03-18T10:00:00.000Z"
+  }
+}
+```
+
+**Response 400:** Invalid role or no updatable fields
+**Response 401:** Not authenticated
+**Response 403:** Forbidden
+**Response 404:** User not found
+
+---
+
+### DELETE /users/:id
+
+Soft-deletes a user (sets `active` to false). Users can delete themselves; admins can delete any user.
+
+**Path Parameters:**
+
+| Parameter | Type   | Validation |
+| --------- | ------ | ---------- |
+| `id`      | string | UUID       |
+
+**Response 204:** No content
+
+**Response 401:** Not authenticated
+**Response 403:** Forbidden
+**Response 404:** User not found
+
+---
+
 ## Transactions
 
 ### GET /transactions

@@ -8,9 +8,20 @@ interface UserParams {
 }
 
 interface UserQuery {
-  limit?: string;
-  offset?: string;
+  limit: number;
+  offset: number;
 }
+
+const listUsersSchema = {
+  querystring: {
+    type: "object",
+    properties: {
+      limit: { type: "integer", minimum: 1, maximum: 100, default: 50 },
+      offset: { type: "integer", minimum: 0, default: 0 },
+    },
+    additionalProperties: false,
+  },
+};
 
 interface UpdateUserBody {
   name?: string;
@@ -122,14 +133,15 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
 
   app.get<{ Querystring: UserQuery }>(
     "/users",
-    { preHandler: requireRole("ADMIN") },
+    { preHandler: requireRole("ADMIN"), schema: listUsersSchema },
     async (request, reply) => {
+      // Fastify schema guarantees these are numbers
       const { limit, offset } = request.query;
       const sessionUser = request.session.get("user") ?? null;
 
       const res = await userService.listUsers(sessionUser, {
-        limit: limit ? Number(limit) : 50,
-        offset: offset ? Number(offset) : 0,
+        limit,
+        offset,
       });
       return reply.send(res);
     },
