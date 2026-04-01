@@ -37,6 +37,26 @@
     ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"$CLAUDE_FILE_PATHS\" | tr ' ' '\\n' | grep -q 'prisma/migrations/' && echo 'BLOCK: Do not hand-edit Prisma migrations. Use `bunx prisma migrate dev` to generate them.' && exit 2 || exit 0"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"$CLAUDE_FILE_PATHS\" | tr ' ' '\\n' | grep -qE '(^|/)index\\.(ts|tsx|js|jsx)$' && echo 'BLOCK: No barrel files (index.ts re-exports). Import directly from source files per CLAUDE.md.' && exit 2 || exit 0"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
