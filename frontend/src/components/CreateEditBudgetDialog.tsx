@@ -1,10 +1,16 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useCreateBudget, useUpdateBudget, Budget } from "../lib/queries/budgets";
 import { useCategories } from "../lib/queries/categories";
 import { ApiError } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface CreateEditBudgetDialogProps {
   isOpen: boolean;
@@ -18,17 +24,14 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
   const [month, setMonth] = useState("");
   const [year, setYear] = useState("");
   const [error, setError] = useState("");
-  const dialogRef = useRef<HTMLDialogElement>(null);
 
   const createMutation = useCreateBudget();
   const updateMutation = useUpdateBudget();
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
 
-  // Sync form state with budget prop and manage dialog open/close
+  // Sync form state with budget prop when dialog opens
   useEffect(() => {
     if (isOpen) {
-      dialogRef.current?.showModal();
-      // Reset form when opening for create, or sync with budget when editing
       if (budget) {
         setLimitAmount(budget.limitAmount);
         setCategoryId(budget.categoryId);
@@ -41,14 +44,8 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
         setYear("");
       }
       setError("");
-    } else {
-      dialogRef.current?.close();
     }
   }, [isOpen, budget]);
-
-  const handleDialogClose = () => {
-    onClose();
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,15 +111,11 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
   return (
-    <dialog
-      ref={dialogRef}
-      className="w-full max-w-md rounded-lg shadow-lg backdrop:bg-black/50 open:flex open:items-center open:justify-center"
-      onClose={handleDialogClose}
-    >
-      <div className="rounded-lg bg-background p-6 shadow-lg">
-        <h2 className="mb-6 text-xl font-semibold text-foreground">
-          {budget ? "Edit Budget" : "Create Budget"}
-        </h2>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{budget ? "Edit Budget" : "Create Budget"}</DialogTitle>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {error && <div className="rounded bg-red-50 p-2 text-sm text-red-600">{error}</div>}
@@ -218,12 +211,12 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
                     ? "Save Changes"
                     : "Create Budget"}
               </Button>
-              <Button type="button" variant="outline" onClick={handleDialogClose} disabled={isSubmitting}>
+              <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
                 Cancel
               </Button>
             </div>
         </form>
-      </div>
-    </dialog>
+      </DialogContent>
+    </Dialog>
   );
 }
