@@ -74,7 +74,7 @@ scripts\setup-user.bat
 
 3. Open the app in your browser at `http://localhost` or at your configured domain.
 
-If you want the full deployment flow, required environment variables, or rollback details, use [Chapter 11: Installation (Deployment)](../SmartFinance.wiki/11.-Installation-Deployment.md).
+If you want the full deployment flow, required environment variables, or rollback details, use [Chapter 11: Installation (Deployment)](https://github.com/PM4-SmartFinance/SmartFinance/wiki/11.-Installation-Deployment).
 
 ### Contributing on Linux, macOS, or WSL2
 
@@ -97,7 +97,7 @@ bun run --filter @smartfinance/frontend dev
 
 On Windows, this workflow currently assumes WSL2 because the scripts and tooling are shell-based.
 
-For the complete local setup, test database workflow, and troubleshooting guidance, use [Chapter 11: Installation (Deployment)](../SmartFinance.wiki/11.-Installation-Deployment.md) and [Chapter 12: Operation and Support](../SmartFinance.wiki/12.-Operation-and-Support.md).
+For the complete local setup, test database workflow, and troubleshooting guidance, use [Chapter 11: Installation (Deployment)](https://github.com/PM4-SmartFinance/SmartFinance/wiki/11.-Installation-Deployment) and [Chapter 12: Operation and Support](https://github.com/PM4-SmartFinance/SmartFinance/wiki/12.-Operation-and-Support).
 
 ### Testing
 
@@ -117,7 +117,7 @@ After setup, the safest first check is:
 1. Open the app in the browser.
 2. Log in or create the first account.
 3. Confirm the dashboard loads without errors.
-4. If anything fails, use the troubleshooting notes in [Chapter 11](../SmartFinance.wiki/11.-Installation-Deployment.md) and [Chapter 12](../SmartFinance.wiki/12.-Operation-and-Support.md).
+4. If anything fails, use the troubleshooting notes in [Chapter 11](https://github.com/PM4-SmartFinance/SmartFinance/wiki/11.-Installation-Deployment) and [Chapter 12](https://github.com/PM4-SmartFinance/SmartFinance/wiki/12.-Operation-and-Support).
 
 ---
 
@@ -125,10 +125,10 @@ After setup, the safest first check is:
 
 The README stays intentionally short. The wiki is the source of truth for architecture, data model, deployment, and operations.
 
-- [Wiki home](../SmartFinance.wiki/Home.md)
-- [Architecture](../SmartFinance.wiki/06.-Architecture.md)
-- [Data model](../SmartFinance.wiki/09.-Data.md)
-- [Deployment](../SmartFinance.wiki/11.-Installation-Deployment.md)
-- [Operations](../SmartFinance.wiki/12.-Operation-and-Support.md)
-- [Decision log](../SmartFinance.wiki/13.-Decision-Log.md)
+- [Wiki home](https://github.com/PM4-SmartFinance/SmartFinance/wiki)
+- [Architecture](https://github.com/PM4-SmartFinance/SmartFinance/wiki/06.-Architecture)
+- [Data model](https://github.com/PM4-SmartFinance/SmartFinance/wiki/09.-Data)
+- [Deployment](https://github.com/PM4-SmartFinance/SmartFinance/wiki/11.-Installation-Deployment)
+- [Operations](https://github.com/PM4-SmartFinance/SmartFinance/wiki/12.-Operation-and-Support)
+- [Decision log](https://github.com/PM4-SmartFinance/SmartFinance/wiki/13.-Decision-Log)
 - [Contributing guide](CONTRIBUTING.md)
