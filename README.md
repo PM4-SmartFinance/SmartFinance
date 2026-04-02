@@ -42,7 +42,7 @@ Before running or developing the application, make sure these are installed.
 
 | Tool                    | Needed for                              | Get it                                                                                                                                        |
 | ----------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Docker & Docker Compose | Running the app locally or self-hosting | [Download Docker Desktop](https://www.docker.com/products/docker-desktop/). Linux users can install Docker Engine from their distro packages. |
+| Docker & Docker Compose | Running the app locally or self-hosting | [Download Docker Desktop](https://www.docker.com/products/docker-desktop/).                                                                   |
 | Bun (v1.2+)             | Development and local scripts           | [Install Bun](https://bun.sh/docs/installation).                                                                                              |
 | Node.js (v22 LTS)       | Backend tooling                         | [Download Node.js](https://nodejs.org/en/download).                                                                                           |
 
