@@ -50,6 +50,22 @@ describe("getDashboardSummary", () => {
     expect(result.transactionCount).toBe(0);
   });
 
+  it("throws 400 when startDate is a semantically invalid calendar date", async () => {
+    await expect(getDashboardSummary("user-1", "2025-13-40", "2025-12-31")).rejects.toThrow(
+      new ServiceError(400, "startDate and endDate must be valid calendar dates"),
+    );
+
+    expect(mockRepo.getSummary).not.toHaveBeenCalled();
+  });
+
+  it("throws 400 when endDate is a semantically invalid calendar date", async () => {
+    await expect(getDashboardSummary("user-1", "2025-01-01", "2025-00-01")).rejects.toThrow(
+      new ServiceError(400, "startDate and endDate must be valid calendar dates"),
+    );
+
+    expect(mockRepo.getSummary).not.toHaveBeenCalled();
+  });
+
   it("throws 400 when startDate is after endDate", async () => {
     await expect(getDashboardSummary("user-1", "2025-02-01", "2025-01-01")).rejects.toThrow(
       new ServiceError(400, "startDate must not be after endDate"),
