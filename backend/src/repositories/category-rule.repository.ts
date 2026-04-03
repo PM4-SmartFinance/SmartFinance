@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
-import { ServiceError } from "../errors.js";
+import { DuplicateRuleError } from "../errors.js";
 
 export async function findAllByUser(userId: string) {
   return prisma.categoryRule.findMany({
@@ -37,7 +37,7 @@ export async function create(data: {
     });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      throw new ServiceError(409, "A rule with this pattern and match type already exists");
+      throw new DuplicateRuleError();
     }
     throw err;
   }
@@ -51,7 +51,7 @@ export async function update(
   return prisma.$transaction(async (tx) => {
     const existing = await tx.categoryRule.findFirst({ where: { id, userId } });
     if (!existing) {
-      throw new ServiceError(404, "Category rule not found");
+      return null;
     }
     try {
       return await tx.categoryRule.update({
@@ -61,7 +61,7 @@ export async function update(
       });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-        throw new ServiceError(409, "A rule with this pattern and match type already exists");
+        throw new DuplicateRuleError();
       }
       throw err;
     }
@@ -70,9 +70,7 @@ export async function update(
 
 export async function remove(id: string, userId: string) {
   const result = await prisma.categoryRule.deleteMany({ where: { id, userId } });
-  if (result.count === 0) {
-    throw new ServiceError(404, "Category rule not found");
-  }
+  return result.count > 0;
 }
 
 export async function findCategoryForUser(categoryId: string, userId: string) {

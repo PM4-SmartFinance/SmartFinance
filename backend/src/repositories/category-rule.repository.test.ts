@@ -25,7 +25,7 @@ import {
   findCategoryForUser,
 } from "./category-rule.repository.js";
 import { prisma } from "../prisma.js";
-import { ServiceError } from "../errors.js";
+import { DuplicateRuleError } from "../errors.js";
 
 const mockCategoryRule = vi.mocked(prisma.categoryRule);
 const mockDimCategory = vi.mocked(prisma.dimCategory);
@@ -100,7 +100,7 @@ describe("category-rule.repository", () => {
       expect(result).toEqual(sampleRule);
     });
 
-    it("throws 409 on duplicate pattern+matchType", async () => {
+    it("throws DuplicateRuleError on duplicate pattern+matchType", async () => {
       const prismaError = new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
         code: "P2002",
         clientVersion: "5.0.0",
@@ -115,7 +115,7 @@ describe("category-rule.repository", () => {
           matchType: "contains",
           priority: 10,
         }),
-      ).rejects.toThrow(ServiceError);
+      ).rejects.toThrow(DuplicateRuleError);
     });
   });
 
@@ -135,7 +135,7 @@ describe("category-rule.repository", () => {
       expect(result).toEqual({ ...sampleRule, priority: 20 });
     });
 
-    it("throws 404 when rule not found", async () => {
+    it("returns null when rule not found", async () => {
       const txClient = {
         categoryRule: {
           findFirst: vi.fn().mockResolvedValue(null),
@@ -144,21 +144,24 @@ describe("category-rule.repository", () => {
       // @ts-expect-error -- mock tx is an intentional partial stub of TransactionClient
       mockTransaction.mockImplementation((cb) => cb(txClient));
 
-      await expect(update("nonexistent", "user-1", { priority: 5 })).rejects.toThrow(ServiceError);
+      const result = await update("nonexistent", "user-1", { priority: 5 });
+      expect(result).toBeNull();
     });
   });
 
   describe("remove", () => {
-    it("deletes a rule belonging to the user", async () => {
+    it("returns true when rule is deleted", async () => {
       mockCategoryRule.deleteMany.mockResolvedValue({ count: 1 });
 
-      await expect(remove("rule-1", "user-1")).resolves.toBeUndefined();
+      const result = await remove("rule-1", "user-1");
+      expect(result).toBe(true);
     });
 
-    it("throws 404 when rule not found", async () => {
+    it("returns false when rule not found", async () => {
       mockCategoryRule.deleteMany.mockResolvedValue({ count: 0 });
 
-      await expect(remove("nonexistent", "user-1")).rejects.toThrow(ServiceError);
+      const result = await remove("nonexistent", "user-1");
+      expect(result).toBe(false);
     });
   });
 
