@@ -517,6 +517,183 @@ Returns all accounts belonging to the authenticated user, ordered by name.
 
 ---
 
+## Category Rules
+
+All category rule endpoints require an authenticated session with the `USER` role.
+
+### GET /category-rules
+
+Returns all category rules for the authenticated user, ordered by priority descending.
+
+**Response 200:**
+
+```json
+{
+  "rules": [
+    {
+      "id": "uuid",
+      "pattern": "Migros",
+      "matchType": "contains",
+      "priority": 10,
+      "categoryId": "uuid",
+      "userId": "uuid",
+      "createdAt": "2026-03-29T10:00:00.000Z",
+      "updatedAt": "2026-03-29T10:00:00.000Z",
+      "category": {
+        "id": "uuid",
+        "categoryName": "Groceries"
+      }
+    }
+  ]
+}
+```
+
+**Response 401:** Not authenticated
+
+---
+
+### GET /category-rules/:id
+
+Returns a single category rule by ID.
+
+**Path Parameters:**
+
+| Parameter | Type   | Validation |
+| --------- | ------ | ---------- |
+| `id`      | string | UUID       |
+
+**Response 200:**
+
+```json
+{
+  "rule": {
+    "id": "uuid",
+    "pattern": "Migros",
+    "matchType": "contains",
+    "priority": 10,
+    "categoryId": "uuid",
+    "userId": "uuid",
+    "createdAt": "2026-03-29T10:00:00.000Z",
+    "updatedAt": "2026-03-29T10:00:00.000Z",
+    "category": {
+      "id": "uuid",
+      "categoryName": "Groceries"
+    }
+  }
+}
+```
+
+**Response 400:** Invalid UUID
+**Response 401:** Not authenticated
+**Response 404:** Rule not found or does not belong to the authenticated user
+
+---
+
+### POST /category-rules
+
+Creates a new category rule.
+
+**Request Body:**
+
+| Field        | Type    | Required | Validation                                            |
+| ------------ | ------- | -------- | ----------------------------------------------------- |
+| `pattern`    | string  | yes      | Non-empty string                                      |
+| `matchType`  | string  | yes      | `"exact"` or `"contains"`                             |
+| `categoryId` | string  | yes      | UUID, must be a valid category (user-owned or global) |
+| `priority`   | integer | yes      | >= 0                                                  |
+
+**Response 201:**
+
+```json
+{
+  "rule": {
+    "id": "uuid",
+    "pattern": "Migros",
+    "matchType": "contains",
+    "priority": 10,
+    "categoryId": "uuid",
+    "userId": "uuid",
+    "createdAt": "2026-03-29T10:00:00.000Z",
+    "updatedAt": "2026-03-29T10:00:00.000Z",
+    "category": {
+      "id": "uuid",
+      "categoryName": "Groceries"
+    }
+  }
+}
+```
+
+**Response 400:** Invalid input (missing fields, invalid matchType, non-UUID categoryId, extra properties)
+**Response 401:** Not authenticated
+**Response 404:** Category not found or does not belong to the authenticated user
+**Response 409:** A rule with this pattern and match type already exists
+
+---
+
+### PATCH /category-rules/:id
+
+Updates an existing category rule. Only rules owned by the authenticated user can be updated. At least one field must be provided.
+
+**Path Parameters:**
+
+| Parameter | Type   | Validation |
+| --------- | ------ | ---------- |
+| `id`      | string | UUID       |
+
+**Request Body:**
+
+| Field        | Type    | Required | Validation                                            |
+| ------------ | ------- | -------- | ----------------------------------------------------- |
+| `pattern`    | string  | no       | Non-empty string                                      |
+| `matchType`  | string  | no       | `"exact"` or `"contains"`                             |
+| `categoryId` | string  | no       | UUID, must be a valid category (user-owned or global) |
+| `priority`   | integer | no       | >= 0                                                  |
+
+**Response 200:**
+
+```json
+{
+  "rule": {
+    "id": "uuid",
+    "pattern": "Migros",
+    "matchType": "contains",
+    "priority": 20,
+    "categoryId": "uuid",
+    "userId": "uuid",
+    "createdAt": "2026-03-29T10:00:00.000Z",
+    "updatedAt": "2026-03-29T10:30:00.000Z",
+    "category": {
+      "id": "uuid",
+      "categoryName": "Groceries"
+    }
+  }
+}
+```
+
+**Response 400:** Invalid input (empty body, invalid matchType, non-UUID categoryId, extra properties)
+**Response 401:** Not authenticated
+**Response 404:** Rule or category not found, or does not belong to the authenticated user
+**Response 409:** A rule with this pattern and match type already exists
+
+---
+
+### DELETE /category-rules/:id
+
+Deletes a category rule. Only rules owned by the authenticated user can be deleted.
+
+**Path Parameters:**
+
+| Parameter | Type   | Validation |
+| --------- | ------ | ---------- |
+| `id`      | string | UUID       |
+
+**Response 204:** No content
+
+**Response 401:** Not authenticated
+**Response 404:** Rule not found or does not belong to the authenticated user
+
+---
+
 ## Error Format
 
 All errors are formatted uniformly by the centralized error handler:
