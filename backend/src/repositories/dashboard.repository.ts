@@ -1,8 +1,8 @@
 import { prisma } from "../prisma.js";
 
 export function dateStringToId(dateStr: string): number {
-  const [year, month, day] = dateStr.split("-").map(Number);
-  return year! * 10000 + month! * 100 + day!;
+  const [yearStr, monthStr, dayStr] = dateStr.split("-");
+  return Number(yearStr) * 10000 + Number(monthStr) * 100 + Number(dayStr);
 }
 
 export async function getSummary(userId: string, startDate: string, endDate: string) {

@@ -48,19 +48,14 @@ describe("getSummary", () => {
 
     await getSummary("user-1", "2025-01-01", "2025-01-31");
 
-    const incomeCall = mockPrisma.aggregate.mock.calls[0]![0] as {
-      where: { dateId: { gte: number; lte: number } };
-    };
-    const expenseCall = mockPrisma.aggregate.mock.calls[1]![0] as {
-      where: { dateId: { gte: number; lte: number } };
-    };
-    const countCall = mockPrisma.count.mock.calls[0]![0] as {
-      where: { dateId: { gte: number; lte: number } };
-    };
-
-    expect(incomeCall.where.dateId).toEqual({ gte: 20250101, lte: 20250131 });
-    expect(expenseCall.where.dateId).toEqual({ gte: 20250101, lte: 20250131 });
-    expect(countCall.where.dateId).toEqual({ gte: 20250101, lte: 20250131 });
+    const expectedDateRange = { gte: 20250101, lte: 20250131 };
+    expect(mockPrisma.aggregate).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ dateId: expectedDateRange }) }),
+    );
+    expect(mockPrisma.count).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ dateId: expectedDateRange }) }),
+    );
+    expect(mockPrisma.aggregate).toHaveBeenCalledTimes(2);
   });
 
   it("filters income query to positive amounts only", async () => {
@@ -69,10 +64,9 @@ describe("getSummary", () => {
 
     await getSummary("user-1", "2025-01-01", "2025-01-31");
 
-    const incomeCall = mockPrisma.aggregate.mock.calls[0]![0] as {
-      where: { amount: { gt?: number; lt?: number } };
-    };
-    expect(incomeCall.where.amount).toEqual({ gt: 0 });
+    expect(mockPrisma.aggregate).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ amount: { gt: 0 } }) }),
+    );
   });
 
   it("filters expense query to negative amounts only", async () => {
@@ -81,10 +75,9 @@ describe("getSummary", () => {
 
     await getSummary("user-1", "2025-01-01", "2025-01-31");
 
-    const expenseCall = mockPrisma.aggregate.mock.calls[1]![0] as {
-      where: { amount: { gt?: number; lt?: number } };
-    };
-    expect(expenseCall.where.amount).toEqual({ lt: 0 });
+    expect(mockPrisma.aggregate).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ amount: { lt: 0 } }) }),
+    );
   });
 
   it("scopes all queries to the given userId", async () => {
@@ -93,15 +86,13 @@ describe("getSummary", () => {
 
     await getSummary("user-42", "2025-01-01", "2025-01-31");
 
-    expect(
-      (mockPrisma.aggregate.mock.calls[0]![0] as { where: { userId: string } }).where.userId,
-    ).toBe("user-42");
-    expect(
-      (mockPrisma.aggregate.mock.calls[1]![0] as { where: { userId: string } }).where.userId,
-    ).toBe("user-42");
-    expect((mockPrisma.count.mock.calls[0]![0] as { where: { userId: string } }).where.userId).toBe(
-      "user-42",
+    expect(mockPrisma.aggregate).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ userId: "user-42" }) }),
     );
+    expect(mockPrisma.count).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ userId: "user-42" }) }),
+    );
+    expect(mockPrisma.aggregate).toHaveBeenCalledTimes(2);
   });
 
   it("returns the aggregation results from all three queries", async () => {

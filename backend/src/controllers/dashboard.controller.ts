@@ -1,7 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { requireRole } from "../middleware/rbac.js";
 import * as dashboardService from "../services/dashboard.service.js";
-import { ServiceError } from "../errors.js";
 
 interface DashboardSummaryQuery {
   startDate: string;
@@ -26,10 +25,8 @@ export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
       schema: { querystring: dashboardSummaryQuerySchema },
     },
     async (request, reply) => {
-      const session = request.session.get("user");
-      if (!session) {
-        throw new ServiceError(401, "Unauthorized");
-      }
+      // session is guaranteed non-null: requireRole preHandler rejects unauthenticated requests
+      const session = request.session.get("user")!;
       const { startDate, endDate } = request.query;
       const summary = await dashboardService.getDashboardSummary(session.id, startDate, endDate);
       return reply.send(summary);
