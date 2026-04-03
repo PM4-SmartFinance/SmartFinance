@@ -11,7 +11,7 @@ vi.mock("../repositories/category-rule.repository.js", () => ({
 
 import * as service from "./category-rule.service.js";
 import * as repo from "../repositories/category-rule.repository.js";
-import { ServiceError } from "../errors.js";
+import { DuplicateRuleError, ServiceError } from "../errors.js";
 
 const mockRepo = vi.mocked(repo);
 
@@ -79,6 +79,19 @@ describe("category-rule.service", () => {
 
       expect(mockRepo.create).not.toHaveBeenCalled();
     });
+
+    it("throws 409 when rule is a duplicate", async () => {
+      mockRepo.findCategoryForUser.mockResolvedValue({ id: "cat-1" });
+      mockRepo.create.mockRejectedValue(new DuplicateRuleError());
+
+      await expect(service.createRule("user-1", "cat-1", "Migros", "contains", 10)).rejects.toThrow(
+        ServiceError,
+      );
+
+      await expect(
+        service.createRule("user-1", "cat-1", "Migros", "contains", 10),
+      ).rejects.toMatchObject({ statusCode: 409 });
+    });
   });
 
   describe("updateRule", () => {
@@ -107,14 +120,28 @@ describe("category-rule.service", () => {
         service.updateRule("rule-1", "user-1", { categoryId: "invalid" }),
       ).rejects.toThrow(ServiceError);
     });
+
+    it("throws 404 when rule not found", async () => {
+      mockRepo.update.mockResolvedValue(null);
+
+      await expect(service.updateRule("nonexistent", "user-1", { priority: 5 })).rejects.toThrow(
+        ServiceError,
+      );
+    });
   });
 
   describe("deleteRule", () => {
     it("deletes a rule", async () => {
-      mockRepo.remove.mockResolvedValue(undefined);
+      mockRepo.remove.mockResolvedValue(true);
 
       await expect(service.deleteRule("rule-1", "user-1")).resolves.toBeUndefined();
       expect(mockRepo.remove).toHaveBeenCalledWith("rule-1", "user-1");
+    });
+
+    it("throws 404 when rule not found", async () => {
+      mockRepo.remove.mockResolvedValue(false);
+
+      await expect(service.deleteRule("nonexistent", "user-1")).rejects.toThrow(ServiceError);
     });
   });
 });
