@@ -1,0 +1,119 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { getDashboardSummary } from "./dashboard.service.js";
+import { ServiceError } from "../errors.js";
+import { Prisma } from "@prisma/client";
+
+vi.mock("../repositories/dashboard.repository.js", () => ({
+  getSummary: vi.fn(),
+}));
+
+import * as repo from "../repositories/dashboard.repository.js";
+
+const mockRepo = vi.mocked(repo);
+
+function makeAgg(amount: string | null) {
+  return { _sum: { amount: amount !== null ? new Prisma.Decimal(amount) : null } };
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+describe("getDashboardSummary", () => {
+  it("returns correct totals for a known set of transactions", async () => {
+    mockRepo.getSummary.mockResolvedValue({
+      incomeAgg: makeAgg("1500.00"),
+      expenseAgg: makeAgg("-800.00"),
+      transactionCount: 5,
+    });
+
+    const result = await getDashboardSummary("user-1", "2025-01-01", "2025-01-31");
+
+    expect(result.totalIncome).toBe(1500);
+    expect(result.totalExpenses).toBe(-800);
+    expect(result.netBalance).toBe(700);
+    expect(result.transactionCount).toBe(5);
+  });
+
+  it("returns zeros when there are no transactions in the range", async () => {
+    mockRepo.getSummary.mockResolvedValue({
+      incomeAgg: makeAgg(null),
+      expenseAgg: makeAgg(null),
+      transactionCount: 0,
+    });
+
+    const result = await getDashboardSummary("user-1", "2025-01-01", "2025-01-31");
+
+    expect(result.totalIncome).toBe(0);
+    expect(result.totalExpenses).toBe(0);
+    expect(result.netBalance).toBe(0);
+    expect(result.transactionCount).toBe(0);
+  });
+
+  it("throws 400 when startDate is after endDate", async () => {
+    await expect(getDashboardSummary("user-1", "2025-02-01", "2025-01-01")).rejects.toThrow(
+      new ServiceError(400, "startDate must not be after endDate"),
+    );
+  });
+
+  it("does not call the repository when startDate is after endDate", async () => {
+    await expect(getDashboardSummary("user-1", "2025-12-31", "2025-01-01")).rejects.toThrow(
+      ServiceError,
+    );
+
+    expect(mockRepo.getSummary).not.toHaveBeenCalled();
+  });
+
+  it("handles income-only period correctly", async () => {
+    mockRepo.getSummary.mockResolvedValue({
+      incomeAgg: makeAgg("2000.00"),
+      expenseAgg: makeAgg(null),
+      transactionCount: 3,
+    });
+
+    const result = await getDashboardSummary("user-1", "2025-01-01", "2025-03-31");
+
+    expect(result.totalIncome).toBe(2000);
+    expect(result.totalExpenses).toBe(0);
+    expect(result.netBalance).toBe(2000);
+  });
+
+  it("handles expense-only period correctly", async () => {
+    mockRepo.getSummary.mockResolvedValue({
+      incomeAgg: makeAgg(null),
+      expenseAgg: makeAgg("-350.50"),
+      transactionCount: 2,
+    });
+
+    const result = await getDashboardSummary("user-1", "2025-01-01", "2025-03-31");
+
+    expect(result.totalIncome).toBe(0);
+    expect(result.totalExpenses).toBe(-350.5);
+    expect(result.netBalance).toBe(-350.5);
+  });
+
+  it("accepts a same-day range (startDate equals endDate)", async () => {
+    mockRepo.getSummary.mockResolvedValue({
+      incomeAgg: makeAgg("42.00"),
+      expenseAgg: makeAgg("-10.00"),
+      transactionCount: 2,
+    });
+
+    const result = await getDashboardSummary("user-1", "2025-06-15", "2025-06-15");
+
+    expect(result.netBalance).toBe(32);
+    expect(result.transactionCount).toBe(2);
+  });
+
+  it("passes userId and date range to the repository", async () => {
+    mockRepo.getSummary.mockResolvedValue({
+      incomeAgg: makeAgg("0"),
+      expenseAgg: makeAgg("0"),
+      transactionCount: 0,
+    });
+
+    await getDashboardSummary("user-42", "2025-06-01", "2025-06-30");
+
+    expect(mockRepo.getSummary).toHaveBeenCalledWith("user-42", "2025-06-01", "2025-06-30");
+  });
+});
