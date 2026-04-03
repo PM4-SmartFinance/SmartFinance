@@ -1,8 +1,17 @@
 import { ServiceError } from "../errors.js";
 import * as dashboardRepository from "../repositories/dashboard.repository.js";
 
+function isValidCalendarDate(dateStr: string): boolean {
+  const d = new Date(dateStr + "T00:00:00Z");
+  return !isNaN(d.getTime()) && dateStr === d.toISOString().slice(0, 10);
+}
+
 export async function getDashboardSummary(userId: string, startDate: string, endDate: string) {
-  if (startDate > endDate) {
+  if (!isValidCalendarDate(startDate) || !isValidCalendarDate(endDate)) {
+    throw new ServiceError(400, "startDate and endDate must be valid calendar dates");
+  }
+
+  if (new Date(startDate + "T00:00:00Z").getTime() > new Date(endDate + "T00:00:00Z").getTime()) {
     throw new ServiceError(400, "startDate must not be after endDate");
   }
 
@@ -13,6 +22,8 @@ export async function getDashboardSummary(userId: string, startDate: string, end
   );
 
   const totalIncome = incomeAgg._sum.amount?.toNumber() ?? 0;
+  // totalExpenses is negative (e.g. -800.00) — expenses are stored as negative amounts.
+  // netBalance = totalIncome + totalExpenses (e.g. 1500 + (-800) = 700).
   const totalExpenses = expenseAgg._sum.amount?.toNumber() ?? 0;
 
   return {
