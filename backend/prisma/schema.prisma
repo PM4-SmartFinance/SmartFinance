@@ -34,6 +34,7 @@ model FactTransactions {
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+  @@index([userId, dateId])
   @@index([accountId])
   @@index([merchantId])
   @@index([dateId])
