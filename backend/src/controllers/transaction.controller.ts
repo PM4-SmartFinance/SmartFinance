@@ -19,6 +19,13 @@ interface ListTransactionsQuery {
   maxAmount?: number;
 }
 
+const FORMAT_ENCODING: Record<ImportFormat, string> = {
+  neon: "utf-8",
+  zkb: "utf-8",
+  wise: "utf-8",
+  ubs: "iso-8859-1",
+};
+
 const listTransactionsSchema = {
   querystring: {
     type: "object",
@@ -85,7 +92,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
         }
 
         const buffer = await fileData.toBuffer();
-        const csvText = buffer.toString("utf-8");
+        const csvText = new TextDecoder(FORMAT_ENCODING[format]).decode(buffer);
 
         const result = await importTransactions({
           csvText,
