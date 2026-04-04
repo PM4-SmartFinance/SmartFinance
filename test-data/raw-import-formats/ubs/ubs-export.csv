@@ -1,0 +1,15 @@
+sep=;
+"Kontonummer";"Kartennummer";"Konto-/Karteninhaber";"Einkaufsdatum";"Buchungstext";"Branche";"Betrag";"Originalwährung";"Kurs";"Währung";"Belastung";"Gutschrift";"Buchung"
+"1234 5678 9101";"9999 99XX XXXX 9999";"M. MUSTERMANN";"21.07.2025";"Laden6   Zürich       CHE";"Lebensmittelgeschäft";"1.7";"CHF";"";"CHF";"1.7";"";"23.07.2025"
+"1234 5678 9101";"9999 99XX XXXX 9999";"M. MUSTERMANN";"20.07.2025";"Laden8           Zürich       CHE";"Lebensmittelgeschäft";"3.2";"CHF";"";"CHF";"3.2";"";"23.07.2025"
+"1234 5678 9101";"9999 99XX XXXX 9999";"M. MUSTERMANN";"20.07.2025";"Laden6   Zürich       CHE";"Lebensmittelgeschäft";"4.1";"CHF";"";"CHF";"4.1";"";"23.07.2025"
+"1234 5678 9101";"9999 99XX XXXX 9999";"M. MUSTERMANN";"17.07.2025";"Laden14       Winterthur   CHE";"Lebensmittelgeschäft";"1.7";"CHF";"";"CHF";"1.7";"";"18.07.2025"
+"1234 5678 9101";"";"M. MUSTERMANN";"16.07.2025";"2007 UEBERTRAG VON KONTO";"";100.5;"CHF";"";"CHF";"";"100.5";"17.07.2025"
+"1234 5678 9101";"";"M. MUSTERMANN";"16.07.2025";"2007 UEBERTRAG VON KONTO";"";300.98;"CHF";"";"CHF";"";"300.98";"17.07.2025"
+"1234 5678 9101";"9999 99XX XXXX 9999";"M. MUSTERMANN";"13.07.2025";"Laden15     Zürich       CHE";"Tankstelle";"5.0";"CHF";"";"CHF";"5.0";"";"16.07.2025"
+"1234 5678 9101";"9999 99XX XXXX 9999";"M. MUSTERMANN";"13.07.2025";"Laden3    Zürich       CHE";"Lebensmittelgeschäft";"4.7";"CHF";"";"CHF";"4.7";"";"16.07.2025"
+"1234 5678 9101";"1111 11XX XXXX 1111";"M. MUSTERMANN";"10.07.2025";"PAYPAL   CHE";"Gebrauchsgüter (B2B)";"78.0";"CHF";"";"CHF";"78.0";"";"11.07.2025"
+"1234 5678 9101";"1111 11XX XXXX 1111";"M. MUSTERMANN";"01.07.2025";Laden17           WASHINGTON      DEU;"Digitale Güter";"11.12";"CHF";"";"CHF";"11.12";"";"03.07.2025"
+
+;;;;"Total pro Währung";;;;;;;;Total
+;;;;"Total Kartenbuchungen";;;;;"CHF";"500.99";"122.18";"-462.23"
