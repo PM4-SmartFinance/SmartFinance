@@ -1,6 +1,6 @@
 import { ServiceError } from "../../errors.js";
 import type { ParsedTransaction } from "./types.js";
-import { parseCSVLine } from "./csv.utils.js";
+import { parseCSVLine, stripBOM } from "./csv.utils.js";
 
 // Column indices for the UBS CSV format
 const COL = {
@@ -27,7 +27,9 @@ const EXPECTED_HEADERS = [
 ];
 
 export function parseUBSCSV(csv: string): ParsedTransaction[] {
-  let lines = csv.split(/\r?\n/).filter((l) => l.trim() !== "");
+  let lines = stripBOM(csv)
+    .split(/\r?\n/)
+    .filter((l) => l.trim() !== "");
 
   // UBS CSVs start with a "sep=;" line that declares the delimiter
   let delimiter = ";";
@@ -47,7 +49,7 @@ export function parseUBSCSV(csv: string): ParsedTransaction[] {
     if (header[i] !== EXPECTED_HEADERS[i]) {
       throw new ServiceError(
         422,
-        `Unrecognized CSV format: expected UBS export (header mismatch at column ${i + 1})`,
+        `Unrecognized CSV format: expected UBS export (header mismatch at column ${i + 1}: expected "${EXPECTED_HEADERS[i]}", got "${header[i] ?? "<missing>"}")`,
       );
     }
   }
