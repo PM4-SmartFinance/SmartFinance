@@ -184,6 +184,87 @@ Imports transactions from a CSV file into the specified account. Requires an aut
 
 ---
 
+### GET /transactions/:id
+
+Returns a single transaction with its associated category, account, merchant, and date. Only the owner can access their transactions.
+
+**Path Parameters:**
+
+| Parameter | Type   | Validation |
+| --------- | ------ | ---------- |
+| `id`      | string | UUID       |
+
+**Response 200:**
+
+```json
+{
+  "transaction": {
+    "id": "uuid",
+    "amount": "123.45",
+    "notes": "Grocery run",
+    "manualOverride": false,
+    "createdAt": "2026-03-26T10:00:00.000Z",
+    "updatedAt": "2026-03-26T10:00:00.000Z",
+    "userId": "uuid",
+    "accountId": "uuid",
+    "account": { "name": "Main Account", "iban": "CH..." },
+    "merchantId": "uuid",
+    "merchant": { "name": "Migros" },
+    "dateId": 20260326,
+    "date": { "id": 20260326, "dayOfWeek": "Thursday", "month": 3, "year": 2026 },
+    "categoryId": "uuid",
+    "category": { "id": "uuid", "categoryName": "Groceries" }
+  }
+}
+```
+
+**Response 401:** Not authenticated
+**Response 404:** Transaction not found or does not belong to the authenticated user
+
+---
+
+### PATCH /transactions/:id
+
+Updates a transaction's category and/or notes. Setting `categoryId` automatically sets `manualOverride` to `true`. At least one field must be provided.
+
+**Path Parameters:**
+
+| Parameter | Type   | Validation |
+| --------- | ------ | ---------- |
+| `id`      | string | UUID       |
+
+**Request Body:**
+
+| Field        | Type   | Required | Validation                                            |
+| ------------ | ------ | -------- | ----------------------------------------------------- |
+| `categoryId` | string | no       | UUID; must be a valid category (user-owned or global) |
+| `notes`      | string | no       | Max 10,000 characters                                 |
+
+**Response 200:** Returns the updated transaction (same shape as GET).
+
+**Response 400:** Invalid input (empty body, invalid UUID, notes too long)
+**Response 401:** Not authenticated
+**Response 404:** Transaction or category not found, or does not belong to the authenticated user
+
+---
+
+### DELETE /transactions/:id
+
+Permanently deletes a transaction. Only the owner can delete their transactions.
+
+**Path Parameters:**
+
+| Parameter | Type   | Validation |
+| --------- | ------ | ---------- |
+| `id`      | string | UUID       |
+
+**Response 204:** No content
+
+**Response 401:** Not authenticated
+**Response 404:** Transaction not found or does not belong to the authenticated user
+
+---
+
 ## Budgets
 
 All budget endpoints require an authenticated session with the `USER` role.

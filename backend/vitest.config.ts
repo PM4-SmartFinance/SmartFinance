@@ -8,6 +8,7 @@ export default defineConfig({
     fileParallelism: false,
     globals: true,
     environment: "node",
+    fileParallelism: false,
     include: ["src/**/*.test.ts", "test/**/*.spec.ts"],
     exclude: ["**/*.stress.spec.ts", "**/node_modules/**"],
     globalSetup: ["test/global-setup.ts"],

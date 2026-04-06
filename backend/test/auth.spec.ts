@@ -25,11 +25,9 @@ const EXTRA_CLEANUP = [
 ];
 
 beforeAll(async () => {
-  // Clean up any leftover test users from previous runs
-  const emailsToRemove = [...Object.values(TEST_USERS), ...EXTRA_CLEANUP];
-  await prisma.dimUser.deleteMany({
-    where: { email: { in: emailsToRemove } },
-  });
+  // Delete ALL users to guarantee the first registration gets ADMIN role.
+  // Safe because integration test files run sequentially (fileParallelism: false).
+  await prisma.dimUser.deleteMany();
 
   // Ensure default currency exists for registration
   await prisma.dimCurrency.upsert({
