@@ -40,7 +40,7 @@ describe("CategoryBreakdownChart", () => {
     expect(screen.getByText("Spending by Category")).toBeInTheDocument();
   });
 
-  it("renders the chart container with responsive height", async () => {
+  it("renders the heading while data is loading", async () => {
     renderWithQuery(<CategoryBreakdownChart />);
 
     await waitFor(
@@ -52,11 +52,10 @@ describe("CategoryBreakdownChart", () => {
     );
   });
 
-  it("displays loading state initially", () => {
+  it("shows loading indicator before data arrives", () => {
     renderWithQuery(<CategoryBreakdownChart />);
 
-    // Component should show loading state or attempt to fetch
-    expect(screen.getByText("Spending by Category")).toBeInTheDocument();
+    expect(screen.getByText("Loading chart…")).toBeInTheDocument();
   });
 
   it("displays error state when data fetch fails", async () => {

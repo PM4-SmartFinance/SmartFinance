@@ -22,20 +22,14 @@ const mockCategoryData = [
 ];
 
 // Mock the api module
+const { mockGet } = vi.hoisted(() => {
+  const mockGet = vi.fn();
+  return { mockGet };
+});
+
 vi.mock("../lib/api", () => ({
   api: {
-    get: vi.fn((path) => {
-      if (path.includes("/dashboard/summary")) {
-        return Promise.resolve(mockSummaryData);
-      }
-      if (path.includes("/dashboard/trends")) {
-        return Promise.resolve(mockTrendData);
-      }
-      if (path.includes("/dashboard/categories")) {
-        return Promise.resolve(mockCategoryData);
-      }
-      return Promise.resolve({});
-    }),
+    get: mockGet,
     post: vi.fn(() => Promise.resolve({ ok: true })),
   },
 }));
@@ -49,7 +43,7 @@ vi.mock("../contexts/AuthProvider", () => ({
 
 function renderWithProviders() {
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+    defaultOptions: { queries: { retry: false, staleTime: 0 } },
   });
 
   return render(
@@ -62,6 +56,21 @@ function renderWithProviders() {
 }
 
 describe("DashboardPage", () => {
+  beforeEach(() => {
+    mockGet.mockImplementation((path: string) => {
+      if (path.includes("/dashboard/summary")) {
+        return Promise.resolve(mockSummaryData);
+      }
+      if (path.includes("/dashboard/trends")) {
+        return Promise.resolve(mockTrendData);
+      }
+      if (path.includes("/dashboard/categories")) {
+        return Promise.resolve(mockCategoryData);
+      }
+      return Promise.resolve({});
+    });
+  });
+
   it("renders the page heading", () => {
     renderWithProviders();
     expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
@@ -119,7 +128,12 @@ describe("DashboardPage", () => {
       expect(startInput.value).toBe("2026-01-15");
     });
 
-    // Verify widgets are still present (data persists or refetches)
+    // Verify api.get was called with updated date parameters
+    await waitFor(() => {
+      expect(mockGet).toHaveBeenCalledWith(expect.stringContaining("startDate=2026-01-15"));
+    });
+
+    // Verify widgets are still present
     expect(screen.getByText("Account Balance")).toBeInTheDocument();
     expect(screen.getByText("Monthly Spending Trend")).toBeInTheDocument();
     expect(screen.getByText("Spending by Category")).toBeInTheDocument();
