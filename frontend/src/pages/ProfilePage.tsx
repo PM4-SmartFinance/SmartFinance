@@ -104,8 +104,8 @@ export function ProfilePage() {
     isPending: isChanging,
     error: passwordError,
   } = useMutation({
-    mutationFn: () =>
-      api.post<{ ok: boolean }>("/users/me/change-password", { currentPassword, newPassword }),
+    mutationFn: (data: { currentPassword: string; newPassword: string }) =>
+      api.post<{ ok: boolean }>("/users/me/change-password", data),
     onSuccess: async () => {
       setPasswordSuccess(true);
       // Session was deleted on the server — clear client state and redirect
@@ -120,8 +120,8 @@ export function ProfilePage() {
     setProfileSuccess(false);
     const fd = new FormData(e.currentTarget);
     saveProfile({
-      displayName: (fd.get("displayName") as string) ?? "",
-      email: (fd.get("email") as string) ?? "",
+      displayName: String(fd.get("displayName") ?? ""),
+      email: String(fd.get("email") ?? ""),
     });
   }
 
@@ -133,7 +133,7 @@ export function ProfilePage() {
       setConfirmError(TEXT.passwordCard.mismatchError);
       return;
     }
-    changePassword();
+    changePassword({ currentPassword, newPassword });
   }
 
   const profileErrorMessage =
@@ -261,7 +261,10 @@ export function ProfilePage() {
                     </Alert>
                   )}
                   {profileSuccess && (
-                    <Alert className="border-green-500/50 text-green-700 dark:text-green-400 [&>svg]:text-green-600">
+                    <Alert
+                      role="status"
+                      className="border-green-500/50 text-green-700 dark:text-green-400 [&>svg]:text-green-600"
+                    >
                       <CheckCircle2 className="size-4" />
                       <AlertDescription>{TEXT.profileCard.successMsg}</AlertDescription>
                     </Alert>
@@ -334,7 +337,10 @@ export function ProfilePage() {
                   </Alert>
                 )}
                 {passwordSuccess && (
-                  <Alert className="border-green-500/50 text-green-700 dark:text-green-400 [&>svg]:text-green-600">
+                  <Alert
+                    role="status"
+                    className="border-green-500/50 text-green-700 dark:text-green-400 [&>svg]:text-green-600"
+                  >
                     <CheckCircle2 className="size-4" />
                     <AlertDescription>{TEXT.passwordCard.successMsg}</AlertDescription>
                   </Alert>
