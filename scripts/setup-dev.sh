@@ -19,11 +19,13 @@ fi
 echo "Starting local PostgreSQL container..."
 docker compose -f docker-compose.dev.yml up -d
 
+sleep 3 # Wait for the database to initialize
+
 # 4. Database Initialization
 echo "Running Prisma migrations and seeding..."
 cd backend
-bunx prisma migrate deploy
-bunx prisma db seed
+bunx --bun prisma migrate deploy
+bunx --bun prisma db seed
 cd ..
 
 echo ""

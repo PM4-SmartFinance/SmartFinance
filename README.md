@@ -1,224 +1,133 @@
 # SmartFinance
 
-A self-hosted personal finance management platform for importing, categorizing, and visualizing bank transactions. Academic semester project (PM4) at ZHAW School of Engineering.
+> A self-hosted personal finance management platform for importing, categorizing, and visualizing bank transactions.
+
+Academic semester project (PM4) at ZHAW School of Engineering.
+
+## At a Glance
+
+[![Latest release](https://img.shields.io/github/v/release/PM4-SmartFinance/SmartFinance?label=latest%20release)](https://github.com/PM4-SmartFinance/SmartFinance/releases)
+[![CI on main](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/ci.yml?query=branch%3Amain)
+[![Release / CD](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/cd.yml/badge.svg)](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/cd.yml)
+
+## Project Status
+
+**Current version:** See the latest release badge above.  
+**Production branch:** `main`  
+**Staging branch:** `develop`
+
+| Branch    | CI Status                                                                                                                                                                                                                | CD Status                                                                                                                                                                         |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `main`    | [![CI on main](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/ci.yml?query=branch%3Amain)          | [![Release / CD](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/cd.yml/badge.svg)](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/cd.yml) |
+| `develop` | [![CI on develop](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/ci.yml?query=branch%3Adevelop) | Not applicable; CD is triggered by published releases from `main`                                                                                                                 |
+
+The badges above reflect the latest GitHub Actions results for each branch. CI runs on both `main` and `develop`; CD is release-driven and publishes Docker images when a GitHub Release is published.
+
+## Start Here
+
+Choose the path that matches what you want to do.
+
+| If you want to...                | Do this                             |
+| -------------------------------- | ----------------------------------- |
+| Use the app on your own machine  | Follow the self-hosting steps below |
+| Develop or contribute            | Follow the contributor steps below  |
+| Check the full technical details | Open the wiki links at the bottom   |
+
+> Windows note: self-hosting uses a `.bat` file and does not require WSL2. Development on Windows still assumes WSL2 because the scripts are shell-based.
 
 ## Prerequisites
 
-Before running or developing the application, ensure your system meets the necessary requirements:
+Before running or developing the application, make sure these are installed.
 
-- **Docker & Docker Compose:** Required for running the database and the production stack. Docker v29+ is recommended.
-- **Bun (v1.2+):** Used as the package manager and script runner (Required for development). Note: Windows users should run Bun via WSL2.
-- **Node.js (v22 LTS):** Runtime for backend tooling.
+| Tool                    | Needed for                              | Get it                                                                                                                                        |
+| ----------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Docker & Docker Compose | Running the app locally or self-hosting | [Download Docker Desktop](https://www.docker.com/products/docker-desktop/).                                                                   |
+| Bun (v1.2+)             | Development and local scripts           | [Install Bun](https://bun.sh/docs/installation).                                                                                              |
+| Node.js (v22 LTS)       | Backend tooling                         | [Download Node.js](https://nodejs.org/en/download).                                                                                           |
+
+> Linux users: your distro package manager probably already has this under control, but the links are here anyway for those rare moments when the package manager is feeling dramatic.
 
 ---
 
-## User Installation (Self-Hosting)
+## Quick Start
 
-The deployment strategy relies on a highly automated, single-host Docker Compose environment. This is the fastest way to get SmartFinance running on your own server or local machine.
+### Self-Hosting on Linux or macOS
 
-### Automated Setup
-
-We provide setup scripts that duplicate the `.env.example` file to `.env`, populate the required configuration values, and start the container network.
-
-**For Linux and macOS:**
-
-1. Open your terminal.
-2. Run the user setup script:
+1. Open a terminal.
+2. Run the user setup script.
 
 ```bash
 ./scripts/setup-user.sh
 ```
 
-**For Windows:**
+3. Open the app in your browser at `http://localhost` or at your configured domain.
+
+### Self-Hosting on Windows
 
 1. Open PowerShell or Command Prompt.
-2. Run the user setup batch file:
+2. Run the Windows setup script.
 
-```DOS
+```dos
 scripts\setup-user.bat
 ```
 
-Once the script finishes, access the application by navigating to http://localhost (or your configured domain) in your web browser.
+3. Open the app in your browser at `http://localhost` or at your configured domain.
 
-### Manual Setup
+If you want the full deployment flow, required environment variables, or rollback details, use [Chapter 11: Installation (Deployment)](https://github.com/PM4-SmartFinance/SmartFinance/wiki/11.-Installation-Deployment).
 
-If you prefer to configure the environment variables and start the Docker containers manually, please refer to [Chapter 11.2 of the Wiki](wiki/Chapter-11.md#112-user-installation-self-hosting)
+### Contributing on Linux, macOS, or WSL2
 
----
+1. Open a terminal.
+2. Run the developer setup script.
 
-## Developer Setup (Contributing)
-
-Contributors working on the SmartFinance codebase locally require a different local environment utilizing Bun workspaces and Node.js.
-
-### Automated Setup
-
-The developer script configures the local `.env` files, installs workspace dependencies, and starts the local database container required for development.
-
-**For Linux and macOS:**
-
-1. Open your terminal.
-2. Run the developer setup script:
-
-```Bash
+```bash
 ./scripts/setup-dev.sh
 ```
 
-**For Windows (via WSL2):**
+3. Start the backend and frontend in separate terminals.
 
-1. Open your WSL2 terminal.
-2. Run the developer setup script:
-
-```Bash
-./scripts/setup-dev.sh
-```
-
-After the script completes, you can start the development servers by running following command in separate terminals.
-
-```
+```bash
 bun run --filter @smartfinance/backend dev
 ```
 
-```
+```bash
 bun run --filter @smartfinance/frontend dev
 ```
 
-### Manual Setup
+On Windows, this workflow currently assumes WSL2 because the scripts and tooling are shell-based.
 
-If you need to manually install dependencies, configure the local database, or run database migrations, please read [Chapter 11.5 of the Wiki](wiki/Chapter-11.md#115-developer-onboarding--local-setup).
+For the complete local setup, test database workflow, and troubleshooting guidance, use [Chapter 11: Installation (Deployment)](https://github.com/PM4-SmartFinance/SmartFinance/wiki/11.-Installation-Deployment) and [Chapter 12: Operation and Support](https://github.com/PM4-SmartFinance/SmartFinance/wiki/12.-Operation-and-Support).
 
----
+### Testing
 
-### 4. Test database setup
-
-Integration tests require a dedicated PostgreSQL instance. A separate test database runs on port **5433** to avoid conflicts with the dev database on port 5432.
-
-**Start the test database:**
+Use these scripts from the repository root:
 
 ```bash
-bun run --filter @smartfinance/backend test:db:up
-```
-
-This starts a PostgreSQL 17 container using `docker-compose.test.yml`. Migrations are applied automatically by Vitest's global setup (`backend/test/global-setup.ts`) before tests run — no manual migration step needed.
-
-**Run backend tests:**
-
-```bash
-bun run --filter @smartfinance/backend test
-```
-
-**Stop the test database:**
-
-```bash
-bun run --filter @smartfinance/backend test:db:down
-```
-
-The test database uses `backend/.env.test` for its connection string. This file is checked into the repo since it contains only local development credentials.
-
-> **CI:** GitHub Actions provisions its own PostgreSQL service container automatically — no manual setup needed. See `.github/workflows/ci.yml`.
-
-### Stop / reset the databases
-
-```bash
-docker compose -f docker-compose.dev.yml down      # Stop dev PostgreSQL
-docker compose -f docker-compose.dev.yml down -v    # Stop and delete all dev data
-docker compose -f docker-compose.test.yml down -v   # Stop and delete test data
-```
-
----
-
-## Troubleshooting
-
-If you encounter issues during setup, check these common solutions:
-
-### 1. Port Conflicts (Port already in use)
-
-**Error:** Docker fails to start because port 5432, 3000, 80, or 443 is bound.
-
-**Fix:** You likely have a local Postgres instance or web server running. Stop the conflicting service or modify the ports in your `.env` file to map to different host ports.
-
-### 2. Docker Daemon Issues
-
-**Error:** Cannot connect to the Docker daemon. Docker commands fail immediately.
-
-**Fix:** Ensure the Docker application is running. On Linux, ensure your user is in the docker group or run the command with `sudo`.
-
-### 3. Database Connection Refused
-
-**Error:** The backend crashes citing a Prisma connection error during local development.
-
-**Fix:** Ensure the dev database container is running (`docker ps`). Verify that the `DATABASE_URL` in `backend/.env` exactly matches the credentials in `docker-compose.dev.yml`.
-
----
-
-## Project Architecture & Scripts
-
-### Workspaces
-
-This is a Bun workspaces monorepo.
-
-- **frontend/**: React 19 + TypeScript + Vite application with react-router v7.
-- **backend/**: Node.js REST API using Fastify and Prisma.
-
----
-
-## Testing & Responsive Design
-
-### Responsive Layout Testing
-
-SmartFinance uses **Tailwind CSS** with mobile-first responsive design. To verify the dashboard and UI components adapt correctly across devices:
-
-#### Chrome/Firefox DevTools Responsive Mode
-
-1. **Open the dashboard:**
-
-   ```bash
-   bun run --filter @smartfinance/frontend dev
-   # Navigate to http://localhost:5173/dashboard
-   ```
-
-2. **Enable responsive mode:**
-   - Press **F12** to open DevTools
-   - Click the **device icon** (mobile/tablet icon) in the DevTools toolbar (top-left corner)
-   - This toggles responsive design mode and shows a device selector
-
-3. **Test these viewport sizes:**
-   - **360px** — Mobile (iPhone SE)
-   - **480px** — Android phone
-   - **768px** — iPad
-   - **1024px** — iPad Landscape / Tablet
-   - **1366px** — HD Desktop
-   - **1920px** — Full HD Monitor
-   - **2560px** — 4K Monitor
-
-#### Tailwind Responsive Breakpoints
-
-| Breakpoint | Width   | Layout        |
-| ---------- | ------- | ------------- |
-| **None**   | <640px  | 1-column grid |
-| **sm**     | ≥640px  | 2-column grid |
-| **lg**     | ≥1024px | 3-column grid |
-
-**Example:** Dashboard uses `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3` to adapt the widget grid across screen sizes. Container width is constrained to `max-w-7xl` (1280px) centered for optimal readability.
-
-#### Running Tests
-
-```bash
-# Frontend unit and integration tests
-bun run test:frontend
-
-# Backend tests with dedicated test database
-bun run test:backend
-
-# All tests (entire suite)
 bun run test
-
-# Test coverage report
 bun run test:coverage
 ```
 
+Detailed testing conventions are documented in [TEST.md](TEST.md) and the wiki chapters that cover implementation and operations.
+
+### Need a quick sanity check?
+
+After setup, the safest first check is:
+
+1. Open the app in the browser.
+2. Log in or create the first account.
+3. Confirm the dashboard loads without errors.
+4. If anything fails, use the troubleshooting notes in [Chapter 11](https://github.com/PM4-SmartFinance/SmartFinance/wiki/11.-Installation-Deployment) and [Chapter 12](https://github.com/PM4-SmartFinance/SmartFinance/wiki/12.-Operation-and-Support).
+
+---
+
 ## Documentation & Architecture
 
-For detailed technical guidelines, architecture diagrams, Git workflows, and testing strategies, please refer to the official documentation:
+The README stays intentionally short. The wiki is the source of truth for architecture, data model, deployment, and operations.
 
-- **[Software Guidebook (Wiki)](wiki/)**: Contains the complete C4 architecture, domain models, and deployment strategies.
-- **[CONTRIBUTING.md](CONTRIBUTING.md)**: Contains branch protection rules, commit standards, and pull request workflows.
+- [Wiki home](https://github.com/PM4-SmartFinance/SmartFinance/wiki)
+- [Architecture](https://github.com/PM4-SmartFinance/SmartFinance/wiki/06.-Architecture)
+- [Data model](https://github.com/PM4-SmartFinance/SmartFinance/wiki/09.-Data)
+- [Deployment](https://github.com/PM4-SmartFinance/SmartFinance/wiki/11.-Installation-Deployment)
+- [Operations](https://github.com/PM4-SmartFinance/SmartFinance/wiki/12.-Operation-and-Support)
+- [Decision log](https://github.com/PM4-SmartFinance/SmartFinance/wiki/13.-Decision-Log)
+- [Contributing guide](CONTRIBUTING.md)

@@ -1,37 +1,41 @@
 # Issue Workflow
 
-Work on a Jira issue from analysis through implementation. Track progress in a local issue file.
+Work on a Jira issue from analysis through implementation.
 
 ## Inputs
 
 - Jira ticket ID (e.g. `KAN-30`) — passed as argument or extracted from branch name
 
+## How to launch agents
+
+Agent definitions live in `.claude/agents/*.md`. To launch one: read the agent file, then use the Agent tool with the file's content as the prompt. Always use `subagent_type: "general-purpose"`. Launch multiple agents in a single message for parallelism.
+
 ## Steps
 
-1. **Create tracking file** — create `.claude/issues/<branch-name>.md` with ticket ID, title, and status sections (Analysis, Plan, Progress, Open Questions).
+1. **Create tracking file** — `.claude/issues/<branch-name>.md` with ticket ID, title, sections: Analysis, Plan, Progress, Open Questions.
 
-2. **Fetch Jira ticket** — use Atlassian MCP tools (cloud ID: `smartfinancepm4.atlassian.net`) to get the issue summary, description, acceptance criteria, and definition of done. Write findings into the tracking file.
+2. **Fetch Jira ticket** — Atlassian MCP (cloud: `smartfinancepm4.atlassian.net`) for summary, description, acceptance criteria, DoD. Write into tracking file.
 
-3. **Analyse the codebase** — identify which files, layers, and modules are affected. Map out the required changes. Update the tracking file with the plan.
+3. **Analyse codebase** — read `.claude/agents/code-explorer.md`, then launch general-purpose agents with that prompt to identify affected files, layers, and modules. Map required changes. Update tracking file with plan.
 
-4. **Create feature branch** (if not already on one) — follow the naming convention: `<type>/<JIRA-ID>-<description>`.
+4. **Create feature branch** (if not on one) — naming: `<type>/<JIRA-ID>-<description>`.
 
-5. **Write tests first** — for each acceptance criterion, write failing tests that prove the requirement is met once the code is implemented. Use Vitest. Place tests next to the source file (`*.test.ts`).
+5. **Write tests first** — for each acceptance criterion, write failing Vitest tests. Place co-located (`*.test.ts`).
 
-6. **Implement** — work through the plan step by step. Follow the layered architecture (controller → service → repository). Keep controllers thin, services framework-agnostic, use repository pattern for DB access.
+6. **Implement** — work through plan. Follow layered architecture (controller → service → repository). Keep controllers thin, services framework-agnostic.
 
-7. **Verify** — run `bun run lint`, `bun run test`, and build both workspaces. Fix any issues.
+7. **Verify** — `bun run lint`, `bun run test`, build both workspaces. Fix issues.
 
-8. **Update tracking file** — mark completed items, note any deviations from the plan.
+8. **Update tracking file** — mark completed items, note deviations.
 
-9. **Commit** — use Conventional Commits with Jira ID: `<type>(<scope>): [<JIRA-ID>] <subject>`. Stage only relevant files.
+9. **Commit** — Conventional Commits with Jira ID: `<type>(<scope>): [<JIRA-ID>] <subject>`. Stage only relevant files.
 
-10. **Update Jira** — transition the ticket status if appropriate (e.g. To Do → In Progress). Add a comment summarizing what was done.
+10. **Update Jira** — transition ticket status if appropriate. Add comment summarizing work.
 
 ## Notes
 
-- The Jira cloud ID is `smartfinancepm4.atlassian.net`.
-- Never commit to `main` directly — always use feature branches.
-- All write operations must use DB transactions.
-- Run the full lint + test suite before considering the task done.
-- The `.claude/issues/` directory is gitignored — tracking files are local only.
+- Jira cloud ID: `smartfinancepm4.atlassian.net`.
+- Never commit to `main` or `develop` directly.
+- All writes use DB transactions.
+- Run lint + test before considering done.
+- `.claude/issues/` is gitignored.
