@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client.js";
 import { prisma } from "../prisma.js";
 import { ServiceError } from "../errors.js";
 
@@ -50,7 +51,7 @@ export async function create(data: {
     });
     return { ...budget, currentSpending: new Prisma.Decimal(0) };
   } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    if (err instanceof PrismaClientKnownRequestError) {
       if (err.code === "P2002") {
         throw new ServiceError(409, "Budget already exists for this category and month");
       }
