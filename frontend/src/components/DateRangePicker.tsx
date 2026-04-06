@@ -16,14 +16,14 @@ export function DateRangePicker() {
   };
 
   const handleReset = () => {
-    const endDate = new Date();
+    const today = new Date();
     const defaultStart = new Date();
-    defaultStart.setDate(endDate.getDate() - 30);
+    defaultStart.setDate(today.getDate() - 30);
 
-    const startStr = defaultStart.toISOString().split("T")[0];
-    const endStr = endDate.toISOString().split("T")[0];
+    const formatLocal = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-    setDateRange(startStr as string, endStr as string);
+    setDateRange(formatLocal(defaultStart), formatLocal(today));
   };
 
   return (

@@ -1,5 +1,6 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useDashboardCategories } from "../lib/queries/dashboard";
+import { formatCurrency } from "../lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
 export function CategoryBreakdownChart() {
@@ -70,13 +71,7 @@ export function CategoryBreakdownChart() {
                   borderRadius: "4px",
                 }}
                 labelStyle={{ color: "hsl(var(--foreground))" }}
-                formatter={(value) => [
-                  new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  }).format(value as number),
-                  "Spent",
-                ]}
+                formatter={(value) => [formatCurrency(Number(value)), "Spent"]}
               />
               <Bar dataKey="amount" fill="hsl(var(--primary))" />
             </BarChart>

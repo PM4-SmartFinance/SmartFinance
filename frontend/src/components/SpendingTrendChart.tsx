@@ -8,6 +8,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { useDashboardTrends } from "../lib/queries/dashboard";
+import { formatCurrency } from "../lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
 export function SpendingTrendChart() {
@@ -72,13 +73,7 @@ export function SpendingTrendChart() {
                   borderRadius: "4px",
                 }}
                 labelStyle={{ color: "hsl(var(--foreground))" }}
-                formatter={(value) => [
-                  new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  }).format(value as number),
-                  "Spending",
-                ]}
+                formatter={(value) => [formatCurrency(Number(value)), "Spending"]}
               />
               <Line
                 type="monotone"

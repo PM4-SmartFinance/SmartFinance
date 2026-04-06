@@ -1,8 +1,8 @@
 import { create } from "zustand";
 
 export interface DateRange {
-  startDate: string; // ISO 8601 format
-  endDate: string; // ISO 8601 format
+  startDate: string; // YYYY-MM-DD date string
+  endDate: string; // YYYY-MM-DD date string
 }
 
 export interface AppState extends DateRange {
@@ -33,5 +33,8 @@ const defaultRange = getDefaultDateRange();
 export const useAppStore = create<AppState>((set) => ({
   startDate: defaultRange.startDate,
   endDate: defaultRange.endDate,
-  setDateRange: (startDate: string, endDate: string) => set({ startDate, endDate }),
+  setDateRange: (startDate: string, endDate: string) => {
+    if (startDate > endDate) return;
+    set({ startDate, endDate });
+  },
 }));

@@ -1,4 +1,5 @@
 import { useDashboardSummary } from "../lib/queries/dashboard";
+import { formatCurrency } from "../lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
 function MetricCard({
@@ -39,13 +40,6 @@ export function SummaryMetricsWidget() {
       </div>
     );
   }
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(value);
-  };
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

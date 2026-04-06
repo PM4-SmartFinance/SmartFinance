@@ -1,6 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { useAppStore, type AppState } from "@/store/appStore";
+import { useAppStore } from "@/store/appStore";
+
+// Dashboard data changes infrequently — use a longer stale time than the global
+// default (30s) to reduce unnecessary refetches when switching between pages.
+const DASHBOARD_STALE_TIME = 5 * 60 * 1000; // 5 minutes
 
 // Type definitions for API responses
 export interface DashboardSummary {
@@ -21,8 +25,8 @@ export interface CategoryBreakdown {
 
 // Dashboard Summary Hook
 export function useDashboardSummary() {
-  const startDate = useAppStore((s: AppState) => s.startDate);
-  const endDate = useAppStore((s: AppState) => s.endDate);
+  const startDate = useAppStore((s) => s.startDate);
+  const endDate = useAppStore((s) => s.endDate);
 
   return useQuery({
     queryKey: ["dashboard", "summary", { startDate, endDate }] as const,
@@ -30,14 +34,14 @@ export function useDashboardSummary() {
       const params = new URLSearchParams({ startDate, endDate });
       return api.get<DashboardSummary>(`/dashboard/summary?${params}`);
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: DASHBOARD_STALE_TIME,
   });
 }
 
 // Monthly Trends Hook
 export function useDashboardTrends() {
-  const startDate = useAppStore((s: AppState) => s.startDate);
-  const endDate = useAppStore((s: AppState) => s.endDate);
+  const startDate = useAppStore((s) => s.startDate);
+  const endDate = useAppStore((s) => s.endDate);
 
   return useQuery({
     queryKey: ["dashboard", "trends", { startDate, endDate }] as const,
@@ -45,14 +49,14 @@ export function useDashboardTrends() {
       const params = new URLSearchParams({ startDate, endDate });
       return api.get<TrendDataPoint[]>(`/dashboard/trends?${params}`);
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: DASHBOARD_STALE_TIME,
   });
 }
 
 // Category Breakdown Hook
 export function useDashboardCategories() {
-  const startDate = useAppStore((s: AppState) => s.startDate);
-  const endDate = useAppStore((s: AppState) => s.endDate);
+  const startDate = useAppStore((s) => s.startDate);
+  const endDate = useAppStore((s) => s.endDate);
 
   return useQuery({
     queryKey: ["dashboard", "categories", { startDate, endDate }] as const,
@@ -60,6 +64,6 @@ export function useDashboardCategories() {
       const params = new URLSearchParams({ startDate, endDate });
       return api.get<CategoryBreakdown[]>(`/dashboard/categories?${params}`);
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: DASHBOARD_STALE_TIME,
   });
 }
