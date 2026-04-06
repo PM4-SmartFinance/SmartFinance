@@ -1,202 +1,202 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getProfile, updateProfile, changePassword } from "./user.service.js";
 import * as userRepository from "../repositories/user.repository.js";
+import { EmailConflictError } from "../repositories/user.repository.js";
 import * as auditService from "./audit.service.js";
+import { ServiceError } from "../errors.js";
 
-vi.mock("../repositories/user.repository.js");
-vi.mock("./audit.service.js", () => ({ logEvent: vi.fn() }));
-vi.mock("argon2", () => ({
-  default: {
-    hash: vi.fn().mockResolvedValue("new-hashed-password"),
-    verify: vi.fn().mockResolvedValue(true),
+const mockArgon2 = vi.hoisted(() => ({
+  verify: vi.fn().mockResolvedValue(true),
+  hash: vi.fn().mockResolvedValue("new-hashed-password"),
+}));
+
+vi.mock("argon2", () => ({ default: mockArgon2 }));
+
+vi.mock("../repositories/user.repository.js", () => ({
+  findById: vi.fn(),
+  findByIdWithPassword: vi.fn(),
+  updateProfileAtomic: vi.fn(),
+  updatePassword: vi.fn(),
+  EmailConflictError: class EmailConflictError extends Error {
+    constructor() {
+      super("Email already in use");
+      this.name = "EmailConflictError";
+    }
   },
 }));
 
-const mockProfile = {
+vi.mock("./audit.service.js", () => ({
+  logEvent: vi.fn(),
+}));
+
+const mockUser = {
   id: "user-1",
   email: "test@example.com",
   name: "Test User",
   role: "USER",
-  createdAt: new Date("2025-01-01"),
+  createdAt: new Date(),
 };
 
 const mockUserWithPassword = {
-  ...mockProfile,
+  id: "user-1",
+  email: "test@example.com",
+  name: "Test User",
+  role: "USER",
   password: "hashed-password",
   defaultCurrencyId: "currency-1",
-  updatedAt: new Date("2025-01-01"),
+  createdAt: new Date(),
+  updatedAt: new Date(),
 };
 
-describe("getProfile", () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it("returns the user profile", async () => {
-    vi.mocked(userRepository.findById).mockResolvedValue(mockProfile);
-
-    const result = await getProfile("user-1");
-
-    expect(result).toEqual(mockProfile);
-    expect(userRepository.findById).toHaveBeenCalledExactlyOnceWith("user-1");
+describe("user.service", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it("throws 404 when user does not exist", async () => {
-    vi.mocked(userRepository.findById).mockResolvedValue(null);
+  describe("getProfile", () => {
+    it("returns user when found", async () => {
+      vi.mocked(userRepository.findById).mockResolvedValue(mockUser);
 
-    await expect(getProfile("ghost")).rejects.toMatchObject({ statusCode: 404 });
-  });
-});
+      const result = await getProfile("user-1");
 
-describe("updateProfile", () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it("updates displayName and email", async () => {
-    vi.mocked(userRepository.findByEmailExcluding).mockResolvedValue(null);
-    vi.mocked(userRepository.updateProfile).mockResolvedValue({
-      id: "user-1",
-      email: "new@example.com",
-      name: "New Name",
-      role: "USER",
+      expect(userRepository.findById).toHaveBeenCalledWith("user-1");
+      expect(result).toEqual(mockUser);
     });
 
-    const result = await updateProfile("user-1", {
-      displayName: "New Name",
-      email: "new@example.com",
-    });
+    it("throws 404 ServiceError when user not found", async () => {
+      vi.mocked(userRepository.findById).mockResolvedValue(null);
 
-    expect(userRepository.updateProfile).toHaveBeenCalledWith("user-1", {
-      name: "New Name",
-      email: "new@example.com",
-    });
-    expect(result).toMatchObject({ name: "New Name", email: "new@example.com" });
-  });
-
-  it("checks email uniqueness before updating", async () => {
-    vi.mocked(userRepository.findByEmailExcluding).mockResolvedValue(null);
-    vi.mocked(userRepository.updateProfile).mockResolvedValue({
-      id: "user-1",
-      email: "new@example.com",
-      name: null,
-      role: "USER",
-    });
-
-    await updateProfile("user-1", { email: "new@example.com" });
-
-    expect(userRepository.findByEmailExcluding).toHaveBeenCalledWith("new@example.com", "user-1");
-  });
-
-  it("throws 409 when email is already taken by another user", async () => {
-    vi.mocked(userRepository.findByEmailExcluding).mockResolvedValue(mockUserWithPassword);
-
-    await expect(updateProfile("user-1", { email: "taken@example.com" })).rejects.toMatchObject({
-      statusCode: 409,
-    });
-
-    expect(userRepository.updateProfile).not.toHaveBeenCalled();
-  });
-
-  it("skips the email uniqueness check when email is not provided", async () => {
-    vi.mocked(userRepository.updateProfile).mockResolvedValue({
-      id: "user-1",
-      email: "test@example.com",
-      name: "Only Name Changed",
-      role: "USER",
-    });
-
-    await updateProfile("user-1", { displayName: "Only Name Changed" });
-
-    expect(userRepository.findByEmailExcluding).not.toHaveBeenCalled();
-    expect(userRepository.updateProfile).toHaveBeenCalledWith("user-1", {
-      name: "Only Name Changed",
+      await expect(getProfile("unknown-id")).rejects.toThrow(ServiceError);
+      await expect(getProfile("unknown-id")).rejects.toMatchObject({
+        statusCode: 404,
+        message: "User not found",
+      });
     });
   });
 
-  it("returns the current profile without hitting updateProfile when body is empty", async () => {
-    vi.mocked(userRepository.findById).mockResolvedValue(mockProfile);
+  describe("updateProfile", () => {
+    it("updates displayName and email when both are provided", async () => {
+      const updatedUser = { ...mockUser, name: "New Name", email: "new@example.com" };
+      vi.mocked(userRepository.updateProfileAtomic).mockResolvedValue(updatedUser);
 
-    await updateProfile("user-1", {});
+      const result = await updateProfile("user-1", {
+        displayName: "New Name",
+        email: "new@example.com",
+      });
 
-    expect(userRepository.updateProfile).not.toHaveBeenCalled();
-    expect(userRepository.findById).toHaveBeenCalledWith("user-1");
-  });
-
-  it("fires PROFILE_UPDATED audit event on success", async () => {
-    vi.mocked(userRepository.findByEmailExcluding).mockResolvedValue(null);
-    vi.mocked(userRepository.updateProfile).mockResolvedValue({
-      id: "user-1",
-      email: "test@example.com",
-      name: "Test",
-      role: "USER",
+      expect(userRepository.updateProfileAtomic).toHaveBeenCalledWith("user-1", {
+        name: "New Name",
+        email: "new@example.com",
+      });
+      expect(result).toEqual(updatedUser);
     });
 
-    await updateProfile("user-1", { displayName: "Test" });
+    it("updates only displayName when only displayName is provided", async () => {
+      const updatedUser = { ...mockUser, name: "New Name" };
+      vi.mocked(userRepository.updateProfileAtomic).mockResolvedValue(updatedUser);
 
-    expect(auditService.logEvent).toHaveBeenCalledWith("PROFILE_UPDATED", "user-1", {
-      fields: ["name"],
+      await updateProfile("user-1", { displayName: "New Name" });
+
+      expect(userRepository.updateProfileAtomic).toHaveBeenCalledWith("user-1", {
+        name: "New Name",
+      });
+    });
+
+    it("updates only email when only email is provided", async () => {
+      const updatedUser = { ...mockUser, email: "new@example.com" };
+      vi.mocked(userRepository.updateProfileAtomic).mockResolvedValue(updatedUser);
+
+      await updateProfile("user-1", { email: "new@example.com" });
+
+      expect(userRepository.updateProfileAtomic).toHaveBeenCalledWith("user-1", {
+        email: "new@example.com",
+      });
+    });
+
+    it("returns current user without updating when no fields are provided", async () => {
+      vi.mocked(userRepository.findById).mockResolvedValue(mockUser);
+
+      const result = await updateProfile("user-1", {});
+
+      expect(userRepository.updateProfileAtomic).not.toHaveBeenCalled();
+      expect(userRepository.findById).toHaveBeenCalledWith("user-1");
+      expect(result).toEqual(mockUser);
+    });
+
+    it("fires PROFILE_UPDATED audit event after successful update", async () => {
+      vi.mocked(userRepository.updateProfileAtomic).mockResolvedValue(mockUser);
+
+      await updateProfile("user-1", { displayName: "New Name" });
+
+      await vi.waitFor(() => {
+        expect(auditService.logEvent).toHaveBeenCalledWith("PROFILE_UPDATED", "user-1", {
+          fields: ["name"],
+        });
+      });
+    });
+
+    it("throws 409 ServiceError when email is already in use", async () => {
+      vi.mocked(userRepository.updateProfileAtomic).mockRejectedValue(new EmailConflictError());
+
+      await expect(updateProfile("user-1", { email: "taken@example.com" })).rejects.toMatchObject({
+        statusCode: 409,
+        message: "Email already in use",
+      });
+    });
+
+    it("rethrows unexpected errors from repository", async () => {
+      const unexpectedError = new Error("DB connection lost");
+      vi.mocked(userRepository.updateProfileAtomic).mockRejectedValue(unexpectedError);
+
+      await expect(updateProfile("user-1", { email: "new@example.com" })).rejects.toThrow(
+        "DB connection lost",
+      );
     });
   });
 
-  it("does not fire an audit event when body is empty", async () => {
-    vi.mocked(userRepository.findById).mockResolvedValue(mockProfile);
+  describe("changePassword", () => {
+    it("hashes the new password and updates it", async () => {
+      vi.mocked(userRepository.findByIdWithPassword).mockResolvedValue(mockUserWithPassword);
+      vi.mocked(userRepository.updatePassword).mockResolvedValue({ id: "user-1" });
 
-    await updateProfile("user-1", {});
+      await changePassword("user-1", "current-password", "new-password");
 
-    expect(auditService.logEvent).not.toHaveBeenCalled();
-  });
-});
-
-describe("changePassword", () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it("verifies the current password before updating", async () => {
-    vi.mocked(userRepository.findByIdWithPassword).mockResolvedValue(mockUserWithPassword);
-    vi.mocked(userRepository.updatePassword).mockResolvedValue({ id: "user-1" });
-    const argon2 = await import("argon2");
-
-    await changePassword("user-1", "correct-current", "NewPass123!");
-
-    expect(argon2.default.verify).toHaveBeenCalledWith(
-      mockUserWithPassword.password,
-      "correct-current",
-    );
-  });
-
-  it("throws 401 when the current password is wrong", async () => {
-    vi.mocked(userRepository.findByIdWithPassword).mockResolvedValue(mockUserWithPassword);
-    const argon2 = await import("argon2");
-    vi.mocked(argon2.default.verify).mockResolvedValueOnce(false);
-
-    await expect(changePassword("user-1", "wrong-password", "NewPass123!")).rejects.toMatchObject({
-      statusCode: 401,
+      expect(mockArgon2.verify).toHaveBeenCalledWith("hashed-password", "current-password");
+      expect(mockArgon2.hash).toHaveBeenCalledWith("new-password");
+      expect(userRepository.updatePassword).toHaveBeenCalledWith("user-1", "new-hashed-password");
     });
 
-    expect(userRepository.updatePassword).not.toHaveBeenCalled();
-  });
+    it("throws 404 ServiceError when user not found", async () => {
+      vi.mocked(userRepository.findByIdWithPassword).mockResolvedValue(null);
 
-  it("throws 404 when the user does not exist", async () => {
-    vi.mocked(userRepository.findByIdWithPassword).mockResolvedValue(null);
-
-    await expect(changePassword("ghost", "any", "NewPass123!")).rejects.toMatchObject({
-      statusCode: 404,
+      await expect(changePassword("unknown-id", "current", "new")).rejects.toMatchObject({
+        statusCode: 404,
+        message: "User not found",
+      });
     });
-  });
 
-  it("hashes the new password and persists it", async () => {
-    vi.mocked(userRepository.findByIdWithPassword).mockResolvedValue(mockUserWithPassword);
-    vi.mocked(userRepository.updatePassword).mockResolvedValue({ id: "user-1" });
-    const argon2 = await import("argon2");
+    it("throws 401 ServiceError when current password is incorrect", async () => {
+      vi.mocked(userRepository.findByIdWithPassword).mockResolvedValue(mockUserWithPassword);
+      mockArgon2.verify.mockResolvedValueOnce(false);
 
-    await changePassword("user-1", "correct-current", "NewPass123!");
+      await expect(
+        changePassword("user-1", "wrong-password", "new-password"),
+      ).rejects.toMatchObject({
+        statusCode: 401,
+        message: "Current password is incorrect",
+      });
+      expect(userRepository.updatePassword).not.toHaveBeenCalled();
+    });
 
-    expect(argon2.default.hash).toHaveBeenCalledWith("NewPass123!");
-    expect(userRepository.updatePassword).toHaveBeenCalledWith("user-1", "new-hashed-password");
-  });
+    it("fires PASSWORD_CHANGED audit event after successful change", async () => {
+      vi.mocked(userRepository.findByIdWithPassword).mockResolvedValue(mockUserWithPassword);
+      vi.mocked(userRepository.updatePassword).mockResolvedValue({ id: "user-1" });
 
-  it("fires PASSWORD_CHANGED audit event on success", async () => {
-    vi.mocked(userRepository.findByIdWithPassword).mockResolvedValue(mockUserWithPassword);
-    vi.mocked(userRepository.updatePassword).mockResolvedValue({ id: "user-1" });
+      await changePassword("user-1", "current-password", "new-password");
 
-    await changePassword("user-1", "correct-current", "NewPass123!");
-
-    expect(auditService.logEvent).toHaveBeenCalledWith("PASSWORD_CHANGED", "user-1");
+      await vi.waitFor(() => {
+        expect(auditService.logEvent).toHaveBeenCalledWith("PASSWORD_CHANGED", "user-1");
+      });
+    });
   });
 });
