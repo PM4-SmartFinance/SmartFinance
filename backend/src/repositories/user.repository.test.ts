@@ -70,12 +70,15 @@ describe("findById", () => {
 // ── findByIdWithPassword ───────────────────────────────────────────────────────
 
 describe("findByIdWithPassword", () => {
-  it("queries by id without field restriction", async () => {
-    mockFindUnique.mockResolvedValue({ ...profileRow, password: "hash" } as never);
+  it("queries by id with select limited to id and password", async () => {
+    mockFindUnique.mockResolvedValue({ id: "user-1", password: "hash" } as never);
 
     await findByIdWithPassword("user-1");
 
-    expect(mockFindUnique).toHaveBeenCalledWith({ where: { id: "user-1" } });
+    expect(mockFindUnique).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      select: { id: true, password: true },
+    });
   });
 });
 

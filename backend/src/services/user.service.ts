@@ -30,7 +30,9 @@ export async function updateProfile(
     throw err;
   }
 
-  void auditService.logEvent("PROFILE_UPDATED", userId, { fields: Object.keys(updateData) });
+  void auditService
+    .logEvent("PROFILE_UPDATED", userId, { fields: Object.keys(updateData) })
+    .catch(() => {});
 
   return updated;
 }
@@ -45,5 +47,5 @@ export async function changePassword(userId: string, currentPassword: string, ne
   const hashed = await argon2.hash(newPassword);
   await userRepository.updatePassword(userId, hashed);
 
-  void auditService.logEvent("PASSWORD_CHANGED", userId);
+  void auditService.logEvent("PASSWORD_CHANGED", userId).catch(() => {});
 }

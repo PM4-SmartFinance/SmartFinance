@@ -39,13 +39,7 @@ const mockUser = {
 
 const mockUserWithPassword = {
   id: "user-1",
-  email: "test@example.com",
-  name: "Test User",
-  role: "USER",
   password: "hashed-password",
-  defaultCurrencyId: "currency-1",
-  createdAt: new Date(),
-  updatedAt: new Date(),
 };
 
 describe("user.service", () => {

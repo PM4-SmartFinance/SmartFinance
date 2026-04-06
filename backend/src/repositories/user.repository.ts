@@ -40,7 +40,7 @@ export async function findById(id: string) {
 }
 
 export async function findByIdWithPassword(id: string) {
-  return prisma.dimUser.findUnique({ where: { id } });
+  return prisma.dimUser.findUnique({ where: { id }, select: { id: true, password: true } });
 }
 
 export async function findByEmailExcluding(email: string, excludeId: string) {
