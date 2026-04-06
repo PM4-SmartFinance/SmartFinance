@@ -116,7 +116,7 @@ describe("DashboardPage", () => {
 
     // Wait for initial data to load
     await waitFor(() => {
-      expect(screen.getByText("$15,250.75")).toBeInTheDocument();
+      expect(screen.getByText("CHF 15'250.75")).toBeInTheDocument();
     });
 
     // Change the start date

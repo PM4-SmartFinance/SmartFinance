@@ -136,7 +136,7 @@ describe("Dashboard Date Filter Integration", () => {
     // Wait for data to load and display
     await waitFor(
       () => {
-        expect(screen.getByText("$15,250.75")).toBeInTheDocument();
+        expect(screen.getByText("CHF 15'250.75")).toBeInTheDocument();
       },
       { timeout: 3000 },
     );
@@ -151,9 +151,9 @@ describe("Dashboard Date Filter Integration", () => {
 
     await waitFor(
       () => {
-        expect(screen.getByText("$15,250.75")).toBeInTheDocument();
-        expect(screen.getByText("$2,840.50")).toBeInTheDocument();
-        expect(screen.getByText("$6,500.00")).toBeInTheDocument();
+        expect(screen.getByText("CHF 15'250.75")).toBeInTheDocument();
+        expect(screen.getByText("CHF 2'840.50")).toBeInTheDocument();
+        expect(screen.getByText("CHF 6'500.00")).toBeInTheDocument();
       },
       { timeout: 3000 },
     );

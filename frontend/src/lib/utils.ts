@@ -5,9 +5,10 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const currencyFormatter = new Intl.NumberFormat("en-US", {
+// TODO: replace hardcoded default with user's currency from DimCurrency
+const currencyFormatter = new Intl.NumberFormat("de-CH", {
   style: "currency",
-  currency: "USD",
+  currency: "CHF",
 });
 
 export function formatCurrency(value: number): string {
