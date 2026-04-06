@@ -1,5 +1,4 @@
 import type { FastifyInstance } from "fastify";
-import { ServiceError } from "../errors.js";
 import { requireRole } from "../middleware/rbac.js";
 import * as transactionsService from "../services/transactions.service.js";
 
@@ -24,8 +23,9 @@ const patchTransactionBodySchema = {
   type: "object",
   properties: {
     categoryId: { type: "string", format: "uuid" },
-    notes: { type: "string" },
+    notes: { type: "string", maxLength: 10000 },
   },
+  minProperties: 1,
   additionalProperties: false,
 } as const;
 
@@ -37,8 +37,7 @@ export async function singleTransactionRoutes(app: FastifyInstance): Promise<voi
       schema: { params: transactionParamsSchema },
     },
     async (request, reply) => {
-      const user = request.session.get("user");
-      if (!user) throw new ServiceError(401, "Unauthorized");
+      const user = request.session.get("user")!;
       const transaction = await transactionsService.getTransaction(request.params.id, user.id);
       return reply.send({ transaction });
     },
@@ -51,8 +50,7 @@ export async function singleTransactionRoutes(app: FastifyInstance): Promise<voi
       schema: { params: transactionParamsSchema, body: patchTransactionBodySchema },
     },
     async (request, reply) => {
-      const user = request.session.get("user");
-      if (!user) throw new ServiceError(401, "Unauthorized");
+      const user = request.session.get("user")!;
       const transaction = await transactionsService.updateTransaction(
         request.params.id,
         user.id,
@@ -69,8 +67,7 @@ export async function singleTransactionRoutes(app: FastifyInstance): Promise<voi
       schema: { params: transactionParamsSchema },
     },
     async (request, reply) => {
-      const user = request.session.get("user");
-      if (!user) throw new ServiceError(401, "Unauthorized");
+      const user = request.session.get("user")!;
       await transactionsService.deleteTransaction(request.params.id, user.id);
       return reply.status(204).send();
     },

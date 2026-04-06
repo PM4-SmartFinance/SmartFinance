@@ -1,15 +1,7 @@
-import { ServiceError } from "../errors.js";
 import * as transactionsRepository from "../repositories/transactions.repository.js";
 
 export async function getTransaction(id: string, userId: string) {
-  const transaction = await transactionsRepository.findById(id);
-  if (!transaction) {
-    throw new ServiceError(404, "Transaction not found");
-  }
-  if (transaction.userId !== userId) {
-    throw new ServiceError(404, "Transaction not found");
-  }
-  return transaction;
+  return transactionsRepository.findByIdForUser(id, userId);
 }
 
 export async function updateTransaction(
@@ -17,14 +9,6 @@ export async function updateTransaction(
   userId: string,
   data: { categoryId?: string; notes?: string },
 ) {
-  const transaction = await transactionsRepository.findById(id);
-  if (!transaction) {
-    throw new ServiceError(404, "Transaction not found");
-  }
-  if (transaction.userId !== userId) {
-    throw new ServiceError(404, "Transaction not found");
-  }
-
   const updateData: { categoryId?: string; notes?: string; manualOverride?: boolean } = {
     ...data,
   };
@@ -32,16 +16,9 @@ export async function updateTransaction(
     updateData.manualOverride = true;
   }
 
-  return transactionsRepository.updateById(id, updateData);
+  return transactionsRepository.updateById(id, userId, updateData);
 }
 
 export async function deleteTransaction(id: string, userId: string) {
-  const transaction = await transactionsRepository.findById(id);
-  if (!transaction) {
-    throw new ServiceError(404, "Transaction not found");
-  }
-  if (transaction.userId !== userId) {
-    throw new ServiceError(404, "Transaction not found");
-  }
-  await transactionsRepository.deleteById(id);
+  await transactionsRepository.deleteById(id, userId);
 }
