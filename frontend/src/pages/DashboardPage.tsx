@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router";
+import { useNavigate, Link } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../contexts/AuthProvider";
 import { api } from "../lib/api";
@@ -12,6 +12,7 @@ const TEXT = {
   heading: "Dashboard",
   subtitle: "View your financial overview at a glance",
   greeting: "Welcome back",
+  profile: "Profile",
   signOut: "Sign out",
   signingOut: "Signing out…",
 } as const;
@@ -46,9 +47,17 @@ export function DashboardPage() {
               {user ? `${TEXT.greeting}, ${user.email}` : TEXT.subtitle}
             </p>
           </div>
-          <Button variant="outline" size="sm" disabled={isPending} onClick={() => logout()}>
-            {isPending ? TEXT.signingOut : TEXT.signOut}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/profile"
+              className="inline-flex h-8 items-center rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              {TEXT.profile}
+            </Link>
+            <Button variant="outline" size="sm" disabled={isPending} onClick={() => logout()}>
+              {isPending ? TEXT.signingOut : TEXT.signOut}
+            </Button>
+          </div>
         </header>
 
         {/* ── Date Range Picker ── */}
