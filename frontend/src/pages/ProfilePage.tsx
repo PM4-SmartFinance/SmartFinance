@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
+import { SeparatorLine } from "@/components/ui/separatorLine.tsx";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -207,7 +207,7 @@ export function ProfilePage() {
               </div>
               <CardDescription>{TEXT.profileCard.description}</CardDescription>
             </CardHeader>
-            <Separator />
+            <SeparatorLine />
             <CardContent className="pt-6">
               {isProfileLoading ? (
                 <div className="flex flex-col gap-4">
@@ -284,7 +284,7 @@ export function ProfilePage() {
               </div>
               <CardDescription>{TEXT.passwordCard.description}</CardDescription>
             </CardHeader>
-            <Separator />
+            <SeparatorLine />
             <CardContent className="pt-6">
               <form onSubmit={handlePasswordSubmit} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1.5">

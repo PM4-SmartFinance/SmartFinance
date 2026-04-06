@@ -58,9 +58,11 @@ beforeEach(() => {
 // ── Initial render ─────────────────────────────────────────────────────────────
 
 describe("initial render", () => {
-  it("renders the page title", async () => {
+  it("renders the user's name as the page heading after profile loads", async () => {
     renderPage();
-    expect(screen.getByRole("heading", { name: "Profile" })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Test User" })).toBeInTheDocument(),
+    );
   });
 
   it("renders a link back to the dashboard", () => {
@@ -129,7 +131,7 @@ describe("profile form", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent("Profile updated successfully."),
+      expect(screen.getByRole("alert")).toHaveTextContent("Profile updated successfully."),
     );
   });
 
@@ -212,7 +214,7 @@ describe("password change form", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Change password" }));
 
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Password changed"));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Password changed"));
   });
 
   it("shows the button as 'Changing…' while the request is in flight", async () => {
