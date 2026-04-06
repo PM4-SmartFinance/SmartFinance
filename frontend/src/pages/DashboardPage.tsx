@@ -1,8 +1,12 @@
-import { useNavigate } from "react-router";
+import { useNavigate, Link } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../contexts/AuthProvider";
 import { api } from "../lib/api";
 import { Button } from "@/components/ui/button";
+import { DateRangePicker } from "../components/DateRangePicker";
+import { SummaryMetricsWidget } from "../components/SummaryMetricsWidget";
+import { SpendingTrendChart } from "../components/SpendingTrendChart";
+import { CategoryBreakdownChart } from "../components/CategoryBreakdownChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CsvImportCard } from "../components/CsvImportCard";
 
@@ -10,6 +14,7 @@ const TEXT = {
   heading: "Dashboard",
   subtitle: "View your financial overview at a glance",
   greeting: "Welcome back",
+  profile: "Profile",
   signOut: "Sign out",
   signingOut: "Signing out…",
 } as const;
@@ -22,6 +27,12 @@ export function DashboardPage() {
   const { mutate: logout, isPending } = useMutation({
     mutationFn: () => api.post<{ ok: boolean }>("/auth/logout", {}),
     onSuccess: () => {
+      queryClient.clear();
+      navigate("/login");
+    },
+    onError: () => {
+      // Clear client state and navigate to login even if server call fails
+      // This ensures the user gets back to login screen with feedback
       queryClient.clear();
       navigate("/login");
     },
@@ -38,13 +49,31 @@ export function DashboardPage() {
               {user ? `${TEXT.greeting}, ${user.email}` : TEXT.subtitle}
             </p>
           </div>
-          <Button variant="outline" size="sm" disabled={isPending} onClick={() => logout()}>
-            {isPending ? TEXT.signingOut : TEXT.signOut}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/profile"
+              className="inline-flex h-8 items-center rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              {TEXT.profile}
+            </Link>
+            <Button variant="outline" size="sm" disabled={isPending} onClick={() => logout()}>
+              {isPending ? TEXT.signingOut : TEXT.signOut}
+            </Button>
+          </div>
         </header>
 
-        {/* ── Widget Grid ── */}
+        {/* ── Date Range Picker ── */}
+        <DateRangePicker />
+
+        {/* ── Summary Metrics ── */}
+        <section className="mb-8">
+          <SummaryMetricsWidget />
+        </section>
+
+        {/* ── Charts Grid ── */}
         <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+          <SpendingTrendChart />
+          <CategoryBreakdownChart />
           {/* ── Widget 1: Account Balance ── */}
           <Card>
             <CardHeader>
