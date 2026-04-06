@@ -26,7 +26,7 @@ vi.mock("../repositories/user.repository.js", () => ({
 }));
 
 vi.mock("./audit.service.js", () => ({
-  logEvent: vi.fn(),
+  logEvent: vi.fn().mockResolvedValue(undefined),
 }));
 
 const mockUser = {
