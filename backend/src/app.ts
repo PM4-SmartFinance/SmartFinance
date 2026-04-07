@@ -9,6 +9,7 @@ import { budgetRoutes } from "./controllers/budget.controller.js";
 import { userRoutes } from "./controllers/user.controller.js";
 import { singleTransactionRoutes } from "./controllers/transactions.controller.js";
 import { accountRoutes } from "./controllers/account.controller.js";
+import { categoryRuleRoutes } from "./controllers/category-rule.controller.js";
 
 export async function buildApp() {
   const app = Fastify({ logger: true });
@@ -40,6 +41,7 @@ export async function buildApp() {
   await app.register(budgetRoutes, { prefix: "/api/v1" });
   await app.register(userRoutes, { prefix: "/api/v1" });
   await app.register(accountRoutes, { prefix: "/api/v1" });
+  await app.register(categoryRuleRoutes, { prefix: "/api/v1" });
 
   return app;
 }
