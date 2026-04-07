@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { requireRole } from "../middleware/rbac.js";
 import * as categoryRuleService from "../services/category-rule.service.js";
+import type { MatchType } from "../repositories/category-rule.repository.js";
 
 interface RuleParams {
   id: string;
@@ -8,30 +9,27 @@ interface RuleParams {
 
 interface CreateRuleBody {
   pattern: string;
-  matchType: string;
+  matchType: MatchType;
   categoryId: string;
   priority: number;
 }
 
 interface UpdateRuleBody {
   pattern?: string;
-  matchType?: string;
+  matchType?: MatchType;
   categoryId?: string;
   priority?: number;
 }
+
+const uuidPattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
 
 const ruleParamsSchema = {
   type: "object",
   required: ["id"],
   properties: {
-    id: {
-      type: "string",
-      pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-    },
+    id: { type: "string", pattern: uuidPattern },
   },
 } as const;
-
-const uuidPattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
 
 const createRuleSchema = {
   type: "object",

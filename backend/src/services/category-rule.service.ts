@@ -1,5 +1,6 @@
 import { DuplicateRuleError, ServiceError } from "../errors.js";
 import * as categoryRuleRepository from "../repositories/category-rule.repository.js";
+import type { MatchType } from "../repositories/category-rule.repository.js";
 
 export async function listRules(userId: string) {
   return categoryRuleRepository.findAllByUser(userId);
@@ -17,7 +18,7 @@ export async function createRule(
   userId: string,
   categoryId: string,
   pattern: string,
-  matchType: string,
+  matchType: MatchType,
   priority: number,
 ) {
   const category = await categoryRuleRepository.findCategoryForUser(categoryId, userId);
@@ -43,7 +44,7 @@ export async function createRule(
 export async function updateRule(
   id: string,
   userId: string,
-  data: { pattern?: string; matchType?: string; categoryId?: string; priority?: number },
+  data: { pattern?: string; matchType?: MatchType; categoryId?: string; priority?: number },
 ) {
   if (data.categoryId != null) {
     const category = await categoryRuleRepository.findCategoryForUser(data.categoryId, userId);

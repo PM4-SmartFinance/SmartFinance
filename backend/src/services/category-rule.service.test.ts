@@ -128,6 +128,17 @@ describe("category-rule.service", () => {
         ServiceError,
       );
     });
+
+    it("throws 409 when update causes duplicate", async () => {
+      mockRepo.update.mockRejectedValue(new DuplicateRuleError());
+
+      const error = await service
+        .updateRule("rule-1", "user-1", { pattern: "Migros" })
+        .catch((e: ServiceError) => e);
+
+      expect(error).toBeInstanceOf(ServiceError);
+      expect(error.statusCode).toBe(409);
+    });
   });
 
   describe("deleteRule", () => {

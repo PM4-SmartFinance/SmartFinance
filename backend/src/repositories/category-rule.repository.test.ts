@@ -6,8 +6,6 @@ vi.mock("../prisma.js", () => ({
     categoryRule: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
-      create: vi.fn(),
-      deleteMany: vi.fn(),
     },
     dimCategory: {
       findFirst: vi.fn(),
@@ -34,7 +32,7 @@ const mockTransaction = vi.mocked(prisma.$transaction);
 const sampleRule = {
   id: "rule-1",
   pattern: "Migros",
-  matchType: "contains",
+  matchType: "contains" as const,
   priority: 10,
   categoryId: "cat-1",
   userId: "user-1",
@@ -86,8 +84,14 @@ describe("category-rule.repository", () => {
   });
 
   describe("create", () => {
-    it("creates a new category rule", async () => {
-      mockCategoryRule.create.mockResolvedValue(sampleRule as never);
+    it("creates a new category rule within a transaction", async () => {
+      const txClient = {
+        categoryRule: {
+          create: vi.fn().mockResolvedValue(sampleRule),
+        },
+      };
+      // @ts-expect-error -- mock tx is an intentional partial stub of TransactionClient
+      mockTransaction.mockImplementation((cb) => cb(txClient));
 
       const result = await create({
         userId: "user-1",
@@ -98,14 +102,57 @@ describe("category-rule.repository", () => {
       });
 
       expect(result).toEqual(sampleRule);
+      expect(txClient.categoryRule.create).toHaveBeenCalledWith({
+        data: {
+          userId: "user-1",
+          categoryId: "cat-1",
+          pattern: "Migros",
+          matchType: "contains",
+          priority: 10,
+        },
+        include: { category: { select: { id: true, categoryName: true } } },
+      });
     });
 
-    it("throws DuplicateRuleError on duplicate pattern+matchType", async () => {
+    it("throws DuplicateRuleError on P2002", async () => {
       const prismaError = new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
         code: "P2002",
         clientVersion: "5.0.0",
       });
-      mockCategoryRule.create.mockRejectedValue(prismaError);
+      const txClient = {
+        categoryRule: {
+          create: vi.fn().mockRejectedValue(prismaError),
+        },
+      };
+      // @ts-expect-error -- mock tx is an intentional partial stub of TransactionClient
+      mockTransaction.mockImplementation((cb) => cb(txClient));
+
+      await expect(
+        create({
+          userId: "user-1",
+          categoryId: "cat-1",
+          pattern: "Migros",
+          matchType: "contains",
+          priority: 10,
+        }),
+      ).rejects.toThrow(DuplicateRuleError);
+    });
+
+    it("throws DuplicateRuleError on P2003 (FK violation)", async () => {
+      const prismaError = new Prisma.PrismaClientKnownRequestError(
+        "Foreign key constraint failed",
+        {
+          code: "P2003",
+          clientVersion: "5.0.0",
+        },
+      );
+      const txClient = {
+        categoryRule: {
+          create: vi.fn().mockRejectedValue(prismaError),
+        },
+      };
+      // @ts-expect-error -- mock tx is an intentional partial stub of TransactionClient
+      mockTransaction.mockImplementation((cb) => cb(txClient));
 
       await expect(
         create({
@@ -147,18 +194,67 @@ describe("category-rule.repository", () => {
       const result = await update("nonexistent", "user-1", { priority: 5 });
       expect(result).toBeNull();
     });
+
+    it("throws DuplicateRuleError on P2002", async () => {
+      const prismaError = new Prisma.PrismaClientKnownRequestError("Unique constraint failed", {
+        code: "P2002",
+        clientVersion: "5.0.0",
+      });
+      const txClient = {
+        categoryRule: {
+          findFirst: vi.fn().mockResolvedValue(sampleRule),
+          update: vi.fn().mockRejectedValue(prismaError),
+        },
+      };
+      // @ts-expect-error -- mock tx is an intentional partial stub of TransactionClient
+      mockTransaction.mockImplementation((cb) => cb(txClient));
+
+      await expect(update("rule-1", "user-1", { pattern: "Duplicate" })).rejects.toThrow(
+        DuplicateRuleError,
+      );
+    });
+
+    it("returns null on P2025 (record deleted mid-transaction)", async () => {
+      const prismaError = new Prisma.PrismaClientKnownRequestError("Record not found", {
+        code: "P2025",
+        clientVersion: "5.0.0",
+      });
+      const txClient = {
+        categoryRule: {
+          findFirst: vi.fn().mockResolvedValue(sampleRule),
+          update: vi.fn().mockRejectedValue(prismaError),
+        },
+      };
+      // @ts-expect-error -- mock tx is an intentional partial stub of TransactionClient
+      mockTransaction.mockImplementation((cb) => cb(txClient));
+
+      const result = await update("rule-1", "user-1", { priority: 5 });
+      expect(result).toBeNull();
+    });
   });
 
   describe("remove", () => {
     it("returns true when rule is deleted", async () => {
-      mockCategoryRule.deleteMany.mockResolvedValue({ count: 1 });
+      const txClient = {
+        categoryRule: {
+          deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+      };
+      // @ts-expect-error -- mock tx is an intentional partial stub of TransactionClient
+      mockTransaction.mockImplementation((cb) => cb(txClient));
 
       const result = await remove("rule-1", "user-1");
       expect(result).toBe(true);
     });
 
     it("returns false when rule not found", async () => {
-      mockCategoryRule.deleteMany.mockResolvedValue({ count: 0 });
+      const txClient = {
+        categoryRule: {
+          deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+        },
+      };
+      // @ts-expect-error -- mock tx is an intentional partial stub of TransactionClient
+      mockTransaction.mockImplementation((cb) => cb(txClient));
 
       const result = await remove("nonexistent", "user-1");
       expect(result).toBe(false);
@@ -176,6 +272,14 @@ describe("category-rule.repository", () => {
         where: { id: "cat-1", OR: [{ userId: "user-1" }, { userId: null }] },
         select: { id: true },
       });
+    });
+
+    it("returns null when category not found", async () => {
+      mockDimCategory.findFirst.mockResolvedValue(null);
+
+      const result = await findCategoryForUser("nonexistent", "user-1");
+
+      expect(result).toBeNull();
     });
   });
 });

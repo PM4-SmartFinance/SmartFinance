@@ -2,6 +2,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { DuplicateRuleError } from "../errors.js";
 
+export type MatchType = "exact" | "contains";
+
 export async function findAllByUser(userId: string) {
   return prisma.categoryRule.findMany({
     where: { userId },
@@ -21,32 +23,36 @@ export async function create(data: {
   userId: string;
   categoryId: string;
   pattern: string;
-  matchType: string;
+  matchType: MatchType;
   priority: number;
 }) {
-  try {
-    return await prisma.categoryRule.create({
-      data: {
-        userId: data.userId,
-        categoryId: data.categoryId,
-        pattern: data.pattern,
-        matchType: data.matchType,
-        priority: data.priority,
-      },
-      include: { category: { select: { id: true, categoryName: true } } },
-    });
-  } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      throw new DuplicateRuleError();
+  return prisma.$transaction(async (tx) => {
+    try {
+      return await tx.categoryRule.create({
+        data: {
+          userId: data.userId,
+          categoryId: data.categoryId,
+          pattern: data.pattern,
+          matchType: data.matchType,
+          priority: data.priority,
+        },
+        include: { category: { select: { id: true, categoryName: true } } },
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError) {
+        if (err.code === "P2002") throw new DuplicateRuleError();
+        if (err.code === "P2003")
+          throw new DuplicateRuleError("Referenced category no longer exists");
+      }
+      throw err;
     }
-    throw err;
-  }
+  });
 }
 
 export async function update(
   id: string,
   userId: string,
-  data: { pattern?: string; matchType?: string; categoryId?: string; priority?: number },
+  data: { pattern?: string; matchType?: MatchType; categoryId?: string; priority?: number },
 ) {
   return prisma.$transaction(async (tx) => {
     const existing = await tx.categoryRule.findFirst({ where: { id, userId } });
@@ -60,8 +66,11 @@ export async function update(
         include: { category: { select: { id: true, categoryName: true } } },
       });
     } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-        throw new DuplicateRuleError();
+      if (err instanceof Prisma.PrismaClientKnownRequestError) {
+        if (err.code === "P2002") throw new DuplicateRuleError();
+        if (err.code === "P2003")
+          throw new DuplicateRuleError("Referenced category no longer exists");
+        if (err.code === "P2025") return null;
       }
       throw err;
     }
@@ -69,8 +78,10 @@ export async function update(
 }
 
 export async function remove(id: string, userId: string) {
-  const result = await prisma.categoryRule.deleteMany({ where: { id, userId } });
-  return result.count > 0;
+  return prisma.$transaction(async (tx) => {
+    const result = await tx.categoryRule.deleteMany({ where: { id, userId } });
+    return result.count > 0;
+  });
 }
 
 export async function findCategoryForUser(categoryId: string, userId: string) {

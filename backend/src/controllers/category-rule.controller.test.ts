@@ -12,7 +12,17 @@ let categoryId: string;
 const testEmail = `catrule-${Date.now()}@test.com`;
 const testPassword = "TestPassword123!";
 
+let secondSessionCookie: string;
+let secondUserId: string;
+const secondEmail = `catrule2-${Date.now()}@test.com`;
+
 beforeAll(async () => {
+  await prisma.dimCurrency.upsert({
+    where: { code: "CHF" },
+    create: { code: "CHF", name: "Swiss Franc", format: "CHF 1'234.56" },
+    update: {},
+  });
+
   app = await buildApp();
 
   const registerRes = await app.inject({
@@ -27,17 +37,43 @@ beforeAll(async () => {
     data: { categoryName: `TestCat-${Date.now()}`, userId },
   });
   categoryId = category.id;
+
+  const registerRes2 = await app.inject({
+    method: "POST",
+    url: "/api/v1/auth/register",
+    payload: { email: secondEmail, password: testPassword },
+  });
+  secondUserId = registerRes2.json().user.id;
+  secondSessionCookie = registerRes2.headers["set-cookie"] as string;
 });
 
 afterAll(async () => {
-  await prisma.categoryRule.deleteMany({ where: { userId } });
-  await prisma.dimCategory.deleteMany({ where: { userId } });
-  await prisma.dimUser.deleteMany({ where: { id: userId } });
+  const ids = [userId, secondUserId].filter(Boolean);
+  if (ids.length > 0) {
+    await prisma.categoryRule.deleteMany({ where: { userId: { in: ids } } });
+    await prisma.dimCategory.deleteMany({ where: { userId: { in: ids } } });
+    await prisma.dimUser.deleteMany({ where: { id: { in: ids } } });
+  }
   await app.close();
 });
 
 describe("Category Rule Controller", () => {
   let ruleId: string;
+
+  beforeAll(async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/category-rules",
+      headers: { cookie: sessionCookie },
+      payload: {
+        pattern: "SharedRule",
+        matchType: "contains",
+        categoryId,
+        priority: 10,
+      },
+    });
+    ruleId = res.json().rule.id;
+  });
 
   describe("POST /api/v1/category-rules", () => {
     it("creates a rule and returns 201", async () => {
@@ -62,7 +98,6 @@ describe("Category Rule Controller", () => {
         categoryId,
       });
       expect(body.rule.category.categoryName).toBeDefined();
-      ruleId = body.rule.id;
     });
 
     it("returns 400 for invalid body", async () => {
@@ -132,7 +167,7 @@ describe("Category Rule Controller", () => {
         url: "/api/v1/category-rules",
         headers: { cookie: sessionCookie },
         payload: {
-          pattern: "Migros",
+          pattern: "SharedRule",
           matchType: "contains",
           categoryId,
           priority: 5,
@@ -249,13 +284,76 @@ describe("Category Rule Controller", () => {
 
       expect(res.statusCode).toBe(400);
     });
+
+    it("returns 409 when update causes duplicate", async () => {
+      await app.inject({
+        method: "POST",
+        url: "/api/v1/category-rules",
+        headers: { cookie: sessionCookie },
+        payload: {
+          pattern: "DuplicateTarget",
+          matchType: "exact",
+          categoryId,
+          priority: 1,
+        },
+      });
+
+      const secondRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/category-rules",
+        headers: { cookie: sessionCookie },
+        payload: {
+          pattern: "WillConflict",
+          matchType: "exact",
+          categoryId,
+          priority: 2,
+        },
+      });
+      const conflictRuleId = secondRes.json().rule.id;
+
+      const res = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/category-rules/${conflictRuleId}`,
+        headers: { cookie: sessionCookie },
+        payload: { pattern: "DuplicateTarget" },
+      });
+
+      expect(res.statusCode).toBe(409);
+    });
+
+    it("returns 401 without session", async () => {
+      const res = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/category-rules/${ruleId}`,
+        payload: { priority: 5 },
+      });
+
+      expect(res.statusCode).toBe(401);
+    });
   });
 
   describe("DELETE /api/v1/category-rules/:id", () => {
+    let deleteRuleId: string;
+
+    beforeAll(async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/category-rules",
+        headers: { cookie: sessionCookie },
+        payload: {
+          pattern: "ToDelete",
+          matchType: "exact",
+          categoryId,
+          priority: 0,
+        },
+      });
+      deleteRuleId = res.json().rule.id;
+    });
+
     it("deletes a rule and returns 204", async () => {
       const res = await app.inject({
         method: "DELETE",
-        url: `/api/v1/category-rules/${ruleId}`,
+        url: `/api/v1/category-rules/${deleteRuleId}`,
         headers: { cookie: sessionCookie },
       });
 
@@ -265,7 +363,7 @@ describe("Category Rule Controller", () => {
     it("returns 404 for already-deleted rule", async () => {
       const res = await app.inject({
         method: "DELETE",
-        url: `/api/v1/category-rules/${ruleId}`,
+        url: `/api/v1/category-rules/${deleteRuleId}`,
         headers: { cookie: sessionCookie },
       });
 
@@ -275,10 +373,43 @@ describe("Category Rule Controller", () => {
     it("returns 401 without session", async () => {
       const res = await app.inject({
         method: "DELETE",
-        url: `/api/v1/category-rules/${ruleId}`,
+        url: `/api/v1/category-rules/${deleteRuleId}`,
       });
 
       expect(res.statusCode).toBe(401);
+    });
+  });
+
+  describe("cross-user isolation", () => {
+    it("returns 404 when another user tries to GET a rule", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: `/api/v1/category-rules/${ruleId}`,
+        headers: { cookie: secondSessionCookie },
+      });
+
+      expect(res.statusCode).toBe(404);
+    });
+
+    it("returns 404 when another user tries to PATCH a rule", async () => {
+      const res = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/category-rules/${ruleId}`,
+        headers: { cookie: secondSessionCookie },
+        payload: { priority: 99 },
+      });
+
+      expect(res.statusCode).toBe(404);
+    });
+
+    it("returns 404 when another user tries to DELETE a rule", async () => {
+      const res = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/category-rules/${ruleId}`,
+        headers: { cookie: secondSessionCookie },
+      });
+
+      expect(res.statusCode).toBe(404);
     });
   });
 });
