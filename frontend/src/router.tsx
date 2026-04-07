@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from "react-router";
 import { WireframesLayout } from "./App";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { DashboardPage } from "./pages/DashboardPage";
+import { CategoriesPage } from "./pages/CategoriesPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
@@ -26,6 +27,10 @@ export const router = createBrowserRouter([
       {
         path: "/profile",
         element: <ProfilePage />,
+      },
+      {
+        path: "/categories",
+        element: <CategoriesPage />,
       },
     ],
   },
