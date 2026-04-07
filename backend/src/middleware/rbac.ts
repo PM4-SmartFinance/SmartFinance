@@ -23,3 +23,28 @@ export function requireRole(requiredRole: RoleType) {
     }
   };
 }
+
+export function requireOwnerOrAdmin(paramIdName = "id") {
+  return async (request: FastifyRequest) => {
+    const user = request.session.get("user");
+    if (!user) {
+      throw new ServiceError(401, "Unauthorized");
+    }
+    if (!(user.role in ROLES)) {
+      throw new ServiceError(403, "Forbidden");
+    }
+    // Admins are always allowed
+    if (user.role && ROLES[user.role as RoleType] >= ROLES["ADMIN"]) {
+      return;
+    }
+    // Avoid using `any` to satisfy ESLint - treat params as unknown and narrow
+    const params = (request as unknown as { params?: Record<string, string> }).params ?? {};
+    const targetId = params[paramIdName];
+    if (!targetId) {
+      throw new ServiceError(400, "Missing target id");
+    }
+    if (user.id !== targetId) {
+      throw new ServiceError(403, "Forbidden");
+    }
+  };
+}

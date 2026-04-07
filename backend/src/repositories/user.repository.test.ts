@@ -53,7 +53,7 @@ describe("findById", () => {
 
     expect(mockFindUnique).toHaveBeenCalledWith(
       expect.objectContaining({
-        select: { id: true, email: true, name: true, role: true, createdAt: true },
+        select: { id: true, email: true, name: true, role: true, active: true, createdAt: true },
       }),
     );
   });

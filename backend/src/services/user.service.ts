@@ -3,6 +3,9 @@ import { ServiceError } from "../errors.js";
 import * as userRepository from "../repositories/user.repository.js";
 import { EmailConflictError } from "../repositories/user.repository.js";
 import * as auditService from "./audit.service.js";
+import { logEvent } from "./audit.service.js";
+
+// --- Profile functions (from develop) ---
 
 export async function getProfile(userId: string) {
   const user = await userRepository.findById(userId);
@@ -48,4 +51,87 @@ export async function changePassword(userId: string, currentPassword: string, ne
   await userRepository.updatePassword(userId, hashed);
 
   void auditService.logEvent("PASSWORD_CHANGED", userId).catch(() => {});
+}
+
+// --- CRUD functions (KAN-74) ---
+
+export async function listUsers(
+  requestingUser: { id: string; role: string } | null,
+  opts: { limit?: number; offset?: number; active?: boolean } = {},
+) {
+  if (!requestingUser) throw new ServiceError(401, "Unauthorized");
+  if (requestingUser.role !== "ADMIN") throw new ServiceError(403, "Forbidden");
+  return userRepository.listUsers(opts);
+}
+
+export async function getUserById(requestingUser: { id: string; role: string } | null, id: string) {
+  if (!requestingUser) throw new ServiceError(401, "Unauthorized");
+  if (requestingUser.role !== "ADMIN" && requestingUser.id !== id) {
+    throw new ServiceError(403, "Forbidden");
+  }
+  const user = await userRepository.findById(id);
+  if (!user) throw new ServiceError(404, "Not found");
+  return user;
+}
+
+export async function updateUser(
+  requestingUser: { id: string; role: string } | null,
+  id: string,
+  payload: { name?: string; role?: string; active?: boolean },
+) {
+  if (!requestingUser) throw new ServiceError(401, "Unauthorized");
+  const isAdmin = requestingUser.role === "ADMIN";
+  if (!isAdmin && requestingUser.id !== id) {
+    throw new ServiceError(403, "Forbidden");
+  }
+
+  // Check role/active modifications only by admin
+  if (!isAdmin && (payload.role !== undefined || payload.active !== undefined)) {
+    throw new ServiceError(403, "Forbidden");
+  }
+
+  // Validate role value if present
+  if (payload.role !== undefined && payload.role !== "ADMIN" && payload.role !== "USER") {
+    throw new ServiceError(400, "Invalid role");
+  }
+
+  // Build update data only with allowed fields
+  const data: { name?: string; role?: string; active?: boolean } = {};
+  if (payload.name !== undefined) data.name = payload.name;
+  if (isAdmin && payload.role !== undefined) data.role = payload.role;
+  if (isAdmin && payload.active !== undefined) data.active = payload.active;
+
+  if (Object.keys(data).length === 0) throw new ServiceError(400, "No updatable fields");
+
+  const existing = await userRepository.findById(id);
+  if (!existing) throw new ServiceError(404, "Not found");
+
+  const oldRole = existing.role;
+  const updated = await userRepository.updateUserById(id, data as never);
+
+  // Emit ROLE_CHANGED audit event if role changed
+  if ("role" in data) {
+    const newRole = typeof data.role === "string" ? data.role : undefined;
+    if (newRole && newRole !== oldRole) {
+      void logEvent("ROLE_CHANGED", requestingUser.id, { targetUserId: id, oldRole, newRole });
+    }
+  }
+  return updated;
+}
+
+export async function deleteUser(requestingUser: { id: string; role: string } | null, id: string) {
+  if (!requestingUser) throw new ServiceError(401, "Unauthorized");
+  const isAdmin = requestingUser.role === "ADMIN";
+  if (!isAdmin && requestingUser.id !== id) {
+    throw new ServiceError(403, "Forbidden");
+  }
+
+  const existing = await userRepository.findById(id);
+  if (!existing) throw new ServiceError(404, "Not found");
+
+  await userRepository.updateUserById(id, { active: false });
+
+  void logEvent("USER_DELETED", requestingUser.id, { targetUserId: id, email: existing.email });
+
+  return;
 }
