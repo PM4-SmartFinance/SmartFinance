@@ -7,3 +7,10 @@ export class ServiceError extends Error {
     this.statusCode = statusCode;
   }
 }
+
+export class DuplicateRuleError extends Error {
+  constructor(message = "A rule with this pattern and match type already exists") {
+    super(message);
+    this.name = "DuplicateRuleError";
+  }
+}
