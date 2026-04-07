@@ -10,6 +10,7 @@ interface UserParams {
 interface UserQuery {
   limit: number;
   offset: number;
+  active?: boolean;
 }
 
 const listUsersSchema = {
@@ -18,6 +19,7 @@ const listUsersSchema = {
     properties: {
       limit: { type: "integer", minimum: 1, maximum: 100, default: 50 },
       offset: { type: "integer", minimum: 0, default: 0 },
+      active: { type: "boolean" },
     },
     additionalProperties: false,
   },
@@ -27,7 +29,6 @@ interface UpdateUserBody {
   name?: string;
   role?: "ADMIN" | "USER";
   active?: boolean;
-  [key: string]: unknown;
 }
 
 interface UpdateProfileBody {
@@ -135,13 +136,14 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
     "/users",
     { preHandler: requireRole("ADMIN"), schema: listUsersSchema },
     async (request, reply) => {
-      // Fastify schema guarantees these are numbers
-      const { limit, offset } = request.query;
+      // Fastify schema guarantees these are numbers/boolean
+      const { limit, offset, active } = request.query;
       const sessionUser = request.session.get("user") ?? null;
 
       const res = await userService.listUsers(sessionUser, {
         limit,
         offset,
+        ...(active !== undefined && { active }),
       });
       return reply.send(res);
     },

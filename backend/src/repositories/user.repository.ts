@@ -8,6 +8,7 @@ export async function findByEmail(email: string) {
 export async function findCurrencyByCode(code: string) {
   return prisma.dimCurrency.findUnique({ where: { code } });
 }
+
 export async function findById(id: string) {
   return prisma.dimUser.findUnique({
     where: { id },
@@ -15,17 +16,19 @@ export async function findById(id: string) {
   });
 }
 
-export async function listUsers(opts: { limit?: number; offset?: number } = {}) {
+export async function listUsers(opts: { limit?: number; offset?: number; active?: boolean } = {}) {
   const limit = Math.min(opts.limit ?? 50, 100);
   const offset = Math.max(opts.offset ?? 0, 0);
+  const where = opts.active !== undefined ? { active: opts.active } : {};
   const [items, total] = await Promise.all([
     prisma.dimUser.findMany({
+      where,
       take: limit,
       skip: offset,
       select: { id: true, email: true, name: true, role: true, active: true, createdAt: true },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.dimUser.count(),
+    prisma.dimUser.count({ where }),
   ]);
   return { items, total, limit, offset };
 }
@@ -57,7 +60,7 @@ export async function updateUserById(
     role: string;
     password: string;
     defaultCurrencyId: string;
-    active?: boolean;
+    active: boolean;
   }>,
 ) {
   return prisma.dimUser.update({
@@ -73,13 +76,6 @@ export async function deleteUserById(id: string) {
 
 export async function deleteUsersByEmails(emails: string[]) {
   return prisma.dimUser.deleteMany({ where: { email: { in: emails } } });
-}
-
-export async function findById(id: string) {
-  return prisma.dimUser.findUnique({
-    where: { id },
-    select: { id: true, email: true, name: true, role: true, createdAt: true },
-  });
 }
 
 export async function findByIdWithPassword(id: string) {

@@ -57,7 +57,7 @@ export async function changePassword(userId: string, currentPassword: string, ne
 
 export async function listUsers(
   requestingUser: { id: string; role: string } | null,
-  opts: { limit?: number; offset?: number } = {},
+  opts: { limit?: number; offset?: number; active?: boolean } = {},
 ) {
   if (!requestingUser) throw new ServiceError(401, "Unauthorized");
   if (requestingUser.role !== "ADMIN") throw new ServiceError(403, "Forbidden");
@@ -77,7 +77,7 @@ export async function getUserById(requestingUser: { id: string; role: string } |
 export async function updateUser(
   requestingUser: { id: string; role: string } | null,
   id: string,
-  payload: Record<string, unknown>,
+  payload: { name?: string; role?: string; active?: boolean },
 ) {
   if (!requestingUser) throw new ServiceError(401, "Unauthorized");
   const isAdmin = requestingUser.role === "ADMIN";
@@ -85,31 +85,21 @@ export async function updateUser(
     throw new ServiceError(403, "Forbidden");
   }
 
-  // Validate payload fields
-  const allowedByOwner = ["name"];
-  const allowedByAdmin = ["name", "role", "active"];
-  const payloadKeys = Object.keys(payload);
-  if (payloadKeys.length === 0) throw new ServiceError(400, "Bad Request");
-
   // Check role/active modifications only by admin
-  if (!isAdmin && ("role" in payload || "active" in payload)) {
+  if (!isAdmin && (payload.role !== undefined || payload.active !== undefined)) {
     throw new ServiceError(403, "Forbidden");
   }
 
   // Validate role value if present
-  if ("role" in payload) {
-    const r = payload["role"];
-    if (r !== "ADMIN" && r !== "USER") {
-      throw new ServiceError(400, "Invalid role");
-    }
+  if (payload.role !== undefined && payload.role !== "ADMIN" && payload.role !== "USER") {
+    throw new ServiceError(400, "Invalid role");
   }
 
   // Build update data only with allowed fields
-  const data: Record<string, unknown> = {};
-  for (const k of payloadKeys) {
-    if (isAdmin && allowedByAdmin.includes(k)) data[k] = payload[k];
-    else if (!isAdmin && allowedByOwner.includes(k)) data[k] = payload[k];
-  }
+  const data: { name?: string; role?: string; active?: boolean } = {};
+  if (payload.name !== undefined) data.name = payload.name;
+  if (isAdmin && payload.role !== undefined) data.role = payload.role;
+  if (isAdmin && payload.active !== undefined) data.active = payload.active;
 
   if (Object.keys(data).length === 0) throw new ServiceError(400, "No updatable fields");
 
