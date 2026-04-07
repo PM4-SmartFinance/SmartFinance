@@ -158,6 +158,14 @@ describe("file input", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Only .csv files are accepted.");
   });
 
+  it("shows an error for a file exceeding 10 MB", () => {
+    renderCard();
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const bigFile = new File(["x".repeat(11 * 1024 * 1024)], "big.csv", { type: "text/csv" });
+    fireEvent.change(input, { target: { files: [bigFile] } });
+    expect(screen.getByRole("alert")).toHaveTextContent("File exceeds the 10 MB size limit.");
+  });
+
   it("clears a previous type error when a valid CSV is selected next", () => {
     renderCard();
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
@@ -326,7 +334,7 @@ describe("upload", () => {
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Invalid CSV format"));
   });
 
-  it("shows a generic error message for unexpected errors", async () => {
+  it("shows the actual error message for non-ApiError errors", async () => {
     mockUpload.mockRejectedValue(new Error("Network error"));
     renderCard();
     await waitFor(() =>
@@ -337,7 +345,7 @@ describe("upload", () => {
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
     await userEvent.upload(input, makeCsvFile());
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Upload failed."));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Network error"));
   });
 });
 

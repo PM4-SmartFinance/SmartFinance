@@ -12,7 +12,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-type ImportFormat = "neon" | "zkb" | "wise";
+const FORMATS = [
+  { value: "neon", label: "Neon" },
+  { value: "zkb", label: "ZKB" },
+  { value: "wise", label: "Wise" },
+] as const;
+
+type ImportFormat = (typeof FORMATS)[number]["value"];
+
 // TODO: KAN-34 – Jira AC requires skipped and failed counts. Update this type
 // and the result messages once the backend returns those fields.
 type UploadResult = { imported: number };
@@ -23,11 +30,7 @@ interface Account {
   iban: string;
 }
 
-const FORMATS: { value: ImportFormat; label: string }[] = [
-  { value: "neon", label: "Neon" },
-  { value: "zkb", label: "ZKB" },
-  { value: "wise", label: "Wise" },
-];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 const TEXT = {
   title: "Import Transactions",
@@ -38,6 +41,7 @@ const TEXT = {
   accountLabel: "Account",
   uploadBtn: "Upload",
   uploading: "Uploading…",
+  fileTooLarge: "File exceeds the 10 MB size limit.",
   noAccounts: "No accounts found. Create an account first.",
   accountsError: "Failed to load accounts. Please try again.",
   invalidType: "Only .csv files are accepted.",
@@ -76,7 +80,7 @@ export function CsvImportCard() {
       const formData = new FormData();
       formData.append("file", f);
       return api.upload<UploadResult>(
-        `/transactions/import?accountId=${encodeURIComponent(acId)}&format=${fmt}`,
+        `/transactions/import?accountId=${encodeURIComponent(acId)}&format=${encodeURIComponent(fmt)}`,
         formData,
       );
     },
@@ -88,6 +92,10 @@ export function CsvImportCard() {
   function acceptFile(f: File) {
     if (!f.name.toLowerCase().endsWith(".csv")) {
       setTypeError(TEXT.invalidType);
+      return;
+    }
+    if (f.size > MAX_FILE_SIZE) {
+      setTypeError(TEXT.fileTooLarge);
       return;
     }
     setTypeError(null);
@@ -122,7 +130,13 @@ export function CsvImportCard() {
   }
 
   const uploadErrorMessage =
-    uploadError instanceof ApiError ? uploadError.message : uploadError ? "Upload failed." : null;
+    uploadError instanceof ApiError
+      ? uploadError.message
+      : uploadError instanceof Error
+        ? uploadError.message
+        : uploadError
+          ? "Upload failed."
+          : null;
 
   const canUpload = file !== null && effectiveAccountId !== "" && !isUploading;
 
@@ -227,7 +241,12 @@ export function CsvImportCard() {
                 <Label htmlFor="csv-format" className="text-xs text-muted-foreground">
                   {TEXT.formatLabel}
                 </Label>
-                <Select value={format} onValueChange={(v) => setFormat(v as ImportFormat)}>
+                <Select
+                  value={format}
+                  onValueChange={(v) => {
+                    if (FORMATS.some((f) => f.value === v)) setFormat(v as ImportFormat);
+                  }}
+                >
                   <SelectTrigger id="csv-format" className="w-40">
                     <SelectValue />
                   </SelectTrigger>
