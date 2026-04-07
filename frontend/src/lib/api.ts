@@ -12,13 +12,13 @@ export class ApiError extends Error {
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const isFormData = init?.body instanceof FormData;
   const response = await fetch(`${BASE_URL}${path}`, {
     ...init,
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
+    headers: isFormData
+      ? (init?.headers ?? {})
+      : { "Content-Type": "application/json", ...init?.headers },
   });
 
   if (!response.ok) {
@@ -59,4 +59,7 @@ export const api = {
     }),
 
   delete: <T>(path: string, init?: RequestInit) => apiFetch<T>(path, { ...init, method: "DELETE" }),
+
+  upload: <T>(path: string, formData: FormData) =>
+    apiFetch<T>(path, { method: "POST", body: formData }),
 };
