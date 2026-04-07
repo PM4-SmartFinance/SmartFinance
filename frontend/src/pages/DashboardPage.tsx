@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "../components/DateRangePicker";
 import { SummaryMetricsWidget } from "../components/SummaryMetricsWidget";
+import { BudgetWidget } from "../components/BudgetWidget";
 import { SpendingTrendChart } from "../components/SpendingTrendChart";
 import { CategoryBreakdownChart } from "../components/CategoryBreakdownChart";
 
@@ -66,6 +67,11 @@ export function DashboardPage() {
         {/* ── Summary Metrics ── */}
         <section className="mb-8">
           <SummaryMetricsWidget />
+        </section>
+
+        {/* ── Budgets ── */}
+        <section className="mb-8">
+          <BudgetWidget />
         </section>
 
         {/* ── Charts Grid ── */}

@@ -23,6 +23,21 @@ export interface CategoryBreakdown {
   amount: number;
 }
 
+export interface Budget {
+  id: string;
+  categoryId: string;
+  month: number;
+  year: number;
+  limitAmount: string; // Returned as string from API for precision
+  currentSpending: string;
+  percentageUsed: number;
+  remainingAmount: string;
+  isOverBudget: boolean;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Dashboard Summary Hook
 export function useDashboardSummary() {
   const startDate = useAppStore((s) => s.startDate);
@@ -64,6 +79,15 @@ export function useDashboardCategories() {
       const params = new URLSearchParams({ startDate, endDate });
       return api.get<CategoryBreakdown[]>(`/dashboard/categories?${params}`);
     },
+    staleTime: DASHBOARD_STALE_TIME,
+  });
+}
+
+// Budgets Hook
+export function useDashboardBudgets() {
+  return useQuery({
+    queryKey: ["dashboard", "budgets"] as const,
+    queryFn: () => api.get<{ budgets: Budget[] }>("/budgets").then((res) => res.budgets),
     staleTime: DASHBOARD_STALE_TIME,
   });
 }
