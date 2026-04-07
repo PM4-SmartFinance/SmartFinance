@@ -46,6 +46,7 @@
     ]
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.2.8",
     "@prisma/client-runtime-utils": "^7.6.0",
     "@radix-ui/react-slot": "^1.2.4"
   }

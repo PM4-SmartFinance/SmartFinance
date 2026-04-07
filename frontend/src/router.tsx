@@ -2,7 +2,7 @@ import { createBrowserRouter, Navigate } from "react-router";
 import { WireframesLayout } from "./App";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { DashboardPage } from "./pages/DashboardPage";
-import { ProfilePage } from "./pages/ProfilePage";
+import { BudgetsPage } from "./pages/BudgetsPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import LoginWireframe from "./wireframes/LoginWireframe";
@@ -24,8 +24,8 @@ export const router = createBrowserRouter([
         element: <DashboardPage />,
       },
       {
-        path: "/profile",
-        element: <ProfilePage />,
+        path: "/budgets",
+        element: <BudgetsPage />,
       },
     ],
   },
