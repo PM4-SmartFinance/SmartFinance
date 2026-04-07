@@ -491,6 +491,32 @@ Changes the password of the authenticated user. The current session is invalidat
 
 ---
 
+## Accounts
+
+All account endpoints require an authenticated session with the `USER` role.
+
+### GET /accounts
+
+Returns all accounts belonging to the authenticated user, ordered by name.
+
+**Response 200:**
+
+```json
+{
+  "accounts": [
+    {
+      "id": "uuid",
+      "name": "Main Account",
+      "iban": "CH93 0076 2011 6238 5295 7"
+    }
+  ]
+}
+```
+
+**Response 401:** Not authenticated
+
+---
+
 ## Error Format
 
 All errors are formatted uniformly by the centralized error handler:
@@ -845,6 +871,30 @@ The following JSON can be imported directly into Postman: **Import > Raw text > 
               "mode": "raw",
               "raw": "{\n  \"currentPassword\": \"{{password}}\",\n  \"newPassword\": \"NewPassword123!\"\n}"
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Accounts",
+      "item": [
+        {
+          "name": "List Accounts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has accounts array', () => pm.expect(pm.response.json().accounts).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/accounts"
           }
         }
       ]
