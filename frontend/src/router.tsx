@@ -27,6 +27,8 @@ export const router = createBrowserRouter([
       {
         path: "/budgets",
         element: <BudgetsPage />,
+      },
+      {
         path: "/profile",
         element: <ProfilePage />,
       },
