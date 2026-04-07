@@ -106,6 +106,58 @@ Returns the currently authenticated user. Requires a valid session.
 
 ## Transactions
 
+### GET /transactions
+
+Returns a paginated, filtered, and sorted list of transactions belonging to the authenticated user. Requires a valid session with the `USER` role.
+
+**Query Parameters:**
+
+| Parameter    | Type    | Required | Default | Description                                                      |
+| ------------ | ------- | -------- | ------- | ---------------------------------------------------------------- |
+| `page`       | integer | no       | `1`     | Page number (minimum: 1)                                         |
+| `limit`      | integer | no       | `20`    | Results per page (minimum: 1, maximum: 100)                      |
+| `sortBy`     | string  | no       | `date`  | Sort field: `date`, `amount`, or `merchant`                      |
+| `sortOrder`  | string  | no       | `desc`  | Sort direction: `asc` or `desc`                                  |
+| `startDate`  | string  | no       | —       | Filter from date inclusive, format `YYYY-MM-DD`                  |
+| `endDate`    | string  | no       | —       | Filter to date inclusive, format `YYYY-MM-DD`                    |
+| `categoryId` | string  | no       | —       | Filter by category ID (matches user's merchant→category mapping) |
+| `minAmount`  | number  | no       | —       | Filter transactions with amount ≥ value                          |
+| `maxAmount`  | number  | no       | —       | Filter transactions with amount ≤ value                          |
+
+All filters are optional and can be combined. `minAmount` must not exceed `maxAmount`.
+
+**Response 200:**
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "amount": "42.00",
+      "date": "2025-01-15",
+      "accountId": "uuid",
+      "merchantId": "uuid",
+      "merchant": "Grocery Store",
+      "categoryId": "uuid",
+      "categoryName": "Food"
+    }
+  ],
+  "meta": {
+    "totalCount": 150,
+    "totalPages": 8,
+    "page": 1,
+    "limit": 20
+  }
+}
+```
+
+`amount` is returned as a string to preserve decimal precision. `categoryId` and `categoryName` are `null` when the merchant has no category mapping for the authenticated user.
+
+**Response 400:** Invalid query parameters (wrong type, out-of-range values, or `minAmount > maxAmount`)
+**Response 401:** Not authenticated
+
+---
+
 ### POST /transactions/import
 
 Imports transactions from a CSV file into the specified account. Requires an authenticated session with the `USER` role.
@@ -129,6 +181,87 @@ Imports transactions from a CSV file into the specified account. Requires an aut
 **Response 401:** Not authenticated
 **Response 404:** Account not found or does not belong to the authenticated user
 **Response 422:** CSV file is malformed, has an unrecognized format, or contains invalid data rows
+
+---
+
+### GET /transactions/:id
+
+Returns a single transaction with its associated category, account, merchant, and date. Only the owner can access their transactions.
+
+**Path Parameters:**
+
+| Parameter | Type   | Validation |
+| --------- | ------ | ---------- |
+| `id`      | string | UUID       |
+
+**Response 200:**
+
+```json
+{
+  "transaction": {
+    "id": "uuid",
+    "amount": "123.45",
+    "notes": "Grocery run",
+    "manualOverride": false,
+    "createdAt": "2026-03-26T10:00:00.000Z",
+    "updatedAt": "2026-03-26T10:00:00.000Z",
+    "userId": "uuid",
+    "accountId": "uuid",
+    "account": { "name": "Main Account", "iban": "CH..." },
+    "merchantId": "uuid",
+    "merchant": { "name": "Migros" },
+    "dateId": 20260326,
+    "date": { "id": 20260326, "dayOfWeek": "Thursday", "month": 3, "year": 2026 },
+    "categoryId": "uuid",
+    "category": { "id": "uuid", "categoryName": "Groceries" }
+  }
+}
+```
+
+**Response 401:** Not authenticated
+**Response 404:** Transaction not found or does not belong to the authenticated user
+
+---
+
+### PATCH /transactions/:id
+
+Updates a transaction's category and/or notes. Setting `categoryId` automatically sets `manualOverride` to `true`. At least one field must be provided.
+
+**Path Parameters:**
+
+| Parameter | Type   | Validation |
+| --------- | ------ | ---------- |
+| `id`      | string | UUID       |
+
+**Request Body:**
+
+| Field        | Type   | Required | Validation                                            |
+| ------------ | ------ | -------- | ----------------------------------------------------- |
+| `categoryId` | string | no       | UUID; must be a valid category (user-owned or global) |
+| `notes`      | string | no       | Max 10,000 characters                                 |
+
+**Response 200:** Returns the updated transaction (same shape as GET).
+
+**Response 400:** Invalid input (empty body, invalid UUID, notes too long)
+**Response 401:** Not authenticated
+**Response 404:** Transaction or category not found, or does not belong to the authenticated user
+
+---
+
+### DELETE /transactions/:id
+
+Permanently deletes a transaction. Only the owner can delete their transactions.
+
+**Path Parameters:**
+
+| Parameter | Type   | Validation |
+| --------- | ------ | ---------- |
+| `id`      | string | UUID       |
+
+**Response 204:** No content
+
+**Response 401:** Not authenticated
+**Response 404:** Transaction not found or does not belong to the authenticated user
 
 ---
 
@@ -274,6 +407,87 @@ Deletes a budget. Only budgets owned by the authenticated user can be deleted.
 
 **Response 401:** Not authenticated
 **Response 404:** Budget not found or does not belong to the authenticated user
+
+---
+
+## Users
+
+All user endpoints require an authenticated session with the `USER` role.
+
+### GET /users/me
+
+Returns the full profile of the currently authenticated user.
+
+**Response 200:**
+
+```json
+{
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "Jane Doe",
+    "role": "USER",
+    "createdAt": "2026-03-18T10:00:00.000Z"
+  }
+}
+```
+
+**Response 401:** Not authenticated
+**Response 404:** User record not found
+
+---
+
+### PATCH /users/me
+
+Updates the display name and/or email address of the authenticated user. The session cookie is refreshed automatically when the email changes.
+
+**Request Body:**
+
+| Field         | Type   | Required | Validation                              |
+| ------------- | ------ | -------- | --------------------------------------- |
+| `displayName` | string | no       | 1–100 characters                        |
+| `email`       | string | no       | Must match `^[^\s@]+@[^\s@]+\.[^\s@]+$` |
+
+At least one field must be present; an empty body returns the current profile unchanged.
+
+**Response 200:**
+
+```json
+{
+  "user": {
+    "id": "uuid",
+    "email": "new@example.com",
+    "name": "Jane Doe",
+    "role": "USER"
+  }
+}
+```
+
+**Response 400:** Validation failure (field too short, invalid email pattern)
+**Response 401:** Not authenticated
+**Response 409:** Email already in use by another account
+
+---
+
+### POST /users/me/change-password
+
+Changes the password of the authenticated user. The current session is invalidated on success — the client must re-authenticate.
+
+**Request Body:**
+
+| Field             | Type   | Required | Validation           |
+| ----------------- | ------ | -------- | -------------------- |
+| `currentPassword` | string | yes      | Must not be empty    |
+| `newPassword`     | string | yes      | Minimum 8 characters |
+
+**Response 200:**
+
+```json
+{ "ok": true }
+```
+
+**Response 400:** Validation failure (newPassword too short)
+**Response 401:** Not authenticated or current password incorrect
 
 ---
 
@@ -558,6 +772,78 @@ The following JSON can be imported directly into Postman: **Import > Raw text > 
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"WrongPassword!\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has user', () => pm.expect(pm.response.json().user).to.have.property('id'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/me"
+          }
+        },
+        {
+          "name": "Update Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has updated name', () => pm.expect(pm.response.json().user.name).to.equal('Jane Doe'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/users/me",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Jane Doe\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Change Password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ok is true', () => pm.expect(pm.response.json().ok).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/users/me/change-password",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{password}}\",\n  \"newPassword\": \"NewPassword123!\"\n}"
             }
           }
         }

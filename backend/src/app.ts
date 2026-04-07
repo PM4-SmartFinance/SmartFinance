@@ -3,9 +3,11 @@ import secureSession from "@fastify/secure-session";
 import { errorHandler } from "./middleware/error-handler.js";
 import { healthRoutes } from "./controllers/health.controller.js";
 import { authRoutes } from "./controllers/auth.controller.js";
-import { importTransactionRoutes } from "./controllers/transaction.controller.js";
+import { transactionRoutes } from "./controllers/transaction.controller.js";
 import { setLogger } from "./logger.js";
 import { budgetRoutes } from "./controllers/budget.controller.js";
+import { userRoutes } from "./controllers/user.controller.js";
+import { singleTransactionRoutes } from "./controllers/transactions.controller.js";
 
 export async function buildApp() {
   const app = Fastify({ logger: true });
@@ -32,8 +34,10 @@ export async function buildApp() {
 
   await app.register(healthRoutes, { prefix: "/api/v1" });
   await app.register(authRoutes, { prefix: "/api/v1" });
-  await app.register(importTransactionRoutes, { prefix: "/api/v1" });
+  await app.register(transactionRoutes, { prefix: "/api/v1" });
+  await app.register(singleTransactionRoutes, { prefix: "/api/v1" });
   await app.register(budgetRoutes, { prefix: "/api/v1" });
+  await app.register(userRoutes, { prefix: "/api/v1" });
 
   return app;
 }
