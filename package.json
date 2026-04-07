@@ -20,6 +20,7 @@
   "devDependencies": {
     "@eslint-react/eslint-plugin": "^2.13.0",
     "@eslint/js": "^10.0.1",
+    "@types/pg": "8.11.11",
     "@vitest/coverage-v8": "^4.1.1",
     "@vitest/eslint-plugin": "^1.6.13",
     "@vitest/ui": "^4.1.1",
@@ -45,6 +46,7 @@
     ]
   },
   "dependencies": {
+    "@prisma/client-runtime-utils": "^7.6.0",
     "@radix-ui/react-slot": "^1.2.4"
   }
 }
