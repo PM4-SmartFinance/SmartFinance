@@ -3,7 +3,6 @@ import { WireframesLayout } from "./App";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { DashboardPage } from "./pages/DashboardPage";
 import { BudgetsPage } from "./pages/BudgetsPage";
-import { ProfilePage } from "./pages/ProfilePage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import LoginWireframe from "./wireframes/LoginWireframe";
@@ -27,10 +26,6 @@ export const router = createBrowserRouter([
       {
         path: "/budgets",
         element: <BudgetsPage />,
-      },
-      {
-        path: "/profile",
-        element: <ProfilePage />,
       },
     ],
   },
