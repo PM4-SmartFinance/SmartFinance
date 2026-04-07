@@ -17,6 +17,17 @@ const dashboardSummaryQuerySchema = {
   },
 } as const;
 
+interface DashboardTrendsQuery {
+  months: number;
+}
+
+const dashboardTrendsQuerySchema = {
+  type: "object",
+  properties: {
+    months: { type: "integer", minimum: 6, maximum: 12, default: 6 },
+  },
+} as const;
+
 export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
   app.get<{ Querystring: DashboardSummaryQuery }>(
     "/dashboard/summary",
@@ -30,6 +41,19 @@ export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
       const { startDate, endDate } = request.query;
       const summary = await dashboardService.getDashboardSummary(session.id, startDate, endDate);
       return reply.send(summary);
+    },
+  );
+
+  app.get<{ Querystring: DashboardTrendsQuery }>(
+    "/dashboard/trends",
+    {
+      preHandler: requireRole("USER"),
+      schema: { querystring: dashboardTrendsQuerySchema },
+    },
+    async (request, reply) => {
+      const user = request.session.get("user")!;
+      const data = await dashboardService.getDashboardTrends(user.id, request.query.months);
+      return reply.send({ data });
     },
   );
 }

@@ -33,3 +33,54 @@ export async function getDashboardSummary(userId: string, startDate: string, end
     transactionCount,
   };
 }
+
+export interface DashboardTrendItem {
+  year: number;
+  month: number;
+  income: number;
+  expenses: number;
+}
+
+export async function getDashboardTrends(
+  userId: string,
+  months: number,
+): Promise<DashboardTrendItem[]> {
+  const now = new Date();
+  const endYear = now.getUTCFullYear();
+  const endMonth = now.getUTCMonth() + 1;
+
+  const startDate = new Date(Date.UTC(endYear, endMonth - 1, 1));
+  startDate.setUTCMonth(startDate.getUTCMonth() - (months - 1));
+
+  const startYear = startDate.getUTCFullYear();
+  const startMonth = startDate.getUTCMonth() + 1;
+
+  const aggregates = await dashboardRepository.listMonthlyTrends({
+    userId,
+    startYear,
+    startMonth,
+    endYear,
+    endMonth,
+  });
+
+  const aggregateByMonth = new Map(
+    aggregates.map((item) => [`${item.year}-${item.month}`, item] as const),
+  );
+
+  const data: DashboardTrendItem[] = [];
+  for (let i = 0; i < months; i++) {
+    const monthDate = new Date(Date.UTC(startYear, startMonth - 1 + i, 1));
+    const year = monthDate.getUTCFullYear();
+    const month = monthDate.getUTCMonth() + 1;
+    const aggregate = aggregateByMonth.get(`${year}-${month}`);
+
+    data.push({
+      year,
+      month,
+      income: aggregate?.income ?? 0,
+      expenses: aggregate?.expenses ?? 0,
+    });
+  }
+
+  return data;
+}

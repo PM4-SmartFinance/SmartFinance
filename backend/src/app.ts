@@ -41,10 +41,10 @@ export async function buildApp() {
   await app.register(transactionRoutes, { prefix: "/api/v1" });
   await app.register(singleTransactionRoutes, { prefix: "/api/v1" });
   await app.register(budgetRoutes, { prefix: "/api/v1" });
+  await app.register(dashboardRoutes, { prefix: "/api/v1" });
   await app.register(userRoutes, { prefix: "/api/v1" });
   await app.register(accountRoutes, { prefix: "/api/v1" });
   await app.register(categoryRuleRoutes, { prefix: "/api/v1" });
-  await app.register(dashboardRoutes, { prefix: "/api/v1" });
   await app.register(categoryRoutes, { prefix: "/api/v1" });
 
   return app;

@@ -25,3 +25,39 @@ export async function getSummary(userId: string, startDate: string, endDate: str
 
   return { incomeAgg, expenseAgg, transactionCount };
 }
+
+interface ListMonthlyTrendsArgs {
+  userId: string;
+  startYear: number;
+  startMonth: number;
+  endYear: number;
+  endMonth: number;
+}
+
+export interface MonthlyTrendAggregate {
+  year: number;
+  month: number;
+  income: number;
+  expenses: number;
+}
+
+export async function listMonthlyTrends(
+  args: ListMonthlyTrendsArgs,
+): Promise<MonthlyTrendAggregate[]> {
+  const { userId, startYear, startMonth, endYear, endMonth } = args;
+
+  return prisma.$queryRaw<MonthlyTrendAggregate[]>`
+    SELECT
+      d.year::int AS year,
+      d.month::int AS month,
+      COALESCE(SUM(CASE WHEN t.amount > 0 THEN t.amount ELSE 0 END), 0)::double precision AS income,
+      COALESCE(SUM(CASE WHEN t.amount < 0 THEN ABS(t.amount) ELSE 0 END), 0)::double precision AS expenses
+    FROM "FactTransactions" t
+    INNER JOIN "DimDate" d ON d.id = t."dateId"
+    WHERE t."userId" = ${userId}
+      AND (d.year > ${startYear} OR (d.year = ${startYear} AND d.month >= ${startMonth}))
+      AND (d.year < ${endYear} OR (d.year = ${endYear} AND d.month <= ${endMonth}))
+    GROUP BY d.year, d.month
+    ORDER BY d.year ASC, d.month ASC
+  `;
+}
