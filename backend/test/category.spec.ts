@@ -102,12 +102,12 @@ describe("Category CRUD and Authorization Tests", () => {
     });
 
     expect(res.statusCode).toBe(201);
-    const body = res.json();
-    expect(body).toHaveProperty("id");
-    expect(body.categoryName).toBe("Test_Tennis");
-    expect(body.userId).toBe(userAId);
+    const { category } = res.json();
+    expect(category).toHaveProperty("id");
+    expect(category.categoryName).toBe("Test_Tennis");
+    expect(category.userId).toBe(userAId);
 
-    customCatId = body.id; // Save for later tests
+    customCatId = category.id; // Save for later tests
   });
 
   it("POST: fails if payload is invalid (400)", async () => {
@@ -128,7 +128,7 @@ describe("Category CRUD and Authorization Tests", () => {
     });
 
     expect(res.statusCode).toBe(200);
-    const categories = res.json();
+    const { categories } = res.json();
 
     type CategoryResponse = { categoryName: string; userId: string | null };
 
@@ -152,7 +152,7 @@ describe("Category CRUD and Authorization Tests", () => {
     });
 
     expect(res.statusCode).toBe(200);
-    expect(res.json().categoryName).toBe("Test_Squash");
+    expect(res.json().category.categoryName).toBe("Test_Squash");
   });
 
   it("PATCH: prevents user from editing another user's category (403)", async () => {

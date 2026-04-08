@@ -34,11 +34,9 @@ export async function deleteCategory(id: string, userId: string) {
   if (!category.userId) throw new ServiceError(403, "Global categories cannot be deleted");
   if (category.userId !== userId) throw new ServiceError(403, "Access denied");
 
-  // Requirement: Block deletion if referenced by transactions/mappings
-  const usageCount = await categoryRepository.countTransactions(id);
+  // Check usage and delete atomically within a transaction to prevent TOCTOU races
+  const usageCount = await categoryRepository.removeIfUnused(id);
   if (usageCount > 0) {
     throw new ServiceError(409, "Category is in use and cannot be deleted");
   }
-
-  return categoryRepository.remove(id);
 }

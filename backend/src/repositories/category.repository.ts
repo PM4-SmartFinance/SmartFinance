@@ -1,4 +1,6 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
+import { ServiceError } from "../errors.js";
 
 /**
  * Finds all categories available to a specific user.
@@ -18,29 +20,42 @@ export async function findById(id: string) {
 }
 
 export async function create(data: { categoryName: string; userId: string }) {
-  return prisma.dimCategory.create({ data });
+  try {
+    return await prisma.$transaction(async (tx) => {
+      return tx.dimCategory.create({ data });
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      throw new ServiceError(409, "A category with this name already exists");
+    }
+    throw err;
+  }
 }
 
 export async function update(id: string, data: { categoryName: string }) {
-  return prisma.dimCategory.update({
-    where: { id },
-    data,
+  return prisma.$transaction(async (tx) => {
+    return tx.dimCategory.update({ where: { id }, data });
   });
-}
-
-export async function remove(id: string) {
-  return prisma.dimCategory.delete({ where: { id } });
 }
 
 /**
- * Checks if a category is currently linked to any transactions.
- * Requirement: Deletion is blocked if category is actively referenced.
+ * Checks if a category is actively referenced by transactions or merchant mappings,
+ * then deletes it — all within a single transaction to prevent TOCTOU races.
+ * Returns the usage count if deletion is blocked, or null on success.
  */
-export async function countTransactions(categoryId: string) {
-  // Check merchant mappings first as they are the primary link
-  const mappingCount = await prisma.userMerchantMapping.count({
-    where: { categoryId },
-  });
+export async function removeIfUnused(id: string): Promise<number> {
+  return prisma.$transaction(async (tx) => {
+    const [transactionCount, mappingCount] = await Promise.all([
+      tx.factTransactions.count({ where: { categoryId: id } }),
+      tx.userMerchantMapping.count({ where: { categoryId: id } }),
+    ]);
 
-  return mappingCount;
+    const usageCount = transactionCount + mappingCount;
+    if (usageCount > 0) {
+      return usageCount;
+    }
+
+    await tx.dimCategory.delete({ where: { id } });
+    return 0;
+  });
 }

@@ -620,6 +620,104 @@ Changes the password of the authenticated user. The current session is invalidat
 
 ---
 
+## Categories
+
+All category endpoints require an authenticated session with the `USER` role.
+
+### GET /categories
+
+Returns all categories available to the authenticated user — both global system categories (`userId: null`) and the user's custom categories.
+
+**Response 200:**
+
+```json
+[
+  {
+    "id": "uuid",
+    "categoryName": "Groceries",
+    "userId": null,
+    "createdAt": "2026-03-29T10:00:00.000Z",
+    "updatedAt": "2026-03-29T10:00:00.000Z"
+  },
+  {
+    "id": "uuid",
+    "categoryName": "Tennis",
+    "userId": "uuid",
+    "createdAt": "2026-04-01T12:00:00.000Z",
+    "updatedAt": "2026-04-01T12:00:00.000Z"
+  }
+]
+```
+
+**Response 401:** Not authenticated
+
+### POST /categories
+
+Creates a new custom category for the authenticated user.
+
+**Request Body:**
+
+| Field          | Type   | Required | Validation      |
+| -------------- | ------ | -------- | --------------- |
+| `categoryName` | string | yes      | 1–50 characters |
+
+**Response 201:**
+
+```json
+{
+  "id": "uuid",
+  "categoryName": "Tennis",
+  "userId": "uuid",
+  "createdAt": "2026-04-01T12:00:00.000Z",
+  "updatedAt": "2026-04-01T12:00:00.000Z"
+}
+```
+
+**Response 400:** Missing or invalid `categoryName`
+**Response 401:** Not authenticated
+**Response 409:** Category with this name already exists for this user
+
+### PATCH /categories/:id
+
+Updates the name of a user's own custom category. Global categories cannot be modified.
+
+**Request Body:**
+
+| Field          | Type   | Required | Validation      |
+| -------------- | ------ | -------- | --------------- |
+| `categoryName` | string | yes      | 1–50 characters |
+
+**Response 200:**
+
+```json
+{
+  "id": "uuid",
+  "categoryName": "Squash",
+  "userId": "uuid",
+  "createdAt": "2026-04-01T12:00:00.000Z",
+  "updatedAt": "2026-04-08T14:00:00.000Z"
+}
+```
+
+**Response 400:** Missing or invalid `categoryName`, or invalid UUID
+**Response 401:** Not authenticated
+**Response 403:** Cannot modify global categories or another user's category
+**Response 404:** Category not found
+
+### DELETE /categories/:id
+
+Deletes a user's own custom category. Global categories cannot be deleted. Deletion is blocked if the category is referenced by transactions or merchant mappings.
+
+**Response 204:** Category deleted (no body)
+
+**Response 400:** Invalid UUID
+**Response 401:** Not authenticated
+**Response 403:** Cannot delete global categories or another user's category
+**Response 404:** Category not found
+**Response 409:** Category is in use by transactions or merchant mappings
+
+---
+
 ## Accounts
 
 All account endpoints require an authenticated session with the `USER` role.

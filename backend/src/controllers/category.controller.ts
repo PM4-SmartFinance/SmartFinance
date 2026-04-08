@@ -10,7 +10,7 @@ export async function categoryRoutes(app: FastifyInstance): Promise<void> {
     if (!user) throw new ServiceError(401, "Unauthorized");
 
     const categories = await categoryService.getAllCategories(user.id);
-    return reply.status(200).send(categories);
+    return reply.status(200).send({ categories });
   });
 
   // POST: Create a new custom category
@@ -22,6 +22,7 @@ export async function categoryRoutes(app: FastifyInstance): Promise<void> {
         body: {
           type: "object",
           required: ["categoryName"],
+          additionalProperties: false,
           properties: {
             categoryName: { type: "string", minLength: 1, maxLength: 50 },
           },
@@ -34,7 +35,7 @@ export async function categoryRoutes(app: FastifyInstance): Promise<void> {
 
       const { categoryName } = request.body;
       const newCategory = await categoryService.createCategory(categoryName, user.id);
-      return reply.status(201).send(newCategory);
+      return reply.status(201).send({ category: newCategory });
     },
   );
 
@@ -51,6 +52,7 @@ export async function categoryRoutes(app: FastifyInstance): Promise<void> {
         body: {
           type: "object",
           required: ["categoryName"],
+          additionalProperties: false,
           properties: {
             categoryName: { type: "string", minLength: 1, maxLength: 50 },
           },
@@ -65,7 +67,7 @@ export async function categoryRoutes(app: FastifyInstance): Promise<void> {
       const { categoryName } = request.body;
 
       const updated = await categoryService.updateCategory(id, user.id, categoryName);
-      return reply.status(200).send(updated);
+      return reply.status(200).send({ category: updated });
     },
   );
 
