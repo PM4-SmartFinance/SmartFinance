@@ -48,8 +48,8 @@ vi.mock("../lib/api", () => {
   };
 });
 
-// Mock auth context
-vi.mock("../contexts/AuthProvider", () => ({
+// Mock auth hook
+vi.mock("../hooks/useAuth", () => ({
   useAuth: () => ({
     user: { id: "123", email: "test@example.com", role: "USER" },
   }),

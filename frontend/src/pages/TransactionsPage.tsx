@@ -132,7 +132,8 @@ export function TransactionsPage() {
           {isLoading ? (
             <div className="space-y-4 p-6">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-12 animate-pulse rounded bg-muted" />
+                // eslint-disable-next-line @eslint-react/no-array-index-key
+                <div key={`loading-${i}`} className="h-12 animate-pulse rounded bg-muted" />
               ))}
             </div>
           ) : transactions.length === 0 ? (
