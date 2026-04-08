@@ -246,4 +246,47 @@ describe("parseUBSCSV", () => {
     expect(() => parseUBSCSV(csv)).toThrow(ServiceError);
     expect(() => parseUBSCSV(csv)).toThrow("no data rows");
   });
+
+  it("strips a leading UTF-8 BOM and parses correctly", () => {
+    const csv =
+      "\uFEFF" +
+      [
+        SEP_LINE,
+        VALID_HEADER,
+        `"1234 5678 9101";"9999 99XX XXXX 9999";"M. MUSTERMANN";"21.07.2025";"Laden6";"Shop";"1.7";"CHF";"";"CHF";"1.7";"";"23.07.2025"`,
+      ].join("\n");
+
+    const result = parseUBSCSV(csv);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.amount).toBe(-1.7);
+  });
+
+  it("parses correctly with a comma delimiter declared via sep=,", () => {
+    const header = VALID_HEADER.replaceAll(";", ",");
+    const row = `"1234 5678 9101","9999 99XX XXXX 9999","M. MUSTERMANN","21.07.2025","Laden6","Shop","1.7","CHF","","CHF","1.7","","23.07.2025"`;
+    const csv = ["sep=,", header, row].join("\n");
+
+    const result = parseUBSCSV(csv);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.amount).toBe(-1.7);
+  });
+
+  it("throws 422 on a truncated header with fewer columns than expected", () => {
+    const truncatedHeader = `"Kontonummer";"Kartennummer";"Konto-/Karteninhaber"`;
+    const csv = [SEP_LINE, truncatedHeader, `"a";"b";"c"`].join("\n");
+
+    expect(() => parseUBSCSV(csv)).toThrow(ServiceError);
+    expect(() => parseUBSCSV(csv)).toThrow("<missing>");
+  });
+
+  it("throws 422 when a non-footer row has an empty date but non-empty leading fields", () => {
+    const csv = [
+      SEP_LINE,
+      VALID_HEADER,
+      `"1234 5678 9101";"9999 99XX XXXX 9999";"M. MUSTERMANN";"";"Laden6";"Shop";"1.7";"CHF";"";"CHF";"1.7";"";"23.07.2025"`,
+    ].join("\n");
+
+    expect(() => parseUBSCSV(csv)).toThrow(ServiceError);
+    expect(() => parseUBSCSV(csv)).toThrow("missing date");
+  });
 });
