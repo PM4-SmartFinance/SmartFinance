@@ -1,3 +1,15 @@
+export function decodeCSVBuffer(buffer: Buffer, fallbackEncoding: string): string {
+  if (fallbackEncoding === "utf-8") {
+    return new TextDecoder("utf-8").decode(buffer);
+  }
+  // Try UTF-8 first (strict mode rejects invalid sequences), fall back to declared encoding
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+  } catch {
+    return new TextDecoder(fallbackEncoding).decode(buffer);
+  }
+}
+
 const UTF8_BOM = "\uFEFF";
 /**
  * Remove the UTF-8 Byte Order Mark (U+FEFF) if present at the start of the string.

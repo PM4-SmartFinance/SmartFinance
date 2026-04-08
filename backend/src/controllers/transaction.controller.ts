@@ -4,6 +4,7 @@ import { requireRole } from "../middleware/rbac.js";
 import { ServiceError } from "../errors.js";
 import type { ImportFormat } from "../services/import.service.js";
 import { importTransactions, SUPPORTED_FORMATS } from "../services/import.service.js";
+import { decodeCSVBuffer } from "../services/importers/csv.utils.js";
 import type { SortBy, SortOrder } from "../services/transaction.service.js";
 import * as transactionService from "../services/transaction.service.js";
 
@@ -92,7 +93,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
         }
 
         const buffer = await fileData.toBuffer();
-        const csvText = new TextDecoder(FORMAT_ENCODING[format]).decode(buffer);
+        const csvText = decodeCSVBuffer(buffer, FORMAT_ENCODING[format]);
 
         const result = await importTransactions({
           csvText,
