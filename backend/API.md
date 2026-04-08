@@ -823,6 +823,44 @@ Deletes a category rule. Only rules owned by the authenticated user can be delet
 
 ---
 
+## Dashboard
+
+All dashboard endpoints require an authenticated session with the `USER` role.
+
+### GET /dashboard/summary
+
+Returns aggregated financial totals for the authenticated user within the specified date range.
+
+**Query Parameters:**
+
+| Parameter   | Type   | Required | Validation                   |
+| ----------- | ------ | -------- | ---------------------------- |
+| `startDate` | string | yes      | ISO date format `YYYY-MM-DD` |
+| `endDate`   | string | yes      | ISO date format `YYYY-MM-DD` |
+
+**Response 200:**
+
+```json
+{
+  "totalIncome": 1500.0,
+  "totalExpenses": -800.0,
+  "netBalance": 700.0,
+  "transactionCount": 5
+}
+```
+
+- `totalIncome` — sum of all positive-amount transactions in the range
+- `totalExpenses` — sum of all negative-amount transactions in the range (negative value)
+- `netBalance` — `totalIncome + totalExpenses`
+- `transactionCount` — total number of transactions (income + expense) in the range
+
+All values are `0` when there are no transactions in the range. Use `transactionCount` to distinguish an empty period from a zero-sum period.
+
+**Response 400:** Missing or malformed `startDate`/`endDate`, invalid calendar date (e.g. month 13), or `startDate` is after `endDate`
+**Response 401:** Not authenticated
+
+---
+
 ## Error Format
 
 All errors are formatted uniformly by the centralized error handler:
@@ -1326,6 +1364,73 @@ The following JSON can be imported directly into Postman: **Import > Raw text > 
               "mode": "raw",
               "raw": "{\n  \"categoryId\": \"{{categoryId}}\",\n  \"month\": 3,\n  \"year\": 2026,\n  \"limitAmount\": 300\n}"
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Summary",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has totalIncome', () => pm.expect(pm.response.json()).to.have.property('totalIncome'));",
+                  "pm.test('Has totalExpenses', () => pm.expect(pm.response.json()).to.have.property('totalExpenses'));",
+                  "pm.test('Has netBalance', () => pm.expect(pm.response.json()).to.have.property('netBalance'));",
+                  "pm.test('Has transactionCount', () => pm.expect(pm.response.json()).to.have.property('transactionCount'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/dashboard/summary?startDate=2025-01-01&endDate=2025-12-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["dashboard", "summary"],
+              "query": [
+                { "key": "startDate", "value": "2025-01-01" },
+                { "key": "endDate", "value": "2025-12-31" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Summary — missing params (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/dashboard/summary"
+          }
+        },
+        {
+          "name": "Summary — unauthenticated (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status 401', () => pm.response.to.have.status(401));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/dashboard/summary?startDate=2025-01-01&endDate=2025-12-31"
           }
         }
       ]
