@@ -1,5 +1,5 @@
 import { ServiceError } from "../../errors.js";
-import { parseCSVLine } from "./csv.utils.js";
+import { parseCSVLine, stripBOM } from "./csv.utils.js";
 import type { ParsedTransaction } from "./types.js";
 
 export type { ParsedTransaction };
@@ -27,7 +27,9 @@ const EXPECTED_HEADERS = [
 ];
 
 export function parseNeonCSV(csv: string): ParsedTransaction[] {
-  const lines = csv.split(/\r?\n/).filter((l) => l.trim() !== "");
+  const lines = stripBOM(csv)
+    .split(/\r?\n/)
+    .filter((l) => l.trim() !== "");
 
   if (lines.length < 2) {
     throw new ServiceError(422, "CSV file contains no data rows");
@@ -38,7 +40,7 @@ export function parseNeonCSV(csv: string): ParsedTransaction[] {
     if (header[i] !== EXPECTED_HEADERS[i]) {
       throw new ServiceError(
         422,
-        `Unrecognized CSV format: expected Neon export (header mismatch at column ${i + 1})`,
+        `Unrecognized CSV format: expected Neon export (header mismatch at column ${i + 1}: expected "${EXPECTED_HEADERS[i]}", got "${header[i] ?? "<missing>"}")`,
       );
     }
   }
