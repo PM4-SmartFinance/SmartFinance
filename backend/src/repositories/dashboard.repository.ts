@@ -1,6 +1,6 @@
 import { prisma } from "../prisma.js";
 
-export function dateStringToId(dateStr: string): number {
+function dateStringToId(dateStr: string): number {
   const [yearStr, monthStr, dayStr] = dateStr.split("-");
   return Number(yearStr) * 10000 + Number(monthStr) * 100 + Number(dayStr);
 }

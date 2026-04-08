@@ -21,15 +21,15 @@ export async function getDashboardSummary(userId: string, startDate: string, end
     endDate,
   );
 
-  const totalIncome = incomeAgg._sum.amount?.toNumber() ?? 0;
+  const totalIncome = Number((incomeAgg._sum.amount?.toNumber() ?? 0).toFixed(2));
   // totalExpenses is negative (e.g. -800.00) — expenses are stored as negative amounts.
   // netBalance = totalIncome + totalExpenses (e.g. 1500 + (-800) = 700).
-  const totalExpenses = expenseAgg._sum.amount?.toNumber() ?? 0;
+  const totalExpenses = Number((expenseAgg._sum.amount?.toNumber() ?? 0).toFixed(2));
 
   return {
     totalIncome,
     totalExpenses,
-    netBalance: totalIncome + totalExpenses,
+    netBalance: Number((totalIncome + totalExpenses).toFixed(2)),
     transactionCount,
   };
 }

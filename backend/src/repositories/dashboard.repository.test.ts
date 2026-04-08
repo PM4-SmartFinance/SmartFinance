@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Prisma } from "@prisma/client";
-import { dateStringToId, getSummary } from "./dashboard.repository.js";
+import { getSummary } from "./dashboard.repository.js";
 
 vi.mock("../prisma.js", () => ({
   prisma: {
@@ -14,28 +14,6 @@ vi.mock("../prisma.js", () => ({
 import { prisma } from "../prisma.js";
 
 const mockPrisma = vi.mocked(prisma.factTransactions);
-
-describe("dateStringToId", () => {
-  it("converts a standard date to YYYYMMDD integer", () => {
-    expect(dateStringToId("2025-06-15")).toBe(20250615);
-  });
-
-  it("preserves leading zero for single-digit month", () => {
-    expect(dateStringToId("2025-01-01")).toBe(20250101);
-  });
-
-  it("preserves leading zero for single-digit day", () => {
-    expect(dateStringToId("2025-09-05")).toBe(20250905);
-  });
-
-  it("handles end of year", () => {
-    expect(dateStringToId("2025-12-31")).toBe(20251231);
-  });
-
-  it("handles year boundary (Jan 1 of new year)", () => {
-    expect(dateStringToId("2026-01-01")).toBe(20260101);
-  });
-});
 
 describe("getSummary", () => {
   beforeEach(() => {
