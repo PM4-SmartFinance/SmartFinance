@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { config } from "dotenv";
 
 export async function setup(): Promise<void> {
-  config({ path: ".env.test" });
+  config({ path: ".env.test", override: true });
 
   const databaseUrl = process.env["DATABASE_URL"];
   if (!databaseUrl) {

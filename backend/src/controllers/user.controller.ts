@@ -1,7 +1,35 @@
 import type { FastifyInstance } from "fastify";
-import { requireRole } from "../middleware/rbac.js";
+import { requireRole, requireOwnerOrAdmin } from "../middleware/rbac.js";
 import { ServiceError } from "../errors.js";
 import * as userService from "../services/user.service.js";
+
+interface UserParams {
+  id: string;
+}
+
+interface UserQuery {
+  limit: number;
+  offset: number;
+  active?: boolean;
+}
+
+const listUsersSchema = {
+  querystring: {
+    type: "object",
+    properties: {
+      limit: { type: "integer", minimum: 1, maximum: 100, default: 50 },
+      offset: { type: "integer", minimum: 0, default: 0 },
+      active: { type: "boolean" },
+    },
+    additionalProperties: false,
+  },
+};
+
+interface UpdateUserBody {
+  name?: string;
+  role?: "ADMIN" | "USER";
+  active?: boolean;
+}
 
 interface UpdateProfileBody {
   displayName?: string;
@@ -12,6 +40,19 @@ interface ChangePasswordBody {
   currentPassword: string;
   newPassword: string;
 }
+
+const patchUserSchema = {
+  body: {
+    type: "object",
+    properties: {
+      name: { type: "string", maxLength: 255 },
+      role: { type: "string", enum: ["ADMIN", "USER"] },
+      active: { type: "boolean" },
+    },
+    additionalProperties: false,
+    minProperties: 1,
+  },
+};
 
 const updateProfileSchema = {
   type: "object",
@@ -33,6 +74,8 @@ const changePasswordSchema = {
 } as const;
 
 export async function userRoutes(app: FastifyInstance): Promise<void> {
+  // --- Profile routes (from develop) ---
+
   app.get("/users/me", { preHandler: requireRole("USER") }, async (request, reply) => {
     const sessionUser = request.session.get("user");
     if (!sessionUser) throw new ServiceError(401, "Unauthorized");
@@ -84,6 +127,59 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
       request.session.delete();
 
       return reply.send({ ok: true });
+    },
+  );
+
+  // --- CRUD routes (KAN-74) ---
+
+  app.get<{ Querystring: UserQuery }>(
+    "/users",
+    { preHandler: requireRole("ADMIN"), schema: listUsersSchema },
+    async (request, reply) => {
+      // Fastify schema guarantees these are numbers/boolean
+      const { limit, offset, active } = request.query;
+      const sessionUser = request.session.get("user") ?? null;
+
+      const res = await userService.listUsers(sessionUser, {
+        limit,
+        offset,
+        ...(active !== undefined && { active }),
+      });
+      return reply.send(res);
+    },
+  );
+
+  app.get<{ Params: UserParams }>(
+    "/users/:id",
+    { preHandler: requireOwnerOrAdmin("id") },
+    async (request, reply) => {
+      const { id } = request.params;
+      const sessionUser = request.session.get("user") ?? null;
+      const user = await userService.getUserById(sessionUser, id);
+      return reply.send({ user });
+    },
+  );
+
+  app.patch<{ Params: UserParams; Body: UpdateUserBody }>(
+    "/users/:id",
+    { preHandler: requireOwnerOrAdmin("id"), schema: patchUserSchema },
+    async (request, reply) => {
+      const { id } = request.params;
+      const payload = request.body;
+      const sessionUser = request.session.get("user") ?? null;
+      const updated = await userService.updateUser(sessionUser, id, payload);
+      return reply.send({ user: updated });
+    },
+  );
+
+  app.delete<{ Params: UserParams }>(
+    "/users/:id",
+    { preHandler: requireOwnerOrAdmin("id") },
+    async (request, reply) => {
+      const { id } = request.params;
+      const sessionUser = request.session.get("user") ?? null;
+      await userService.deleteUser(sessionUser, id);
+      return reply.status(204).send();
     },
   );
 }

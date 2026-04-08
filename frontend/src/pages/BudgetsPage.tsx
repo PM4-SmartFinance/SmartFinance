@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useBudgets, useDeleteBudget, Budget } from "../lib/queries/budgets";
+import { ApiError } from "../lib/api";
 import { useCategories } from "../lib/queries/categories";
 import { BudgetProgressCard } from "../components/BudgetProgressCard";
 import { CreateEditBudgetDialog } from "../components/CreateEditBudgetDialog";
@@ -19,7 +20,7 @@ export function BudgetsPage() {
 
   const { data: budgets = [], isLoading, error } = useBudgets();
   const { data: categories = [], error: categoriesError } = useCategories();
-  const { mutate: deleteBudget, isPending: isDeleting } = useDeleteBudget();
+  const { mutateAsync: deleteBudget, isPending: isDeleting } = useDeleteBudget();
 
   const getCategoryName = (categoryId: string) => {
     const category = categories.find((c) => c.id === categoryId);
@@ -57,17 +58,15 @@ export function BudgetsPage() {
   const handleConfirmDelete = async (budgetId: string) => {
     setDeleteError("");
     try {
-      // Wait for the mutation to complete
-      await new Promise<void>((resolve, reject) => {
-        deleteBudget(budgetId, {
-          onSuccess: () => resolve(),
-          onError: (error) => reject(error),
-        });
-      });
+      await deleteBudget(budgetId);
       setDeleteDialogOpen(false);
       setBudgetToDelete(null);
-    } catch {
-      setDeleteError("Failed to delete budget. Please try again.");
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.message || "Failed to delete budget. Please try again."
+          : "Failed to delete budget. Please try again.";
+      setDeleteError(message);
     }
   };
 
