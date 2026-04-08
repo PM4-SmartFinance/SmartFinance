@@ -9,7 +9,7 @@ sep=;
 "1234 5678 9101";"9999 99XX XXXX 9999";"M. MUSTERMANN";"13.07.2025";"Laden15     Zürich       CHE";"Tankstelle";"5.0";"CHF";"";"CHF";"5.0";"";"16.07.2025"
 "1234 5678 9101";"9999 99XX XXXX 9999";"M. MUSTERMANN";"13.07.2025";"Laden3    Zürich       CHE";"Lebensmittelgeschäft";"4.7";"CHF";"";"CHF";"4.7";"";"16.07.2025"
 "1234 5678 9101";"1111 11XX XXXX 1111";"M. MUSTERMANN";"10.07.2025";"PAYPAL   CHE";"Gebrauchsgüter (B2B)";"78.0";"CHF";"";"CHF";"78.0";"";"11.07.2025"
-"1234 5678 9101";"1111 11XX XXXX 1111";"M. MUSTERMANN";"01.07.2025";Laden17           WASHINGTON      DEU;"Digitale Güter";"11.12";"CHF";"";"CHF";"11.12";"";"03.07.2025"
+"1234 5678 9101";"1111 11XX XXXX 1111";"M. MUSTERMANN";"01.07.2025";"Laden17           WASHINGTON      DEU";"Digitale Güter";"11.12";"CHF";"";"CHF";"11.12";"";"03.07.2025"
 
 ;;;;"Total pro Währung";;;;;;;;Total
 ;;;;"Total Kartenbuchungen";;;;;"CHF";"500.99";"122.18";"-462.23"

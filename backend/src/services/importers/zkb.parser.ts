@@ -39,7 +39,7 @@ export function parseZKBCSV(csv: string): ParsedTransaction[] {
     if (header[i] !== EXPECTED_HEADERS[i]) {
       throw new ServiceError(
         422,
-        `Unrecognized CSV format: expected ZKB export (header mismatch at column ${i + 1}: expected "${EXPECTED_HEADERS[i]}", got "${header[i] ?? "<missing>"}"))`,
+        `Unrecognized CSV format: expected ZKB export (header mismatch at column ${i + 1}: expected "${EXPECTED_HEADERS[i]}", got "${header[i] ?? "<missing>"}")`,
       );
     }
   }

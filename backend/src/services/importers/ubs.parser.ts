@@ -62,8 +62,12 @@ export function parseUBSCSV(csv: string): ParsedTransaction[] {
 
     const rawDate = (fields[COL.DATE] ?? "").trim();
 
-    // Skip footer/total rows (empty date or contain "Total")
+    // Skip footer/total rows — identified by empty date and empty leading fields
     if (!rawDate) {
+      const isLikelyFooter = fields.slice(0, COL.DATE).every((f) => !f.trim());
+      if (!isLikelyFooter) {
+        throw new ServiceError(422, `Row ${rowNum}: missing date`);
+      }
       continue;
     }
 
