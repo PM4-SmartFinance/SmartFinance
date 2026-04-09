@@ -46,8 +46,8 @@ vi.mock("../lib/api", () => ({
 vi.mock("../lib/queries/categories", () => ({
   useCategories: () => ({
     data: [
-      { id: "cat-1", name: "Groceries" },
-      { id: "cat-2", name: "Transport" },
+      { id: "cat-1", categoryName: "Groceries" },
+      { id: "cat-2", categoryName: "Transport" },
     ],
     isLoading: false,
     error: null,
@@ -293,7 +293,7 @@ describe("TransactionsPage", () => {
 
     // At page 1, Previous should be disabled
     const prevButton = screen.getByRole("button", { name: "Previous" });
-    expect(prevButton.hasAttribute("disabled")).toBeTruthy();
+    expect(prevButton).toBeDisabled();
 
     // After clicking Next to go to page 2, both should be enabled (need fresh mock)
     vi.mocked(apiModule.api.get).mockResolvedValue({
@@ -306,7 +306,7 @@ describe("TransactionsPage", () => {
 
     await waitFor(() => {
       const updatedPrevButton = screen.getByRole("button", { name: "Previous" });
-      expect(updatedPrevButton.hasAttribute("disabled")).toBeFalsy();
+      expect(updatedPrevButton).not.toBeDisabled();
     });
   });
 
@@ -343,8 +343,82 @@ describe("TransactionsPage", () => {
     renderTransactionsPage();
 
     await waitFor(() => {
-      expect(screen.getByText("4/1/2026")).toBeInTheDocument(); // April 1, 2026
-      expect(screen.getByText("3/31/2026")).toBeInTheDocument(); // March 31, 2026
+      expect(screen.getByText("1.4.2026")).toBeInTheDocument(); // April 1, 2026 (de-CH)
+      expect(screen.getByText("31.3.2026")).toBeInTheDocument(); // March 31, 2026 (de-CH)
+    });
+  });
+
+  it("shows error state when API fails", async () => {
+    vi.mocked(apiModule.api.get).mockRejectedValue(new Error("Server error"));
+
+    renderTransactionsPage();
+
+    // retry: 1 in query config means TanStack Query retries once before surfacing error
+    await waitFor(
+      () => {
+        expect(
+          screen.getByText("Failed to load transactions. Please try again later."),
+        ).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
+
+    // Table should not be rendered in error state
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  it("toggles sort order when clicking the same column header twice", async () => {
+    vi.mocked(apiModule.api.get).mockResolvedValue(mockTransactionsResponse);
+
+    renderTransactionsPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("Migros")).toBeInTheDocument();
+    });
+
+    // Default sort is date desc — click date header to toggle to asc
+    await userEvent.click(screen.getByRole("button", { name: /Date/ }));
+
+    await waitFor(() => {
+      const state = useTransactionsStore.getState();
+      expect(state.sortBy).toBe("date");
+      expect(state.sortOrder).toBe("asc");
+    });
+
+    // Wait for re-render with updated data, then click again
+    await waitFor(() => {
+      expect(screen.getByText("Migros")).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /Date/ }));
+
+    await waitFor(() => {
+      const state = useTransactionsStore.getState();
+      expect(state.sortBy).toBe("date");
+      expect(state.sortOrder).toBe("desc");
+    });
+  });
+
+  it("resets sort order to desc when switching to a different column", async () => {
+    vi.mocked(apiModule.api.get).mockResolvedValue(mockTransactionsResponse);
+
+    // Start with date asc
+    useTransactionsStore.setState({ sortBy: "date", sortOrder: "asc" });
+
+    renderTransactionsPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("Migros")).toBeInTheDocument();
+    });
+
+    // Click amount header — should reset to desc
+    const amountHeader = screen.getByRole("button", { name: /Amount/ });
+    await userEvent.click(amountHeader);
+
+    await waitFor(() => {
+      const state = useTransactionsStore.getState();
+      expect(state.sortBy).toBe("amount");
+      expect(state.sortOrder).toBe("desc");
     });
   });
 
