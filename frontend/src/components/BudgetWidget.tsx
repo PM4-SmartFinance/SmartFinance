@@ -2,8 +2,7 @@ import { Link } from "react-router";
 import { useDashboardBudgets } from "../lib/queries/dashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
-// Helper: Categorize budget status based on percentage used
-function getBudgetStatus(percentageUsed: number): "on-track" | "approaching" | "exceeded" {
+export function getBudgetStatus(percentageUsed: number): "on-track" | "approaching" | "exceeded" {
   if (percentageUsed >= 100) return "exceeded";
   if (percentageUsed >= 70) return "approaching";
   return "on-track";
@@ -17,6 +16,26 @@ export function BudgetWidget() {
       <div className="rounded border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
         Failed to load budget data. Please try again.
       </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <Link to="/budgets" className="block hover:opacity-90 transition-opacity">
+        <Card className="cursor-pointer">
+          <CardHeader>
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider">
+              Budget Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+              <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
     );
   }
 
@@ -48,12 +67,7 @@ export function BudgetWidget() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="space-y-2">
-              <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-              <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-            </div>
-          ) : currentMonthBudgets.length === 0 ? (
+          {currentMonthBudgets.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No budgets set for {currentMonth}/{currentYear}. Click to create one.
             </p>
@@ -73,6 +87,7 @@ export function BudgetWidget() {
       </Card>
     </Link>
   );
+
   // NOTE: Future enhancement (next sprint) — detailed granular view can be added here
   // by creating a separate BudgetDetailedWidget component that shows individual
   // budget cards, spending breakdown, and progress bars. Both would use the same

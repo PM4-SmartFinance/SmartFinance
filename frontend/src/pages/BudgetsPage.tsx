@@ -121,11 +121,7 @@ export function BudgetsPage() {
             <p className="text-sm text-muted-foreground">
               Set spending limits per category and monitor progress
             </p>
-            <Button
-              className="mt-2 w-fit bg-black text-white hover:bg-black/90"
-              size="sm"
-              onClick={() => navigate("/")}
-            >
+            <Button className="mt-2 w-fit" size="sm" onClick={() => navigate("/")}>
               Back to Dashboard
             </Button>
           </div>

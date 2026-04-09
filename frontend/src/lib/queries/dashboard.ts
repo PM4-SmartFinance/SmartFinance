@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/store/appStore";
+import type { Budget } from "./budgets";
 
 // Dashboard data changes infrequently — use a longer stale time than the global
 // default (30s) to reduce unnecessary refetches when switching between pages.
@@ -30,7 +31,7 @@ export interface CategoryBreakdown {
   amount: number;
 }
 
-function extractArray<T>(value: unknown): T[] {
+export function extractArray<T>(value: unknown): T[] {
   if (Array.isArray(value)) {
     return value;
   }
@@ -44,10 +45,13 @@ function extractArray<T>(value: unknown): T[] {
     return (value as { data: T[] }).data;
   }
 
+  if (import.meta.env.DEV && value != null) {
+    console.warn("[extractArray] Unexpected response shape, returning empty array:", value);
+  }
   return [];
 }
 
-function toTrendDataPoints(raw: unknown): TrendDataPoint[] {
+export function toTrendDataPoints(raw: unknown): TrendDataPoint[] {
   const data = extractArray<TrendDataPoint | MonthlyTrendPoint>(raw);
 
   return data
@@ -72,20 +76,8 @@ function toTrendDataPoints(raw: unknown): TrendDataPoint[] {
     .filter((point): point is TrendDataPoint => point !== null);
 }
 
-export interface Budget {
-  id: string;
-  categoryId: string;
-  month: number;
-  year: number;
-  limitAmount: string; // Returned as string from API for precision
-  currentSpending: string;
-  percentageUsed: number;
-  remainingAmount: string;
-  isOverBudget: boolean;
-  active: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+// Re-export for consumers that import Budget from dashboard queries
+export type { Budget };
 
 // Dashboard Summary Hook
 export function useDashboardSummary() {
@@ -138,7 +130,13 @@ export function useDashboardCategories() {
 export function useDashboardBudgets() {
   return useQuery({
     queryKey: ["dashboard", "budgets"] as const,
-    queryFn: () => api.get<{ budgets: Budget[] }>("/budgets").then((res) => res.budgets),
+    queryFn: async () => {
+      const res = await api.get<{ budgets: Budget[] }>("/budgets");
+      if (!Array.isArray(res.budgets)) {
+        throw new Error("Unexpected response shape from /budgets endpoint");
+      }
+      return res.budgets;
+    },
     staleTime: DASHBOARD_STALE_TIME,
   });
 }
