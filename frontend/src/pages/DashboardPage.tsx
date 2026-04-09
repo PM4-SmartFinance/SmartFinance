@@ -8,6 +8,8 @@ import { SummaryMetricsWidget } from "../components/SummaryMetricsWidget";
 import { BudgetWidget } from "../components/BudgetWidget";
 import { SpendingTrendChart } from "../components/SpendingTrendChart";
 import { CategoryBreakdownChart } from "../components/CategoryBreakdownChart";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CsvImportCard } from "../components/CsvImportCard";
 
 const TEXT = {
   heading: "Dashboard",
@@ -78,6 +80,41 @@ export function DashboardPage() {
         <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
           <SpendingTrendChart />
           <CategoryBreakdownChart />
+
+          {/* ── Recent Transactions (Full Width) ── */}
+          <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
+            <CardHeader>
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider">
+                Recent Transactions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex min-h-48 items-center justify-center rounded bg-muted/30 px-4 text-center">
+                <div className="text-sm italic text-muted-foreground">
+                  📋 Transaction list table (Date, Description, Category, Amount, Status)
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Budget Progress (Full Width) ── */}
+          <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
+            <CardHeader>
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider">
+                Budget Progress
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex min-h-48 items-center justify-center rounded bg-muted/30 px-4 text-center">
+                <div className="text-sm italic text-muted-foreground">
+                  📈 Budget progress bars (Category name, progress % bar, spent vs. limit)
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── CSV Import ── */}
+          <CsvImportCard />
         </section>
       </div>
     </main>

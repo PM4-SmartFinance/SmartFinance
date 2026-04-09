@@ -1,14 +1,13 @@
 import { defineConfig } from "vitest/config";
 import { config } from "dotenv";
 
-config({ path: ".env.test" });
+config({ path: ".env.test", override: true });
 
 export default defineConfig({
   test: {
     fileParallelism: false,
     globals: true,
     environment: "node",
-    fileParallelism: false,
     include: ["src/**/*.test.ts", "test/**/*.spec.ts"],
     exclude: ["**/*.stress.spec.ts", "**/node_modules/**"],
     globalSetup: ["test/global-setup.ts"],

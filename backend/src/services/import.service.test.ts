@@ -115,4 +115,18 @@ describe("importTransactions", () => {
 
     expect(result).toEqual({ imported: 1 });
   });
+
+  it("works correctly for the ubs format", async () => {
+    const ubsHeader = `"Kontonummer";"Kartennummer";"Konto-/Karteninhaber";"Einkaufsdatum";"Buchungstext";"Branche";"Betrag";"Originalw\u00e4hrung";"Kurs";"W\u00e4hrung";"Belastung";"Gutschrift";"Buchung"`;
+    const ubsRow = `"1234 5678 9101";"9999 99XX XXXX 9999";"M. MUSTERMANN";"21.07.2025";"Laden6";"Shop";"1.7";"CHF";"";"CHF";"1.7";"";"23.07.2025"`;
+
+    const result = await importTransactions({
+      csvText: [ubsHeader, ubsRow].join("\n"),
+      format: "ubs",
+      accountId: "acc-1",
+      userId: "user-1",
+    });
+
+    expect(result).toEqual({ imported: 1 });
+  });
 });

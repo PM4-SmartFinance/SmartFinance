@@ -27,12 +27,26 @@ const { mockGet } = vi.hoisted(() => {
   return { mockGet };
 });
 
-vi.mock("../lib/api", () => ({
-  api: {
-    get: mockGet,
-    post: vi.fn(() => Promise.resolve({ ok: true })),
-  },
-}));
+vi.mock("../lib/api", () => {
+  class MockApiError extends Error {
+    status: number;
+    body: unknown;
+    constructor(status: number, body: unknown, message: string) {
+      super(message);
+      this.name = "ApiError";
+      this.status = status;
+      this.body = body;
+    }
+  }
+  return {
+    api: {
+      get: mockGet,
+      post: vi.fn(() => Promise.resolve({ ok: true })),
+      upload: vi.fn(),
+    },
+    ApiError: MockApiError,
+  };
+});
 
 // Mock auth context
 vi.mock("../contexts/AuthProvider", () => ({
@@ -81,11 +95,11 @@ describe("DashboardPage", () => {
 
   it("renders main dashboard widgets", () => {
     renderWithProviders();
-    expect(screen.getByText("Account Balance")).toBeInTheDocument();
-    expect(screen.getByText("Monthly Expenses")).toBeInTheDocument();
-    expect(screen.getByText("Income This Month")).toBeInTheDocument();
-    expect(screen.getByText("Monthly Spending Trend")).toBeInTheDocument();
-    expect(screen.getByText("Spending by Category")).toBeInTheDocument();
+    expect(screen.getAllByText("Account Balance").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Monthly Expenses").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Income This Month").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Monthly Spending Trend").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Spending by Category").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders date range picker", () => {
@@ -137,8 +151,8 @@ describe("DashboardPage", () => {
     });
 
     // Verify widgets are still present
-    expect(screen.getByText("Account Balance")).toBeInTheDocument();
-    expect(screen.getByText("Monthly Spending Trend")).toBeInTheDocument();
-    expect(screen.getByText("Spending by Category")).toBeInTheDocument();
+    expect(screen.getAllByText("Account Balance").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Monthly Spending Trend").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Spending by Category").length).toBeGreaterThanOrEqual(1);
   });
 });

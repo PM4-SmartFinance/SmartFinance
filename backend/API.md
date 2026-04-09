@@ -104,6 +104,135 @@ Returns the currently authenticated user. Requires a valid session.
 
 ---
 
+## Users
+
+All user endpoints (except creation which is handled via `/auth/register`) require an authenticated session.
+
+### GET /users
+
+Returns a paginated list of all users. Requires an authenticated session with the `ADMIN` role.
+
+**Query Parameters:**
+
+| Parameter | Type    | Required | Description                             |
+| --------- | ------- | -------- | --------------------------------------- |
+| `limit`   | integer | no       | Number of users to return (default: 50) |
+| `offset`  | integer | no       | Number of users to skip (default: 0)    |
+
+**Response 200:**
+
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "email": "user@example.com",
+      "name": "John Doe",
+      "role": "USER",
+      "active": true,
+      "createdAt": "2026-03-18T10:00:00.000Z"
+    }
+  ],
+  "total": 1,
+  "limit": 50,
+  "offset": 0
+}
+```
+
+**Response 401:** Not authenticated
+**Response 403:** Forbidden (requires ADMIN role)
+
+---
+
+### GET /users/:id
+
+Returns the profile of a specific user. Users can read their own profile; admins can read any profile.
+
+**Path Parameters:**
+
+| Parameter | Type   | Validation |
+| --------- | ------ | ---------- |
+| `id`      | string | UUID       |
+
+**Response 200:**
+
+```json
+{
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "USER",
+    "active": true,
+    "createdAt": "2026-03-18T10:00:00.000Z"
+  }
+}
+```
+
+**Response 401:** Not authenticated
+**Response 403:** Forbidden
+**Response 404:** User not found
+
+---
+
+### PATCH /users/:id
+
+Updates a user's profile. Users can update their own `name`. Admins can update `name`, `role`, and `active` status.
+
+**Path Parameters:**
+
+| Parameter | Type   | Validation |
+| --------- | ------ | ---------- |
+| `id`      | string | UUID       |
+
+**Request Body:**
+
+| Field    | Type    | Required | Validation                     |
+| -------- | ------- | -------- | ------------------------------ |
+| `name`   | string  | no       | Max length 255                 |
+| `role`   | string  | no       | `ADMIN` or `USER` (admin only) |
+| `active` | boolean | no       | true or false (admin only)     |
+
+**Response 200:**
+
+```json
+{
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "Jane Doe",
+    "role": "USER",
+    "active": true,
+    "createdAt": "2026-03-18T10:00:00.000Z"
+  }
+}
+```
+
+**Response 400:** Invalid role or no updatable fields
+**Response 401:** Not authenticated
+**Response 403:** Forbidden
+**Response 404:** User not found
+
+---
+
+### DELETE /users/:id
+
+Soft-deletes a user (sets `active` to false). Users can delete themselves; admins can delete any user.
+
+**Path Parameters:**
+
+| Parameter | Type   | Validation |
+| --------- | ------ | ---------- |
+| `id`      | string | UUID       |
+
+**Response 204:** No content
+
+**Response 401:** Not authenticated
+**Response 403:** Forbidden
+**Response 404:** User not found
+
+---
+
 ## Transactions
 
 ### GET /transactions
@@ -167,7 +296,7 @@ Imports transactions from a CSV file into the specified account. Requires an aut
 | Parameter   | Type   | Required | Description                                   |
 | ----------- | ------ | -------- | --------------------------------------------- |
 | `accountId` | string | yes      | ID of the account to import transactions into |
-| `format`    | string | yes      | CSV format: `neon`, `zkb`, or `wise`          |
+| `format`    | string | yes      | CSV format: `neon`, `zkb`, `wise`, or `ubs`   |
 
 **Request Body:** `multipart/form-data` with a single file field containing the CSV file. Maximum file size: 10 MB.
 
@@ -262,6 +391,50 @@ Permanently deletes a transaction. Only the owner can delete their transactions.
 
 **Response 401:** Not authenticated
 **Response 404:** Transaction not found or does not belong to the authenticated user
+
+---
+
+## Dashboard
+
+All dashboard endpoints require an authenticated session with the `USER` role.
+
+### GET /dashboard/trends
+
+Returns monthly aggregated income and expenses for a lookback window ending in the current calendar month.
+
+**Query Parameters:**
+
+| Parameter | Type    | Required | Default | Validation | Description                                   |
+| --------- | ------- | -------- | ------- | ---------- | --------------------------------------------- |
+| `months`  | integer | no       | `6`     | 6-12       | Number of months to include in the time range |
+
+The response is ordered from oldest month to newest month. Months without transactions are included with `income = 0` and `expenses = 0`.
+
+`income` is the sum of positive transaction amounts. `expenses` is the sum of absolute values of negative transaction amounts.
+
+**Response 200:**
+
+```json
+{
+  "data": [
+    {
+      "year": 2025,
+      "month": 11,
+      "income": 0,
+      "expenses": 0
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "income": 2450.75,
+      "expenses": 980.2
+    }
+  ]
+}
+```
+
+**Response 400:** Invalid `months` query parameter
+**Response 401:** Not authenticated
 
 ---
 
@@ -488,6 +661,345 @@ Changes the password of the authenticated user. The current session is invalidat
 
 **Response 400:** Validation failure (newPassword too short)
 **Response 401:** Not authenticated or current password incorrect
+
+---
+
+## Categories
+
+All category endpoints require an authenticated session with the `USER` role.
+
+### GET /categories
+
+Returns all categories available to the authenticated user — both global system categories (`userId: null`) and the user's custom categories.
+
+**Response 200:**
+
+```json
+[
+  {
+    "id": "uuid",
+    "categoryName": "Groceries",
+    "userId": null,
+    "createdAt": "2026-03-29T10:00:00.000Z",
+    "updatedAt": "2026-03-29T10:00:00.000Z"
+  },
+  {
+    "id": "uuid",
+    "categoryName": "Tennis",
+    "userId": "uuid",
+    "createdAt": "2026-04-01T12:00:00.000Z",
+    "updatedAt": "2026-04-01T12:00:00.000Z"
+  }
+]
+```
+
+**Response 401:** Not authenticated
+
+### POST /categories
+
+Creates a new custom category for the authenticated user.
+
+**Request Body:**
+
+| Field          | Type   | Required | Validation      |
+| -------------- | ------ | -------- | --------------- |
+| `categoryName` | string | yes      | 1–50 characters |
+
+**Response 201:**
+
+```json
+{
+  "id": "uuid",
+  "categoryName": "Tennis",
+  "userId": "uuid",
+  "createdAt": "2026-04-01T12:00:00.000Z",
+  "updatedAt": "2026-04-01T12:00:00.000Z"
+}
+```
+
+**Response 400:** Missing or invalid `categoryName`
+**Response 401:** Not authenticated
+**Response 409:** Category with this name already exists for this user
+
+### PATCH /categories/:id
+
+Updates the name of a user's own custom category. Global categories cannot be modified.
+
+**Request Body:**
+
+| Field          | Type   | Required | Validation      |
+| -------------- | ------ | -------- | --------------- |
+| `categoryName` | string | yes      | 1–50 characters |
+
+**Response 200:**
+
+```json
+{
+  "id": "uuid",
+  "categoryName": "Squash",
+  "userId": "uuid",
+  "createdAt": "2026-04-01T12:00:00.000Z",
+  "updatedAt": "2026-04-08T14:00:00.000Z"
+}
+```
+
+**Response 400:** Missing or invalid `categoryName`, or invalid UUID
+**Response 401:** Not authenticated
+**Response 403:** Cannot modify global categories or another user's category
+**Response 404:** Category not found
+
+### DELETE /categories/:id
+
+Deletes a user's own custom category. Global categories cannot be deleted. Deletion is blocked if the category is referenced by transactions or merchant mappings.
+
+**Response 204:** Category deleted (no body)
+
+**Response 400:** Invalid UUID
+**Response 401:** Not authenticated
+**Response 403:** Cannot delete global categories or another user's category
+**Response 404:** Category not found
+**Response 409:** Category is in use by transactions or merchant mappings
+
+---
+
+## Accounts
+
+All account endpoints require an authenticated session with the `USER` role.
+
+### GET /accounts
+
+Returns all accounts belonging to the authenticated user, ordered by name.
+
+**Response 200:**
+
+```json
+{
+  "accounts": [
+    {
+      "id": "uuid",
+      "name": "Main Account",
+      "iban": "CH93 0076 2011 6238 5295 7"
+    }
+  ]
+}
+```
+
+**Response 401:** Not authenticated
+
+---
+
+## Category Rules
+
+All category rule endpoints require an authenticated session with the `USER` role.
+
+### GET /category-rules
+
+Returns all category rules for the authenticated user, ordered by priority descending.
+
+**Response 200:**
+
+```json
+{
+  "rules": [
+    {
+      "id": "uuid",
+      "pattern": "Migros",
+      "matchType": "contains",
+      "priority": 10,
+      "categoryId": "uuid",
+      "userId": "uuid",
+      "createdAt": "2026-03-29T10:00:00.000Z",
+      "updatedAt": "2026-03-29T10:00:00.000Z",
+      "category": {
+        "id": "uuid",
+        "categoryName": "Groceries"
+      }
+    }
+  ]
+}
+```
+
+**Response 401:** Not authenticated
+
+---
+
+### GET /category-rules/:id
+
+Returns a single category rule by ID.
+
+**Path Parameters:**
+
+| Parameter | Type   | Validation |
+| --------- | ------ | ---------- |
+| `id`      | string | UUID       |
+
+**Response 200:**
+
+```json
+{
+  "rule": {
+    "id": "uuid",
+    "pattern": "Migros",
+    "matchType": "contains",
+    "priority": 10,
+    "categoryId": "uuid",
+    "userId": "uuid",
+    "createdAt": "2026-03-29T10:00:00.000Z",
+    "updatedAt": "2026-03-29T10:00:00.000Z",
+    "category": {
+      "id": "uuid",
+      "categoryName": "Groceries"
+    }
+  }
+}
+```
+
+**Response 400:** Invalid UUID
+**Response 401:** Not authenticated
+**Response 404:** Rule not found or does not belong to the authenticated user
+
+---
+
+### POST /category-rules
+
+Creates a new category rule.
+
+**Request Body:**
+
+| Field        | Type    | Required | Validation                                            |
+| ------------ | ------- | -------- | ----------------------------------------------------- |
+| `pattern`    | string  | yes      | Non-empty string                                      |
+| `matchType`  | string  | yes      | `"exact"` or `"contains"`                             |
+| `categoryId` | string  | yes      | UUID, must be a valid category (user-owned or global) |
+| `priority`   | integer | yes      | >= 0                                                  |
+
+**Response 201:**
+
+```json
+{
+  "rule": {
+    "id": "uuid",
+    "pattern": "Migros",
+    "matchType": "contains",
+    "priority": 10,
+    "categoryId": "uuid",
+    "userId": "uuid",
+    "createdAt": "2026-03-29T10:00:00.000Z",
+    "updatedAt": "2026-03-29T10:00:00.000Z",
+    "category": {
+      "id": "uuid",
+      "categoryName": "Groceries"
+    }
+  }
+}
+```
+
+**Response 400:** Invalid input (missing fields, invalid matchType, non-UUID categoryId, extra properties)
+**Response 401:** Not authenticated
+**Response 404:** Category not found or does not belong to the authenticated user
+**Response 409:** A rule with this pattern and match type already exists
+
+---
+
+### PATCH /category-rules/:id
+
+Updates an existing category rule. Only rules owned by the authenticated user can be updated. At least one field must be provided.
+
+**Path Parameters:**
+
+| Parameter | Type   | Validation |
+| --------- | ------ | ---------- |
+| `id`      | string | UUID       |
+
+**Request Body:**
+
+| Field        | Type    | Required | Validation                                            |
+| ------------ | ------- | -------- | ----------------------------------------------------- |
+| `pattern`    | string  | no       | Non-empty string                                      |
+| `matchType`  | string  | no       | `"exact"` or `"contains"`                             |
+| `categoryId` | string  | no       | UUID, must be a valid category (user-owned or global) |
+| `priority`   | integer | no       | >= 0                                                  |
+
+**Response 200:**
+
+```json
+{
+  "rule": {
+    "id": "uuid",
+    "pattern": "Migros",
+    "matchType": "contains",
+    "priority": 20,
+    "categoryId": "uuid",
+    "userId": "uuid",
+    "createdAt": "2026-03-29T10:00:00.000Z",
+    "updatedAt": "2026-03-29T10:30:00.000Z",
+    "category": {
+      "id": "uuid",
+      "categoryName": "Groceries"
+    }
+  }
+}
+```
+
+**Response 400:** Invalid input (empty body, invalid matchType, non-UUID categoryId, extra properties)
+**Response 401:** Not authenticated
+**Response 404:** Rule or category not found, or does not belong to the authenticated user
+**Response 409:** A rule with this pattern and match type already exists
+
+---
+
+### DELETE /category-rules/:id
+
+Deletes a category rule. Only rules owned by the authenticated user can be deleted.
+
+**Path Parameters:**
+
+| Parameter | Type   | Validation |
+| --------- | ------ | ---------- |
+| `id`      | string | UUID       |
+
+**Response 204:** No content
+
+**Response 401:** Not authenticated
+**Response 404:** Rule not found or does not belong to the authenticated user
+
+---
+
+## Dashboard
+
+All dashboard endpoints require an authenticated session with the `USER` role.
+
+### GET /dashboard/summary
+
+Returns aggregated financial totals for the authenticated user within the specified date range.
+
+**Query Parameters:**
+
+| Parameter   | Type   | Required | Validation                   |
+| ----------- | ------ | -------- | ---------------------------- |
+| `startDate` | string | yes      | ISO date format `YYYY-MM-DD` |
+| `endDate`   | string | yes      | ISO date format `YYYY-MM-DD` |
+
+**Response 200:**
+
+```json
+{
+  "totalIncome": 1500.0,
+  "totalExpenses": -800.0,
+  "netBalance": 700.0,
+  "transactionCount": 5
+}
+```
+
+- `totalIncome` — sum of all positive-amount transactions in the range
+- `totalExpenses` — sum of all negative-amount transactions in the range (negative value)
+- `netBalance` — `totalIncome + totalExpenses`
+- `transactionCount` — total number of transactions (income + expense) in the range
+
+All values are `0` when there are no transactions in the range. Use `transactionCount` to distinguish an empty period from a zero-sum period.
+
+**Response 400:** Missing or malformed `startDate`/`endDate`, invalid calendar date (e.g. month 13), or `startDate` is after `endDate`
+**Response 401:** Not authenticated
 
 ---
 
@@ -850,6 +1362,30 @@ The following JSON can be imported directly into Postman: **Import > Raw text > 
       ]
     },
     {
+      "name": "Accounts",
+      "item": [
+        {
+          "name": "List Accounts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has accounts array', () => pm.expect(pm.response.json().accounts).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/accounts"
+          }
+        }
+      ]
+    },
+    {
       "name": "Budgets",
       "item": [
         {
@@ -970,6 +1506,73 @@ The following JSON can be imported directly into Postman: **Import > Raw text > 
               "mode": "raw",
               "raw": "{\n  \"categoryId\": \"{{categoryId}}\",\n  \"month\": 3,\n  \"year\": 2026,\n  \"limitAmount\": 300\n}"
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Summary",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has totalIncome', () => pm.expect(pm.response.json()).to.have.property('totalIncome'));",
+                  "pm.test('Has totalExpenses', () => pm.expect(pm.response.json()).to.have.property('totalExpenses'));",
+                  "pm.test('Has netBalance', () => pm.expect(pm.response.json()).to.have.property('netBalance'));",
+                  "pm.test('Has transactionCount', () => pm.expect(pm.response.json()).to.have.property('transactionCount'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/dashboard/summary?startDate=2025-01-01&endDate=2025-12-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["dashboard", "summary"],
+              "query": [
+                { "key": "startDate", "value": "2025-01-01" },
+                { "key": "endDate", "value": "2025-12-31" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Summary — missing params (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/dashboard/summary"
+          }
+        },
+        {
+          "name": "Summary — unauthenticated (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status 401', () => pm.response.to.have.status(401));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/dashboard/summary?startDate=2025-01-01&endDate=2025-12-31"
           }
         }
       ]
