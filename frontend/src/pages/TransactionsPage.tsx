@@ -8,11 +8,24 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 
 export function TransactionsPage() {
-  const store = useTransactionsStore();
-  const [tempStartDate, setTempStartDate] = useState(store.startDate || "");
-  const [tempEndDate, setTempEndDate] = useState(store.endDate || "");
+  const page = useTransactionsStore((s) => s.page);
+  const limit = useTransactionsStore((s) => s.limit);
+  const sortBy = useTransactionsStore((s) => s.sortBy);
+  const sortOrder = useTransactionsStore((s) => s.sortOrder);
+  const startDate = useTransactionsStore((s) => s.startDate);
+  const endDate = useTransactionsStore((s) => s.endDate);
+  const categoryId = useTransactionsStore((s) => s.categoryId);
+  const setPage = useTransactionsStore((s) => s.setPage);
+  const setSortBy = useTransactionsStore((s) => s.setSortBy);
+  const setCategoryId = useTransactionsStore((s) => s.setCategoryId);
+  const setStartDate = useTransactionsStore((s) => s.setStartDate);
+  const setEndDate = useTransactionsStore((s) => s.setEndDate);
+  const resetFilters = useTransactionsStore((s) => s.resetFilters);
 
-  const { data: categoriesData } = useCategories();
+  const [tempStartDate, setTempStartDate] = useState(startDate || "");
+  const [tempEndDate, setTempEndDate] = useState(endDate || "");
+
+  const { data: categoriesData, error: categoriesError } = useCategories();
   const categories = categoriesData ?? [];
 
   const {
@@ -20,31 +33,31 @@ export function TransactionsPage() {
     isLoading,
     error,
   } = useTransactions({
-    page: store.page,
-    limit: store.limit,
-    sortBy: store.sortBy,
-    sortOrder: store.sortOrder,
-    startDate: store.startDate || undefined,
-    endDate: store.endDate || undefined,
-    categoryId: store.categoryId || undefined,
+    page,
+    limit,
+    sortBy,
+    sortOrder,
+    startDate: startDate || undefined,
+    endDate: endDate || undefined,
+    categoryId: categoryId || undefined,
   });
 
   const transactions = transactionsData?.data ?? [];
   const meta = transactionsData?.meta;
 
   const handleApplyDateFilter = () => {
-    store.setStartDate(tempStartDate || null);
-    store.setEndDate(tempEndDate || null);
+    setStartDate(tempStartDate || null);
+    setEndDate(tempEndDate || null);
   };
 
   const handleClearFilters = () => {
     setTempStartDate("");
     setTempEndDate("");
-    store.resetFilters();
+    resetFilters();
   };
 
   const handleColumnSort = (field: "date" | "amount" | "merchant") => {
-    store.setSortBy(field);
+    setSortBy(field);
   };
 
   if (error) {
@@ -100,12 +113,14 @@ export function TransactionsPage() {
                 <Label htmlFor="category">Category</Label>
                 <select
                   id="category"
-                  value={store.categoryId || ""}
-                  onChange={(e) => store.setCategoryId(e.target.value || null)}
+                  value={categoryId || ""}
+                  onChange={(e) => setCategoryId(e.target.value || null)}
                   disabled={isLoading}
                   className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <option value="">All Categories</option>
+                  <option value="">
+                    {categoriesError ? "Failed to load categories" : "All Categories"}
+                  </option>
                   {categories.map((cat) => (
                     <option key={cat.id} value={cat.id}>
                       {cat.categoryName}
@@ -146,32 +161,28 @@ export function TransactionsPage() {
                 <table className="w-full">
                   <thead className="border-b border-border bg-muted">
                     <tr>
-                      <th className="px-6 py-3 text-left">
+                      <th scope="col" className="px-6 py-3 text-left">
                         <button
                           onClick={() => handleColumnSort("date")}
                           className="flex items-center gap-2 font-semibold text-foreground hover:text-foreground/80"
                         >
                           Date
-                          {store.sortBy === "date" && (
-                            <span>{store.sortOrder === "asc" ? "↑" : "↓"}</span>
-                          )}
+                          {sortBy === "date" && <span>{sortOrder === "asc" ? "↑" : "↓"}</span>}
                         </button>
                       </th>
-                      <th className="px-6 py-3 text-left font-semibold text-foreground">
+                      <th scope="col" className="px-6 py-3 text-left font-semibold text-foreground">
                         Description
                       </th>
-                      <th className="px-6 py-3 text-left font-semibold text-foreground">
+                      <th scope="col" className="px-6 py-3 text-left font-semibold text-foreground">
                         Category
                       </th>
-                      <th className="px-6 py-3 text-right">
+                      <th scope="col" className="px-6 py-3 text-right">
                         <button
                           onClick={() => handleColumnSort("amount")}
                           className="flex items-center justify-end gap-2 font-semibold text-foreground hover:text-foreground/80"
                         >
                           Amount
-                          {store.sortBy === "amount" && (
-                            <span>{store.sortOrder === "asc" ? "↑" : "↓"}</span>
-                          )}
+                          {sortBy === "amount" && <span>{sortOrder === "asc" ? "↑" : "↓"}</span>}
                         </button>
                       </th>
                     </tr>
@@ -180,7 +191,7 @@ export function TransactionsPage() {
                     {transactions.map((tx) => (
                       <tr key={tx.id} className="hover:bg-muted/50">
                         <td className="whitespace-nowrap px-6 py-3 text-sm text-foreground">
-                          {new Date(tx.date).toLocaleDateString()}
+                          {new Date(tx.date).toLocaleDateString("de-CH")}
                         </td>
                         <td className="px-6 py-3 text-sm text-foreground">{tx.merchant}</td>
                         <td className="px-6 py-3 text-sm text-muted-foreground">
@@ -204,7 +215,7 @@ export function TransactionsPage() {
                   </div>
                   <div className="flex gap-2">
                     <Button
-                      onClick={() => store.setPage(Math.max(1, meta.page - 1))}
+                      onClick={() => setPage(Math.max(1, meta.page - 1))}
                       disabled={meta.page === 1 || isLoading}
                       variant="outline"
                       size="sm"
@@ -212,26 +223,34 @@ export function TransactionsPage() {
                       Previous
                     </Button>
 
-                    {/* Page Numbers */}
+                    {/* Page Numbers — sliding window */}
                     <div className="flex gap-1">
-                      {Array.from({ length: Math.min(5, meta.totalPages) }).map((_, i) => {
-                        const pageNum = i + 1;
-                        return (
-                          <Button
-                            key={pageNum}
-                            onClick={() => store.setPage(pageNum)}
-                            disabled={isLoading}
-                            variant={meta.page === pageNum ? "default" : "outline"}
-                            size="sm"
-                          >
-                            {pageNum}
-                          </Button>
-                        );
-                      })}
+                      {(() => {
+                        const maxVisible = 5;
+                        const half = Math.floor(maxVisible / 2);
+                        let start = Math.max(1, meta.page - half);
+                        const end = Math.min(meta.totalPages, start + maxVisible - 1);
+                        start = Math.max(1, end - maxVisible + 1);
+
+                        return Array.from({ length: end - start + 1 }, (_, i) => {
+                          const pageNum = start + i;
+                          return (
+                            <Button
+                              key={pageNum}
+                              onClick={() => setPage(pageNum)}
+                              disabled={isLoading}
+                              variant={meta.page === pageNum ? "default" : "outline"}
+                              size="sm"
+                            >
+                              {pageNum}
+                            </Button>
+                          );
+                        });
+                      })()}
                     </div>
 
                     <Button
-                      onClick={() => store.setPage(meta.page + 1)}
+                      onClick={() => setPage(meta.page + 1)}
                       disabled={meta.page === meta.totalPages || isLoading}
                       variant="outline"
                       size="sm"
