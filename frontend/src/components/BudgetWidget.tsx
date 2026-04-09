@@ -43,7 +43,9 @@ export function BudgetWidget() {
     <Link to="/budgets" className="block hover:opacity-90 transition-opacity">
       <Card className="cursor-pointer">
         <CardHeader>
-          <CardTitle>Budget Status</CardTitle>
+          <CardTitle className="text-xs font-semibold uppercase tracking-wider">
+            Budget Status
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
