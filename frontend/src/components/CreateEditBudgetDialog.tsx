@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useCreateBudget, useUpdateBudget } from "../lib/queries/budgets";
 import type { Budget } from "../lib/queries/budgets";
 import { useCategories } from "../lib/queries/categories";
@@ -22,46 +22,59 @@ interface FormState {
 }
 
 export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBudgetDialogProps) {
-  const [formState, setFormState] = useState<FormState>({
-    limitAmount: "",
-    categoryId: "",
-    month: "",
-    year: "",
-    error: "",
-  });
+  const getInitialFormState = useMemo(() => {
+    return (): FormState => {
+      if (!isOpen) {
+        return {
+          limitAmount: "",
+          categoryId: "",
+          month: "",
+          year: "",
+          error: "",
+        };
+      }
+
+      if (budget) {
+        return {
+          limitAmount: budget.limitAmount,
+          categoryId: budget.categoryId,
+          month: budget.month.toString(),
+          year: budget.year.toString(),
+          error: "",
+        };
+      }
+
+      return {
+        limitAmount: "",
+        categoryId: "",
+        month: "",
+        year: "",
+        error: "",
+      };
+    };
+  }, [isOpen, budget]);
+
+  const [formState, setFormState] = useState<FormState>(() => getInitialFormState());
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   const createMutation = useCreateBudget();
   const updateMutation = useUpdateBudget();
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
 
-  // Sync form state with budget prop and manage dialog open/close
-
+  // Manage dialog open/close
   useEffect(() => {
     if (isOpen) {
       dialogRef.current?.showModal();
-      // Reset form when opening for create, or sync with budget when editing
-      if (budget) {
-        setFormState({
-          limitAmount: budget.limitAmount,
-          categoryId: budget.categoryId,
-          month: budget.month.toString(),
-          year: budget.year.toString(),
-          error: "",
-        });
-      } else {
-        setFormState({
-          limitAmount: "",
-          categoryId: "",
-          month: "",
-          year: "",
-          error: "",
-        });
-      }
     } else {
       dialogRef.current?.close();
     }
-  }, [isOpen, budget]);
+  }, [isOpen]);
+
+  // Reset form when budget or isOpen changes
+  useEffect(() => {
+    // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect
+    setFormState(getInitialFormState());
+  }, [getInitialFormState]);
 
   const handleDialogClose = () => {
     onClose();

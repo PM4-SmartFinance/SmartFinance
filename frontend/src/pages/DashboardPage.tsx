@@ -1,6 +1,6 @@
 import { useNavigate, Link } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "../contexts/AuthProvider";
+import { useAuth } from "../hooks/useAuth";
 import { api } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "../components/DateRangePicker";

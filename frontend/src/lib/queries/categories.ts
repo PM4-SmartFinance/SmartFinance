@@ -31,7 +31,7 @@ const CATEGORIES_QUERY_KEY = ["categories"] as const;
 const CATEGORY_RULES_QUERY_KEY = ["category-rules"] as const;
 
 export function useCategories() {
-  return useQuery({
+  return useQuery<Category[]>({
     queryKey: CATEGORIES_QUERY_KEY,
     queryFn: async () => {
       const response = await api.get<{ categories: Category[] }>("/categories");
