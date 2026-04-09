@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Prisma } from "@prisma/client";
-import { getSummary } from "./dashboard.repository.js";
+import { getSummary, getCategoryTotals } from "./dashboard.repository.js";
 
 vi.mock("../prisma.js", () => ({
   prisma: {
@@ -8,6 +8,7 @@ vi.mock("../prisma.js", () => ({
       aggregate: vi.fn(),
       count: vi.fn(),
     },
+    $queryRaw: vi.fn(), //
   },
 }));
 
@@ -84,5 +85,20 @@ describe("getSummary", () => {
     expect(result.incomeAgg._sum.amount?.toNumber()).toBe(1500);
     expect(result.expenseAgg._sum.amount?.toNumber()).toBe(-800);
     expect(result.transactionCount).toBe(5);
+  });
+});
+
+describe("getCategoryTotals", () => {
+  it("maps raw SQL rows to the CategoryTotalAggregate interface", async () => {
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([
+      { categoryId: "cat-1", categoryName: "Rent", totalAmount: "1200.50" },
+      { categoryId: "cat-2", categoryName: "Food", totalAmount: "45.00" },
+    ] as never);
+
+    const result = await getCategoryTotals("user-1", "2025-01-01", "2025-01-31");
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({ categoryId: "cat-1", categoryName: "Rent", total: 1200.5 });
+    expect(result[1]).toEqual({ categoryId: "cat-2", categoryName: "Food", total: 45 });
   });
 });

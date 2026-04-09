@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { getDashboardSummary } from "./dashboard.service.js";
+import { getDashboardSummary, getDashboardCategories } from "./dashboard.service.js";
 import { ServiceError } from "../errors.js";
 import { Prisma } from "@prisma/client";
 
 vi.mock("../repositories/dashboard.repository.js", () => ({
   getSummary: vi.fn(),
+  getCategoryTotals: vi.fn(),
 }));
 
 import * as repo from "../repositories/dashboard.repository.js";
@@ -147,5 +148,30 @@ describe("getDashboardSummary", () => {
     await getDashboardSummary("user-42", "2025-06-01", "2025-06-30");
 
     expect(mockRepo.getSummary).toHaveBeenCalledWith("user-42", "2025-06-01", "2025-06-30");
+  });
+});
+
+describe("getDashboardCategories", () => {
+  it("returns the category totals from the repository", async () => {
+    const mockData = [{ categoryId: "cat-1", categoryName: "Test", total: 100 }];
+    mockRepo.getCategoryTotals.mockResolvedValue(mockData);
+
+    const result = await getDashboardCategories("user-1", "2025-01-01", "2025-01-31");
+
+    expect(result).toEqual(mockData);
+    expect(mockRepo.getCategoryTotals).toHaveBeenCalledWith("user-1", "2025-01-01", "2025-01-31");
+  });
+
+  it("throws 400 when startDate is after endDate", async () => {
+    await expect(getDashboardCategories("user-1", "2025-02-01", "2025-01-01")).rejects.toThrow(
+      new ServiceError(400, "startDate must not be after endDate"),
+    );
+    expect(mockRepo.getCategoryTotals).not.toHaveBeenCalled();
+  });
+
+  it("throws 400 for invalid dates", async () => {
+    await expect(getDashboardCategories("user-1", "not-a-date", "2025-01-01")).rejects.toThrow(
+      new ServiceError(400, "startDate and endDate must be valid calendar dates"),
+    );
   });
 });

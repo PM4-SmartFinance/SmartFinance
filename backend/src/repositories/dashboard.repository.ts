@@ -68,3 +68,47 @@ export async function listMonthlyTrends(
     expenses: Number(r.expenses),
   }));
 }
+
+export interface CategoryTotalAggregate {
+  categoryId: string;
+  categoryName: string;
+  total: number;
+}
+
+interface RawCategoryRow {
+  categoryId: string;
+  categoryName: string;
+  totalAmount: number | string;
+}
+
+export async function getCategoryTotals(
+  userId: string,
+  startDate: string,
+  endDate: string,
+): Promise<CategoryTotalAggregate[]> {
+  const startId = dateStringToId(startDate);
+  const endId = dateStringToId(endDate);
+
+  // Using Raw SQL to easily join FactTransactions with DimCategory
+  const rows = await prisma.$queryRaw<RawCategoryRow[]>`
+    SELECT 
+      c.id AS "categoryId", 
+      c."categoryName" AS "categoryName", 
+      ROUND(ABS(SUM(t.amount)), 2)::double precision AS "totalAmount"
+    FROM "FactTransactions" t
+    INNER JOIN "DimCategory" c ON t."categoryId" = c.id
+    WHERE t."userId" = ${userId}
+      AND t."dateId" >= ${startId}
+      AND t."dateId" <= ${endId}
+      AND t.amount < 0
+    GROUP BY c.id, c."categoryName"
+    ORDER BY "totalAmount" DESC
+  `;
+
+  // Map the raw postgres results to our TypeScript interface
+  return rows.map((r) => ({
+    categoryId: r.categoryId,
+    categoryName: r.categoryName,
+    total: Number(r.totalAmount),
+  }));
+}

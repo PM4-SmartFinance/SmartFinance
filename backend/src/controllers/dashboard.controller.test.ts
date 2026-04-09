@@ -6,6 +6,7 @@ import { ServiceError } from "../errors.js";
 
 vi.mock("../services/dashboard.service.js", () => ({
   getDashboardSummary: vi.fn(),
+  getDashboardCategories: vi.fn(),
 }));
 
 // Mutable flag: controls whether the preHandler simulates auth failure.
@@ -155,5 +156,37 @@ describe("GET /api/v1/dashboard/summary", () => {
 
       expect(response.statusCode).toBe(400);
     });
+  });
+});
+
+describe("GET /api/v1/dashboard/categories", () => {
+  it("returns 401 when requireRole rejects the request", async () => {
+    rejectAuth = true;
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/dashboard/categories?startDate=2025-01-01&endDate=2025-01-31",
+    });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("returns 200 and the category array on success", async () => {
+    const mockData = [
+      { categoryId: "cat-1", categoryName: "Groceries", total: 150 },
+      { categoryId: "cat-2", categoryName: "Transport", total: 50 },
+    ];
+    mockService.getDashboardCategories.mockResolvedValue(mockData);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/dashboard/categories?startDate=2025-01-01&endDate=2025-01-31",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(mockData);
+    expect(mockService.getDashboardCategories).toHaveBeenCalledWith(
+      "user-1",
+      "2025-01-01",
+      "2025-01-31",
+    );
   });
 });

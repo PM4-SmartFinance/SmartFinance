@@ -78,3 +78,17 @@ export async function getDashboardTrends(
 
   return data;
 }
+
+export async function getDashboardCategories(userId: string, startDate: string, endDate: string) {
+  if (!isValidCalendarDate(startDate) || !isValidCalendarDate(endDate)) {
+    throw new ServiceError(400, "startDate and endDate must be valid calendar dates");
+  }
+
+  if (new Date(startDate + "T00:00:00Z").getTime() > new Date(endDate + "T00:00:00Z").getTime()) {
+    throw new ServiceError(400, "startDate must not be after endDate");
+  }
+
+  const categoryTotals = await dashboardRepository.getCategoryTotals(userId, startDate, endDate);
+
+  return categoryTotals;
+}
