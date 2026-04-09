@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
 export function CategoryBreakdownChart() {
   const { data, isLoading, error } = useDashboardCategories();
+  const chartData = Array.isArray(data) ? data : [];
 
   if (error) {
     return (
@@ -50,7 +51,7 @@ export function CategoryBreakdownChart() {
       <CardContent>
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} layout="vertical" margin={{ left: 100, right: 20 }}>
+            <BarChart data={chartData} layout="vertical" margin={{ left: 100, right: 20 }}>
               <CartesianGrid stroke="hsl(var(--muted-foreground))" />
               <XAxis
                 type="number"
