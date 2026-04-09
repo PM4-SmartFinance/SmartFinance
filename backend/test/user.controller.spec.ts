@@ -36,23 +36,11 @@ afterAll(async () => {
 
 describe("User management endpoints", () => {
   it("admin can list users (paginated)", async () => {
-    // register admin and two users
+    // register admin and two users using the new /users endpoint
     await app.inject({
       method: "POST",
-      url: "/api/v1/auth/register",
-      payload: { email: ADMIN_EMAIL, password: "AdminPass1!" },
-    });
-    await prisma.dimUser.update({ where: { email: ADMIN_EMAIL }, data: { role: "ADMIN" } });
-
-    await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/register",
-      payload: { email: USER_A_EMAIL, password: "UserPass1!" },
-    });
-    await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/register",
-      payload: { email: USER_B_EMAIL, password: "UserPass2!" },
+      url: "/api/v1/users",
+      payload: { email: ADMIN_EMAIL, password: "AdminPass1!", displayName: "Admin", role: "ADMIN" },
     });
 
     const login = await app.inject({
@@ -68,6 +56,19 @@ describe("User management endpoints", () => {
     }>;
     const session = cookies.find((c) => c.name === "session");
     expect(session).toBeDefined();
+
+    await app.inject({
+      method: "POST",
+      url: "/api/v1/users",
+      payload: { email: USER_A_EMAIL, password: "UserPass1!", displayName: "User A", role: "USER" },
+      cookies: { session: session!.value },
+    });
+    await app.inject({
+      method: "POST",
+      url: "/api/v1/users",
+      payload: { email: USER_B_EMAIL, password: "UserPass2!", displayName: "User B", role: "USER" },
+      cookies: { session: session!.value },
+    });
 
     const res = await app.inject({
       method: "GET",
