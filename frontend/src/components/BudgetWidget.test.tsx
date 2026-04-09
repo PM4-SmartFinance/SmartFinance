@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router";
-import { BudgetWidget } from "./BudgetWidget";
-import { Budget } from "../lib/queries/dashboard";
+import { BudgetWidget, getBudgetStatus } from "./BudgetWidget";
+import type { Budget } from "../lib/queries/budgets";
 
 const now = new Date();
 const currentMonth = now.getMonth() + 1;
@@ -152,5 +152,35 @@ describe("BudgetWidget", () => {
       const statusText = screen.getByText(/1 on track, 1 approaching limit, 1 exceeded/);
       expect(statusText).toBeInTheDocument();
     });
+  });
+});
+
+describe("getBudgetStatus", () => {
+  it("returns 'on-track' for 0%", () => {
+    expect(getBudgetStatus(0)).toBe("on-track");
+  });
+
+  it("returns 'on-track' for 69.9%", () => {
+    expect(getBudgetStatus(69.9)).toBe("on-track");
+  });
+
+  it("returns 'approaching' at exactly 70%", () => {
+    expect(getBudgetStatus(70)).toBe("approaching");
+  });
+
+  it("returns 'approaching' for 99.9%", () => {
+    expect(getBudgetStatus(99.9)).toBe("approaching");
+  });
+
+  it("returns 'exceeded' at exactly 100%", () => {
+    expect(getBudgetStatus(100)).toBe("exceeded");
+  });
+
+  it("returns 'exceeded' for values above 100%", () => {
+    expect(getBudgetStatus(150)).toBe("exceeded");
+  });
+
+  it("returns 'on-track' for negative values", () => {
+    expect(getBudgetStatus(-10)).toBe("on-track");
   });
 });
