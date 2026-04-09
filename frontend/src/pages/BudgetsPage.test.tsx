@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router";
 import { BudgetsPage } from "./BudgetsPage";
 import { Budget } from "../lib/queries/budgets";
 
@@ -72,9 +73,11 @@ function renderPage() {
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
-    <QueryClientProvider client={queryClient}>
-      <BudgetsPage />
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <BudgetsPage />
+      </QueryClientProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -164,6 +167,7 @@ describe("BudgetsPage", () => {
     renderPage();
 
     await waitFor(() => expect(screen.getAllByRole("button", { name: "Edit" })).toHaveLength(2));
+    expect(screen.getByRole("button", { name: "Back to Dashboard" })).toBeInTheDocument();
 
     const showModalMock = vi.mocked(window.HTMLDialogElement.prototype.showModal);
     const callsBefore = showModalMock.mock.calls.length;

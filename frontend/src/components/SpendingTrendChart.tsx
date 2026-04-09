@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
 export function SpendingTrendChart() {
   const { data, isLoading, error } = useDashboardTrends();
+  const chartData = Array.isArray(data) ? data : [];
 
   if (error) {
     return (
@@ -58,7 +59,7 @@ export function SpendingTrendChart() {
       <CardContent>
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data}>
+            <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted-foreground))" />
               <XAxis
                 dataKey="date"
