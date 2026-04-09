@@ -1,9 +1,10 @@
+import type { MatchType } from "../repositories/category-rule.repository.js";
 import * as categoryRuleRepository from "../repositories/category-rule.repository.js";
 import * as transactionRepository from "../repositories/transaction.repository.js";
 
 export type RuleForMatching = {
   pattern: string;
-  matchType: string;
+  matchType: MatchType;
   categoryId: string;
 };
 
@@ -39,6 +40,7 @@ export async function autoCategorize(userId: string): Promise<{ categorized: num
   // Compute merchant → categoryId mapping to avoid redundant rule evaluation
   const merchantCategoryMap = new Map<string, string>();
   for (const tx of transactions) {
+    if (!tx.merchant?.name) continue;
     const name = tx.merchant.name;
     if (!merchantCategoryMap.has(name)) {
       const categoryId = matchTransaction(name, rules);
@@ -49,11 +51,11 @@ export async function autoCategorize(userId: string): Promise<{ categorized: num
   }
 
   const updates = transactions
-    .filter((tx) => merchantCategoryMap.has(tx.merchant.name))
+    .filter((tx) => tx.merchant?.name && merchantCategoryMap.has(tx.merchant.name))
     .map((tx) => ({ id: tx.id, categoryId: merchantCategoryMap.get(tx.merchant.name)! }));
 
   if (updates.length > 0) {
-    await transactionRepository.bulkSetCategory(updates);
+    await transactionRepository.bulkSetCategory(userId, updates);
   }
 
   return { categorized: updates.length };

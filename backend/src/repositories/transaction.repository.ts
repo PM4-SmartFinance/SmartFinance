@@ -91,7 +91,10 @@ export async function findUncategorizedForUser(userId: string) {
   });
 }
 
-export async function bulkSetCategory(updates: Array<{ id: string; categoryId: string }>) {
+export async function bulkSetCategory(
+  userId: string,
+  updates: Array<{ id: string; categoryId: string }>,
+) {
   // Group by categoryId for efficient batch updates
   const byCategory = new Map<string, string[]>();
   for (const { id, categoryId } of updates) {
@@ -103,7 +106,7 @@ export async function bulkSetCategory(updates: Array<{ id: string; categoryId: s
   await prisma.$transaction(
     [...byCategory.entries()].map(([categoryId, ids]) =>
       prisma.factTransactions.updateMany({
-        where: { id: { in: ids } },
+        where: { id: { in: ids }, userId },
         data: { categoryId },
       }),
     ),

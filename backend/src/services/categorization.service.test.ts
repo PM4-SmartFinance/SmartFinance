@@ -148,7 +148,7 @@ describe("autoCategorize", () => {
     const result = await autoCategorize("user-1");
 
     expect(result).toEqual({ categorized: 2 });
-    expect(mockTxRepo.bulkSetCategory).toHaveBeenCalledWith([
+    expect(mockTxRepo.bulkSetCategory).toHaveBeenCalledWith("user-1", [
       { id: "tx-1", categoryId: "cat-groceries" },
       { id: "tx-2", categoryId: "cat-groceries" },
     ]);
@@ -174,7 +174,7 @@ describe("autoCategorize", () => {
     const result = await autoCategorize("user-1");
 
     expect(result).toEqual({ categorized: 1 });
-    expect(mockTxRepo.bulkSetCategory).toHaveBeenCalledWith([
+    expect(mockTxRepo.bulkSetCategory).toHaveBeenCalledWith("user-1", [
       { id: "tx-2", categoryId: "cat-coop" },
     ]);
   });
@@ -227,8 +227,33 @@ describe("autoCategorize", () => {
 
     await autoCategorize("user-1");
 
-    expect(mockTxRepo.bulkSetCategory).toHaveBeenCalledWith([
+    expect(mockTxRepo.bulkSetCategory).toHaveBeenCalledWith("user-1", [
       { id: "tx-1", categoryId: "cat-groceries" },
+    ]);
+  });
+
+  it("skips transactions with a null merchant without throwing", async () => {
+    mockRuleRepo.findAllByUser.mockResolvedValue([
+      {
+        ...rule("Migros", "contains", "cat-1", 10),
+        id: "r1",
+        userId: "user-1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        category: { id: "cat-1", categoryName: "Groceries" },
+      },
+    ] as never);
+    mockTxRepo.findUncategorizedForUser.mockResolvedValue([
+      { id: "tx-1", merchant: null },
+      { id: "tx-2", merchant: { name: "Migros" } },
+    ] as never);
+    mockTxRepo.bulkSetCategory.mockResolvedValue(undefined);
+
+    const result = await autoCategorize("user-1");
+
+    expect(result).toEqual({ categorized: 1 });
+    expect(mockTxRepo.bulkSetCategory).toHaveBeenCalledWith("user-1", [
+      { id: "tx-2", categoryId: "cat-1" },
     ]);
   });
 
@@ -254,7 +279,7 @@ describe("autoCategorize", () => {
 
     expect(result).toEqual({ categorized: 3 });
     // All three transactions should be categorized
-    expect(mockTxRepo.bulkSetCategory).toHaveBeenCalledWith([
+    expect(mockTxRepo.bulkSetCategory).toHaveBeenCalledWith("user-1", [
       { id: "tx-1", categoryId: "cat-1" },
       { id: "tx-2", categoryId: "cat-1" },
       { id: "tx-3", categoryId: "cat-1" },
