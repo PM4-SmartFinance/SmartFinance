@@ -76,7 +76,8 @@ async function loginUser(email: string, password: string): Promise<string> {
   });
   const cookies = (res.cookies as SessionCookie[] | undefined) ?? [];
   const cookie = cookies.find((c) => c.name === "session");
-  return cookie!.value;
+  if (!cookie) throw new Error(`Login failed for ${email}: no session cookie in response`);
+  return cookie.value;
 }
 
 beforeAll(async () => {
@@ -156,6 +157,10 @@ afterAll(async () => {
   });
   await prisma.dimAccount.deleteMany({ where: { userId: { in: [testUserId, testUserId2] } } });
   await prisma.dimMerchant.deleteMany({ where: { name: { startsWith: "DashTest" } } });
+
+  const seededDateIds = [-7, -5, -2, 0].map((offset) => getMonthAnchor(offset).dateId);
+  await prisma.dimDate.deleteMany({ where: { id: { in: seededDateIds } } });
+
   await prisma.dimUser.deleteMany({ where: { email: { in: [TEST_EMAIL, TEST_EMAIL_2] } } });
   await app.close();
 });
@@ -254,5 +259,59 @@ describe("GET /api/v1/dashboard/trends", () => {
     expect(row).toBeDefined();
     expect(row!.income).toBeCloseTo(0, 8);
     expect(row!.expenses).toBeCloseTo(75, 8);
+  });
+
+  it("returns 400 for months above maximum", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/dashboard/trends?months=13",
+      cookies: { session: sessionCookie },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("returns all-zero data for a user with no transactions", async () => {
+    const session2 = await loginUser(TEST_EMAIL_2, TEST_PASSWORD);
+
+    // Delete user 2's seeded transaction so they have none
+    await prisma.factTransactions.deleteMany({ where: { userId: testUserId2 } });
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/dashboard/trends",
+      cookies: { session: session2 },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      data: Array<{ year: number; month: number; income: number; expenses: number }>;
+    };
+
+    expect(body.data).toHaveLength(6);
+    for (const row of body.data) {
+      expect(row.income).toBe(0);
+      expect(row.expenses).toBe(0);
+    }
+  });
+
+  it("returns months in chronological order (oldest first)", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/dashboard/trends",
+      cookies: { session: sessionCookie },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      data: Array<{ year: number; month: number; income: number; expenses: number }>;
+    };
+
+    for (let i = 1; i < body.data.length; i++) {
+      const prev = body.data[i - 1];
+      const curr = body.data[i];
+      const prevKey = prev.year * 100 + prev.month;
+      const currKey = curr.year * 100 + curr.month;
+      expect(currKey).toBeGreaterThan(prevKey);
+    }
   });
 });
