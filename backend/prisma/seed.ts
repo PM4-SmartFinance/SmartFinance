@@ -146,7 +146,7 @@ async function main() {
     const existingTx = await prisma.factTransactions.findFirst({
       where: {
         userId: user.id,
-        amount: 85.5,
+        amount: -85.5,
         merchantId: merchant.id,
         dateId: dimDate.id,
       },
@@ -155,7 +155,7 @@ async function main() {
     if (!existingTx) {
       await prisma.factTransactions.create({
         data: {
-          amount: 85.5,
+          amount: -85.5,
           userId: user.id,
           accountId: account.id,
           merchantId: merchant.id,
