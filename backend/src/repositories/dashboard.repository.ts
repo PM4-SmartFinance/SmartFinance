@@ -46,12 +46,12 @@ export async function listMonthlyTrends(
 ): Promise<MonthlyTrendAggregate[]> {
   const { userId, startYear, startMonth, endYear, endMonth } = args;
 
-  return prisma.$queryRaw<MonthlyTrendAggregate[]>`
+  const rows = await prisma.$queryRaw<MonthlyTrendAggregate[]>`
     SELECT
       d.year::int AS year,
       d.month::int AS month,
-      COALESCE(SUM(CASE WHEN t.amount > 0 THEN t.amount ELSE 0 END), 0)::double precision AS income,
-      COALESCE(SUM(CASE WHEN t.amount < 0 THEN ABS(t.amount) ELSE 0 END), 0)::double precision AS expenses
+      ROUND(COALESCE(SUM(CASE WHEN t.amount > 0 THEN t.amount ELSE 0 END), 0), 2)::double precision AS income,
+      ROUND(COALESCE(SUM(CASE WHEN t.amount < 0 THEN ABS(t.amount) ELSE 0 END), 0), 2)::double precision AS expenses
     FROM "FactTransactions" t
     INNER JOIN "DimDate" d ON d.id = t."dateId"
     WHERE t."userId" = ${userId}
@@ -60,4 +60,11 @@ export async function listMonthlyTrends(
     GROUP BY d.year, d.month
     ORDER BY d.year ASC, d.month ASC
   `;
+
+  return rows.map((r) => ({
+    year: Number(r.year),
+    month: Number(r.month),
+    income: Number(r.income),
+    expenses: Number(r.expenses),
+  }));
 }

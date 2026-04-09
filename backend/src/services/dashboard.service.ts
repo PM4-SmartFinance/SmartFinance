@@ -1,5 +1,6 @@
 import { ServiceError } from "../errors.js";
 import * as dashboardRepository from "../repositories/dashboard.repository.js";
+import type { MonthlyTrendAggregate } from "../repositories/dashboard.repository.js";
 
 function isValidCalendarDate(dateStr: string): boolean {
   const d = new Date(dateStr + "T00:00:00Z");
@@ -34,17 +35,10 @@ export async function getDashboardSummary(userId: string, startDate: string, end
   };
 }
 
-export interface DashboardTrendItem {
-  year: number;
-  month: number;
-  income: number;
-  expenses: number;
-}
-
 export async function getDashboardTrends(
   userId: string,
   months: number,
-): Promise<DashboardTrendItem[]> {
+): Promise<MonthlyTrendAggregate[]> {
   const now = new Date();
   const endYear = now.getUTCFullYear();
   const endMonth = now.getUTCMonth() + 1;
@@ -67,7 +61,7 @@ export async function getDashboardTrends(
     aggregates.map((item) => [`${item.year}-${item.month}`, item] as const),
   );
 
-  const data: DashboardTrendItem[] = [];
+  const data: MonthlyTrendAggregate[] = [];
   for (let i = 0; i < months; i++) {
     const monthDate = new Date(Date.UTC(startYear, startMonth - 1 + i, 1));
     const year = monthDate.getUTCFullYear();
