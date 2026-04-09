@@ -12,7 +12,6 @@ interface TransactionsStore {
   setPage: (page: number) => void;
   setLimit: (limit: number) => void;
   setSortBy: (field: "date" | "amount" | "merchant") => void;
-  toggleSortOrder: () => void;
   setStartDate: (date: string | null) => void;
   setEndDate: (date: string | null) => void;
   setCategoryId: (categoryId: string | null) => void;
@@ -38,10 +37,6 @@ export const useTransactionsStore = create<TransactionsStore>((set) => ({
     set((state) => ({
       sortBy,
       sortOrder: state.sortBy === sortBy && state.sortOrder === "desc" ? "asc" : "desc",
-    })),
-  toggleSortOrder: () =>
-    set((state) => ({
-      sortOrder: state.sortOrder === "desc" ? "asc" : "desc",
     })),
   setStartDate: (startDate) => set({ startDate, page: 1 }),
   setEndDate: (endDate) => set({ endDate, page: 1 }),

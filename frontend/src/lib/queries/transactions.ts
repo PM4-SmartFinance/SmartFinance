@@ -34,14 +34,12 @@ export interface TransactionsFilters {
   maxAmount?: number;
 }
 
-const TRANSACTIONS_QUERY_KEY = ["transactions"] as const;
-
 export const transactionsQueryConfig = (filters: TransactionsFilters = {}) => ({
-  queryKey: [TRANSACTIONS_QUERY_KEY, filters] as const,
+  queryKey: ["transactions", filters] as const,
   queryFn: async () => {
     const params = new URLSearchParams();
-    if (filters.page) params.append("page", filters.page.toString());
-    if (filters.limit) params.append("limit", filters.limit.toString());
+    if (filters.page != null) params.append("page", filters.page.toString());
+    if (filters.limit != null) params.append("limit", filters.limit.toString());
     if (filters.sortBy) params.append("sortBy", filters.sortBy);
     if (filters.sortOrder) params.append("sortOrder", filters.sortOrder);
     if (filters.startDate) params.append("startDate", filters.startDate);
