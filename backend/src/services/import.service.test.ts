@@ -7,7 +7,12 @@ vi.mock("../repositories/transaction.repository.js", () => ({
   bulkImport: vi.fn(),
 }));
 
+vi.mock("./categorization.service.js", () => ({
+  autoCategorize: vi.fn().mockResolvedValue({ categorized: 0 }),
+}));
+
 import * as repo from "../repositories/transaction.repository.js";
+import * as categorizationService from "./categorization.service.js";
 
 const NEON_HEADER = `"Date";"Amount";"Original amount";"Original currency";"Exchange rate";"Description";"Subject";"Category";"Tags";"Wise";"Spaces"`;
 const NEON_ROW = `"2025-01-15";"42.00";"";"";"";"Grocery Store";"ref";"uncategorized";"";"no";"no"`;
@@ -86,6 +91,19 @@ describe("importTransactions", () => {
     });
 
     expect(mockRepo.bulkImport).toHaveBeenCalledOnce();
+  });
+
+  it("runs auto-categorization after import", async () => {
+    const csv = [NEON_HEADER, NEON_ROW].join("\n");
+
+    await importTransactions({
+      csvText: csv,
+      format: "neon",
+      accountId: "acc-1",
+      userId: "user-1",
+    });
+
+    expect(vi.mocked(categorizationService.autoCategorize)).toHaveBeenCalledWith("user-1");
   });
 
   it("works correctly for the zkb format", async () => {
