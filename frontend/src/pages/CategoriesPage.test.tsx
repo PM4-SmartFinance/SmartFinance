@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi, beforeEach } from "vitest";
@@ -257,6 +257,75 @@ describe("CategoriesPage", () => {
         priority: 0,
       });
       expect(screen.getByText("7 existing transactions would match.")).toBeInTheDocument();
+    });
+  });
+
+  it("updates a category and invalidates categories and rules queries", async () => {
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit category Groceries" }));
+    fireEvent.change(screen.getByLabelText("Edit category Groceries"), {
+      target: { value: "Food" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save category Groceries" }));
+
+    await waitFor(() => {
+      expect(mockPatch).toHaveBeenCalledWith("/categories/cat-1", { categoryName: "Food" });
+    });
+
+    await waitFor(() => {
+      const categoryGetCalls = mockGet.mock.calls.filter((call) => call[0] === "/categories");
+      const ruleGetCalls = mockGet.mock.calls.filter((call) => call[0] === "/category-rules");
+      expect(categoryGetCalls.length).toBeGreaterThan(1);
+      expect(ruleGetCalls.length).toBeGreaterThan(1);
+    });
+  });
+
+  it("deletes a rule and invalidates rules query", async () => {
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("coop")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete rule rule-1" }));
+
+    await waitFor(() => {
+      expect(mockDelete).toHaveBeenCalledWith("/category-rules/rule-1");
+    });
+
+    await waitFor(() => {
+      const ruleGetCalls = mockGet.mock.calls.filter((call) => call[0] === "/category-rules");
+      expect(ruleGetCalls.length).toBeGreaterThan(1);
+    });
+  });
+
+  it("shows deletion warning near category when backend blocks deletion", async () => {
+    mockDelete.mockImplementation((path: string) => {
+      if (path === "/categories/cat-1") {
+        const error = new Error("Category is in use");
+        return Promise.reject(error);
+      }
+      return Promise.resolve(undefined);
+    });
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete category Groceries" }));
+
+    const groceriesCard = screen.getByText("Groceries").closest('[data-slot="card"]');
+    expect(groceriesCard).toBeTruthy();
+
+    await waitFor(() => {
+      expect(within(groceriesCard!).getByText("Category is in use")).toBeInTheDocument();
     });
   });
 });

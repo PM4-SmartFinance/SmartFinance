@@ -48,6 +48,10 @@ export function CategoriesPage() {
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [ruleError, setRuleError] = useState<string | null>(null);
   const [previewByCategory, setPreviewByCategory] = useState<Record<string, string>>({});
+  const [deleteCategoryErrorById, setDeleteCategoryErrorById] = useState<Record<string, string>>(
+    {},
+  );
+  const [deleteRuleErrorById, setDeleteRuleErrorById] = useState<Record<string, string>>({});
   const [ruleDraftByCategory, setRuleDraftByCategory] = useState<Record<string, RuleEditorState>>(
     {},
   );
@@ -122,8 +126,15 @@ export function CategoriesPage() {
     setCategoryError(null);
     try {
       await deleteCategory.mutateAsync(categoryId);
+      setDeleteCategoryErrorById((prev) => {
+        const next = { ...prev };
+        delete next[categoryId];
+        return next;
+      });
     } catch (error) {
-      setCategoryError(getErrorMessage(error, "Failed to delete category."));
+      const message = getErrorMessage(error, "Failed to delete category.");
+      setCategoryError(message);
+      setDeleteCategoryErrorById((prev) => ({ ...prev, [categoryId]: message }));
     }
   }
 
@@ -233,8 +244,15 @@ export function CategoriesPage() {
     setRuleError(null);
     try {
       await deleteRule.mutateAsync(ruleId);
+      setDeleteRuleErrorById((prev) => {
+        const next = { ...prev };
+        delete next[ruleId];
+        return next;
+      });
     } catch (error) {
-      setRuleError(getErrorMessage(error, "Failed to delete rule."));
+      const message = getErrorMessage(error, "Failed to delete rule.");
+      setRuleError(message);
+      setDeleteRuleErrorById((prev) => ({ ...prev, [ruleId]: message }));
     }
   }
 
@@ -299,7 +317,11 @@ export function CategoriesPage() {
                         value={editingCategoryName}
                         onChange={(event) => setEditingCategoryName(event.target.value)}
                       />
-                      <Button onClick={() => handleSaveCategoryEdit(category.id)} size="sm">
+                      <Button
+                        aria-label={`Save category ${category.categoryName}`}
+                        onClick={() => handleSaveCategoryEdit(category.id)}
+                        size="sm"
+                      >
                         Save
                       </Button>
                       <Button
@@ -326,6 +348,7 @@ export function CategoriesPage() {
                       {!isGlobal && (
                         <div className="flex items-center gap-2">
                           <Button
+                            aria-label={`Edit category ${category.categoryName}`}
                             variant="outline"
                             size="sm"
                             onClick={() => handleStartCategoryEdit(category)}
@@ -333,6 +356,7 @@ export function CategoriesPage() {
                             Edit
                           </Button>
                           <Button
+                            aria-label={`Delete category ${category.categoryName}`}
                             variant="outline"
                             size="sm"
                             onClick={() => handleDeleteCategory(category.id)}
@@ -347,6 +371,11 @@ export function CategoriesPage() {
                 </CardHeader>
 
                 <CardContent className="space-y-4">
+                  {deleteCategoryErrorById[category.id] && (
+                    <p className="text-xs text-destructive">
+                      {deleteCategoryErrorById[category.id]}
+                    </p>
+                  )}
                   <div className="space-y-2">
                     <h3 className="text-sm font-semibold">Rules</h3>
                     {categoryRules.length === 0 ? (
@@ -395,10 +424,15 @@ export function CategoriesPage() {
                                   }}
                                 />
                                 <div className="flex gap-2">
-                                  <Button size="sm" onClick={() => handleSaveRule(rule)}>
+                                  <Button
+                                    aria-label={`Save rule ${rule.id}`}
+                                    size="sm"
+                                    onClick={() => handleSaveRule(rule)}
+                                  >
                                     Save
                                   </Button>
                                   <Button
+                                    aria-label={`Delete rule ${rule.id}`}
                                     size="sm"
                                     variant="outline"
                                     onClick={() => handleDeleteRule(rule.id)}
@@ -407,6 +441,11 @@ export function CategoriesPage() {
                                   </Button>
                                 </div>
                               </div>
+                              {deleteRuleErrorById[rule.id] && (
+                                <p className="text-xs text-destructive">
+                                  {deleteRuleErrorById[rule.id]}
+                                </p>
+                              )}
                             </li>
                           );
                         })}
