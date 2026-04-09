@@ -1,13 +1,16 @@
 import { useState } from "react";
-import { useBudgets, useDeleteBudget, Budget } from "../lib/queries/budgets";
+import { useBudgets, useDeleteBudget } from "../lib/queries/budgets";
+import type { Budget } from "../lib/queries/budgets";
 import { ApiError } from "../lib/api";
 import { useCategories } from "../lib/queries/categories";
 import { BudgetProgressCard } from "../components/BudgetProgressCard";
 import { CreateEditBudgetDialog } from "../components/CreateEditBudgetDialog";
 import { DeleteBudgetDialog } from "../components/DeleteBudgetDialog";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router";
 
 export function BudgetsPage() {
+  const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -118,6 +121,9 @@ export function BudgetsPage() {
             <p className="text-sm text-muted-foreground">
               Set spending limits per category and monitor progress
             </p>
+            <Button className="mt-2 w-fit" size="sm" onClick={() => navigate("/")}>
+              Back to Dashboard
+            </Button>
           </div>
           <Button onClick={handleCreate} size="sm">
             Create Budget

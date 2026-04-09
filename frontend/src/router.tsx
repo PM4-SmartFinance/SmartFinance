@@ -4,6 +4,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { DashboardPage } from "./pages/DashboardPage";
 import { BudgetsPage } from "./pages/BudgetsPage";
 import { TransactionsPage } from "./pages/TransactionsPage";
+import { CategoriesPage } from "./pages/CategoriesPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import LoginWireframe from "./wireframes/LoginWireframe";
@@ -31,6 +32,10 @@ export const router = createBrowserRouter([
       {
         path: "/transactions",
         element: <TransactionsPage />,
+      },
+      {
+        path: "/categories",
+        element: <CategoriesPage />,
       },
     ],
   },
