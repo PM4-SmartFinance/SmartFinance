@@ -56,8 +56,8 @@ const mockBudget: Budget = {
 };
 
 const mockCategories = [
-  { id: "cat-1", name: "Groceries", userId: null, createdAt: "", updatedAt: "" },
-  { id: "cat-2", name: "Transport", userId: null, createdAt: "", updatedAt: "" },
+  { id: "cat-1", categoryName: "Groceries", userId: null, createdAt: "", updatedAt: "" },
+  { id: "cat-2", categoryName: "Transport", userId: null, createdAt: "", updatedAt: "" },
 ];
 
 function renderDialog(

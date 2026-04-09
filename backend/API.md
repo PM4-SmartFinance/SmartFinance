@@ -296,7 +296,7 @@ Imports transactions from a CSV file into the specified account. Requires an aut
 | Parameter   | Type   | Required | Description                                   |
 | ----------- | ------ | -------- | --------------------------------------------- |
 | `accountId` | string | yes      | ID of the account to import transactions into |
-| `format`    | string | yes      | CSV format: `neon`, `zkb`, or `wise`          |
+| `format`    | string | yes      | CSV format: `neon`, `zkb`, `wise`, or `ubs`   |
 
 **Request Body:** `multipart/form-data` with a single file field containing the CSV file. Maximum file size: 10 MB.
 
@@ -620,6 +620,104 @@ Changes the password of the authenticated user. The current session is invalidat
 
 ---
 
+## Categories
+
+All category endpoints require an authenticated session with the `USER` role.
+
+### GET /categories
+
+Returns all categories available to the authenticated user — both global system categories (`userId: null`) and the user's custom categories.
+
+**Response 200:**
+
+```json
+[
+  {
+    "id": "uuid",
+    "categoryName": "Groceries",
+    "userId": null,
+    "createdAt": "2026-03-29T10:00:00.000Z",
+    "updatedAt": "2026-03-29T10:00:00.000Z"
+  },
+  {
+    "id": "uuid",
+    "categoryName": "Tennis",
+    "userId": "uuid",
+    "createdAt": "2026-04-01T12:00:00.000Z",
+    "updatedAt": "2026-04-01T12:00:00.000Z"
+  }
+]
+```
+
+**Response 401:** Not authenticated
+
+### POST /categories
+
+Creates a new custom category for the authenticated user.
+
+**Request Body:**
+
+| Field          | Type   | Required | Validation      |
+| -------------- | ------ | -------- | --------------- |
+| `categoryName` | string | yes      | 1–50 characters |
+
+**Response 201:**
+
+```json
+{
+  "id": "uuid",
+  "categoryName": "Tennis",
+  "userId": "uuid",
+  "createdAt": "2026-04-01T12:00:00.000Z",
+  "updatedAt": "2026-04-01T12:00:00.000Z"
+}
+```
+
+**Response 400:** Missing or invalid `categoryName`
+**Response 401:** Not authenticated
+**Response 409:** Category with this name already exists for this user
+
+### PATCH /categories/:id
+
+Updates the name of a user's own custom category. Global categories cannot be modified.
+
+**Request Body:**
+
+| Field          | Type   | Required | Validation      |
+| -------------- | ------ | -------- | --------------- |
+| `categoryName` | string | yes      | 1–50 characters |
+
+**Response 200:**
+
+```json
+{
+  "id": "uuid",
+  "categoryName": "Squash",
+  "userId": "uuid",
+  "createdAt": "2026-04-01T12:00:00.000Z",
+  "updatedAt": "2026-04-08T14:00:00.000Z"
+}
+```
+
+**Response 400:** Missing or invalid `categoryName`, or invalid UUID
+**Response 401:** Not authenticated
+**Response 403:** Cannot modify global categories or another user's category
+**Response 404:** Category not found
+
+### DELETE /categories/:id
+
+Deletes a user's own custom category. Global categories cannot be deleted. Deletion is blocked if the category is referenced by transactions or merchant mappings.
+
+**Response 204:** Category deleted (no body)
+
+**Response 400:** Invalid UUID
+**Response 401:** Not authenticated
+**Response 403:** Cannot delete global categories or another user's category
+**Response 404:** Category not found
+**Response 409:** Category is in use by transactions or merchant mappings
+
+---
+
 ## Accounts
 
 All account endpoints require an authenticated session with the `USER` role.
@@ -820,6 +918,44 @@ Deletes a category rule. Only rules owned by the authenticated user can be delet
 
 **Response 401:** Not authenticated
 **Response 404:** Rule not found or does not belong to the authenticated user
+
+---
+
+## Dashboard
+
+All dashboard endpoints require an authenticated session with the `USER` role.
+
+### GET /dashboard/summary
+
+Returns aggregated financial totals for the authenticated user within the specified date range.
+
+**Query Parameters:**
+
+| Parameter   | Type   | Required | Validation                   |
+| ----------- | ------ | -------- | ---------------------------- |
+| `startDate` | string | yes      | ISO date format `YYYY-MM-DD` |
+| `endDate`   | string | yes      | ISO date format `YYYY-MM-DD` |
+
+**Response 200:**
+
+```json
+{
+  "totalIncome": 1500.0,
+  "totalExpenses": -800.0,
+  "netBalance": 700.0,
+  "transactionCount": 5
+}
+```
+
+- `totalIncome` — sum of all positive-amount transactions in the range
+- `totalExpenses` — sum of all negative-amount transactions in the range (negative value)
+- `netBalance` — `totalIncome + totalExpenses`
+- `transactionCount` — total number of transactions (income + expense) in the range
+
+All values are `0` when there are no transactions in the range. Use `transactionCount` to distinguish an empty period from a zero-sum period.
+
+**Response 400:** Missing or malformed `startDate`/`endDate`, invalid calendar date (e.g. month 13), or `startDate` is after `endDate`
+**Response 401:** Not authenticated
 
 ---
 
@@ -1326,6 +1462,73 @@ The following JSON can be imported directly into Postman: **Import > Raw text > 
               "mode": "raw",
               "raw": "{\n  \"categoryId\": \"{{categoryId}}\",\n  \"month\": 3,\n  \"year\": 2026,\n  \"limitAmount\": 300\n}"
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Summary",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has totalIncome', () => pm.expect(pm.response.json()).to.have.property('totalIncome'));",
+                  "pm.test('Has totalExpenses', () => pm.expect(pm.response.json()).to.have.property('totalExpenses'));",
+                  "pm.test('Has netBalance', () => pm.expect(pm.response.json()).to.have.property('netBalance'));",
+                  "pm.test('Has transactionCount', () => pm.expect(pm.response.json()).to.have.property('transactionCount'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/dashboard/summary?startDate=2025-01-01&endDate=2025-12-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["dashboard", "summary"],
+              "query": [
+                { "key": "startDate", "value": "2025-01-01" },
+                { "key": "endDate", "value": "2025-12-31" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Summary — missing params (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/dashboard/summary"
+          }
+        },
+        {
+          "name": "Summary — unauthenticated (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status 401', () => pm.response.to.have.status(401));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/dashboard/summary?startDate=2025-01-01&endDate=2025-12-31"
           }
         }
       ]

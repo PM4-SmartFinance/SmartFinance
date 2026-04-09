@@ -175,7 +175,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
                   <option value="">Select a category…</option>
                   {categories.map((cat) => (
                     <option key={cat.id} value={cat.id}>
-                      {cat.name}
+                      {cat.categoryName}
                     </option>
                   ))}
                 </select>

@@ -3,7 +3,7 @@ import { api } from "../api";
 
 export interface Category {
   id: string;
-  name: string;
+  categoryName: string;
   userId: string | null; // null for global categories
   createdAt: string;
   updatedAt: string;
