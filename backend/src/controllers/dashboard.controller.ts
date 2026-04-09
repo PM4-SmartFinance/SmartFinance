@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { requireRole } from "../middleware/rbac.js";
+import { ServiceError } from "../errors.js";
 import * as dashboardService from "../services/dashboard.service.js";
 
 interface DashboardSummaryQuery {
@@ -17,6 +18,40 @@ const dashboardSummaryQuerySchema = {
   },
 } as const;
 
+interface DashboardTrendsQuery {
+  months: number;
+}
+
+const dashboardTrendsQuerySchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    months: { type: "integer", minimum: 6, maximum: 12, default: 6 },
+  },
+} as const;
+
+const dashboardTrendsResponseSchema = {
+  200: {
+    type: "object",
+    properties: {
+      data: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            year: { type: "number" },
+            month: { type: "number" },
+            income: { type: "number" },
+            expenses: { type: "number" },
+          },
+          required: ["year", "month", "income", "expenses"],
+        },
+      },
+    },
+    required: ["data"],
+  },
+} as const;
+
 export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
   app.get<{ Querystring: DashboardSummaryQuery }>(
     "/dashboard/summary",
@@ -30,6 +65,20 @@ export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
       const { startDate, endDate } = request.query;
       const summary = await dashboardService.getDashboardSummary(session.id, startDate, endDate);
       return reply.send(summary);
+    },
+  );
+
+  app.get<{ Querystring: DashboardTrendsQuery }>(
+    "/dashboard/trends",
+    {
+      preHandler: requireRole("USER"),
+      schema: { querystring: dashboardTrendsQuerySchema, response: dashboardTrendsResponseSchema },
+    },
+    async (request, reply) => {
+      const user = request.session.get("user");
+      if (!user) throw new ServiceError(401, "Unauthorized");
+      const data = await dashboardService.getDashboardTrends(user.id, request.query.months);
+      return reply.send({ data });
     },
   );
 }
