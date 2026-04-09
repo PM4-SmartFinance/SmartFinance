@@ -35,6 +35,9 @@ export function useCategories() {
     queryKey: CATEGORIES_QUERY_KEY,
     queryFn: async () => {
       const response = await api.get<{ categories: Category[] }>("/categories");
+      if (!Array.isArray(response.categories)) {
+        throw new Error("Unexpected response shape from /categories endpoint");
+      }
       return response.categories;
     },
     staleTime: 60_000,
@@ -46,6 +49,9 @@ export function useCategoryRules() {
     queryKey: CATEGORY_RULES_QUERY_KEY,
     queryFn: async () => {
       const response = await api.get<{ rules: CategoryRule[] }>("/category-rules");
+      if (!Array.isArray(response.rules)) {
+        throw new Error("Unexpected response shape from /category-rules endpoint");
+      }
       return response.rules;
     },
     staleTime: 60_000,

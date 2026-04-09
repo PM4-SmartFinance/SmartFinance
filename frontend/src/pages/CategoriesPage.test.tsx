@@ -183,7 +183,7 @@ describe("CategoriesPage", () => {
       expect(screen.getByText("Rent")).toBeInTheDocument();
       expect(screen.getByText("Global category (read-only)")).toBeInTheDocument();
       expect(screen.getByDisplayValue("coop")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Back to Dashboard" })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Back to Dashboard" })).toBeInTheDocument();
     });
   });
 
@@ -306,10 +306,10 @@ describe("CategoriesPage", () => {
   });
 
   it("shows deletion warning near category when backend blocks deletion", async () => {
+    const { ApiError: MockApiError } = await import("../lib/api");
     mockDelete.mockImplementation((path: string) => {
       if (path === "/categories/cat-1") {
-        const error = new Error("Category is in use");
-        return Promise.reject(error);
+        return Promise.reject(new MockApiError(409, "Category is in use"));
       }
       return Promise.resolve(undefined);
     });
@@ -328,5 +328,108 @@ describe("CategoriesPage", () => {
     await waitFor(() => {
       expect(within(groceriesCard!).getByText("Category is in use")).toBeInTheDocument();
     });
+  });
+
+  it("shows validation error when creating category with empty name", async () => {
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+    });
+
+    mockPost.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    expect(screen.getByText("Category name is required.")).toBeInTheDocument();
+    expect(mockPost).not.toHaveBeenCalled();
+  });
+
+  it("shows validation error when saving category edit with empty name", async () => {
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit category Groceries" }));
+    fireEvent.change(screen.getByLabelText("Edit category Groceries"), {
+      target: { value: "   " },
+    });
+    mockPatch.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Save category Groceries" }));
+
+    const groceriesCard = screen
+      .getByLabelText("Edit category Groceries")
+      .closest('[data-slot="card"]');
+    expect(groceriesCard).toBeTruthy();
+
+    await waitFor(() => {
+      expect(within(groceriesCard!).getByText("Category name is required.")).toBeInTheDocument();
+    });
+    expect(mockPatch).not.toHaveBeenCalled();
+  });
+
+  it("shows validation error when adding rule with empty pattern", async () => {
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+    });
+
+    mockPost.mockClear();
+    const addRuleButtons = screen.getAllByRole("button", { name: "Add Rule" });
+    fireEvent.click(addRuleButtons[0]!);
+
+    const groceriesCard = screen.getByText("Groceries").closest('[data-slot="card"]');
+    expect(groceriesCard).toBeTruthy();
+
+    await waitFor(() => {
+      expect(within(groceriesCard!).getByText("Rule pattern is required.")).toBeInTheDocument();
+    });
+    expect(mockPost).not.toHaveBeenCalled();
+  });
+
+  it("updates an existing rule via save", async () => {
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("coop")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("Rule pattern rule-1"), {
+      target: { value: "migros" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save rule rule-1" }));
+
+    await waitFor(() => {
+      expect(mockPatch).toHaveBeenCalledWith("/category-rules/rule-1", {
+        pattern: "migros",
+        matchType: "contains",
+        priority: 1,
+        categoryId: "cat-1",
+      });
+    });
+  });
+
+  it("shows validation error when saving rule with empty pattern", async () => {
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("coop")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("Rule pattern rule-1"), {
+      target: { value: "" },
+    });
+    mockPatch.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Save rule rule-1" }));
+
+    const groceriesCard = screen.getByText("Groceries").closest('[data-slot="card"]');
+    expect(groceriesCard).toBeTruthy();
+
+    await waitFor(() => {
+      expect(within(groceriesCard!).getByText("Rule pattern is required.")).toBeInTheDocument();
+    });
+    expect(mockPatch).not.toHaveBeenCalled();
   });
 });

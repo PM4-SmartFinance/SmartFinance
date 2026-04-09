@@ -5,23 +5,26 @@ import { useDashboardCategories } from "../lib/queries/dashboard";
 import { formatCurrency } from "../lib/utils";
 import { Card, CardContent, CardHeader } from "./ui/card";
 
+const categoryHeader = (
+  <CardHeader>
+    <Link
+      to="/categories"
+      className="text-xs font-semibold uppercase tracking-wider text-foreground hover:text-primary transition-colors"
+    >
+      Spending by Category
+    </Link>
+  </CardHeader>
+);
+
 export function CategoryBreakdownChart() {
   const { data, isLoading, error } = useDashboardCategories();
   const chartData = Array.isArray(data) ? data : [];
-  const isMissingData = chartData.length === 0;
   const isNotFoundError = error instanceof ApiError && error.status === 404;
 
   if (error && !isNotFoundError) {
     return (
       <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
-        <CardHeader>
-          <Link
-            to="/categories"
-            className="text-xs font-semibold uppercase tracking-wider text-foreground hover:text-primary transition-colors cursor-pointer"
-          >
-            Spending by Category
-          </Link>
-        </CardHeader>
+        {categoryHeader}
         <CardContent>
           <div className="rounded border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
             Failed to load category breakdown data. Please try again.
@@ -34,14 +37,7 @@ export function CategoryBreakdownChart() {
   if (isLoading) {
     return (
       <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
-        <CardHeader>
-          <Link
-            to="/categories"
-            className="text-xs font-semibold uppercase tracking-wider text-foreground hover:text-primary transition-colors cursor-pointer"
-          >
-            Spending by Category
-          </Link>
-        </CardHeader>
+        {categoryHeader}
         <CardContent>
           <div className="flex min-h-64 items-center justify-center rounded bg-muted/30">
             <div className="text-sm text-muted-foreground">Loading chart…</div>
@@ -51,17 +47,10 @@ export function CategoryBreakdownChart() {
     );
   }
 
-  if (isMissingData) {
+  if (isNotFoundError || chartData.length === 0) {
     return (
       <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
-        <CardHeader>
-          <Link
-            to="/categories"
-            className="text-xs font-semibold uppercase tracking-wider text-foreground hover:text-primary transition-colors cursor-pointer"
-          >
-            Spending by Category
-          </Link>
-        </CardHeader>
+        {categoryHeader}
         <CardContent>
           <div className="flex min-h-64 items-center justify-center rounded bg-muted/30 p-4 text-center">
             <div className="max-w-sm text-sm text-muted-foreground">
@@ -75,14 +64,7 @@ export function CategoryBreakdownChart() {
 
   return (
     <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
-      <CardHeader>
-        <Link
-          to="/categories"
-          className="text-xs font-semibold uppercase tracking-wider text-foreground hover:text-primary transition-colors cursor-pointer"
-        >
-          Spending by Category
-        </Link>
-      </CardHeader>
+      {categoryHeader}
       <CardContent>
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
