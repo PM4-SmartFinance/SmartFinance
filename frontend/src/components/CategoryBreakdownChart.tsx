@@ -1,8 +1,9 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Link } from "react-router";
 import { ApiError } from "../lib/api";
 import { useDashboardCategories } from "../lib/queries/dashboard";
 import { formatCurrency } from "../lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Card, CardContent, CardHeader } from "./ui/card";
 
 export function CategoryBreakdownChart() {
   const { data, isLoading, error } = useDashboardCategories();
@@ -13,9 +14,12 @@ export function CategoryBreakdownChart() {
     return (
       <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
         <CardHeader>
-          <CardTitle className="text-xs font-semibold uppercase tracking-wider">
+          <Link
+            to="/categories"
+            className="text-xs font-semibold uppercase tracking-wider text-foreground hover:text-primary transition-colors cursor-pointer"
+          >
             Spending by Category
-          </CardTitle>
+          </Link>
         </CardHeader>
         <CardContent>
           <div className="rounded border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
@@ -30,9 +34,12 @@ export function CategoryBreakdownChart() {
     return (
       <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
         <CardHeader>
-          <CardTitle className="text-xs font-semibold uppercase tracking-wider">
+          <Link
+            to="/categories"
+            className="text-xs font-semibold uppercase tracking-wider text-foreground hover:text-primary transition-colors cursor-pointer"
+          >
             Spending by Category
-          </CardTitle>
+          </Link>
         </CardHeader>
         <CardContent>
           <div className="flex min-h-64 items-center justify-center rounded bg-muted/30">
@@ -47,9 +54,12 @@ export function CategoryBreakdownChart() {
     return (
       <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
         <CardHeader>
-          <CardTitle className="text-xs font-semibold uppercase tracking-wider">
+          <Link
+            to="/categories"
+            className="text-xs font-semibold uppercase tracking-wider text-foreground hover:text-primary transition-colors cursor-pointer"
+          >
             Spending by Category
-          </CardTitle>
+          </Link>
         </CardHeader>
         <CardContent>
           <div className="flex min-h-64 items-center justify-center rounded bg-muted/30 p-4 text-center">
@@ -65,9 +75,12 @@ export function CategoryBreakdownChart() {
   return (
     <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
       <CardHeader>
-        <CardTitle className="text-xs font-semibold uppercase tracking-wider">
+        <Link
+          to="/categories"
+          className="text-xs font-semibold uppercase tracking-wider text-foreground hover:text-primary transition-colors cursor-pointer"
+        >
           Spending by Category
-        </CardTitle>
+        </Link>
       </CardHeader>
       <CardContent>
         <div className="h-64 w-full">
