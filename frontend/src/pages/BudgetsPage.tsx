@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useBudgets, useDeleteBudget, Budget } from "../lib/queries/budgets";
+import { useBudgets, useDeleteBudget } from "../lib/queries/budgets";
+import type { Budget } from "../lib/queries/budgets";
 import { ApiError } from "../lib/api";
 import { useCategories } from "../lib/queries/categories";
 import { BudgetProgressCard } from "../components/BudgetProgressCard";

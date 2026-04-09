@@ -1,12 +1,15 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { ApiError } from "../lib/api";
 import { useDashboardCategories } from "../lib/queries/dashboard";
 import { formatCurrency } from "../lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
 export function CategoryBreakdownChart() {
   const { data, isLoading, error } = useDashboardCategories();
+  const isMissingData = !data || data.length === 0;
+  const isNotFoundError = error instanceof ApiError && error.status === 404;
 
-  if (error) {
+  if (error && !isNotFoundError) {
     return (
       <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
         <CardHeader>
@@ -23,7 +26,7 @@ export function CategoryBreakdownChart() {
     );
   }
 
-  if (isLoading || !data) {
+  if (isLoading) {
     return (
       <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
         <CardHeader>
@@ -34,6 +37,25 @@ export function CategoryBreakdownChart() {
         <CardContent>
           <div className="flex min-h-64 items-center justify-center rounded bg-muted/30">
             <div className="text-sm text-muted-foreground">Loading chart…</div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isMissingData) {
+    return (
+      <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
+        <CardHeader>
+          <CardTitle className="text-xs font-semibold uppercase tracking-wider">
+            Spending by Category
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex min-h-64 items-center justify-center rounded bg-muted/30 p-4 text-center">
+            <div className="max-w-sm text-sm text-muted-foreground">
+              No category breakdown yet. Import transactions or a CSV to see spending by category.
+            </div>
           </div>
         </CardContent>
       </Card>

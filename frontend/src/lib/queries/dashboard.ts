@@ -23,6 +23,14 @@ export interface CategoryBreakdown {
   amount: number;
 }
 
+function unwrapArrayResponse<T>(response: T[] | { data: T[] }): T[] {
+  if (Array.isArray(response)) {
+    return response;
+  }
+
+  return response.data;
+}
+
 // Dashboard Summary Hook
 export function useDashboardSummary() {
   const startDate = useAppStore((s) => s.startDate);
@@ -47,7 +55,9 @@ export function useDashboardTrends() {
     queryKey: ["dashboard", "trends", { startDate, endDate }] as const,
     queryFn: () => {
       const params = new URLSearchParams({ startDate, endDate });
-      return api.get<TrendDataPoint[]>(`/dashboard/trends?${params}`);
+      return api
+        .get<TrendDataPoint[] | { data: TrendDataPoint[] }>(`/dashboard/trends?${params}`)
+        .then(unwrapArrayResponse);
     },
     staleTime: DASHBOARD_STALE_TIME,
   });
@@ -62,7 +72,9 @@ export function useDashboardCategories() {
     queryKey: ["dashboard", "categories", { startDate, endDate }] as const,
     queryFn: () => {
       const params = new URLSearchParams({ startDate, endDate });
-      return api.get<CategoryBreakdown[]>(`/dashboard/categories?${params}`);
+      return api
+        .get<CategoryBreakdown[] | { data: CategoryBreakdown[] }>(`/dashboard/categories?${params}`)
+        .then(unwrapArrayResponse);
     },
     staleTime: DASHBOARD_STALE_TIME,
   });

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { useCreateBudget, useUpdateBudget, Budget } from "../lib/queries/budgets";
+import { useCreateBudget, useUpdateBudget } from "../lib/queries/budgets";
+import type { Budget } from "../lib/queries/budgets";
 import { useCategories } from "../lib/queries/categories";
 import { ApiError } from "../lib/api";
 import { Button } from "@/components/ui/button";

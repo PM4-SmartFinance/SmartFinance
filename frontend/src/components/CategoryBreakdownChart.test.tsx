@@ -3,20 +3,27 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { CategoryBreakdownChart } from "./CategoryBreakdownChart";
 
-const mockCategoryData = [
-  { category: "Groceries", amount: 450.75 },
-  { category: "Transport", amount: 280.0 },
-  { category: "Dining", amount: 320.5 },
-  { category: "Entertainment", amount: 195.25 },
-  { category: "Utilities", amount: 125.0 },
-  { category: "Shopping", amount: 473.0 },
-];
-
 vi.mock("../lib/api", () => ({
+  ApiError: class MockApiError extends Error {
+    status: number;
+
+    constructor(status: number, message: string) {
+      super(message);
+      this.status = status;
+      this.name = "ApiError";
+    }
+  },
   api: {
     get: vi.fn((path) => {
       if (path.includes("/dashboard/categories")) {
-        return Promise.resolve(mockCategoryData);
+        return Promise.resolve([
+          { category: "Groceries", amount: 450.75 },
+          { category: "Transport", amount: 280.0 },
+          { category: "Dining", amount: 320.5 },
+          { category: "Entertainment", amount: 195.25 },
+          { category: "Utilities", amount: 125.0 },
+          { category: "Shopping", amount: 473.0 },
+        ]);
       }
       return Promise.resolve({});
     }),
@@ -56,6 +63,41 @@ describe("CategoryBreakdownChart", () => {
     renderWithQuery(<CategoryBreakdownChart />);
 
     expect(screen.getByText("Loading chart…")).toBeInTheDocument();
+  });
+
+  it("shows a neutral empty state when there is no category data yet", async () => {
+    const apiMock = await vi.importMock("../lib/api");
+    apiMock.api.get.mockImplementation((path: string) => {
+      if (path.includes("/dashboard/categories")) {
+        return Promise.resolve([]);
+      }
+      return Promise.resolve({});
+    });
+
+    renderWithQuery(<CategoryBreakdownChart />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "No category breakdown yet. Import transactions or a CSV to see spending by category.",
+        ),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("shows a neutral empty state when the backend has no breakdown endpoint yet", async () => {
+    const apiMock = await vi.importMock("../lib/api");
+    apiMock.api.get.mockRejectedValueOnce(new apiMock.ApiError(404, "Not Found"));
+
+    renderWithQuery(<CategoryBreakdownChart />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "No category breakdown yet. Import transactions or a CSV to see spending by category.",
+        ),
+      ).toBeInTheDocument();
+    });
   });
 
   it("displays error state when data fetch fails", async () => {
