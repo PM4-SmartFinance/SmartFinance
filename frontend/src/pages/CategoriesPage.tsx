@@ -14,6 +14,7 @@ import {
   type CategoryRule,
   type RuleDraft,
 } from "../lib/queries/categories";
+import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,6 +43,7 @@ function getInitialRuleState(categoryId: string): Record<string, RuleEditorState
 }
 
 export function CategoriesPage() {
+  const navigate = useNavigate();
   const [newCategoryName, setNewCategoryName] = useState("");
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [editingCategoryName, setEditingCategoryName] = useState("");
@@ -300,6 +302,13 @@ export function CategoriesPage() {
           <p className="text-sm text-muted-foreground">
             Manage your categories and auto-categorization rules in one place.
           </p>
+          <Button
+            className="mt-4 bg-black text-white hover:bg-black/90"
+            size="sm"
+            onClick={() => navigate("/")}
+          >
+            Back to Dashboard
+          </Button>
         </header>
 
         <Card className="mb-6">

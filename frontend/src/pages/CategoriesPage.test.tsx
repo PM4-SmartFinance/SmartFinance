@@ -183,6 +183,7 @@ describe("CategoriesPage", () => {
       expect(screen.getByText("Rent")).toBeInTheDocument();
       expect(screen.getByText("Global category (read-only)")).toBeInTheDocument();
       expect(screen.getByDisplayValue("coop")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Back to Dashboard" })).toBeInTheDocument();
     });
   });
 
