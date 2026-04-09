@@ -7,6 +7,7 @@ import { importTransactions, SUPPORTED_FORMATS } from "../services/import.servic
 import { decodeCSVBuffer } from "../services/importers/csv.utils.js";
 import type { SortBy, SortOrder } from "../services/transaction.service.js";
 import * as transactionService from "../services/transaction.service.js";
+import { autoCategorize } from "../services/categorization.service.js";
 
 interface ListTransactionsQuery {
   page: number;
@@ -60,6 +61,17 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
         ...request.query,
       });
 
+      return reply.send(result);
+    },
+  );
+
+  app.post(
+    "/transactions/auto-categorize",
+    { preHandler: requireRole("USER") },
+    async (request, reply) => {
+      const user = request.session.get("user");
+      if (!user) throw new ServiceError(401, "Unauthorized");
+      const result = await autoCategorize(user.id);
       return reply.send(result);
     },
   );

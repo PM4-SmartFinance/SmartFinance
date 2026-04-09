@@ -4,6 +4,7 @@ import { parseZKBCSV } from "./importers/zkb.parser.js";
 import { parseWiseCSV } from "./importers/wise.parser.js";
 import { parseUBSCSV } from "./importers/ubs.parser.js";
 import * as transactionRepository from "../repositories/transaction.repository.js";
+import { autoCategorize } from "./categorization.service.js";
 
 export const SUPPORTED_FORMATS = ["neon", "zkb", "wise", "ubs"] as const;
 export type ImportFormat = (typeof SUPPORTED_FORMATS)[number];
@@ -44,5 +45,6 @@ export async function importTransactions({
   }
 
   const imported = await transactionRepository.bulkImport(parsed, userId, accountId);
+  await autoCategorize(userId);
   return { imported };
 }
