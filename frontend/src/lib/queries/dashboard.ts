@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/store/appStore";
+import type { Budget } from "./budgets";
 
 // Dashboard data changes infrequently — use a longer stale time than the global
 // default (30s) to reduce unnecessary refetches when switching between pages.
@@ -18,18 +19,65 @@ export interface TrendDataPoint {
   amount: number;
 }
 
+interface MonthlyTrendPoint {
+  year: number;
+  month: number;
+  income: number;
+  expenses: number;
+}
+
 export interface CategoryBreakdown {
   category: string;
   amount: number;
 }
 
-function unwrapArrayResponse<T>(response: T[] | { data: T[] }): T[] {
-  if (Array.isArray(response)) {
-    return response;
+export function extractArray<T>(value: unknown): T[] {
+  if (Array.isArray(value)) {
+    return value;
   }
 
-  return response.data;
+  if (
+    value &&
+    typeof value === "object" &&
+    "data" in value &&
+    Array.isArray((value as { data?: unknown }).data)
+  ) {
+    return (value as { data: T[] }).data;
+  }
+
+  if (import.meta.env.DEV && value != null) {
+    console.warn("[extractArray] Unexpected response shape, returning empty array:", value);
+  }
+  return [];
 }
+
+export function toTrendDataPoints(raw: unknown): TrendDataPoint[] {
+  const data = extractArray<TrendDataPoint | MonthlyTrendPoint>(raw);
+
+  return data
+    .map((point) => {
+      if ("date" in point && "amount" in point) {
+        return {
+          date: point.date,
+          amount: Number(point.amount),
+        };
+      }
+
+      if ("year" in point && "month" in point && "expenses" in point) {
+        const month = String(point.month).padStart(2, "0");
+        return {
+          date: `${point.year}-${month}-01`,
+          amount: Number(point.expenses),
+        };
+      }
+
+      return null;
+    })
+    .filter((point): point is TrendDataPoint => point !== null);
+}
+
+// Re-export for consumers that import Budget from dashboard queries
+export type { Budget };
 
 // Dashboard Summary Hook
 export function useDashboardSummary() {
@@ -53,11 +101,10 @@ export function useDashboardTrends() {
 
   return useQuery({
     queryKey: ["dashboard", "trends", { startDate, endDate }] as const,
-    queryFn: () => {
+    queryFn: async () => {
       const params = new URLSearchParams({ startDate, endDate });
-      return api
-        .get<TrendDataPoint[] | { data: TrendDataPoint[] }>(`/dashboard/trends?${params}`)
-        .then(unwrapArrayResponse);
+      const response = await api.get<unknown>(`/dashboard/trends?${params}`);
+      return toTrendDataPoints(response);
     },
     staleTime: DASHBOARD_STALE_TIME,
   });
@@ -70,11 +117,25 @@ export function useDashboardCategories() {
 
   return useQuery({
     queryKey: ["dashboard", "categories", { startDate, endDate }] as const,
-    queryFn: () => {
+    queryFn: async () => {
       const params = new URLSearchParams({ startDate, endDate });
-      return api
-        .get<CategoryBreakdown[] | { data: CategoryBreakdown[] }>(`/dashboard/categories?${params}`)
-        .then(unwrapArrayResponse);
+      const response = await api.get<unknown>(`/dashboard/categories?${params}`);
+      return extractArray<CategoryBreakdown>(response);
+    },
+    staleTime: DASHBOARD_STALE_TIME,
+  });
+}
+
+// Budgets Hook
+export function useDashboardBudgets() {
+  return useQuery({
+    queryKey: ["dashboard", "budgets"] as const,
+    queryFn: async () => {
+      const res = await api.get<{ budgets: Budget[] }>("/budgets");
+      if (!Array.isArray(res.budgets)) {
+        throw new Error("Unexpected response shape from /budgets endpoint");
+      }
+      return res.budgets;
     },
     staleTime: DASHBOARD_STALE_TIME,
   });

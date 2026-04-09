@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader } from "./ui/card";
 
 export function CategoryBreakdownChart() {
   const { data, isLoading, error } = useDashboardCategories();
-  const isMissingData = !data || data.length === 0;
+  const chartData = Array.isArray(data) ? data : [];
+  const isMissingData = chartData.length === 0;
   const isNotFoundError = error instanceof ApiError && error.status === 404;
 
   if (error && !isNotFoundError) {
@@ -85,7 +86,7 @@ export function CategoryBreakdownChart() {
       <CardContent>
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} layout="vertical" margin={{ left: 100, right: 20 }}>
+            <BarChart data={chartData} layout="vertical" margin={{ left: 100, right: 20 }}>
               <CartesianGrid stroke="hsl(var(--muted-foreground))" />
               <XAxis
                 type="number"
