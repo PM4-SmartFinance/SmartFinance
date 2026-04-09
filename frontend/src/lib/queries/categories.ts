@@ -12,7 +12,7 @@ export interface Category {
 const CATEGORIES_QUERY_KEY = ["categories"] as const;
 
 export function useCategories() {
-  return useQuery({
+  return useQuery<Category[]>({
     queryKey: CATEGORIES_QUERY_KEY,
     queryFn: async () => {
       const response = await api.get<{ categories: Category[] }>("/categories");
