@@ -82,6 +82,30 @@ export function CategoriesPage() {
     }, {});
   }, [rules]);
 
+  const categorySections = useMemo(() => {
+    const personal = categories
+      .filter((category) => category.userId !== null)
+      .sort((a, b) => a.categoryName.localeCompare(b.categoryName));
+    const global = categories
+      .filter((category) => category.userId === null)
+      .sort((a, b) => a.categoryName.localeCompare(b.categoryName));
+
+    return [
+      {
+        id: "personal",
+        title: "Your Categories",
+        description: "Editable categories you created.",
+        categories: personal,
+      },
+      {
+        id: "global",
+        title: "Global Categories",
+        description: "Shared defaults available to all users.",
+        categories: global,
+      },
+    ];
+  }, [categories]);
+
   async function handleCreateCategory() {
     if (!newCategoryName.trim()) {
       setCategoryError("Category name is required.");
@@ -301,218 +325,240 @@ export function CategoriesPage() {
         {categoryError && <p className="mb-4 text-sm text-destructive">{categoryError}</p>}
         {ruleError && <p className="mb-4 text-sm text-destructive">{ruleError}</p>}
 
-        <div className="space-y-6">
-          {categories.map((category) => {
-            const categoryRules = rulesByCategory[category.id] ?? [];
-            const draft = getRuleDraft(category.id);
-            const isGlobal = category.userId === null;
+        <div className="space-y-8">
+          {categorySections.map((section) => (
+            <section key={section.id} className="space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">{section.title}</h2>
+                <p className="text-sm text-muted-foreground">{section.description}</p>
+              </div>
 
-            return (
-              <Card key={category.id}>
-                <CardHeader className="flex flex-row items-center justify-between gap-2">
-                  {editingCategoryId === category.id ? (
-                    <div className="flex w-full items-center gap-2">
-                      <Input
-                        aria-label={`Edit category ${category.categoryName}`}
-                        value={editingCategoryName}
-                        onChange={(event) => setEditingCategoryName(event.target.value)}
-                      />
-                      <Button
-                        aria-label={`Save category ${category.categoryName}`}
-                        onClick={() => handleSaveCategoryEdit(category.id)}
-                        size="sm"
-                      >
-                        Save
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setEditingCategoryId(null);
-                          setEditingCategoryName("");
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex w-full items-center justify-between gap-3">
-                      <div>
-                        <CardTitle className="text-base">{category.categoryName}</CardTitle>
-                        {isGlobal && (
-                          <p className="text-xs text-muted-foreground">
-                            Global category (read-only)
-                          </p>
-                        )}
-                      </div>
-                      {!isGlobal && (
-                        <div className="flex items-center gap-2">
-                          <Button
-                            aria-label={`Edit category ${category.categoryName}`}
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleStartCategoryEdit(category)}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            aria-label={`Delete category ${category.categoryName}`}
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteCategory(category.id)}
-                            disabled={deleteCategory.isPending}
-                          >
-                            Delete
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </CardHeader>
+              {section.categories.length === 0 ? (
+                <Card>
+                  <CardContent className="pt-6">
+                    <p className="text-sm text-muted-foreground">No categories in this section.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-6">
+                  {section.categories.map((category) => {
+                    const categoryRules = rulesByCategory[category.id] ?? [];
+                    const draft = getRuleDraft(category.id);
+                    const isGlobal = category.userId === null;
 
-                <CardContent className="space-y-4">
-                  {deleteCategoryErrorById[category.id] && (
-                    <p className="text-xs text-destructive">
-                      {deleteCategoryErrorById[category.id]}
-                    </p>
-                  )}
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-semibold">Rules</h3>
-                    {categoryRules.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">No rules yet.</p>
-                    ) : (
-                      <ul className="space-y-2">
-                        {categoryRules.map((rule) => {
-                          const editor = getRuleEditor(rule);
-
-                          return (
-                            <li key={rule.id} className="rounded border p-3">
-                              <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-                                <Input
-                                  aria-label={`Rule pattern ${rule.id}`}
-                                  value={editor.pattern}
-                                  onChange={(event) => {
-                                    setRuleEditor(rule.id, {
-                                      ...editor,
-                                      pattern: event.target.value,
-                                    });
-                                  }}
-                                />
-                                <select
-                                  aria-label={`Rule match type ${rule.id}`}
-                                  className="rounded border border-input bg-background px-3 py-2 text-sm"
-                                  value={editor.matchType}
-                                  onChange={(event) => {
-                                    setRuleEditor(rule.id, {
-                                      ...editor,
-                                      matchType: event.target.value as "exact" | "contains",
-                                    });
-                                  }}
-                                >
-                                  <option value="contains">contains</option>
-                                  <option value="exact">exact</option>
-                                </select>
-                                <Input
-                                  aria-label={`Rule priority ${rule.id}`}
-                                  type="number"
-                                  value={editor.priority}
-                                  onChange={(event) => {
-                                    setRuleEditor(rule.id, {
-                                      ...editor,
-                                      priority: Number(event.target.value || 0),
-                                    });
-                                  }}
-                                />
-                                <div className="flex gap-2">
+                    return (
+                      <Card key={category.id}>
+                        <CardHeader className="flex flex-row items-center justify-between gap-2">
+                          {editingCategoryId === category.id ? (
+                            <div className="flex w-full items-center gap-2">
+                              <Input
+                                aria-label={`Edit category ${category.categoryName}`}
+                                value={editingCategoryName}
+                                onChange={(event) => setEditingCategoryName(event.target.value)}
+                              />
+                              <Button
+                                aria-label={`Save category ${category.categoryName}`}
+                                onClick={() => handleSaveCategoryEdit(category.id)}
+                                size="sm"
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingCategoryId(null);
+                                  setEditingCategoryName("");
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex w-full items-center justify-between gap-3">
+                              <div>
+                                <CardTitle className="text-base">{category.categoryName}</CardTitle>
+                                {isGlobal && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Global category (read-only)
+                                  </p>
+                                )}
+                              </div>
+                              {!isGlobal && (
+                                <div className="flex items-center gap-2">
                                   <Button
-                                    aria-label={`Save rule ${rule.id}`}
+                                    aria-label={`Edit category ${category.categoryName}`}
+                                    variant="outline"
                                     size="sm"
-                                    onClick={() => handleSaveRule(rule)}
+                                    onClick={() => handleStartCategoryEdit(category)}
                                   >
-                                    Save
+                                    Edit
                                   </Button>
                                   <Button
-                                    aria-label={`Delete rule ${rule.id}`}
-                                    size="sm"
+                                    aria-label={`Delete category ${category.categoryName}`}
                                     variant="outline"
-                                    onClick={() => handleDeleteRule(rule.id)}
+                                    size="sm"
+                                    onClick={() => handleDeleteCategory(category.id)}
+                                    disabled={deleteCategory.isPending}
                                   >
                                     Delete
                                   </Button>
                                 </div>
-                              </div>
-                              {deleteRuleErrorById[rule.id] && (
-                                <p className="text-xs text-destructive">
-                                  {deleteRuleErrorById[rule.id]}
-                                </p>
                               )}
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
-                  </div>
+                            </div>
+                          )}
+                        </CardHeader>
 
-                  <div className="rounded border p-3">
-                    <h4 className="mb-2 text-sm font-semibold">New Rule</h4>
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-                      <Input
-                        aria-label={`New rule pattern for ${category.categoryName}`}
-                        placeholder="Pattern"
-                        value={draft.pattern}
-                        onChange={(event) =>
-                          setRuleDraft(category.id, { ...draft, pattern: event.target.value })
-                        }
-                      />
-                      <select
-                        aria-label={`New rule match type for ${category.categoryName}`}
-                        className="rounded border border-input bg-background px-3 py-2 text-sm"
-                        value={draft.matchType}
-                        onChange={(event) =>
-                          setRuleDraft(category.id, {
-                            ...draft,
-                            matchType: event.target.value as "exact" | "contains",
-                          })
-                        }
-                      >
-                        <option value="contains">contains</option>
-                        <option value="exact">exact</option>
-                      </select>
-                      <Input
-                        aria-label={`New rule priority for ${category.categoryName}`}
-                        type="number"
-                        placeholder="Priority"
-                        value={draft.priority}
-                        onChange={(event) =>
-                          setRuleDraft(category.id, {
-                            ...draft,
-                            priority: Number(event.target.value || 0),
-                          })
-                        }
-                      />
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={() => handleCreateRule(category.id)}>
-                          Add Rule
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handlePreviewRule(category.id)}
-                        >
-                          Match Preview
-                        </Button>
-                      </div>
-                    </div>
-                    {previewByCategory[category.id] && (
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        {previewByCategory[category.id]}
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                        <CardContent className="space-y-4">
+                          {deleteCategoryErrorById[category.id] && (
+                            <p className="text-xs text-destructive">
+                              {deleteCategoryErrorById[category.id]}
+                            </p>
+                          )}
+                          <div className="space-y-2">
+                            <h3 className="text-sm font-semibold">Rules</h3>
+                            {categoryRules.length === 0 ? (
+                              <p className="text-sm text-muted-foreground">No rules yet.</p>
+                            ) : (
+                              <ul className="space-y-2">
+                                {categoryRules.map((rule) => {
+                                  const editor = getRuleEditor(rule);
+
+                                  return (
+                                    <li key={rule.id} className="rounded border p-3">
+                                      <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+                                        <Input
+                                          aria-label={`Rule pattern ${rule.id}`}
+                                          value={editor.pattern}
+                                          onChange={(event) => {
+                                            setRuleEditor(rule.id, {
+                                              ...editor,
+                                              pattern: event.target.value,
+                                            });
+                                          }}
+                                        />
+                                        <select
+                                          aria-label={`Rule match type ${rule.id}`}
+                                          className="rounded border border-input bg-background px-3 py-2 text-sm"
+                                          value={editor.matchType}
+                                          onChange={(event) => {
+                                            setRuleEditor(rule.id, {
+                                              ...editor,
+                                              matchType: event.target.value as "exact" | "contains",
+                                            });
+                                          }}
+                                        >
+                                          <option value="contains">contains</option>
+                                          <option value="exact">exact</option>
+                                        </select>
+                                        <Input
+                                          aria-label={`Rule priority ${rule.id}`}
+                                          type="number"
+                                          value={editor.priority}
+                                          onChange={(event) => {
+                                            setRuleEditor(rule.id, {
+                                              ...editor,
+                                              priority: Number(event.target.value || 0),
+                                            });
+                                          }}
+                                        />
+                                        <div className="flex gap-2">
+                                          <Button
+                                            aria-label={`Save rule ${rule.id}`}
+                                            size="sm"
+                                            onClick={() => handleSaveRule(rule)}
+                                          >
+                                            Save
+                                          </Button>
+                                          <Button
+                                            aria-label={`Delete rule ${rule.id}`}
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => handleDeleteRule(rule.id)}
+                                          >
+                                            Delete
+                                          </Button>
+                                        </div>
+                                      </div>
+                                      {deleteRuleErrorById[rule.id] && (
+                                        <p className="text-xs text-destructive">
+                                          {deleteRuleErrorById[rule.id]}
+                                        </p>
+                                      )}
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            )}
+                          </div>
+
+                          <div className="rounded border p-3">
+                            <h4 className="mb-2 text-sm font-semibold">New Rule</h4>
+                            <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+                              <Input
+                                aria-label={`New rule pattern for ${category.categoryName}`}
+                                placeholder="Pattern"
+                                value={draft.pattern}
+                                onChange={(event) =>
+                                  setRuleDraft(category.id, {
+                                    ...draft,
+                                    pattern: event.target.value,
+                                  })
+                                }
+                              />
+                              <select
+                                aria-label={`New rule match type for ${category.categoryName}`}
+                                className="rounded border border-input bg-background px-3 py-2 text-sm"
+                                value={draft.matchType}
+                                onChange={(event) =>
+                                  setRuleDraft(category.id, {
+                                    ...draft,
+                                    matchType: event.target.value as "exact" | "contains",
+                                  })
+                                }
+                              >
+                                <option value="contains">contains</option>
+                                <option value="exact">exact</option>
+                              </select>
+                              <Input
+                                aria-label={`New rule priority for ${category.categoryName}`}
+                                type="number"
+                                placeholder="Priority"
+                                value={draft.priority}
+                                onChange={(event) =>
+                                  setRuleDraft(category.id, {
+                                    ...draft,
+                                    priority: Number(event.target.value || 0),
+                                  })
+                                }
+                              />
+                              <div className="flex gap-2">
+                                <Button size="sm" onClick={() => handleCreateRule(category.id)}>
+                                  Add Rule
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handlePreviewRule(category.id)}
+                                >
+                                  Match Preview
+                                </Button>
+                              </div>
+                            </div>
+                            {previewByCategory[category.id] && (
+                              <p className="mt-2 text-xs text-muted-foreground">
+                                {previewByCategory[category.id]}
+                              </p>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          ))}
         </div>
       </div>
     </main>
