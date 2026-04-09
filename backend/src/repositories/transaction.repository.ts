@@ -84,6 +84,32 @@ export async function bulkImport(
   return parsed.length;
 }
 
+export async function findUncategorizedForUser(userId: string) {
+  return prisma.factTransactions.findMany({
+    where: { userId, categoryId: null, manualOverride: false },
+    select: { id: true, merchant: { select: { name: true } } },
+  });
+}
+
+export async function bulkSetCategory(updates: Array<{ id: string; categoryId: string }>) {
+  // Group by categoryId for efficient batch updates
+  const byCategory = new Map<string, string[]>();
+  for (const { id, categoryId } of updates) {
+    const ids = byCategory.get(categoryId) ?? [];
+    ids.push(id);
+    byCategory.set(categoryId, ids);
+  }
+
+  await prisma.$transaction(
+    [...byCategory.entries()].map(([categoryId, ids]) =>
+      prisma.factTransactions.updateMany({
+        where: { id: { in: ids } },
+        data: { categoryId },
+      }),
+    ),
+  );
+}
+
 export interface ListTransactionsArgs {
   userId: string;
   skip: number;
