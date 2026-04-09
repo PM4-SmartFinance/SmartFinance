@@ -47,6 +47,8 @@ export async function importTransactions({
   const imported = await transactionRepository.bulkImport(parsed, userId, accountId);
   // Best-effort: do not let a categorization failure roll back a committed import.
   // Users can retry via POST /transactions/auto-categorize.
-  autoCategorize(userId).catch(() => undefined);
+  autoCategorize(userId).catch((err: unknown) => {
+    console.warn("[import] post-import auto-categorize failed for user", userId, err);
+  });
   return { imported };
 }

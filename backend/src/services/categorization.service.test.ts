@@ -119,7 +119,7 @@ describe("autoCategorize", () => {
         updatedAt: new Date(),
         category: { id: "cat-1", categoryName: "Groceries" },
       },
-    ] as never);
+    ] as unknown as Awaited<ReturnType<typeof ruleRepo.findAllByUser>>);
     mockTxRepo.findUncategorizedForUser.mockResolvedValue([]);
 
     const result = await autoCategorize("user-1");
@@ -138,11 +138,11 @@ describe("autoCategorize", () => {
         updatedAt: new Date(),
         category: { id: "cat-groceries", categoryName: "Groceries" },
       },
-    ] as never);
+    ] as unknown as Awaited<ReturnType<typeof ruleRepo.findAllByUser>>);
     mockTxRepo.findUncategorizedForUser.mockResolvedValue([
       { id: "tx-1", merchant: { name: "Migros Online" } },
       { id: "tx-2", merchant: { name: "Migros Bahnhof" } },
-    ] as never);
+    ] as unknown as Awaited<ReturnType<typeof txRepo.findUncategorizedForUser>>);
     mockTxRepo.bulkSetCategory.mockResolvedValue(undefined);
 
     const result = await autoCategorize("user-1");
@@ -164,11 +164,11 @@ describe("autoCategorize", () => {
         updatedAt: new Date(),
         category: { id: "cat-coop", categoryName: "Groceries" },
       },
-    ] as never);
+    ] as unknown as Awaited<ReturnType<typeof ruleRepo.findAllByUser>>);
     mockTxRepo.findUncategorizedForUser.mockResolvedValue([
       { id: "tx-1", merchant: { name: "Migros" } },
       { id: "tx-2", merchant: { name: "Coop" } },
-    ] as never);
+    ] as unknown as Awaited<ReturnType<typeof txRepo.findUncategorizedForUser>>);
     mockTxRepo.bulkSetCategory.mockResolvedValue(undefined);
 
     const result = await autoCategorize("user-1");
@@ -189,10 +189,10 @@ describe("autoCategorize", () => {
         updatedAt: new Date(),
         category: { id: "cat-entertainment", categoryName: "Entertainment" },
       },
-    ] as never);
+    ] as unknown as Awaited<ReturnType<typeof ruleRepo.findAllByUser>>);
     mockTxRepo.findUncategorizedForUser.mockResolvedValue([
       { id: "tx-1", merchant: { name: "Migros" } },
-    ] as never);
+    ] as unknown as Awaited<ReturnType<typeof txRepo.findUncategorizedForUser>>);
 
     const result = await autoCategorize("user-1");
 
@@ -219,10 +219,10 @@ describe("autoCategorize", () => {
         updatedAt: new Date(),
         category: { id: "cat-food", categoryName: "Food" },
       },
-    ] as never);
+    ] as unknown as Awaited<ReturnType<typeof ruleRepo.findAllByUser>>);
     mockTxRepo.findUncategorizedForUser.mockResolvedValue([
       { id: "tx-1", merchant: { name: "Migros Online" } },
-    ] as never);
+    ] as unknown as Awaited<ReturnType<typeof txRepo.findUncategorizedForUser>>);
     mockTxRepo.bulkSetCategory.mockResolvedValue(undefined);
 
     await autoCategorize("user-1");
@@ -242,11 +242,11 @@ describe("autoCategorize", () => {
         updatedAt: new Date(),
         category: { id: "cat-1", categoryName: "Groceries" },
       },
-    ] as never);
+    ] as unknown as Awaited<ReturnType<typeof ruleRepo.findAllByUser>>);
     mockTxRepo.findUncategorizedForUser.mockResolvedValue([
       { id: "tx-1", merchant: null },
       { id: "tx-2", merchant: { name: "Migros" } },
-    ] as never);
+    ] as unknown as Awaited<ReturnType<typeof txRepo.findUncategorizedForUser>>);
     mockTxRepo.bulkSetCategory.mockResolvedValue(undefined);
 
     const result = await autoCategorize("user-1");
@@ -267,12 +267,12 @@ describe("autoCategorize", () => {
         updatedAt: new Date(),
         category: { id: "cat-1", categoryName: "Groceries" },
       },
-    ] as never);
+    ] as unknown as Awaited<ReturnType<typeof ruleRepo.findAllByUser>>);
     mockTxRepo.findUncategorizedForUser.mockResolvedValue([
       { id: "tx-1", merchant: { name: "Migros" } },
       { id: "tx-2", merchant: { name: "Migros" } },
       { id: "tx-3", merchant: { name: "Migros" } },
-    ] as never);
+    ] as unknown as Awaited<ReturnType<typeof txRepo.findUncategorizedForUser>>);
     mockTxRepo.bulkSetCategory.mockResolvedValue(undefined);
 
     const result = await autoCategorize("user-1");

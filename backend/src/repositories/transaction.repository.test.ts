@@ -2,10 +2,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ParsedTransaction } from "../services/importers/types.js";
 
 vi.mock("../prisma.js", () => ({
-  prisma: { $transaction: vi.fn() },
+  prisma: {
+    $transaction: vi.fn(),
+    factTransactions: {
+      findMany: vi.fn(),
+      updateMany: vi.fn(),
+    },
+  },
 }));
 
-import { bulkImport } from "./transaction.repository.js";
+import { bulkImport, findUncategorizedForUser, bulkSetCategory } from "./transaction.repository.js";
 import { prisma } from "../prisma.js";
 
 const mockTransaction = vi.mocked(prisma.$transaction);
@@ -155,5 +161,87 @@ describe("bulkImport", () => {
       data: unknown[];
     };
     expect(data).toHaveLength(100);
+  });
+});
+
+describe("findUncategorizedForUser", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.factTransactions.findMany).mockResolvedValue([]);
+  });
+
+  it("filters by userId, categoryId null, and manualOverride false", async () => {
+    await findUncategorizedForUser("user-1");
+
+    expect(prisma.factTransactions.findMany).toHaveBeenCalledWith({
+      where: { userId: "user-1", categoryId: null, manualOverride: false },
+      select: { id: true, merchant: { select: { name: true } } },
+    });
+  });
+
+  it("does not return transactions with manualOverride set — filter is in the query", async () => {
+    await findUncategorizedForUser("user-1");
+
+    const [args] = vi.mocked(prisma.factTransactions.findMany).mock.calls[0]!;
+    expect(args.where).toMatchObject({ manualOverride: false });
+  });
+
+  it("returns the results from the query", async () => {
+    const rows = [{ id: "tx-1", merchant: { name: "Migros" } }];
+    // @ts-expect-error -- mock returns a partial shape
+    vi.mocked(prisma.factTransactions.findMany).mockResolvedValue(rows);
+
+    const result = await findUncategorizedForUser("user-1");
+
+    expect(result).toEqual(rows);
+  });
+});
+
+describe("bulkSetCategory", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.$transaction).mockResolvedValue([]);
+    vi.mocked(prisma.factTransactions.updateMany).mockResolvedValue({ count: 1 });
+  });
+
+  it("scopes every update to the requesting userId to prevent cross-user writes", async () => {
+    await bulkSetCategory("user-1", [{ id: "tx-1", categoryId: "cat-a" }]);
+
+    expect(prisma.factTransactions.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ userId: "user-1" }) }),
+    );
+  });
+
+  it("groups updates by categoryId for batch efficiency", async () => {
+    await bulkSetCategory("user-1", [
+      { id: "tx-1", categoryId: "cat-a" },
+      { id: "tx-2", categoryId: "cat-a" },
+      { id: "tx-3", categoryId: "cat-b" },
+    ]);
+
+    expect(prisma.factTransactions.updateMany).toHaveBeenCalledTimes(2);
+    expect(prisma.factTransactions.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["tx-1", "tx-2"] }, userId: "user-1" },
+      data: { categoryId: "cat-a" },
+    });
+    expect(prisma.factTransactions.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["tx-3"] }, userId: "user-1" },
+      data: { categoryId: "cat-b" },
+    });
+  });
+
+  it("does not call updateMany when updates array is empty", async () => {
+    await bulkSetCategory("user-1", []);
+
+    expect(prisma.factTransactions.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("wraps all updates in a single $transaction call", async () => {
+    await bulkSetCategory("user-1", [
+      { id: "tx-1", categoryId: "cat-a" },
+      { id: "tx-2", categoryId: "cat-b" },
+    ]);
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
   });
 });
