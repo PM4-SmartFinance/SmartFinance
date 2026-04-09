@@ -2,6 +2,7 @@
 
 import type { FastifyInstance } from "fastify";
 import { buildApp } from "../app.js";
+import * as argon2 from "argon2";
 import { prisma } from "../prisma.js";
 
 let app: FastifyInstance;
@@ -25,26 +26,37 @@ beforeAll(async () => {
 
   app = await buildApp();
 
-  const registerRes = await app.inject({
+  const hashedPassword = await argon2.hash(testPassword);
+  const currency = await prisma.dimCurrency.findUnique({ where: { code: "CHF" } });
+
+  const user = await prisma.dimUser.create({
+    data: { email: testEmail, password: hashedPassword, defaultCurrencyId: currency!.id },
+  });
+  userId = user.id;
+
+  const loginRes = await app.inject({
     method: "POST",
-    url: "/api/v1/auth/register",
+    url: "/api/v1/auth/login",
     payload: { email: testEmail, password: testPassword },
   });
-  userId = registerRes.json().user.id;
-  sessionCookie = registerRes.headers["set-cookie"] as string;
+  sessionCookie = loginRes.headers["set-cookie"] as string;
 
   const category = await prisma.dimCategory.create({
     data: { categoryName: `TestCat-${Date.now()}`, userId },
   });
   categoryId = category.id;
 
-  const registerRes2 = await app.inject({
+  const user2 = await prisma.dimUser.create({
+    data: { email: secondEmail, password: hashedPassword, defaultCurrencyId: currency!.id },
+  });
+  secondUserId = user2.id;
+
+  const loginRes2 = await app.inject({
     method: "POST",
-    url: "/api/v1/auth/register",
+    url: "/api/v1/auth/login",
     payload: { email: secondEmail, password: testPassword },
   });
-  secondUserId = registerRes2.json().user.id;
-  secondSessionCookie = registerRes2.headers["set-cookie"] as string;
+  secondSessionCookie = loginRes2.headers["set-cookie"] as string;
 });
 
 afterAll(async () => {
