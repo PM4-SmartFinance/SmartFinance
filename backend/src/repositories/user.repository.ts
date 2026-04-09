@@ -33,17 +33,23 @@ export async function listUsers(opts: { limit?: number; offset?: number; active?
   return { items, total, limit, offset };
 }
 
+export async function countTotalUsers() {
+  return prisma.dimUser.count();
+}
+
 export async function createUser(data: {
   email: string;
+  name?: string;
   password: string;
+  role?: string;
   defaultCurrencyId: string;
-}): Promise<{ id: string; email: string; role: string; createdAt: Date }> {
+}): Promise<{ id: string; email: string; name: string | null; role: string; createdAt: Date }> {
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const count = await tx.dimUser.count();
-    const role = count === 0 ? "ADMIN" : "USER";
+    const role = count === 0 ? "ADMIN" : (data.role ?? "USER");
     return tx.dimUser.create({
-      data: { ...data, role },
-      select: { id: true, email: true, role: true, createdAt: true },
+      data: { ...data, role, name: data.name ?? null },
+      select: { id: true, email: true, name: true, role: true, createdAt: true },
     });
   });
 }

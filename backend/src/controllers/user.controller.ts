@@ -130,7 +130,31 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  // --- CRUD routes (KAN-74) ---
+  // --- CRUD routes (KAN-74 & KAN-75) ---
+
+  const createUserSchema = {
+    body: {
+      type: "object",
+      required: ["email", "password"],
+      properties: {
+        email: { type: "string", pattern: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$" },
+        password: { type: "string", minLength: 8 },
+        displayName: { type: "string", minLength: 1, maxLength: 100 },
+        role: { type: "string", enum: ["ADMIN", "USER"] },
+      },
+      additionalProperties: false,
+    },
+  };
+
+  app.post<{ Body: { email: string; password: string; displayName?: string; role?: string } }>(
+    "/users",
+    { schema: createUserSchema },
+    async (request, reply) => {
+      const sessionUser = request.session.get("user") ?? null;
+      const user = await userService.onboardUser(sessionUser, request.body);
+      return reply.status(201).send({ user });
+    },
+  );
 
   app.get<{ Querystring: UserQuery }>(
     "/users",

@@ -53,6 +53,49 @@ export async function changePassword(userId: string, currentPassword: string, ne
   void auditService.logEvent("PASSWORD_CHANGED", userId).catch(() => {});
 }
 
+export async function onboardUser(
+  requestingUser: { id: string; role: string } | null,
+  payload: { email: string; displayName?: string; password: string; role?: string },
+) {
+  const count = await userRepository.countTotalUsers();
+
+  if (count > 0) {
+    if (!requestingUser) throw new ServiceError(401, "Unauthorized");
+    if (requestingUser.role !== "ADMIN") throw new ServiceError(403, "Forbidden");
+  }
+
+  const existing = await userRepository.findByEmail(payload.email);
+  if (existing) throw new ServiceError(409, "User exists");
+
+  const hashed = await argon2.hash(payload.password);
+
+  const DEFAULT_CURRENCY_CODE = "CHF";
+  const currency = await userRepository.findCurrencyByCode(DEFAULT_CURRENCY_CODE);
+  if (!currency) {
+    throw new ServiceError(500, `Default currency ${DEFAULT_CURRENCY_CODE} not configured`);
+  }
+
+  const user = await userRepository.createUser({
+    email: payload.email,
+    password: hashed,
+    defaultCurrencyId: currency.id,
+    ...(payload.displayName !== undefined && { name: payload.displayName }),
+    ...(payload.role !== undefined && { role: payload.role }),
+  });
+
+  // Track the event
+  void auditService
+    .logEvent("USER_CREATED", requestingUser?.id ?? null, {
+      targetUserId: user.id,
+      email: user.email,
+      role: user.role,
+      isBootstrap: count === 0,
+    })
+    .catch(() => {});
+
+  return user;
+}
+
 // --- CRUD functions (KAN-74) ---
 
 export async function listUsers(
