@@ -111,7 +111,7 @@ describe("CategoriesPage", () => {
 
     mockGet.mockImplementation((path: string) => {
       if (path === "/categories") {
-        return Promise.resolve(categories);
+        return Promise.resolve({ categories });
       }
       if (path === "/category-rules") {
         return Promise.resolve({ rules });
