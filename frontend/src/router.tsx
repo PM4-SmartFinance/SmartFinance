@@ -1,10 +1,12 @@
 import { createBrowserRouter, Navigate } from "react-router";
 import { WireframesLayout } from "./App";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { AdminRoute } from "./components/AdminRoute";
 import { DashboardPage } from "./pages/DashboardPage";
 import { BudgetsPage } from "./pages/BudgetsPage";
 import { TransactionsPage } from "./pages/TransactionsPage";
 import { CategoriesPage } from "./pages/CategoriesPage";
+import { AdminUsersPage } from "./pages/AdminUsersPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import LoginWireframe from "./wireframes/LoginWireframe";
@@ -36,6 +38,15 @@ export const router = createBrowserRouter([
       {
         path: "/categories",
         element: <CategoriesPage />,
+      },
+      {
+        element: <AdminRoute />,
+        children: [
+          {
+            path: "/admin/users",
+            element: <AdminUsersPage />,
+          },
+        ],
       },
     ],
   },
