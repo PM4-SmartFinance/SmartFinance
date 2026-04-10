@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { register, login, recordLogout } from "./auth.service.js";
+import { login, recordLogout } from "./auth.service.js";
 import * as userRepository from "../repositories/user.repository.js";
 import * as auditService from "./audit.service.js";
 
@@ -29,21 +29,12 @@ describe("auth.service audit events", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(userRepository.findByEmail).mockResolvedValue(null);
-    vi.mocked(userRepository.findCurrencyByCode).mockResolvedValue(mockCurrency);
-    vi.mocked(userRepository.createUser).mockResolvedValue(mockUser);
-  });
-
-  it("fires USER_CREATED on successful registration", async () => {
-    await register("test@example.com", "Password123!");
-
-    expect(auditService.logEvent).toHaveBeenCalledWith("USER_CREATED", "user-1", {
-      email: "test@example.com",
-      role: "USER",
-    });
+    vi.mocked(userRepository.findCurrencyByCode).mockResolvedValue(mockCurrency as never);
+    vi.mocked(userRepository.createUser).mockResolvedValue(mockUser as never);
   });
 
   it("fires LOGIN_SUCCESS on successful login", async () => {
-    vi.mocked(userRepository.findByEmail).mockResolvedValue(mockUser);
+    vi.mocked(userRepository.findByEmail).mockResolvedValue(mockUser as never);
 
     await login("test@example.com", "Password123!");
 
@@ -63,7 +54,7 @@ describe("auth.service audit events", () => {
   });
 
   it("fires LOGIN_FAILED when password is wrong", async () => {
-    vi.mocked(userRepository.findByEmail).mockResolvedValue(mockUser);
+    vi.mocked(userRepository.findByEmail).mockResolvedValue(mockUser as never);
     const argon2 = await import("argon2");
     vi.mocked(argon2.default.verify).mockResolvedValueOnce(false);
 

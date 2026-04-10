@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { buildApp } from "../src/app.js";
+import * as argon2 from "argon2";
 import { prisma } from "../src/prisma.js";
 import type { FastifyInstance } from "fastify";
 
@@ -38,10 +39,14 @@ beforeAll(async () => {
 
   // 2. Helper to register and login a test user
   const setupUser = async (email: string) => {
-    await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/register",
-      payload: { email, password: "Password123!" },
+    const hashedPassword = await argon2.hash("Password123!");
+    const currency = await prisma.dimCurrency.findUnique({ where: { code: "CHF" } });
+    await prisma.dimUser.create({
+      data: {
+        email,
+        password: hashedPassword,
+        defaultCurrencyId: currency!.id,
+      },
     });
     const res = await app.inject({
       method: "POST",

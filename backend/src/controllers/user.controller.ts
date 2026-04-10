@@ -73,6 +73,27 @@ const changePasswordSchema = {
   additionalProperties: false,
 } as const;
 
+interface CreateUserBody {
+  email: string;
+  password: string;
+  displayName?: string;
+  role?: "ADMIN" | "USER";
+}
+
+const createUserSchema = {
+  body: {
+    type: "object",
+    required: ["email", "password"],
+    properties: {
+      email: { type: "string", pattern: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$" },
+      password: { type: "string", minLength: 8 },
+      displayName: { type: "string", minLength: 1, maxLength: 100 },
+      role: { type: "string", enum: ["ADMIN", "USER"] },
+    },
+    additionalProperties: false,
+  },
+} as const;
+
 export async function userRoutes(app: FastifyInstance): Promise<void> {
   // --- Profile routes (from develop) ---
 
@@ -130,7 +151,37 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  // --- CRUD routes (KAN-74) ---
+  // --- CRUD routes (KAN-74 & KAN-75) ---
+
+  app.post<{ Body: CreateUserBody }>(
+    "/users",
+    {
+      schema: createUserSchema,
+      config: {
+        rateLimit: {
+          max: 10,
+          timeWindow: "1 minute",
+        },
+      },
+    },
+    async (request, reply) => {
+      const sessionUser = request.session.get("user") ?? null;
+      // Bootstrap is unauthenticated — the first user is always ADMIN and any
+      // caller-supplied `role` is irrelevant. Drop it defensively so no code
+      // path can be tricked into trusting an unauthenticated role value.
+      const payload: CreateUserBody = sessionUser
+        ? request.body
+        : {
+            email: request.body.email,
+            password: request.body.password,
+            ...(request.body.displayName !== undefined && {
+              displayName: request.body.displayName,
+            }),
+          };
+      const user = await userService.onboardUser(sessionUser, payload);
+      return reply.status(201).send({ user });
+    },
+  );
 
   app.get<{ Querystring: UserQuery }>(
     "/users",

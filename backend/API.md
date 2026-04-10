@@ -22,35 +22,6 @@ Checks whether the server is reachable.
 
 ## Auth
 
-### POST /auth/register
-
-Creates a new user. The first registered user receives the `ADMIN` role, all subsequent users receive `USER`.
-
-**Request Body:**
-
-| Field      | Type   | Required | Validation            |
-| ---------- | ------ | -------- | --------------------- |
-| `email`    | string | yes      | Must be a valid email |
-| `password` | string | yes      | Minimum 8 characters  |
-
-**Response 201:**
-
-```json
-{
-  "user": {
-    "id": "uuid",
-    "email": "user@example.com",
-    "role": "ADMIN",
-    "createdAt": "2026-03-18T10:00:00.000Z"
-  }
-}
-```
-
-**Response 400:** Invalid email or password too short
-**Response 409:** Email already registered
-
----
-
 ### POST /auth/login
 
 Authenticates an existing user and sets the session cookie.
@@ -106,7 +77,41 @@ Returns the currently authenticated user. Requires a valid session.
 
 ## Users
 
-All user endpoints (except creation which is handled via `/auth/register`) require an authenticated session.
+All user endpoints require an authenticated session, except for the `POST /users` bootstrap scenario when no users exist.
+
+### POST /users
+
+Creates a new user. If no users exist in the system, this endpoint operates in bootstrap mode, requires no authentication, and automatically assigns the `ADMIN` role. Otherwise, it requires an authenticated `ADMIN` session.
+
+**Request Body:**
+
+| Field         | Type   | Required | Validation            |
+| ------------- | ------ | -------- | --------------------- |
+| `email`       | string | yes      | Must be a valid email |
+| `password`    | string | yes      | Minimum 8 characters  |
+| `displayName` | string | no       | 1–100 characters      |
+| `role`        | string | no       | `ADMIN` or `USER`     |
+
+**Response 201:**
+
+```json
+{
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "Jane Doe",
+    "role": "ADMIN",
+    "createdAt": "2026-03-18T10:00:00.000Z"
+  }
+}
+```
+
+**Response 400:** Invalid input (email format, password too short)
+**Response 401:** Not authenticated
+**Response 403:** Forbidden (requires `ADMIN` role)
+**Response 409:** Email already registered
+
+---
 
 ### GET /users
 

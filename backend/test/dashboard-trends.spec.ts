@@ -81,7 +81,9 @@ async function loginUser(email: string, password: string): Promise<string> {
 }
 
 beforeAll(async () => {
-  await prisma.dimUser.deleteMany({ where: { email: { in: [TEST_EMAIL, TEST_EMAIL_2] } } });
+  // Full wipe — this spec relies on the bootstrap flow (first POST /users is
+  // unauthenticated). `fileParallelism` is disabled in vitest.config.ts.
+  await prisma.dimUser.deleteMany();
 
   await prisma.dimCurrency.upsert({
     where: { code: "CHF" },
@@ -92,23 +94,26 @@ beforeAll(async () => {
   app = await buildApp();
   await app.ready();
 
+  // Bootstrap the first user — automatically becomes ADMIN.
   const registerOne = await app.inject({
     method: "POST",
-    url: "/api/v1/auth/register",
+    url: "/api/v1/users",
     payload: { email: TEST_EMAIL, password: TEST_PASSWORD },
   });
   expect(registerOne.statusCode).toBe(201);
   testUserId = registerOne.json().user.id;
 
+  // Log in as the admin so we can create the second user.
+  sessionCookie = await loginUser(TEST_EMAIL, TEST_PASSWORD);
+
   const registerTwo = await app.inject({
     method: "POST",
-    url: "/api/v1/auth/register",
+    url: "/api/v1/users",
+    cookies: { session: sessionCookie },
     payload: { email: TEST_EMAIL_2, password: TEST_PASSWORD },
   });
   expect(registerTwo.statusCode).toBe(201);
   testUserId2 = registerTwo.json().user.id;
-
-  sessionCookie = await loginUser(TEST_EMAIL, TEST_PASSWORD);
 
   const currency = await prisma.dimCurrency.findUniqueOrThrow({ where: { code: "CHF" } });
 

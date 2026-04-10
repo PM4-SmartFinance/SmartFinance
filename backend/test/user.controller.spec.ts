@@ -11,10 +11,11 @@ const USER_A_EMAIL = "test.user.a@example.com";
 const USER_B_EMAIL = "test.user.b@example.com";
 
 beforeAll(async () => {
-  // cleanup
-  await prisma.dimUser.deleteMany({
-    where: { email: { in: [ADMIN_EMAIL, USER_A_EMAIL, USER_B_EMAIL] } },
-  });
+  // Full wipe — this spec relies on the bootstrap flow (first POST /users must
+  // be accepted as an unauthenticated admin-creation), so the user table must
+  // be completely empty before it runs. `fileParallelism` is disabled in
+  // vitest.config.ts, so this is safe.
+  await prisma.dimUser.deleteMany();
 
   // ensure default currency
   await prisma.dimCurrency.upsert({
@@ -36,23 +37,11 @@ afterAll(async () => {
 
 describe("User management endpoints", () => {
   it("admin can list users (paginated)", async () => {
-    // register admin and two users
+    // register admin and two users using the new /users endpoint
     await app.inject({
       method: "POST",
-      url: "/api/v1/auth/register",
-      payload: { email: ADMIN_EMAIL, password: "AdminPass1!" },
-    });
-    await prisma.dimUser.update({ where: { email: ADMIN_EMAIL }, data: { role: "ADMIN" } });
-
-    await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/register",
-      payload: { email: USER_A_EMAIL, password: "UserPass1!" },
-    });
-    await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/register",
-      payload: { email: USER_B_EMAIL, password: "UserPass2!" },
+      url: "/api/v1/users",
+      payload: { email: ADMIN_EMAIL, password: "AdminPass1!", displayName: "Admin", role: "ADMIN" },
     });
 
     const login = await app.inject({
@@ -69,12 +58,24 @@ describe("User management endpoints", () => {
     const session = cookies.find((c) => c.name === "session");
     expect(session).toBeDefined();
 
+    await app.inject({
+      method: "POST",
+      url: "/api/v1/users",
+      payload: { email: USER_A_EMAIL, password: "UserPass1!", displayName: "User A", role: "USER" },
+      cookies: { session: session!.value },
+    });
+    await app.inject({
+      method: "POST",
+      url: "/api/v1/users",
+      payload: { email: USER_B_EMAIL, password: "UserPass2!", displayName: "User B", role: "USER" },
+      cookies: { session: session!.value },
+    });
+
     const res = await app.inject({
       method: "GET",
       url: "/api/v1/users?limit=2&offset=0",
       cookies: { session: session!.value },
     });
-    console.log("LIST ERROR:", res.json());
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body).toHaveProperty("items");
@@ -194,7 +195,6 @@ describe("User management endpoints", () => {
       url: `/api/v1/users/${userB!.id}`,
       cookies: { session: session!.value },
     });
-    console.log("DEBUG ERROR:", res.json());
     expect(res.statusCode).toBe(403);
   });
 

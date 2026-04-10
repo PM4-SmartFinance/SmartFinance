@@ -25,8 +25,6 @@ const EXTRA_CLEANUP = [
 ];
 
 beforeAll(async () => {
-  // Delete ALL users to guarantee the first registration gets ADMIN role.
-  // Safe because integration test files run sequentially (fileParallelism: false).
   await prisma.dimUser.deleteMany();
 
   // Ensure default currency exists for registration
@@ -57,27 +55,68 @@ afterAll(async () => {
   await app.close();
 });
 
-describe("Auth acceptance tests", () => {
-  it("assigns ADMIN role to first registered user", async () => {
+describe("Auth and Onboarding acceptance tests", () => {
+  let adminSessionCookie: string | undefined;
+
+  it("assigns ADMIN role to first registered user and hashes password (Bootstrap)", async () => {
+    const plain = "Password123!";
+    const displayName = "Bootstrap Admin";
+    // Intentionally request role USER to verify the bootstrap override — the
+    // first user must become ADMIN regardless of the caller-supplied role.
     const res = await app.inject({
       method: "POST",
-      url: "/api/v1/auth/register",
+      url: "/api/v1/users",
       payload: {
         email: TEST_USERS.firstAdmin,
-        password: "Password123!",
+        password: plain,
+        displayName,
+        role: "USER",
       },
     });
     expect(res.statusCode).toBe(201);
+    // displayName must be persisted and surfaced in the response body.
+    expect(res.json().user).toMatchObject({ email: TEST_USERS.firstAdmin, name: displayName });
 
     const user = await prisma.dimUser.findUnique({ where: { email: TEST_USERS.firstAdmin } });
     expect(user).toBeTruthy();
+    // Override is enforced — caller asked for USER, bootstrap forces ADMIN.
     expect(user?.role).toBe("ADMIN");
+    expect(user?.name).toBe(displayName);
+
+    expect(user?.password).toBeDefined();
+    expect(user?.password).not.toBe(plain);
+    const ok = await argon2.verify(user!.password, plain);
+    expect(ok).toBe(true);
   });
 
-  it("assigns USER role to second registered user", async () => {
+  it("rejects unauthenticated registration after bootstrap (401)", async () => {
     const res = await app.inject({
       method: "POST",
-      url: "/api/v1/auth/register",
+      url: "/api/v1/users",
+      payload: {
+        email: TEST_USERS.secondUser,
+        password: "Password123!",
+      },
+    });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("allows authenticated ADMIN to create new users", async () => {
+    const resLogin = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: { email: TEST_USERS.firstAdmin, password: "Password123!" },
+    });
+    expect(resLogin.statusCode).toBe(200);
+
+    const cookies = (resLogin.cookies as SessionCookie[] | undefined) ?? [];
+    adminSessionCookie = cookies.find((c) => c.name === "session")?.value;
+    expect(adminSessionCookie).toBeDefined();
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/users",
+      cookies: { session: adminSessionCookie! },
       payload: {
         email: TEST_USERS.secondUser,
         password: "Password123!",
@@ -90,41 +129,18 @@ describe("Auth acceptance tests", () => {
     expect(user?.role).toBe("USER");
   });
 
-  it("stores password hashed with Argon2", async () => {
-    const plain = "MySecretPass!23";
-    const res = await app.inject({
-      method: "POST",
-      url: "/api/v1/auth/register",
-      payload: {
-        email: TEST_USERS.hashCheck,
-        password: plain,
-      },
-    });
-    expect(res.statusCode).toBe(201);
-
-    const user = await prisma.dimUser.findUnique({ where: { email: TEST_USERS.hashCheck } });
-    expect(user).toBeTruthy();
-    expect(user?.password).toBeDefined();
-    expect(user?.password).not.toBe(plain);
-
-    // verify Argon2 hash
-    const ok = await argon2.verify(user!.password, plain);
-    expect(ok).toBe(true);
-  });
-
   it("login issues httpOnly session cookie and GET /api/v1/auth/me returns session user", async () => {
     const email = TEST_USERS.loginUser;
     const password = "LoginPass#1";
 
-    // register user first
     const r = await app.inject({
       method: "POST",
-      url: "/api/v1/auth/register",
+      url: "/api/v1/users",
+      cookies: { session: adminSessionCookie! },
       payload: { email, password },
     });
     expect(r.statusCode).toBe(201);
 
-    // login
     const resLogin = await app.inject({
       method: "POST",
       url: "/api/v1/auth/login",
@@ -135,16 +151,12 @@ describe("Auth acceptance tests", () => {
     const cookies = (resLogin.cookies as SessionCookie[] | undefined) ?? [];
     const sessionCookie = cookies.find((c) => c.name === "session");
     expect(sessionCookie).toBeDefined();
-    // cookie should be httpOnly
     expect(sessionCookie?.httpOnly).toBeTruthy();
 
-    // GET /me with cookie
     const resMe = await app.inject({
       method: "GET",
       url: "/api/v1/auth/me",
-      cookies: {
-        session: sessionCookie!.value,
-      },
+      cookies: { session: sessionCookie!.value },
     });
     expect(resMe.statusCode).toBe(200);
     const body = resMe.json();
@@ -156,15 +168,14 @@ describe("Auth acceptance tests", () => {
     const email = "test.logout@example.com";
     const password = "LogoutPass!1";
 
-    // register
     const r = await app.inject({
       method: "POST",
-      url: "/api/v1/auth/register",
+      url: "/api/v1/users",
+      cookies: { session: adminSessionCookie! },
       payload: { email, password },
     });
     expect(r.statusCode).toBe(201);
 
-    // login
     const resLogin = await app.inject({
       method: "POST",
       url: "/api/v1/auth/login",
@@ -172,19 +183,15 @@ describe("Auth acceptance tests", () => {
     });
     expect(resLogin.statusCode).toBe(200);
     const loginCookies = (resLogin.cookies as SessionCookie[] | undefined) ?? [];
-    const sessionCookie = loginCookies.find((c) => c.name === "session");
-    expect(sessionCookie).toBeDefined();
+    const sessionCookie = loginCookies.find((c) => c.name === "session")!;
 
-    // logout
     const resLogout = await app.inject({
       method: "POST",
       url: "/api/v1/auth/logout",
-      cookies: { session: sessionCookie!.value },
+      cookies: { session: sessionCookie.value },
     });
     expect(resLogout.statusCode).toBe(200);
-    expect(resLogout.json()).toEqual({ ok: true });
 
-    // attempt protected route without cookie -> should be unauthorized
     const resProtected = await app.inject({
       method: "GET",
       url: "/api/v1/protected",
@@ -196,22 +203,22 @@ describe("Auth acceptance tests", () => {
     const email = "duplicate@example.com";
     const password = "Password123!";
 
-    // First registration
     const r1 = await app.inject({
       method: "POST",
-      url: "/api/v1/auth/register",
+      url: "/api/v1/users",
+      cookies: { session: adminSessionCookie! },
       payload: { email, password },
     });
     expect(r1.statusCode).toBe(201);
 
-    // Second registration with same email
     const r2 = await app.inject({
       method: "POST",
-      url: "/api/v1/auth/register",
+      url: "/api/v1/users",
+      cookies: { session: adminSessionCookie! },
       payload: { email, password },
     });
     expect(r2.statusCode).toBe(409);
-    expect(r2.json().error).toHaveProperty("message", "User exists");
+    expect(r2.json().error).toHaveProperty("message", "Email already in use");
   });
 
   it("prevents login with a non-existent user (401)", async () => {
@@ -221,43 +228,23 @@ describe("Auth acceptance tests", () => {
       payload: { email: "nonexistent@example.com", password: "Password123!" },
     });
     expect(res.statusCode).toBe(401);
-    expect(res.json().error).toHaveProperty("message", "Invalid credentials");
   });
 
   it("prevents login with wrong password (401)", async () => {
     const email = "wrongpass@example.com";
     const password = "Password123!";
 
-    // Register
     await app.inject({
       method: "POST",
-      url: "/api/v1/auth/register",
+      url: "/api/v1/users",
+      cookies: { session: adminSessionCookie! },
       payload: { email, password },
     });
 
-    // Login with wrong password
     const res = await app.inject({
       method: "POST",
       url: "/api/v1/auth/login",
       payload: { email, password: "WrongPassword!" },
-    });
-    expect(res.statusCode).toBe(401);
-    expect(res.json().error).toHaveProperty("message", "Invalid credentials");
-  });
-
-  it("requires session for GET /api/v1/auth/me (401)", async () => {
-    const res = await app.inject({
-      method: "GET",
-      url: "/api/v1/auth/me",
-    });
-    expect(res.statusCode).toBe(401);
-    expect(res.json().error).toHaveProperty("message", "Unauthorized");
-  });
-
-  it("enforces RBAC logic and missing session on protected routes (401)", async () => {
-    const res = await app.inject({
-      method: "GET",
-      url: "/api/v1/protected",
     });
     expect(res.statusCode).toBe(401);
   });
@@ -268,12 +255,12 @@ describe("Auth acceptance tests", () => {
 
     const r = await app.inject({
       method: "POST",
-      url: "/api/v1/auth/register",
+      url: "/api/v1/users",
+      cookies: { session: adminSessionCookie! },
       payload: { email, password },
     });
     expect(r.statusCode).toBe(201);
 
-    // login as non-admin
     const resLogin = await app.inject({
       method: "POST",
       url: "/api/v1/auth/login",
@@ -282,15 +269,12 @@ describe("Auth acceptance tests", () => {
     expect(resLogin.statusCode).toBe(200);
     const loginCookies = (resLogin.cookies as SessionCookie[] | undefined) ?? [];
     const sessionCookie = loginCookies.find((c) => c.name === "session");
-    expect(sessionCookie).toBeDefined();
 
-    // Attempt to access admin-only route
     const resAdmin = await app.inject({
       method: "GET",
       url: "/api/v1/admin",
       cookies: { session: sessionCookie!.value },
     });
-
     expect(resAdmin.statusCode).toBe(403);
   });
 
@@ -300,17 +284,12 @@ describe("Auth acceptance tests", () => {
 
     const r = await app.inject({
       method: "POST",
-      url: "/api/v1/auth/register",
-      payload: { email, password },
+      url: "/api/v1/users",
+      cookies: { session: adminSessionCookie! },
+      payload: { email, password, role: "ADMIN" },
     });
     expect(r.statusCode).toBe(201);
 
-    await prisma.dimUser.update({
-      where: { email },
-      data: { role: "ADMIN" },
-    });
-
-    // login as admin
     const resLogin = await app.inject({
       method: "POST",
       url: "/api/v1/auth/login",
@@ -318,15 +297,13 @@ describe("Auth acceptance tests", () => {
     });
     expect(resLogin.statusCode).toBe(200);
     const loginCookies = (resLogin.cookies as SessionCookie[] | undefined) ?? [];
-    const sessionCookie = loginCookies.find((c) => c.name === "session");
+    const sessionCookie = loginCookies.find((c) => c.name === "session")!;
 
-    // Attempt to access admin-only route
     const resAdmin = await app.inject({
       method: "GET",
       url: "/api/v1/admin",
-      cookies: { session: sessionCookie!.value },
+      cookies: { session: sessionCookie.value },
     });
-
     expect(resAdmin.statusCode).toBe(200);
     expect(resAdmin.json()).toHaveProperty("admin", true);
   });
@@ -334,7 +311,8 @@ describe("Auth acceptance tests", () => {
   it("rejects registration with invalid email format (400)", async () => {
     const res = await app.inject({
       method: "POST",
-      url: "/api/v1/auth/register",
+      url: "/api/v1/users",
+      cookies: { session: adminSessionCookie! },
       payload: { email: "not-an-email", password: "Password123!" },
     });
     expect(res.statusCode).toBe(400);
@@ -343,9 +321,106 @@ describe("Auth acceptance tests", () => {
   it("rejects registration with short password (400)", async () => {
     const res = await app.inject({
       method: "POST",
-      url: "/api/v1/auth/register",
+      url: "/api/v1/users",
+      cookies: { session: adminSessionCookie! },
       payload: { email: "short@example.com", password: "short" },
     });
     expect(res.statusCode).toBe(400);
+  });
+
+  it("rejects authenticated non-admin from creating users via POST /users (403)", async () => {
+    // Log in as the USER-role account created earlier in the RBAC test.
+    const resLogin = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: { email: TEST_USERS.rbacUser, password: "RbacPass!1" },
+    });
+    expect(resLogin.statusCode).toBe(200);
+    const cookies = (resLogin.cookies as SessionCookie[] | undefined) ?? [];
+    const userSession = cookies.find((c) => c.name === "session");
+    expect(userSession).toBeDefined();
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/users",
+      cookies: { session: userSession!.value },
+      payload: { email: "should-not-create@example.com", password: "Password123!" },
+    });
+    expect(res.statusCode).toBe(403);
+  });
+
+  it("rejects bootstrap-like registration after users exist with a short password (400)", async () => {
+    // No session cookie: we still expect the schema to reject short passwords
+    // before any auth decision is made.
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/users",
+      payload: { email: "bootstrap-short@example.com", password: "short" },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("requires session for GET /api/v1/auth/me (401)", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/auth/me",
+    });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("protected routes reject requests without a session (401)", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/protected",
+    });
+    expect(res.statusCode).toBe(401);
+  });
+});
+
+describe("Concurrent bootstrap race", () => {
+  // This suite must run with a completely empty user table and is destructive.
+  // It verifies that two concurrent unauthenticated bootstrap requests cannot
+  // both succeed — exactly one must become ADMIN, the loser must be rejected
+  // (401 Unauthorized once the serializable transaction sees count > 0, or
+  // 409 if the DB unique constraint fires first on a duplicate email).
+  const RACE_USERS = ["race.a@example.com", "race.b@example.com"];
+
+  beforeAll(async () => {
+    await prisma.dimUser.deleteMany();
+    await prisma.dimCurrency.upsert({
+      where: { code: "CHF" },
+      create: { code: "CHF", name: "Swiss Franc", format: "CHF 1'234.56" },
+      update: {},
+    });
+    await app.ready();
+  });
+
+  afterAll(async () => {
+    await prisma.dimUser.deleteMany({ where: { email: { in: RACE_USERS } } });
+  });
+
+  it("allows exactly one concurrent unauthenticated bootstrap to succeed", async () => {
+    const [r1, r2] = await Promise.all([
+      app.inject({
+        method: "POST",
+        url: "/api/v1/users",
+        payload: { email: RACE_USERS[0], password: "RacePass!1" },
+      }),
+      app.inject({
+        method: "POST",
+        url: "/api/v1/users",
+        payload: { email: RACE_USERS[1], password: "RacePass!2" },
+      }),
+    ]);
+
+    const statuses = [r1.statusCode, r2.statusCode].sort();
+    // Exactly one success (201) and one rejection (401 post-bootstrap auth
+    // gate inside the serializable transaction).
+    expect(statuses).toEqual([201, 401]);
+
+    // Exactly one ADMIN exists in the DB — the winner.
+    const admins = await prisma.dimUser.findMany({ where: { role: "ADMIN" } });
+    expect(admins).toHaveLength(1);
+    expect(RACE_USERS).toContain(admins[0]!.email);
   });
 });

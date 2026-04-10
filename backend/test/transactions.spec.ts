@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { buildApp } from "../src/app.js";
+import * as argon2 from "argon2";
 import { prisma } from "../src/prisma.js";
 import type { FastifyInstance } from "fastify";
 
@@ -32,10 +33,14 @@ async function loginAs(email: string): Promise<string> {
 }
 
 async function registerAndLogin(email: string): Promise<string> {
-  await app.inject({
-    method: "POST",
-    url: "/api/v1/auth/register",
-    payload: { email, password: PASSWORD },
+  const hashedPassword = await argon2.hash(PASSWORD);
+  const currency = await prisma.dimCurrency.findUnique({ where: { code: "CHF" } });
+  await prisma.dimUser.create({
+    data: {
+      email,
+      password: hashedPassword,
+      defaultCurrencyId: currency!.id,
+    },
   });
   return loginAs(email);
 }

@@ -30,10 +30,10 @@ async function loginUser(email: string, password: string): Promise<string> {
 }
 
 beforeAll(async () => {
-  // Clean up leftover test data
-  await prisma.dimUser.deleteMany({
-    where: { email: { in: [TEST_EMAIL, TEST_EMAIL_2] } },
-  });
+  // Full wipe — this spec relies on the bootstrap flow for the first POST
+  // /users. `fileParallelism` is disabled in vitest.config.ts so a global
+  // cleanup is safe across spec files.
+  await prisma.dimUser.deleteMany();
 
   await prisma.dimCurrency.upsert({
     where: { code: "CHF" },
@@ -44,24 +44,26 @@ beforeAll(async () => {
   app = await buildApp();
   await app.ready();
 
-  // Register users
+  // Register user 1 (Bootstrap -> becomes ADMIN)
   const r1 = await app.inject({
     method: "POST",
-    url: "/api/v1/auth/register",
-    payload: { email: TEST_EMAIL, password: TEST_PASSWORD },
+    url: "/api/v1/users",
+    payload: { email: TEST_EMAIL, password: TEST_PASSWORD, displayName: "User 1", role: "ADMIN" },
   });
   expect(r1.statusCode).toBe(201);
   testUserId = r1.json().user.id;
 
+  sessionCookie = await loginUser(TEST_EMAIL, TEST_PASSWORD);
+
   const r2 = await app.inject({
     method: "POST",
-    url: "/api/v1/auth/register",
-    payload: { email: TEST_EMAIL_2, password: TEST_PASSWORD },
+    url: "/api/v1/users",
+    cookies: { session: sessionCookie },
+    payload: { email: TEST_EMAIL_2, password: TEST_PASSWORD, displayName: "User 2", role: "USER" },
   });
   expect(r2.statusCode).toBe(201);
   testUserId2 = r2.json().user.id;
 
-  sessionCookie = await loginUser(TEST_EMAIL, TEST_PASSWORD);
   sessionCookie2 = await loginUser(TEST_EMAIL_2, TEST_PASSWORD);
 
   // Create category and merchant mapping for user 1
