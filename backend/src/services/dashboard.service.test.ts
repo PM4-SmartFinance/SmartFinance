@@ -162,6 +162,29 @@ describe("getDashboardCategories", () => {
     expect(mockRepo.getCategoryTotals).toHaveBeenCalledWith("user-1", "2025-01-01", "2025-01-31");
   });
 
+  it("returns an empty array when the repository has no matching transactions", async () => {
+    mockRepo.getCategoryTotals.mockResolvedValue([]);
+
+    const result = await getDashboardCategories("user-1", "2025-01-01", "2025-01-31");
+
+    expect(result).toEqual([]);
+  });
+
+  it("accepts a same-day range (startDate equals endDate)", async () => {
+    mockRepo.getCategoryTotals.mockResolvedValue([]);
+
+    await expect(getDashboardCategories("user-1", "2025-06-15", "2025-06-15")).resolves.toEqual([]);
+    expect(mockRepo.getCategoryTotals).toHaveBeenCalledWith("user-1", "2025-06-15", "2025-06-15");
+  });
+
+  it("passes userId and date range to the repository unchanged", async () => {
+    mockRepo.getCategoryTotals.mockResolvedValue([]);
+
+    await getDashboardCategories("user-42", "2025-06-01", "2025-06-30");
+
+    expect(mockRepo.getCategoryTotals).toHaveBeenCalledWith("user-42", "2025-06-01", "2025-06-30");
+  });
+
   it("throws 400 when startDate is after endDate", async () => {
     await expect(getDashboardCategories("user-1", "2025-02-01", "2025-01-01")).rejects.toThrow(
       new ServiceError(400, "startDate must not be after endDate"),
@@ -173,5 +196,35 @@ describe("getDashboardCategories", () => {
     await expect(getDashboardCategories("user-1", "not-a-date", "2025-01-01")).rejects.toThrow(
       new ServiceError(400, "startDate and endDate must be valid calendar dates"),
     );
+  });
+
+  it("throws 400 for startDate that overflows into the next month (2025-02-30)", async () => {
+    await expect(getDashboardCategories("user-1", "2025-02-30", "2025-03-01")).rejects.toThrow(
+      new ServiceError(400, "startDate and endDate must be valid calendar dates"),
+    );
+    expect(mockRepo.getCategoryTotals).not.toHaveBeenCalled();
+  });
+
+  it("throws 400 for endDate that overflows into the next month (2025-04-31)", async () => {
+    await expect(getDashboardCategories("user-1", "2025-01-01", "2025-04-31")).rejects.toThrow(
+      new ServiceError(400, "startDate and endDate must be valid calendar dates"),
+    );
+    expect(mockRepo.getCategoryTotals).not.toHaveBeenCalled();
+  });
+
+  it("wraps repository errors with contextual information and preserves the cause", async () => {
+    const dbErr = new Error("connection refused");
+    mockRepo.getCategoryTotals.mockRejectedValue(dbErr);
+
+    const thrown = await getDashboardCategories("user-1", "2025-01-01", "2025-01-31").catch(
+      (err: unknown) => err,
+    );
+
+    expect(thrown).toBeInstanceOf(Error);
+    const wrapped = thrown as Error;
+    expect(wrapped.message).toContain("user-1");
+    expect(wrapped.message).toContain("2025-01-01");
+    expect(wrapped.message).toContain("2025-01-31");
+    expect(wrapped.cause).toBe(dbErr);
   });
 });

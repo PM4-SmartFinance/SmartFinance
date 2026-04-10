@@ -160,33 +160,96 @@ describe("GET /api/v1/dashboard/summary", () => {
 });
 
 describe("GET /api/v1/dashboard/categories", () => {
-  it("returns 401 when requireRole rejects the request", async () => {
-    rejectAuth = true;
-    const response = await app.inject({
-      method: "GET",
-      url: "/api/v1/dashboard/categories?startDate=2025-01-01&endDate=2025-01-31",
+  describe("authentication", () => {
+    it("returns 401 when requireRole rejects the request", async () => {
+      rejectAuth = true;
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/dashboard/categories?startDate=2025-01-01&endDate=2025-01-31",
+      });
+      expect(response.statusCode).toBe(401);
     });
-    expect(response.statusCode).toBe(401);
   });
 
-  it("returns 200 and the category array on success", async () => {
-    const mockData = [
-      { categoryId: "cat-1", categoryName: "Groceries", total: 150 },
-      { categoryId: "cat-2", categoryName: "Transport", total: 50 },
-    ];
-    mockService.getDashboardCategories.mockResolvedValue(mockData);
-
-    const response = await app.inject({
-      method: "GET",
-      url: "/api/v1/dashboard/categories?startDate=2025-01-01&endDate=2025-01-31",
+  describe("input validation", () => {
+    it("returns 400 when startDate is missing", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/dashboard/categories?endDate=2025-01-31",
+      });
+      expect(response.statusCode).toBe(400);
     });
 
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual(mockData);
-    expect(mockService.getDashboardCategories).toHaveBeenCalledWith(
-      "user-1",
-      "2025-01-01",
-      "2025-01-31",
-    );
+    it("returns 400 when endDate is missing", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/dashboard/categories?startDate=2025-01-01",
+      });
+      expect(response.statusCode).toBe(400);
+    });
+
+    it("returns 400 when startDate format is invalid", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/dashboard/categories?startDate=not-a-date&endDate=2025-01-31",
+      });
+      expect(response.statusCode).toBe(400);
+    });
+
+    it("returns 400 when endDate format is invalid", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/dashboard/categories?startDate=2025-01-01&endDate=2025-1-1",
+      });
+      expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe("success", () => {
+    it("returns 200 and the category array on success", async () => {
+      const mockData = [
+        { categoryId: "cat-1", categoryName: "Groceries", total: 150 },
+        { categoryId: "cat-2", categoryName: "Transport", total: 50 },
+      ];
+      mockService.getDashboardCategories.mockResolvedValue(mockData);
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/dashboard/categories?startDate=2025-01-01&endDate=2025-01-31",
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual(mockData);
+      expect(mockService.getDashboardCategories).toHaveBeenCalledWith(
+        "user-1",
+        "2025-01-01",
+        "2025-01-31",
+      );
+    });
+
+    it("returns an empty array when the service has no data", async () => {
+      mockService.getDashboardCategories.mockResolvedValue([]);
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/dashboard/categories?startDate=2025-01-01&endDate=2025-01-31",
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual([]);
+    });
+
+    it("returns 400 when the service throws a ServiceError", async () => {
+      mockService.getDashboardCategories.mockRejectedValue(
+        new ServiceError(400, "startDate must not be after endDate"),
+      );
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/dashboard/categories?startDate=2025-02-01&endDate=2025-01-01",
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
   });
 });
