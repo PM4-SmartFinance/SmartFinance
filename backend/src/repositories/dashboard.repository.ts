@@ -1,8 +1,31 @@
 import { prisma } from "../prisma.js";
 
 function dateStringToId(dateStr: string): number {
-  const [yearStr, monthStr, dayStr] = dateStr.split("-");
-  return Number(yearStr) * 10000 + Number(monthStr) * 100 + Number(dayStr);
+  // Defence-in-depth: callers are expected to pre-validate, but a loose regex
+  // (e.g. `^\d{4}-\d{2}-\d{2}$`) would still let through values like
+  // "2026-13-99". Reject anything that is not a plausible Gregorian date so
+  // a bad input becomes a loud error instead of a silently wrong query.
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) {
+    throw new Error(`Invalid date string passed to dateStringToId: ${dateStr}`);
+  }
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  const day = Number(parts[2]);
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day) ||
+    year < 1000 ||
+    year > 9999 ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    throw new Error(`Invalid date string passed to dateStringToId: ${dateStr}`);
+  }
+  return year * 10000 + month * 100 + day;
 }
 
 export async function getSummary(userId: string, startDate: string, endDate: string) {
@@ -89,11 +112,18 @@ export async function getCategoryTotals(
   const startId = dateStringToId(startDate);
   const endId = dateStringToId(endDate);
 
-  // Using Raw SQL to easily join FactTransactions with DimCategory
+  // Using raw SQL to easily join FactTransactions with DimCategory.
+  //
+  // Note: `INNER JOIN` intentionally excludes transactions whose `categoryId`
+  // is NULL (uncategorized) as well as those whose category has been deleted
+  // (FactTransactions.categoryId has `onDelete: SetNull`). The
+  // spending-by-category chart is meaningless for rows without a category,
+  // so dropping them here is the intended product behaviour. The companion
+  // unit and integration tests assert this exclusion.
   const rows = await prisma.$queryRaw<RawCategoryRow[]>`
-    SELECT 
-      c.id AS "categoryId", 
-      c."categoryName" AS "categoryName", 
+    SELECT
+      c.id AS "categoryId",
+      c."categoryName" AS "categoryName",
       ROUND(ABS(SUM(t.amount)), 2)::double precision AS "totalAmount"
     FROM "FactTransactions" t
     INNER JOIN "DimCategory" c ON t."categoryId" = c.id

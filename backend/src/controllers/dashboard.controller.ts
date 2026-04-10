@@ -52,6 +52,21 @@ const dashboardTrendsResponseSchema = {
   },
 } as const;
 
+const dashboardCategoriesResponseSchema = {
+  200: {
+    type: "array",
+    items: {
+      type: "object",
+      properties: {
+        categoryId: { type: "string" },
+        categoryName: { type: "string" },
+        total: { type: "number" },
+      },
+      required: ["categoryId", "categoryName", "total"],
+    },
+  },
+} as const;
+
 export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
   app.get<{ Querystring: DashboardSummaryQuery }>(
     "/dashboard/summary",
@@ -99,18 +114,3 @@ export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 }
-
-const dashboardCategoriesResponseSchema = {
-  200: {
-    type: "array",
-    items: {
-      type: "object",
-      properties: {
-        categoryId: { type: "string" },
-        categoryName: { type: "string" },
-        total: { type: "number" },
-      },
-      required: ["categoryId", "categoryName", "total"],
-    },
-  },
-} as const;
