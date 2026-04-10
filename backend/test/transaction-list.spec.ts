@@ -30,10 +30,10 @@ async function loginUser(email: string, password: string): Promise<string> {
 }
 
 beforeAll(async () => {
-  // Clean up leftover test data
-  await prisma.dimUser.deleteMany({
-    where: { email: { in: [TEST_EMAIL, TEST_EMAIL_2] } },
-  });
+  // Full wipe — this spec relies on the bootstrap flow for the first POST
+  // /users. `fileParallelism` is disabled in vitest.config.ts so a global
+  // cleanup is safe across spec files.
+  await prisma.dimUser.deleteMany();
 
   await prisma.dimCurrency.upsert({
     where: { code: "CHF" },
@@ -64,7 +64,6 @@ beforeAll(async () => {
   expect(r2.statusCode).toBe(201);
   testUserId2 = r2.json().user.id;
 
-  sessionCookie2 = await loginUser(TEST_EMAIL_2, TEST_PASSWORD);
   sessionCookie2 = await loginUser(TEST_EMAIL_2, TEST_PASSWORD);
 
   // Create category and merchant mapping for user 1

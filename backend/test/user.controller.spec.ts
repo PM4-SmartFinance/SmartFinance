@@ -11,10 +11,11 @@ const USER_A_EMAIL = "test.user.a@example.com";
 const USER_B_EMAIL = "test.user.b@example.com";
 
 beforeAll(async () => {
-  // cleanup
-  await prisma.dimUser.deleteMany({
-    where: { email: { in: [ADMIN_EMAIL, USER_A_EMAIL, USER_B_EMAIL] } },
-  });
+  // Full wipe — this spec relies on the bootstrap flow (first POST /users must
+  // be accepted as an unauthenticated admin-creation), so the user table must
+  // be completely empty before it runs. `fileParallelism` is disabled in
+  // vitest.config.ts, so this is safe.
+  await prisma.dimUser.deleteMany();
 
   // ensure default currency
   await prisma.dimCurrency.upsert({
@@ -75,7 +76,6 @@ describe("User management endpoints", () => {
       url: "/api/v1/users?limit=2&offset=0",
       cookies: { session: session!.value },
     });
-    console.log("LIST ERROR:", res.json());
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body).toHaveProperty("items");
@@ -195,7 +195,6 @@ describe("User management endpoints", () => {
       url: `/api/v1/users/${userB!.id}`,
       cookies: { session: session!.value },
     });
-    console.log("DEBUG ERROR:", res.json());
     expect(res.statusCode).toBe(403);
   });
 
