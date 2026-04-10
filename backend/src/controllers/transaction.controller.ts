@@ -64,6 +64,28 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
+  app.post(
+    "/transactions/auto-categorize",
+    {
+      preHandler: requireRole("USER"),
+      schema: {
+        response: {
+          200: {
+            type: "object",
+            properties: { categorized: { type: "integer" } },
+            required: ["categorized"],
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const user = request.session.get("user");
+      if (!user) throw new ServiceError(401, "Unauthorized");
+      const result = await transactionService.autoCategorizeTransactions(user.id);
+      return reply.send(result);
+    },
+  );
+
   await app.register(async function importRoutes(importApp) {
     await importApp.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } }); // 10 MB
 
@@ -100,6 +122,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
           format,
           accountId,
           userId: user.id,
+          logger: request.log,
         });
 
         return reply.status(200).send(result);

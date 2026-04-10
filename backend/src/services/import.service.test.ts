@@ -7,7 +7,15 @@ vi.mock("../repositories/transaction.repository.js", () => ({
   bulkImport: vi.fn(),
 }));
 
+vi.mock("./categorization.service.js", () => ({
+  autoCategorize: vi.fn().mockResolvedValue({ categorized: 0 }),
+}));
+
 import * as repo from "../repositories/transaction.repository.js";
+import * as categorizationService from "./categorization.service.js";
+
+// Spy-able no-op logger that satisfies the ImportLogger interface.
+const logger = { warn: vi.fn() };
 
 const NEON_HEADER = `"Date";"Amount";"Original amount";"Original currency";"Exchange rate";"Description";"Subject";"Category";"Tags";"Wise";"Spaces"`;
 const NEON_ROW = `"2025-01-15";"42.00";"";"";"";"Grocery Store";"ref";"uncategorized";"";"no";"no"`;
@@ -18,6 +26,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockRepo.findAccountByIdAndUser.mockResolvedValue({ id: "acc-1" } as never);
   mockRepo.bulkImport.mockImplementation((parsed: unknown[]) => Promise.resolve(parsed.length));
+  vi.mocked(categorizationService.autoCategorize).mockResolvedValue({ categorized: 0 });
 });
 
 describe("importTransactions", () => {
@@ -30,11 +39,13 @@ describe("importTransactions", () => {
         format: "neon",
         accountId: "acc-x",
         userId: "user-1",
+        logger,
       }),
     ).rejects.toThrow(new ServiceError(404, "Account not found"));
   });
 
-  it("returns the correct imported count on success", async () => {
+  it("returns the correct imported and categorized counts on success", async () => {
+    vi.mocked(categorizationService.autoCategorize).mockResolvedValue({ categorized: 2 });
     const csv = [NEON_HEADER, NEON_ROW, NEON_ROW, NEON_ROW].join("\n");
 
     const result = await importTransactions({
@@ -42,9 +53,10 @@ describe("importTransactions", () => {
       format: "neon",
       accountId: "acc-1",
       userId: "user-1",
+      logger,
     });
 
-    expect(result).toEqual({ imported: 3 });
+    expect(result).toEqual({ imported: 3, categorized: 2 });
   });
 
   it("calls bulkImport with the parsed transactions and correct ids", async () => {
@@ -55,6 +67,7 @@ describe("importTransactions", () => {
       format: "neon",
       accountId: "acc-1",
       userId: "user-1",
+      logger,
     });
 
     const [parsedArg, userIdArg, accountIdArg] = mockRepo.bulkImport.mock.calls[0]!;
@@ -71,6 +84,7 @@ describe("importTransactions", () => {
         format: "neon",
         accountId: "acc-1",
         userId: "user-1",
+        logger,
       }),
     ).rejects.toThrow(ServiceError);
   });
@@ -83,9 +97,49 @@ describe("importTransactions", () => {
       format: "neon",
       accountId: "acc-1",
       userId: "user-1",
+      logger,
     });
 
     expect(mockRepo.bulkImport).toHaveBeenCalledOnce();
+  });
+
+  it("runs auto-categorization after import", async () => {
+    const csv = [NEON_HEADER, NEON_ROW].join("\n");
+
+    await importTransactions({
+      csvText: csv,
+      format: "neon",
+      accountId: "acc-1",
+      userId: "user-1",
+      logger,
+    });
+
+    expect(vi.mocked(categorizationService.autoCategorize)).toHaveBeenCalledWith("user-1");
+  });
+
+  it("still resolves successfully when auto-categorization rejects", async () => {
+    // The import transaction has already committed when categorization runs,
+    // so a categorization failure must NOT be reported as an import failure.
+    vi.mocked(categorizationService.autoCategorize).mockRejectedValueOnce(
+      new Error("transient db error"),
+    );
+    const warnSpy = vi.fn();
+    const csv = [NEON_HEADER, NEON_ROW].join("\n");
+
+    const result = await importTransactions({
+      csvText: csv,
+      format: "neon",
+      accountId: "acc-1",
+      userId: "user-1",
+      logger: { warn: warnSpy },
+    });
+
+    expect(result).toEqual({ imported: 1, categorized: 0 });
+    expect(warnSpy).toHaveBeenCalledOnce();
+    const [logObj, logMsg] = warnSpy.mock.calls[0]!;
+    expect(logObj).toMatchObject({ userId: "user-1" });
+    expect(logObj.err).toBeInstanceOf(Error);
+    expect(logMsg).toMatch(/auto-categorize/i);
   });
 
   it("works correctly for the zkb format", async () => {
@@ -97,9 +151,10 @@ describe("importTransactions", () => {
       format: "zkb",
       accountId: "acc-1",
       userId: "user-1",
+      logger,
     });
 
-    expect(result).toEqual({ imported: 1 });
+    expect(result).toEqual({ imported: 1, categorized: 0 });
   });
 
   it("works correctly for the wise format", async () => {
@@ -111,9 +166,10 @@ describe("importTransactions", () => {
       format: "wise",
       accountId: "acc-1",
       userId: "user-1",
+      logger,
     });
 
-    expect(result).toEqual({ imported: 1 });
+    expect(result).toEqual({ imported: 1, categorized: 0 });
   });
 
   it("works correctly for the ubs format", async () => {
@@ -125,8 +181,9 @@ describe("importTransactions", () => {
       format: "ubs",
       accountId: "acc-1",
       userId: "user-1",
+      logger,
     });
 
-    expect(result).toEqual({ imported: 1 });
+    expect(result).toEqual({ imported: 1, categorized: 0 });
   });
 });

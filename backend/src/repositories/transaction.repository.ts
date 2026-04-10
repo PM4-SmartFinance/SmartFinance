@@ -84,6 +84,52 @@ export async function bulkImport(
   return parsed.length;
 }
 
+export async function findUncategorizedForUser(userId: string) {
+  return prisma.factTransactions.findMany({
+    where: { userId, categoryId: null, manualOverride: false },
+    select: { id: true, merchant: { select: { name: true } } },
+  });
+}
+
+// Postgres has a hard limit of ~65k bind parameters per query (libpq protocol).
+// Chunking the `id: { in: [...] }` lists keeps us safely under that limit and
+// avoids holding row locks on tens of thousands of rows in a single statement.
+const BULK_UPDATE_CHUNK_SIZE = 1000;
+
+export async function bulkSetCategory(
+  userId: string,
+  updates: Array<{ id: string; categoryId: string }>,
+): Promise<number> {
+  if (updates.length === 0) return 0;
+
+  // Group by categoryId for efficient batch updates
+  const byCategory = new Map<string, string[]>();
+  for (const { id, categoryId } of updates) {
+    const ids = byCategory.get(categoryId) ?? [];
+    ids.push(id);
+    byCategory.set(categoryId, ids);
+  }
+
+  const statements = [];
+  for (const [categoryId, ids] of byCategory) {
+    for (let i = 0; i < ids.length; i += BULK_UPDATE_CHUNK_SIZE) {
+      const chunk = ids.slice(i, i + BULK_UPDATE_CHUNK_SIZE);
+      statements.push(
+        prisma.factTransactions.updateMany({
+          // `manualOverride: false` is a defense-in-depth guard: a user could
+          // toggle the flag between `findUncategorizedForUser` and this write,
+          // and we must never silently overwrite a manually-chosen category.
+          where: { id: { in: chunk }, userId, manualOverride: false },
+          data: { categoryId },
+        }),
+      );
+    }
+  }
+
+  const results = await prisma.$transaction(statements);
+  return results.reduce((sum, r) => sum + r.count, 0);
+}
+
 export interface ListTransactionsArgs {
   userId: string;
   skip: number;

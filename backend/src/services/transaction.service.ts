@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { ServiceError } from "../errors.js";
 import * as transactionRepository from "../repositories/transaction.repository.js";
+import { autoCategorize } from "./categorization.service.js";
 
 export type SortBy = "date" | "amount" | "merchant";
 export type SortOrder = "asc" | "desc";
@@ -27,6 +28,17 @@ function dateIdToIso(dateId: number): string {
   const month = Math.floor((dateId % 10000) / 100);
   const day = dateId % 100;
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+/**
+ * Service-layer entry point for the rule-based categorization engine.
+ * Kept as a thin pass-through so the controller depends on `transactionService`
+ * (the resource it owns) rather than reaching across to `categorization.service`
+ * directly. This is the natural seam for future cross-cutting concerns
+ * (metrics, audit logging, authorization) that should wrap the engine.
+ */
+export async function autoCategorizeTransactions(userId: string): Promise<{ categorized: number }> {
+  return autoCategorize(userId);
 }
 
 export async function listTransactions(params: ListTransactionsParams) {
