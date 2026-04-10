@@ -1,10 +1,11 @@
 import { useNavigate, Link } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "../contexts/AuthProvider";
+import { useAuth } from "../hooks/useAuth";
 import { api } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "../components/DateRangePicker";
 import { SummaryMetricsWidget } from "../components/SummaryMetricsWidget";
+import { BudgetWidget } from "../components/BudgetWidget";
 import { SpendingTrendChart } from "../components/SpendingTrendChart";
 import { CategoryBreakdownChart } from "../components/CategoryBreakdownChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -68,6 +69,11 @@ export function DashboardPage() {
         {/* ── Summary Metrics ── */}
         <section className="mb-8">
           <SummaryMetricsWidget />
+        </section>
+
+        {/* ── Budgets ── */}
+        <section className="mb-8">
+          <BudgetWidget />
         </section>
 
         {/* ── Charts Grid ── */}

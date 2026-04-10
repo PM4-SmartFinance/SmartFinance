@@ -48,8 +48,8 @@ vi.mock("../lib/api", () => {
   };
 });
 
-// Mock auth context
-vi.mock("../contexts/AuthProvider", () => ({
+// Mock auth hook
+vi.mock("../hooks/useAuth", () => ({
   useAuth: () => ({
     user: { id: "123", email: "test@example.com", role: "USER" },
   }),
@@ -80,6 +80,9 @@ describe("DashboardPage", () => {
       }
       if (path.includes("/dashboard/categories")) {
         return Promise.resolve(mockCategoryData);
+      }
+      if (path.includes("/budgets")) {
+        return Promise.resolve({ budgets: [] });
       }
       return Promise.resolve({});
     });

@@ -399,6 +399,50 @@ Permanently deletes a transaction. Only the owner can delete their transactions.
 
 ---
 
+## Dashboard
+
+All dashboard endpoints require an authenticated session with the `USER` role.
+
+### GET /dashboard/trends
+
+Returns monthly aggregated income and expenses for a lookback window ending in the current calendar month.
+
+**Query Parameters:**
+
+| Parameter | Type    | Required | Default | Validation | Description                                   |
+| --------- | ------- | -------- | ------- | ---------- | --------------------------------------------- |
+| `months`  | integer | no       | `6`     | 6-12       | Number of months to include in the time range |
+
+The response is ordered from oldest month to newest month. Months without transactions are included with `income = 0` and `expenses = 0`.
+
+`income` is the sum of positive transaction amounts. `expenses` is the sum of absolute values of negative transaction amounts.
+
+**Response 200:**
+
+```json
+{
+  "data": [
+    {
+      "year": 2025,
+      "month": 11,
+      "income": 0,
+      "expenses": 0
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "income": 2450.75,
+      "expenses": 980.2
+    }
+  ]
+}
+```
+
+**Response 400:** Invalid `months` query parameter
+**Response 401:** Not authenticated
+
+---
+
 ## Budgets
 
 All budget endpoints require an authenticated session with the `USER` role.
