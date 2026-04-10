@@ -308,13 +308,36 @@ Imports transactions from a CSV file into the specified account. Requires an aut
 **Response 200:**
 
 ```json
-{ "imported": 42 }
+{ "imported": 42, "categorized": 17 }
 ```
+
+`imported` is the number of transactions persisted. `categorized` is the number of those (or other previously uncategorized) transactions that the rule-based engine assigned a category to as part of the post-import auto-categorization step. If the engine fails (e.g. transient DB error), the import still succeeds and `categorized` is `0` — the failure is logged server-side and users can retry via `POST /transactions/auto-categorize`.
 
 **Response 400:** No file uploaded or missing query parameters
 **Response 401:** Not authenticated
 **Response 404:** Account not found or does not belong to the authenticated user
 **Response 422:** CSV file is malformed, has an unrecognized format, or contains invalid data rows
+
+---
+
+### POST /transactions/auto-categorize
+
+Runs the rule-based categorization engine retroactively over all uncategorized transactions for the authenticated user. Transactions whose `manualOverride` flag is set are skipped — manual category choices are never overwritten. Requires an authenticated session with the `USER` role.
+
+This endpoint is idempotent: running it multiple times has no additional effect once all matchable transactions have been categorized.
+
+**Request Body:** none
+
+**Response 200:**
+
+```json
+{ "categorized": 17 }
+```
+
+`categorized` is the number of transactions that received a category as a result of this call (the actual database-affected row count, not an optimistic estimate).
+
+**Response 401:** Not authenticated
+**Response 403:** Authenticated but does not have the `USER` role
 
 ---
 
