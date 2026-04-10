@@ -36,26 +36,31 @@ export async function autoCategorize(userId: string): Promise<{ categorized: num
   const transactions = await transactionRepository.findUncategorizedForUser(userId);
   if (transactions.length === 0) return { categorized: 0 };
 
-  // Compute merchant → categoryId mapping to avoid redundant rule evaluation
+  // Compute merchant → categoryId mapping once and build the update list in a
+  // single pass. Avoids redundant rule evaluation for repeated merchants and
+  // sidesteps a non-null assertion that filter+map would require.
   const merchantCategoryMap = new Map<string, string>();
+  const updates: Array<{ id: string; categoryId: string }> = [];
   for (const tx of transactions) {
-    if (!tx.merchant?.name) continue;
-    const name = tx.merchant.name;
-    if (!merchantCategoryMap.has(name)) {
-      const categoryId = matchTransaction(name, rules);
-      if (categoryId !== null) {
-        merchantCategoryMap.set(name, categoryId);
-      }
+    const name = tx.merchant?.name;
+    if (!name) continue;
+
+    let categoryId = merchantCategoryMap.get(name);
+    if (categoryId === undefined) {
+      const matched = matchTransaction(name, rules);
+      if (matched === null) continue;
+      categoryId = matched;
+      merchantCategoryMap.set(name, categoryId);
     }
+
+    updates.push({ id: tx.id, categoryId });
   }
 
-  const updates = transactions
-    .filter((tx) => tx.merchant?.name && merchantCategoryMap.has(tx.merchant.name))
-    .map((tx) => ({ id: tx.id, categoryId: merchantCategoryMap.get(tx.merchant.name)! }));
+  if (updates.length === 0) return { categorized: 0 };
 
-  if (updates.length > 0) {
-    await transactionRepository.bulkSetCategory(userId, updates);
-  }
-
-  return { categorized: updates.length };
+  // Use the real affected-row count from the DB rather than `updates.length`,
+  // so the response reflects rows that may have been concurrently deleted or
+  // had `manualOverride` toggled between the read and the write.
+  const categorized = await transactionRepository.bulkSetCategory(userId, updates);
+  return { categorized };
 }

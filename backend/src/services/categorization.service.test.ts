@@ -92,11 +92,49 @@ describe("matchTransaction", () => {
     ];
     expect(matchTransaction("Migros", rules)).toBe("cat-contains");
   });
+
+  // G5: pin behavior for empty pattern. Rule creation is supposed to validate
+  // minLength: 1 at the boundary, but if a bad row reaches the engine, an
+  // empty `contains` pattern would otherwise match every merchant. This test
+  // documents the current (matching) behavior so any future tightening is a
+  // deliberate decision and not an accidental regression in either direction.
+  it("matches everything when a contains rule has an empty pattern (current behavior)", () => {
+    const rules = [rule("", "contains", "cat-empty", 10)];
+    expect(matchTransaction("Migros", rules)).toBe("cat-empty");
+    expect(matchTransaction("Anything", rules)).toBe("cat-empty");
+  });
+
+  it("does not match an exact rule with an empty pattern unless merchant is also empty", () => {
+    const rules = [rule("", "exact", "cat-empty", 10)];
+    expect(matchTransaction("Migros", rules)).toBeNull();
+    expect(matchTransaction("", rules)).toBe("cat-empty");
+  });
+
+  // G6: Swiss German merchants commonly contain umlauts. JavaScript's
+  // toLowerCase() handles ä/ö/ü correctly without locale-specific tailoring,
+  // but we pin it explicitly so a future switch to a Turkish-locale aware
+  // toLocaleLowerCase() would surface the change in tests.
+  it("matches umlaut merchants case-insensitively (Swiss German support)", () => {
+    const rules = [rule("bäckerei müller", "exact", "cat-bakery", 10)];
+    expect(matchTransaction("Bäckerei Müller", rules)).toBe("cat-bakery");
+    expect(matchTransaction("BÄCKEREI MÜLLER", rules)).toBe("cat-bakery");
+  });
+
+  it("matches an umlaut substring inside a longer merchant name", () => {
+    const rules = [rule("zürich", "contains", "cat-zh", 10)];
+    expect(matchTransaction("MIGROS ZÜRICH HB", rules)).toBe("cat-zh");
+  });
 });
 
 describe("autoCategorize", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // bulkSetCategory now returns the affected-row count from the DB; the
+    // default mock echoes the request size for tests that don't care about
+    // partial-write semantics. Tests that need a different value override.
+    mockTxRepo.bulkSetCategory.mockImplementation((_userId, updates) =>
+      Promise.resolve(updates.length),
+    );
   });
 
   it("returns { categorized: 0 } when user has no rules", async () => {
@@ -143,7 +181,6 @@ describe("autoCategorize", () => {
       { id: "tx-1", merchant: { name: "Migros Online" } },
       { id: "tx-2", merchant: { name: "Migros Bahnhof" } },
     ] as unknown as Awaited<ReturnType<typeof txRepo.findUncategorizedForUser>>);
-    mockTxRepo.bulkSetCategory.mockResolvedValue(undefined);
 
     const result = await autoCategorize("user-1");
 
@@ -169,7 +206,6 @@ describe("autoCategorize", () => {
       { id: "tx-1", merchant: { name: "Migros" } },
       { id: "tx-2", merchant: { name: "Coop" } },
     ] as unknown as Awaited<ReturnType<typeof txRepo.findUncategorizedForUser>>);
-    mockTxRepo.bulkSetCategory.mockResolvedValue(undefined);
 
     const result = await autoCategorize("user-1");
 
@@ -223,7 +259,6 @@ describe("autoCategorize", () => {
     mockTxRepo.findUncategorizedForUser.mockResolvedValue([
       { id: "tx-1", merchant: { name: "Migros Online" } },
     ] as unknown as Awaited<ReturnType<typeof txRepo.findUncategorizedForUser>>);
-    mockTxRepo.bulkSetCategory.mockResolvedValue(undefined);
 
     await autoCategorize("user-1");
 
@@ -247,7 +282,6 @@ describe("autoCategorize", () => {
       { id: "tx-1", merchant: null },
       { id: "tx-2", merchant: { name: "Migros" } },
     ] as unknown as Awaited<ReturnType<typeof txRepo.findUncategorizedForUser>>);
-    mockTxRepo.bulkSetCategory.mockResolvedValue(undefined);
 
     const result = await autoCategorize("user-1");
 
@@ -255,6 +289,31 @@ describe("autoCategorize", () => {
     expect(mockTxRepo.bulkSetCategory).toHaveBeenCalledWith("user-1", [
       { id: "tx-2", categoryId: "cat-1" },
     ]);
+  });
+
+  it("returns the affected-row count from bulkSetCategory, not the optimistic updates length", async () => {
+    // Simulates: 2 of the 3 rows had manualOverride toggled between read and
+    // write, so only 1 row was actually updated. autoCategorize must report 1.
+    mockRuleRepo.findAllByUser.mockResolvedValue([
+      {
+        ...rule("Migros", "contains", "cat-1", 10),
+        id: "r1",
+        userId: "user-1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        category: { id: "cat-1", categoryName: "Groceries" },
+      },
+    ] as unknown as Awaited<ReturnType<typeof ruleRepo.findAllByUser>>);
+    mockTxRepo.findUncategorizedForUser.mockResolvedValue([
+      { id: "tx-1", merchant: { name: "Migros" } },
+      { id: "tx-2", merchant: { name: "Migros" } },
+      { id: "tx-3", merchant: { name: "Migros" } },
+    ] as unknown as Awaited<ReturnType<typeof txRepo.findUncategorizedForUser>>);
+    mockTxRepo.bulkSetCategory.mockResolvedValueOnce(1);
+
+    const result = await autoCategorize("user-1");
+
+    expect(result).toEqual({ categorized: 1 });
   });
 
   it("only evaluates each unique merchant name once across multiple transactions", async () => {
@@ -273,7 +332,6 @@ describe("autoCategorize", () => {
       { id: "tx-2", merchant: { name: "Migros" } },
       { id: "tx-3", merchant: { name: "Migros" } },
     ] as unknown as Awaited<ReturnType<typeof txRepo.findUncategorizedForUser>>);
-    mockTxRepo.bulkSetCategory.mockResolvedValue(undefined);
 
     const result = await autoCategorize("user-1");
 
