@@ -1,10 +1,9 @@
-import type { MatchType } from "../repositories/category-rule.repository.js";
 import * as categoryRuleRepository from "../repositories/category-rule.repository.js";
 import * as transactionRepository from "../repositories/transaction.repository.js";
 
 export type RuleForMatching = {
   pattern: string;
-  matchType: MatchType;
+  matchType: string;
   categoryId: string;
 };
 
