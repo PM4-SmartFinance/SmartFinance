@@ -1008,6 +1008,45 @@ All values are `0` when there are no transactions in the range. Use `transaction
 
 ---
 
+### GET /dashboard/categories
+
+Returns expense totals grouped by category for the authenticated user within the specified date range. Intended to power the spending-by-category pie/donut chart on the dashboard.
+
+**Query Parameters:**
+
+| Parameter   | Type   | Required | Validation                   |
+| ----------- | ------ | -------- | ---------------------------- |
+| `startDate` | string | yes      | ISO date format `YYYY-MM-DD` |
+| `endDate`   | string | yes      | ISO date format `YYYY-MM-DD` |
+
+**Response 200:**
+
+```json
+[
+  {
+    "categoryId": "uuid",
+    "categoryName": "Groceries",
+    "total": 150.0
+  },
+  {
+    "categoryId": "uuid",
+    "categoryName": "Transport",
+    "total": 30.0
+  }
+]
+```
+
+- Only expense transactions (negative amounts) are aggregated. Positive-amount (income) transactions are excluded.
+- `total` is the absolute value of the summed expenses for the category, rounded to two decimals.
+- Results are sorted by `total` descending (highest spending first).
+- Transactions with no category (`categoryId = NULL`) are intentionally excluded; they do not contribute to any bucket. If a user has significant uncategorized spending, the returned totals will be incomplete.
+- Returns `200 []` when there are no matching transactions in the range.
+
+**Response 400:** Missing or malformed `startDate`/`endDate`, invalid calendar date (e.g. month 13), or `startDate` is after `endDate`
+**Response 401:** Not authenticated
+
+---
+
 ## Error Format
 
 All errors are formatted uniformly by the centralized error handler:
