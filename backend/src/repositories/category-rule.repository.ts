@@ -7,7 +7,10 @@ export type MatchType = "exact" | "contains";
 export async function findAllByUser(userId: string) {
   return prisma.categoryRule.findMany({
     where: { userId },
-    orderBy: { priority: "desc" },
+    // Deterministic ordering: priority is the primary sort, but ties must
+    // resolve reproducibly so the categorization engine produces stable output
+    // run-to-run. Falls back to creation time, then id for full determinism.
+    orderBy: [{ priority: "desc" }, { createdAt: "asc" }, { id: "asc" }],
     include: { category: { select: { id: true, categoryName: true } } },
   });
 }

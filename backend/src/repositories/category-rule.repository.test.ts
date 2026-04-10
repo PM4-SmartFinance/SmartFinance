@@ -47,7 +47,10 @@ describe("category-rule.repository", () => {
   });
 
   describe("findAllByUser", () => {
-    it("returns rules ordered by priority desc", async () => {
+    it("returns rules ordered by priority desc with deterministic tiebreaker", async () => {
+      // Categorization engine relies on stable ordering: priority first, then
+      // createdAt and id as tiebreakers so equal-priority rules resolve
+      // reproducibly across runs.
       mockCategoryRule.findMany.mockResolvedValue([sampleRule] as never);
 
       const result = await findAllByUser("user-1");
@@ -55,7 +58,7 @@ describe("category-rule.repository", () => {
       expect(result).toEqual([sampleRule]);
       expect(mockCategoryRule.findMany).toHaveBeenCalledWith({
         where: { userId: "user-1" },
-        orderBy: { priority: "desc" },
+        orderBy: [{ priority: "desc" }, { createdAt: "asc" }, { id: "asc" }],
         include: { category: { select: { id: true, categoryName: true } } },
       });
     });
