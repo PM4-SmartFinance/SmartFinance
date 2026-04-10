@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import secureSession from "@fastify/secure-session";
+import rateLimit from "@fastify/rate-limit";
 import { errorHandler } from "./middleware/error-handler.js";
 import { healthRoutes } from "./controllers/health.controller.js";
 import { authRoutes } from "./controllers/auth.controller.js";
@@ -33,6 +34,23 @@ export async function buildApp() {
       secure: process.env["NODE_ENV"] === "production",
     },
   });
+
+  // Global rate limiter — applies only to routes that explicitly opt in via
+  // `config.rateLimit`. Auth-sensitive endpoints (POST /auth/login,
+  // POST /users) set stricter per-route limits to mitigate brute-force and
+  // argon2 CPU-exhaustion attacks as required by CLAUDE.md.
+  //
+  // Disabled in the test environment: integration tests legitimately hit
+  // these endpoints many times per second via `app.inject`, which would
+  // otherwise trip the limiter and produce false 429s.
+  const isTest = process.env["NODE_ENV"] === "test" || process.env["VITEST"] !== undefined;
+  if (!isTest) {
+    await app.register(rateLimit, {
+      global: false,
+      max: 100,
+      timeWindow: "1 minute",
+    });
+  }
 
   app.setErrorHandler(errorHandler);
 
