@@ -52,6 +52,21 @@ const dashboardTrendsResponseSchema = {
   },
 } as const;
 
+const dashboardCategoriesResponseSchema = {
+  200: {
+    type: "array",
+    items: {
+      type: "object",
+      properties: {
+        categoryId: { type: "string" },
+        categoryName: { type: "string" },
+        total: { type: "number" },
+      },
+      required: ["categoryId", "categoryName", "total"],
+    },
+  },
+} as const;
+
 export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
   app.get<{ Querystring: DashboardSummaryQuery }>(
     "/dashboard/summary",
@@ -65,6 +80,23 @@ export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
       const { startDate, endDate } = request.query;
       const summary = await dashboardService.getDashboardSummary(session.id, startDate, endDate);
       return reply.send(summary);
+    },
+  );
+
+  app.get<{ Querystring: DashboardSummaryQuery }>(
+    "/dashboard/categories",
+    {
+      preHandler: requireRole("USER"),
+      schema: {
+        querystring: dashboardSummaryQuerySchema,
+        response: dashboardCategoriesResponseSchema,
+      },
+    },
+    async (request, reply) => {
+      const session = request.session.get("user")!;
+      const { startDate, endDate } = request.query;
+      const data = await dashboardService.getDashboardCategories(session.id, startDate, endDate);
+      return reply.send(data);
     },
   );
 

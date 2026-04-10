@@ -1,13 +1,19 @@
 import { ServiceError } from "../errors.js";
 import * as dashboardRepository from "../repositories/dashboard.repository.js";
-import type { MonthlyTrendAggregate } from "../repositories/dashboard.repository.js";
+import type {
+  CategoryTotalAggregate,
+  MonthlyTrendAggregate,
+} from "../repositories/dashboard.repository.js";
 
 function isValidCalendarDate(dateStr: string): boolean {
   const d = new Date(dateStr + "T00:00:00Z");
   return !isNaN(d.getTime()) && dateStr === d.toISOString().slice(0, 10);
 }
 
-export async function getDashboardSummary(userId: string, startDate: string, endDate: string) {
+// Shared guard for date-range endpoints. Throws ServiceError(400) on any
+// invalid calendar date or an inverted range. Keeping this in one place
+// ensures /dashboard/summary and /dashboard/categories stay in sync.
+function validateDateRange(startDate: string, endDate: string): void {
   if (!isValidCalendarDate(startDate) || !isValidCalendarDate(endDate)) {
     throw new ServiceError(400, "startDate and endDate must be valid calendar dates");
   }
@@ -15,6 +21,10 @@ export async function getDashboardSummary(userId: string, startDate: string, end
   if (new Date(startDate + "T00:00:00Z").getTime() > new Date(endDate + "T00:00:00Z").getTime()) {
     throw new ServiceError(400, "startDate must not be after endDate");
   }
+}
+
+export async function getDashboardSummary(userId: string, startDate: string, endDate: string) {
+  validateDateRange(startDate, endDate);
 
   const { incomeAgg, expenseAgg, transactionCount } = await dashboardRepository.getSummary(
     userId,
@@ -77,4 +87,23 @@ export async function getDashboardTrends(
   }
 
   return data;
+}
+
+export async function getDashboardCategories(
+  userId: string,
+  startDate: string,
+  endDate: string,
+): Promise<CategoryTotalAggregate[]> {
+  validateDateRange(startDate, endDate);
+
+  try {
+    return await dashboardRepository.getCategoryTotals(userId, startDate, endDate);
+  } catch (err) {
+    // Decorate raw SQL failures with the request context so the centralized
+    // error handler's log entry is actionable. The original error is kept as
+    // `cause` so stack traces survive.
+    throw new Error(`getCategoryTotals failed for user ${userId} [${startDate}..${endDate}]`, {
+      cause: err,
+    });
+  }
 }
