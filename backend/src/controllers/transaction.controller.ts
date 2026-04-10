@@ -122,6 +122,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
           format,
           accountId,
           userId: user.id,
+          logger: request.log,
         });
 
         return reply.status(200).send(result);
