@@ -200,7 +200,7 @@ describe("findUncategorizedForUser", () => {
 describe("bulkSetCategory", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(prisma.$transaction).mockResolvedValue([]);
+    vi.mocked(prisma.$transaction).mockResolvedValue([{ count: 1 }]);
     vi.mocked(prisma.factTransactions.updateMany).mockResolvedValue({ count: 1 });
   });
 
@@ -212,6 +212,20 @@ describe("bulkSetCategory", () => {
     );
   });
 
+  it("guards every update with manualOverride: false to never overwrite a manual choice", async () => {
+    // Defense in depth: even though findUncategorizedForUser already filters
+    // on manualOverride: false, the user can toggle the flag between read and
+    // write. The repository must enforce the invariant on the write side.
+    await bulkSetCategory("user-1", [
+      { id: "tx-1", categoryId: "cat-a" },
+      { id: "tx-2", categoryId: "cat-b" },
+    ]);
+
+    for (const call of vi.mocked(prisma.factTransactions.updateMany).mock.calls) {
+      expect(call[0].where).toMatchObject({ manualOverride: false });
+    }
+  });
+
   it("groups updates by categoryId for batch efficiency", async () => {
     await bulkSetCategory("user-1", [
       { id: "tx-1", categoryId: "cat-a" },
@@ -221,19 +235,21 @@ describe("bulkSetCategory", () => {
 
     expect(prisma.factTransactions.updateMany).toHaveBeenCalledTimes(2);
     expect(prisma.factTransactions.updateMany).toHaveBeenCalledWith({
-      where: { id: { in: ["tx-1", "tx-2"] }, userId: "user-1" },
+      where: { id: { in: ["tx-1", "tx-2"] }, userId: "user-1", manualOverride: false },
       data: { categoryId: "cat-a" },
     });
     expect(prisma.factTransactions.updateMany).toHaveBeenCalledWith({
-      where: { id: { in: ["tx-3"] }, userId: "user-1" },
+      where: { id: { in: ["tx-3"] }, userId: "user-1", manualOverride: false },
       data: { categoryId: "cat-b" },
     });
   });
 
-  it("does not call updateMany when updates array is empty", async () => {
-    await bulkSetCategory("user-1", []);
+  it("does not call updateMany or $transaction when updates array is empty", async () => {
+    const result = await bulkSetCategory("user-1", []);
 
+    expect(result).toBe(0);
     expect(prisma.factTransactions.updateMany).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it("wraps all updates in a single $transaction call", async () => {
@@ -243,5 +259,39 @@ describe("bulkSetCategory", () => {
     ]);
 
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns the sum of affected rows reported by Prisma, not updates.length", async () => {
+    // 2 manual overrides slipped through between read and write -> only 1 row
+    // was actually updated even though we asked for 3.
+    vi.mocked(prisma.$transaction).mockResolvedValue([{ count: 1 }, { count: 0 }]);
+
+    const result = await bulkSetCategory("user-1", [
+      { id: "tx-1", categoryId: "cat-a" },
+      { id: "tx-2", categoryId: "cat-a" },
+      { id: "tx-3", categoryId: "cat-b" },
+    ]);
+
+    expect(result).toBe(1);
+  });
+
+  it("chunks large id lists into 1000-element batches to stay under bind-parameter limits", async () => {
+    const updates = Array.from({ length: 2500 }, (_, i) => ({
+      id: `tx-${i}`,
+      categoryId: "cat-a",
+    }));
+    vi.mocked(prisma.$transaction).mockResolvedValue(
+      Array.from({ length: 3 }, () => ({ count: 1000 })),
+    );
+
+    await bulkSetCategory("user-1", updates);
+
+    // 2500 ids in a single category -> ceil(2500 / 1000) = 3 chunks.
+    expect(prisma.factTransactions.updateMany).toHaveBeenCalledTimes(3);
+    const callArgs = vi.mocked(prisma.factTransactions.updateMany).mock.calls;
+    const idLists = callArgs.map((c) => (c[0].where as { id: { in: string[] } }).id.in);
+    expect(idLists[0]).toHaveLength(1000);
+    expect(idLists[1]).toHaveLength(1000);
+    expect(idLists[2]).toHaveLength(500);
   });
 });
