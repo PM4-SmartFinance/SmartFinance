@@ -234,13 +234,16 @@ describe("AdminUsersPage", () => {
         expect(screen.getByText("admin@example.com")).toBeInTheDocument();
       });
 
-      const emailHeader = screen.getByRole("button", { name: /Email/ });
+      let emailHeader = screen.getByRole("button", { name: /Email/ });
       // Verify it starts with asc indicator
       expect(emailHeader).toHaveTextContent("↑");
 
       await user.click(emailHeader);
       // After clicking, should toggle to desc
-      expect(emailHeader).toHaveTextContent("↓");
+      await waitFor(() => {
+        emailHeader = screen.getByRole("button", { name: /Email/ });
+        expect(emailHeader).toHaveTextContent("↓");
+      });
     });
 
     it("toggles sort order when clicking same header twice", async () => {
@@ -251,17 +254,23 @@ describe("AdminUsersPage", () => {
         expect(screen.getByText("admin@example.com")).toBeInTheDocument();
       });
 
-      const emailHeader = screen.getByRole("button", { name: /Email/ });
+      let emailHeader = screen.getByRole("button", { name: /Email/ });
       // Initial state: asc (↑)
       expect(emailHeader).toHaveTextContent("↑");
 
       // First click: toggle to desc (↓)
       await user.click(emailHeader);
-      expect(emailHeader).toHaveTextContent("↓");
+      await waitFor(() => {
+        emailHeader = screen.getByRole("button", { name: /Email/ });
+        expect(emailHeader).toHaveTextContent("↓");
+      });
 
       // Second click: toggle back to asc (↑)
       await user.click(emailHeader);
-      expect(emailHeader).toHaveTextContent("↑");
+      await waitFor(() => {
+        emailHeader = screen.getByRole("button", { name: /Email/ });
+        expect(emailHeader).toHaveTextContent("↑");
+      });
     });
   });
 
