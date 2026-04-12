@@ -6,6 +6,7 @@ interface UserTableProps {
   isLoading?: boolean;
   onEdit: (user: User) => void;
   onDeactivate: (user: User) => void;
+  onDelete: (user: User) => void;
   sortBy?: "email" | "role" | "createdAt";
   sortOrder?: "asc" | "desc";
   onSort?: (column: "email" | "role" | "createdAt") => void;
@@ -16,6 +17,7 @@ export function UserTable({
   isLoading,
   onEdit,
   onDeactivate,
+  onDelete,
   sortBy = "email",
   sortOrder = "asc",
   onSort,
@@ -114,6 +116,14 @@ export function UserTable({
                       Deactivate
                     </Button>
                   )}
+                  <Button
+                    onClick={() => onDelete(user)}
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    Delete
+                  </Button>
                 </div>
               </td>
             </tr>

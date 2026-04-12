@@ -36,13 +36,24 @@ interface UserResponse {
 
 const USERS_QUERY_KEY = ["users"] as const;
 
-export function useUsers(limit = 50, offset = 0) {
+export function useUsers(
+  limit = 50,
+  offset = 0,
+  sortBy?: "email" | "role" | "createdAt",
+  sortOrder?: "asc" | "desc",
+) {
   return useQuery<UsersResponse>({
-    queryKey: [USERS_QUERY_KEY, { limit, offset }],
+    queryKey: [...USERS_QUERY_KEY, { limit, offset, sortBy, sortOrder }],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.append("limit", limit.toString());
       params.append("offset", offset.toString());
+      if (sortBy) {
+        params.append("sortBy", sortBy);
+      }
+      if (sortOrder) {
+        params.append("sortOrder", sortOrder);
+      }
       const url = `/users?${params.toString()}`;
       const response = await api.get<UsersResponse>(url);
       return response;
@@ -59,9 +70,6 @@ export function useCreateUser() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY });
     },
-    onError: (error) => {
-      console.error("[useCreateUser]", error);
-    },
   });
 }
 
@@ -74,9 +82,6 @@ export function useUpdateUser() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY });
     },
-    onError: (error) => {
-      console.error("[useUpdateUser]", error);
-    },
   });
 }
 
@@ -87,9 +92,6 @@ export function useDeleteUser() {
     mutationFn: (id: string) => api.delete(`/users/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY });
-    },
-    onError: (error) => {
-      console.error("[useDeleteUser]", error);
     },
   });
 }

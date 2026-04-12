@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { useUsers, type User } from "../lib/queries/users";
+import { useUsers, useUpdateUser, type User } from "../lib/queries/users";
+import { useAuth } from "../hooks/useAuth";
 import { UserTable } from "../components/UserTable";
 import { CreateUserDialog } from "../components/CreateUserDialog";
 import { EditUserDialog } from "../components/EditUserDialog";
+import { DeleteUserDialog } from "../components/DeleteUserDialog";
 import { Button } from "@/components/ui/button";
 
 type SortColumn = "email" | "role" | "createdAt";
@@ -12,10 +14,37 @@ export function AdminUsersPage() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
-  const { data: response, isLoading, error } = useUsers();
+  const { data: response, isLoading, error } = useUsers(50, 0, sortBy, sortOrder);
+  const { user: currentUser } = useAuth();
+  const updateMutation = useUpdateUser();
   const users = response?.items ?? [];
+
+  const handleEdit = (user: User) => {
+    setSelectedUser(user);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleDeactivate = async (user: User) => {
+    // Prevent deactivating yourself
+    if (user.id === currentUser?.id) {
+      alert("Cannot deactivate your own account");
+      return;
+    }
+    try {
+      await updateMutation.mutateAsync({ id: user.id, input: { active: false } });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to deactivate user";
+      alert(message);
+    }
+  };
+
+  const handleDelete = (user: User) => {
+    setSelectedUser(user);
+    setIsDeleteDialogOpen(true);
+  };
 
   // Simple client-side sorting
   const sortedUsers = [...users].sort((a, b) => {
@@ -47,16 +76,6 @@ export function AdminUsersPage() {
     }
   };
 
-  const handleEdit = (user: User) => {
-    setSelectedUser(user);
-    setIsEditDialogOpen(true);
-  };
-
-  const handleDeactivate = (user: User) => {
-    setSelectedUser(user);
-    setIsEditDialogOpen(true);
-  };
-
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
@@ -84,6 +103,7 @@ export function AdminUsersPage() {
           isLoading={isLoading}
           onEdit={handleEdit}
           onDeactivate={handleDeactivate}
+          onDelete={handleDelete}
           sortBy={sortBy}
           sortOrder={sortOrder}
           onSort={handleSort}
@@ -99,6 +119,16 @@ export function AdminUsersPage() {
         user={selectedUser}
         onClose={() => {
           setIsEditDialogOpen(false);
+          setSelectedUser(null);
+        }}
+      />
+
+      {/* Delete User Dialog */}
+      <DeleteUserDialog
+        isOpen={isDeleteDialogOpen}
+        user={selectedUser}
+        onClose={() => {
+          setIsDeleteDialogOpen(false);
           setSelectedUser(null);
         }}
       />

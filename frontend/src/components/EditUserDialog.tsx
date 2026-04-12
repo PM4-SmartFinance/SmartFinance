@@ -43,12 +43,6 @@ export function EditUserDialog({ isOpen, user, onClose }: EditUserDialogProps) {
     }
   }, [isOpen]);
 
-  // Reset form state when editing a different user
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setFormState(getInitialFormState());
-  }, [user]);
-
   const handleDialogClose = () => {
     onClose();
   };
@@ -91,6 +85,13 @@ export function EditUserDialog({ isOpen, user, onClose }: EditUserDialogProps) {
   // Admins cannot change the role of other admins (except themselves)
   const canChangeRole = user.id === currentUser?.id || user.role !== "ADMIN";
 
+  // Prevent admin self-demotion
+  const canSaveDemotion = !(
+    user.id === currentUser?.id &&
+    currentUser?.role === "ADMIN" &&
+    formState.role === "USER"
+  );
+
   const isSubmitting = updateMutation.isPending;
 
   return (
@@ -98,6 +99,7 @@ export function EditUserDialog({ isOpen, user, onClose }: EditUserDialogProps) {
       ref={dialogRef}
       className="w-full max-w-md rounded-lg shadow-lg backdrop:bg-black/50 open:flex open:items-center open:justify-center"
       onClose={handleDialogClose}
+      key={user?.id}
     >
       <div className="rounded-lg bg-background p-6 shadow-lg">
         <h2 className="mb-6 text-xl font-semibold text-foreground">Edit User: {user.email}</h2>
@@ -126,6 +128,9 @@ export function EditUserDialog({ isOpen, user, onClose }: EditUserDialogProps) {
                 Cannot change role of other admin users
               </p>
             )}
+            {!canSaveDemotion && (
+              <p className="text-xs text-red-600">Cannot demote yourself from admin</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -142,7 +147,7 @@ export function EditUserDialog({ isOpen, user, onClose }: EditUserDialogProps) {
           </div>
 
           <div className="flex gap-2">
-            <Button type="submit" disabled={isSubmitting} className="flex-1">
+            <Button type="submit" disabled={isSubmitting || !canSaveDemotion} className="flex-1">
               {isSubmitting ? "Saving…" : "Save Changes"}
             </Button>
             <Button
