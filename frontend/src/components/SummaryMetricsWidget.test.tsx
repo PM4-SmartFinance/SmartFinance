@@ -4,9 +4,10 @@ import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { SummaryMetricsWidget } from "./SummaryMetricsWidget";
 
 const mockSummaryData = {
-  accountBalance: 15250.75,
-  monthlyExpenses: 2840.5,
-  incomeThisMonth: 6500.0,
+  totalIncome: 6500.0,
+  totalExpenses: -2840.5,
+  netBalance: 3659.5,
+  transactionCount: 42,
 };
 
 vi.mock("../lib/api", () => ({
@@ -34,9 +35,9 @@ describe("SummaryMetricsWidget", () => {
 
   it("renders all three metric cards", () => {
     renderWithQuery(<SummaryMetricsWidget />);
-    expect(screen.getByText("Account Balance")).toBeInTheDocument();
-    expect(screen.getByText("Monthly Expenses")).toBeInTheDocument();
-    expect(screen.getByText("Income This Month")).toBeInTheDocument();
+    expect(screen.getByText("Net Balance")).toBeInTheDocument();
+    expect(screen.getByText("Total Expenses")).toBeInTheDocument();
+    expect(screen.getByText("Total Income")).toBeInTheDocument();
   });
 
   it("shows loading indicators before data arrives", () => {
@@ -50,7 +51,7 @@ describe("SummaryMetricsWidget", () => {
     renderWithQuery(<SummaryMetricsWidget />);
 
     await waitFor(() => {
-      expect(screen.getByText("CHF 15'250.75")).toBeInTheDocument();
+      expect(screen.getByText("CHF 3'659.50")).toBeInTheDocument();
       expect(screen.getByText("CHF 2'840.50")).toBeInTheDocument();
       expect(screen.getByText("CHF 6'500.00")).toBeInTheDocument();
     });

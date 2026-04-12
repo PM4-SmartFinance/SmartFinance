@@ -3,20 +3,13 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { SpendingTrendChart } from "./SpendingTrendChart";
 
-const mockTrendData = [
-  { date: "2025-12-01", amount: 2150.25 },
-  { date: "2025-12-08", amount: 1875.5 },
-  { date: "2025-12-15", amount: 2340.75 },
-  { date: "2025-12-22", amount: 2100.0 },
-  { date: "2025-12-29", amount: 1950.25 },
-  { date: "2026-01-05", amount: 2500.75 },
-  { date: "2026-01-12", amount: 2200.0 },
-  { date: "2026-01-19", amount: 2600.5 },
-  { date: "2026-01-26", amount: 2450.25 },
-  { date: "2026-02-02", amount: 2100.75 },
-  { date: "2026-02-09", amount: 2800.0 },
-  { date: "2026-02-16", amount: 2400.25 },
-];
+const mockTrendData = {
+  data: [
+    { year: 2025, month: 12, income: 5000, expenses: 2150.25 },
+    { year: 2026, month: 1, income: 6000, expenses: 2500.75 },
+    { year: 2026, month: 2, income: 5500, expenses: 2800.0 },
+  ],
+};
 
 vi.mock("../lib/api", () => ({
   api: {

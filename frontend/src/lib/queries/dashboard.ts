@@ -9,9 +9,10 @@ const DASHBOARD_STALE_TIME = 5 * 60 * 1000; // 5 minutes
 
 // Type definitions for API responses
 export interface DashboardSummary {
-  accountBalance: number;
-  monthlyExpenses: number;
-  incomeThisMonth: number;
+  totalIncome: number;
+  totalExpenses: number;
+  netBalance: number;
+  transactionCount: number;
 }
 
 export interface TrendDataPoint {
@@ -27,8 +28,9 @@ interface MonthlyTrendPoint {
 }
 
 export interface CategoryBreakdown {
-  category: string;
-  amount: number;
+  categoryId: string;
+  categoryName: string;
+  total: number;
 }
 
 export function extractArray<T>(value: unknown): T[] {
