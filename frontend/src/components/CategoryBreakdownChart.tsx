@@ -76,7 +76,7 @@ export function CategoryBreakdownChart() {
                 style={{ fontSize: "12px" }}
               />
               <YAxis
-                dataKey="category"
+                dataKey="categoryName"
                 type="category"
                 stroke="hsl(var(--muted-foreground))"
                 style={{ fontSize: "12px" }}
@@ -91,7 +91,7 @@ export function CategoryBreakdownChart() {
                 labelStyle={{ color: "hsl(var(--foreground))" }}
                 formatter={(value) => [formatCurrency(Number(value)), "Spent"]}
               />
-              <Bar dataKey="amount" fill="hsl(var(--primary))" />
+              <Bar dataKey="total" fill="hsl(var(--primary))" />
             </BarChart>
           </ResponsiveContainer>
         </div>

@@ -18,12 +18,12 @@ vi.mock("../lib/api", () => ({
     get: vi.fn((path) => {
       if (path.includes("/dashboard/categories")) {
         return Promise.resolve([
-          { category: "Groceries", amount: 450.75 },
-          { category: "Transport", amount: 280.0 },
-          { category: "Dining", amount: 320.5 },
-          { category: "Entertainment", amount: 195.25 },
-          { category: "Utilities", amount: 125.0 },
-          { category: "Shopping", amount: 473.0 },
+          { categoryId: "cat-1", categoryName: "Groceries", total: 450.75 },
+          { categoryId: "cat-2", categoryName: "Transport", total: 280.0 },
+          { categoryId: "cat-3", categoryName: "Dining", total: 320.5 },
+          { categoryId: "cat-4", categoryName: "Entertainment", total: 195.25 },
+          { categoryId: "cat-5", categoryName: "Utilities", total: 125.0 },
+          { categoryId: "cat-6", categoryName: "Shopping", total: 473.0 },
         ]);
       }
       return Promise.resolve({});
