@@ -6,9 +6,10 @@ import { SummaryMetricsWidget } from "../components/SummaryMetricsWidget";
 
 // Comprehensive mock data
 const mockSummaryData = {
-  accountBalance: 15250.75,
-  monthlyExpenses: 2840.5,
-  incomeThisMonth: 6500.0,
+  totalIncome: 6500.0,
+  totalExpenses: -2840.5,
+  netBalance: 3659.5,
+  transactionCount: 42,
 };
 
 const mockTrendData = [
@@ -136,14 +137,14 @@ describe("Dashboard Date Filter Integration", () => {
     // Wait for data to load and display
     await waitFor(
       () => {
-        expect(screen.getByText("CHF 15'250.75")).toBeInTheDocument();
+        expect(screen.getByText("CHF 3'659.50")).toBeInTheDocument();
       },
       { timeout: 3000 },
     );
 
-    expect(screen.getByText("Account Balance")).toBeInTheDocument();
-    expect(screen.getByText("Monthly Expenses")).toBeInTheDocument();
-    expect(screen.getByText("Income This Month")).toBeInTheDocument();
+    expect(screen.getByText("Net Balance")).toBeInTheDocument();
+    expect(screen.getByText("Total Expenses")).toBeInTheDocument();
+    expect(screen.getByText("Total Income")).toBeInTheDocument();
   });
 
   it("formats currency values correctly", async () => {
@@ -151,7 +152,7 @@ describe("Dashboard Date Filter Integration", () => {
 
     await waitFor(
       () => {
-        expect(screen.getByText("CHF 15'250.75")).toBeInTheDocument();
+        expect(screen.getByText("CHF 3'659.50")).toBeInTheDocument();
         expect(screen.getByText("CHF 2'840.50")).toBeInTheDocument();
         expect(screen.getByText("CHF 6'500.00")).toBeInTheDocument();
       },

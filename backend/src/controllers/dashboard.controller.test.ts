@@ -7,6 +7,7 @@ import { ServiceError } from "../errors.js";
 vi.mock("../services/dashboard.service.js", () => ({
   getDashboardSummary: vi.fn(),
   getDashboardCategories: vi.fn(),
+  getDashboardTrends: vi.fn(),
 }));
 
 // Mutable flag: controls whether the preHandler simulates auth failure.
@@ -250,6 +251,78 @@ describe("GET /api/v1/dashboard/categories", () => {
       });
 
       expect(response.statusCode).toBe(400);
+    });
+  });
+});
+
+describe("GET /api/v1/dashboard/trends", () => {
+  describe("authentication", () => {
+    it("returns 401 when requireRole rejects the request", async () => {
+      rejectAuth = true;
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/dashboard/trends?startDate=2025-01-01&endDate=2025-06-30",
+      });
+      expect(response.statusCode).toBe(401);
+    });
+  });
+
+  describe("input validation", () => {
+    it("returns 400 when startDate is missing", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/dashboard/trends?endDate=2025-06-30",
+      });
+      expect(response.statusCode).toBe(400);
+    });
+
+    it("returns 400 when endDate is missing", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/dashboard/trends?startDate=2025-01-01",
+      });
+      expect(response.statusCode).toBe(400);
+    });
+
+    it("returns 400 when date format is invalid", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/dashboard/trends?startDate=not-a-date&endDate=2025-06-30",
+      });
+      expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe("success", () => {
+    it("returns 200 with trend data wrapped in { data }", async () => {
+      const mockData = [
+        { year: 2025, month: 1, income: 5000, expenses: 2500 },
+        { year: 2025, month: 2, income: 4500, expenses: 2200 },
+      ];
+      mockService.getDashboardTrends.mockResolvedValue(mockData);
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/dashboard/trends?startDate=2025-01-01&endDate=2025-02-28",
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ data: mockData });
+    });
+
+    it("passes userId, startDate, and endDate to the service", async () => {
+      mockService.getDashboardTrends.mockResolvedValue([]);
+
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/dashboard/trends?startDate=2025-03-01&endDate=2025-08-31",
+      });
+
+      expect(mockService.getDashboardTrends).toHaveBeenCalledWith(
+        "user-1",
+        "2025-03-01",
+        "2025-08-31",
+      );
     });
   });
 });

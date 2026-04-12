@@ -44,18 +44,18 @@ export function SummaryMetricsWidget() {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
       <MetricCard
-        title="Account Balance"
-        value={data ? formatCurrency(data.accountBalance) : "—"}
+        title="Net Balance"
+        value={data ? formatCurrency(data.netBalance) : "—"}
         isLoading={isLoading}
       />
       <MetricCard
-        title="Monthly Expenses"
-        value={data ? formatCurrency(data.monthlyExpenses) : "—"}
+        title="Total Expenses"
+        value={data ? formatCurrency(Math.abs(data.totalExpenses)) : "—"}
         isLoading={isLoading}
       />
       <MetricCard
-        title="Income This Month"
-        value={data ? formatCurrency(data.incomeThisMonth) : "—"}
+        title="Total Income"
+        value={data ? formatCurrency(data.totalIncome) : "—"}
         isLoading={isLoading}
       />
     </div>

@@ -5,9 +5,10 @@ import { vi } from "vitest";
 import { DashboardPage } from "./DashboardPage";
 
 const mockSummaryData = {
-  accountBalance: 15250.75,
-  monthlyExpenses: 2840.5,
-  incomeThisMonth: 6500.0,
+  totalIncome: 6500.0,
+  totalExpenses: -2840.5,
+  netBalance: 3659.5,
+  transactionCount: 42,
 };
 
 const mockTrendData = [
@@ -95,9 +96,9 @@ describe("DashboardPage", () => {
 
   it("renders main dashboard widgets", () => {
     renderWithProviders();
-    expect(screen.getAllByText("Account Balance").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Monthly Expenses").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Income This Month").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Net Balance").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Total Expenses").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Total Income").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Monthly Spending Trend").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Spending by Category").length).toBeGreaterThanOrEqual(1);
   });
@@ -133,7 +134,7 @@ describe("DashboardPage", () => {
 
     // Wait for initial data to load
     await waitFor(() => {
-      expect(screen.getByText("CHF 15'250.75")).toBeInTheDocument();
+      expect(screen.getByText("CHF 3'659.50")).toBeInTheDocument();
     });
 
     // Change the start date
@@ -151,7 +152,7 @@ describe("DashboardPage", () => {
     });
 
     // Verify widgets are still present
-    expect(screen.getAllByText("Account Balance").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Net Balance").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Monthly Spending Trend").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Spending by Category").length).toBeGreaterThanOrEqual(1);
   });

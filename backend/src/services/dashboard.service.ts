@@ -47,17 +47,18 @@ export async function getDashboardSummary(userId: string, startDate: string, end
 
 export async function getDashboardTrends(
   userId: string,
-  months: number,
+  startDateStr: string,
+  endDateStr: string,
 ): Promise<MonthlyTrendAggregate[]> {
-  const now = new Date();
-  const endYear = now.getUTCFullYear();
-  const endMonth = now.getUTCMonth() + 1;
+  validateDateRange(startDateStr, endDateStr);
 
-  const startDate = new Date(Date.UTC(endYear, endMonth - 1, 1));
-  startDate.setUTCMonth(startDate.getUTCMonth() - (months - 1));
+  const start = new Date(startDateStr + "T00:00:00Z");
+  const end = new Date(endDateStr + "T00:00:00Z");
 
-  const startYear = startDate.getUTCFullYear();
-  const startMonth = startDate.getUTCMonth() + 1;
+  const startYear = start.getUTCFullYear();
+  const startMonth = start.getUTCMonth() + 1;
+  const endYear = end.getUTCFullYear();
+  const endMonth = end.getUTCMonth() + 1;
 
   const aggregates = await dashboardRepository.listMonthlyTrends({
     userId,
@@ -71,8 +72,11 @@ export async function getDashboardTrends(
     aggregates.map((item) => [`${item.year}-${item.month}`, item] as const),
   );
 
+  // Build a complete month sequence from start to end so gaps show as zero.
+  const totalMonths = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
+
   const data: MonthlyTrendAggregate[] = [];
-  for (let i = 0; i < months; i++) {
+  for (let i = 0; i < totalMonths; i++) {
     const monthDate = new Date(Date.UTC(startYear, startMonth - 1 + i, 1));
     const year = monthDate.getUTCFullYear();
     const month = monthDate.getUTCMonth() + 1;

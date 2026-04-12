@@ -62,6 +62,16 @@ export async function categoryRuleRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({ rules });
   });
 
+  app.post<{ Body: CreateRuleBody }>(
+    "/category-rules/preview",
+    { preHandler: requireRole("USER"), schema: { body: createRuleSchema } },
+    async (request, reply) => {
+      const session = request.session.get("user")!;
+      const result = await categoryRuleService.previewRule(session.id, request.body);
+      return reply.send(result);
+    },
+  );
+
   app.get<{ Params: RuleParams }>(
     "/category-rules/:id",
     { preHandler: requireRole("USER"), schema: { params: ruleParamsSchema } },

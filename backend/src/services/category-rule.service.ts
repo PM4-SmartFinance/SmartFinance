@@ -1,6 +1,8 @@
 import { DuplicateRuleError, ServiceError } from "../errors.js";
 import * as categoryRuleRepository from "../repositories/category-rule.repository.js";
 import type { MatchType } from "../repositories/category-rule.repository.js";
+import * as transactionRepository from "../repositories/transaction.repository.js";
+import { matchTransaction } from "./categorization.service.js";
 
 export async function listRules(userId: string) {
   return categoryRuleRepository.findAllByUser(userId);
@@ -71,4 +73,20 @@ export async function deleteRule(id: string, userId: string) {
   if (!deleted) {
     throw new ServiceError(404, "Category rule not found");
   }
+}
+
+export async function previewRule(
+  userId: string,
+  rule: { pattern: string; matchType: MatchType; categoryId: string; priority: number },
+): Promise<{ matchCount: number }> {
+  const transactions = await transactionRepository.findUncategorizedForUser(userId);
+  let matchCount = 0;
+  for (const tx of transactions) {
+    const name = tx.merchant?.name;
+    if (!name) continue;
+    if (matchTransaction(name, [rule]) !== null) {
+      matchCount++;
+    }
+  }
+  return { matchCount };
 }
