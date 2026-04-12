@@ -37,6 +37,25 @@ function getMonthAnchor(offsetMonths: number) {
   };
 }
 
+/** Returns YYYY-MM-DD for the 1st of the month at the given offset from today. */
+function monthStart(offsetMonths: number): string {
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  d.setUTCDate(1);
+  d.setUTCMonth(d.getUTCMonth() + offsetMonths);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Returns YYYY-MM-DD for the last day of the month at the given offset from today. */
+function monthEnd(offsetMonths: number): string {
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  d.setUTCDate(1);
+  d.setUTCMonth(d.getUTCMonth() + offsetMonths + 1);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
 async function seedTransaction(
   userId: string,
   accountId: string,
@@ -171,27 +190,53 @@ afterAll(async () => {
 });
 
 describe("GET /api/v1/dashboard/trends", () => {
+  // 6-month window: from 5 months ago to this month
+  const sixMonthStart = monthStart(-5);
+  const sixMonthEnd = monthEnd(0);
+
+  // 12-month window: from 11 months ago to this month
+  const twelveMonthStart = monthStart(-11);
+  const twelveMonthEnd = monthEnd(0);
+
   it("returns 401 without a valid session", async () => {
     const res = await app.inject({
       method: "GET",
-      url: "/api/v1/dashboard/trends",
+      url: `/api/v1/dashboard/trends?startDate=${sixMonthStart}&endDate=${sixMonthEnd}`,
     });
     expect(res.statusCode).toBe(401);
   });
 
-  it("returns 400 for months below minimum", async () => {
+  it("returns 400 when startDate is missing", async () => {
     const res = await app.inject({
       method: "GET",
-      url: "/api/v1/dashboard/trends?months=5",
+      url: `/api/v1/dashboard/trends?endDate=${sixMonthEnd}`,
       cookies: { session: sessionCookie },
     });
     expect(res.statusCode).toBe(400);
   });
 
-  it("returns 6 months by default, bucketed by month/year and zero-padded", async () => {
+  it("returns 400 when endDate is missing", async () => {
     const res = await app.inject({
       method: "GET",
-      url: "/api/v1/dashboard/trends",
+      url: `/api/v1/dashboard/trends?startDate=${sixMonthStart}`,
+      cookies: { session: sessionCookie },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("returns 400 when date format is invalid", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/dashboard/trends?startDate=not-a-date&endDate=2025-01-31",
+      cookies: { session: sessionCookie },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("returns 6 months of data, bucketed by month/year and zero-padded", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/v1/dashboard/trends?startDate=${sixMonthStart}&endDate=${sixMonthEnd}`,
       cookies: { session: sessionCookie },
     });
 
@@ -241,7 +286,7 @@ describe("GET /api/v1/dashboard/trends", () => {
   it("returns 12 months when requested and includes older in-range data", async () => {
     const res = await app.inject({
       method: "GET",
-      url: "/api/v1/dashboard/trends?months=12",
+      url: `/api/v1/dashboard/trends?startDate=${twelveMonthStart}&endDate=${twelveMonthEnd}`,
       cookies: { session: sessionCookie },
     });
 
@@ -266,15 +311,6 @@ describe("GET /api/v1/dashboard/trends", () => {
     expect(row!.expenses).toBeCloseTo(75, 8);
   });
 
-  it("returns 400 for months above maximum", async () => {
-    const res = await app.inject({
-      method: "GET",
-      url: "/api/v1/dashboard/trends?months=13",
-      cookies: { session: sessionCookie },
-    });
-    expect(res.statusCode).toBe(400);
-  });
-
   it("returns all-zero data for a user with no transactions", async () => {
     const session2 = await loginUser(TEST_EMAIL_2, TEST_PASSWORD);
 
@@ -283,7 +319,7 @@ describe("GET /api/v1/dashboard/trends", () => {
 
     const res = await app.inject({
       method: "GET",
-      url: "/api/v1/dashboard/trends",
+      url: `/api/v1/dashboard/trends?startDate=${sixMonthStart}&endDate=${sixMonthEnd}`,
       cookies: { session: session2 },
     });
 
@@ -302,7 +338,7 @@ describe("GET /api/v1/dashboard/trends", () => {
   it("returns months in chronological order (oldest first)", async () => {
     const res = await app.inject({
       method: "GET",
-      url: "/api/v1/dashboard/trends",
+      url: `/api/v1/dashboard/trends?startDate=${sixMonthStart}&endDate=${sixMonthEnd}`,
       cookies: { session: sessionCookie },
     });
 
