@@ -1,6 +1,5 @@
 import type { FastifyInstance } from "fastify";
 import { requireRole } from "../middleware/rbac.js";
-import { ServiceError } from "../errors.js";
 import * as dashboardService from "../services/dashboard.service.js";
 
 interface DashboardSummaryQuery {
@@ -19,14 +18,17 @@ const dashboardSummaryQuerySchema = {
 } as const;
 
 interface DashboardTrendsQuery {
-  months: number;
+  startDate: string;
+  endDate: string;
 }
 
 const dashboardTrendsQuerySchema = {
   type: "object",
+  required: ["startDate", "endDate"],
   additionalProperties: false,
   properties: {
-    months: { type: "integer", minimum: 6, maximum: 12, default: 6 },
+    startDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+    endDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
   },
 } as const;
 
@@ -107,9 +109,9 @@ export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
       schema: { querystring: dashboardTrendsQuerySchema, response: dashboardTrendsResponseSchema },
     },
     async (request, reply) => {
-      const user = request.session.get("user");
-      if (!user) throw new ServiceError(401, "Unauthorized");
-      const data = await dashboardService.getDashboardTrends(user.id, request.query.months);
+      const session = request.session.get("user")!;
+      const { startDate, endDate } = request.query;
+      const data = await dashboardService.getDashboardTrends(session.id, startDate, endDate);
       return reply.send({ data });
     },
   );
