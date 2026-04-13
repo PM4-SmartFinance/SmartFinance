@@ -188,7 +188,7 @@ describe("AdminUsersPage", () => {
 
       await waitFor(() => {
         const deactivateButtons = screen.getAllByRole("button", { name: "Deactivate" });
-        expect(deactivateButtons.length).toBe(2); // Only 2 active users
+        expect(deactivateButtons.length).toBe(2); // Active users (self + user1, not user2 who is inactive)
       });
     });
 
@@ -208,8 +208,9 @@ describe("AdminUsersPage", () => {
       });
     });
 
-    it("opens edit dialog when Deactivate button is clicked", async () => {
+    it("calls API to deactivate a user when Deactivate is clicked", async () => {
       const user = userEvent.setup();
+      mockPatch.mockResolvedValue({ user: { ...mockUsers[1], active: false } });
       renderWithProviders();
 
       await waitFor(() => {
@@ -217,11 +218,11 @@ describe("AdminUsersPage", () => {
       });
 
       const deactivateButtons = screen.getAllByRole("button", { name: "Deactivate" });
-      await user.click(deactivateButtons[0]); // Click deactivate for first active user
+      await user.click(deactivateButtons[1]); // Click deactivate for user1 (non-self)
 
-      // Deactivate action should show a confirmation dialog
-      // The test verifies that the button is clickable and works
-      expect(deactivateButtons[0]).toBeInTheDocument();
+      await waitFor(() => {
+        expect(mockPatch).toHaveBeenCalledWith("/users/2", { active: false });
+      });
     });
   });
 

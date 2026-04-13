@@ -1,8 +1,9 @@
-import { User } from "../lib/queries/users";
+import type { User } from "../lib/queries/users";
 import { Button } from "@/components/ui/button";
 
 interface UserTableProps {
   users: User[];
+  currentUserId?: string | undefined;
   isLoading?: boolean;
   onEdit: (user: User) => void;
   onDeactivate: (user: User) => void;
@@ -14,6 +15,7 @@ interface UserTableProps {
 
 export function UserTable({
   users,
+  currentUserId,
   isLoading,
   onEdit,
   onDeactivate,
@@ -107,24 +109,28 @@ export function UserTable({
                 {new Date(user.createdAt).toLocaleDateString("en-US")}
               </td>
               <td className="px-6 py-3 text-sm">
-                <div className="flex gap-2">
-                  <Button onClick={() => onEdit(user)} variant="outline" size="sm">
-                    Edit
-                  </Button>
-                  {user.active && (
-                    <Button onClick={() => onDeactivate(user)} variant="destructive" size="sm">
-                      Deactivate
+                {user.role === "ADMIN" && user.id !== currentUserId ? (
+                  <span className="text-xs text-muted-foreground">No actions available</span>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button onClick={() => onEdit(user)} variant="outline" size="sm">
+                      Edit
                     </Button>
-                  )}
-                  <Button
-                    onClick={() => onDelete(user)}
-                    variant="ghost"
-                    size="sm"
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    Delete
-                  </Button>
-                </div>
+                    {user.active && (
+                      <Button onClick={() => onDeactivate(user)} variant="destructive" size="sm">
+                        Deactivate
+                      </Button>
+                    )}
+                    <Button
+                      onClick={() => onDelete(user)}
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                )}
               </td>
             </tr>
           ))}

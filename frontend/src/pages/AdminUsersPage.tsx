@@ -1,6 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUsers, useUpdateUser, type User } from "../lib/queries/users";
 import { useAuth } from "../hooks/useAuth";
+import { api } from "../lib/api";
 import { UserTable } from "../components/UserTable";
 import { CreateUserDialog } from "../components/CreateUserDialog";
 import { EditUserDialog } from "../components/EditUserDialog";
@@ -20,7 +23,16 @@ export function AdminUsersPage() {
   const { data: response, isLoading, error } = useUsers(50, 0, sortBy, sortOrder);
   const { user: currentUser } = useAuth();
   const updateMutation = useUpdateUser();
-  const users = response?.items ?? [];
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const { mutate: logout } = useMutation({
+    mutationFn: () => api.post<{ ok: boolean }>("/auth/logout", {}),
+    onSettled: () => {
+      queryClient.clear();
+      navigate("/login");
+    },
+  });
 
   const handleEdit = (user: User) => {
     setSelectedUser(user);
@@ -28,13 +40,11 @@ export function AdminUsersPage() {
   };
 
   const handleDeactivate = async (user: User) => {
-    // Prevent deactivating yourself
-    if (user.id === currentUser?.id) {
-      alert("Cannot deactivate your own account");
-      return;
-    }
     try {
       await updateMutation.mutateAsync({ id: user.id, input: { active: false } });
+      if (user.id === currentUser?.id) {
+        logout();
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to deactivate user";
       alert(message);
@@ -46,26 +56,7 @@ export function AdminUsersPage() {
     setIsDeleteDialogOpen(true);
   };
 
-  // Simple client-side sorting
-  const sortedUsers = [...users].sort((a, b) => {
-    let aValue: string | number = "";
-    let bValue: string | number = "";
-
-    if (sortBy === "email") {
-      aValue = a.email.toLowerCase();
-      bValue = b.email.toLowerCase();
-    } else if (sortBy === "role") {
-      aValue = a.role;
-      bValue = b.role;
-    } else if (sortBy === "createdAt") {
-      aValue = new Date(a.createdAt).getTime();
-      bValue = new Date(b.createdAt).getTime();
-    }
-
-    if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
-    if (aValue > bValue) return sortOrder === "asc" ? 1 : -1;
-    return 0;
-  });
+  const users = response?.items ?? [];
 
   const handleSort = (column: SortColumn) => {
     if (sortBy === column) {
@@ -99,7 +90,8 @@ export function AdminUsersPage() {
 
         {/* Users Table */}
         <UserTable
-          users={sortedUsers}
+          users={users}
+          currentUserId={currentUser?.id}
           isLoading={isLoading}
           onEdit={handleEdit}
           onDeactivate={handleDeactivate}
@@ -131,6 +123,7 @@ export function AdminUsersPage() {
           setIsDeleteDialogOpen(false);
           setSelectedUser(null);
         }}
+        onDeleteSuccess={selectedUser?.id === currentUser?.id ? () => logout() : undefined}
       />
     </main>
   );

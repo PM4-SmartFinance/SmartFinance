@@ -7,9 +7,15 @@ interface DeleteUserDialogProps {
   isOpen: boolean;
   user: User | null;
   onClose: () => void;
+  onDeleteSuccess?: (() => void) | undefined;
 }
 
-export function DeleteUserDialog({ isOpen, user, onClose }: DeleteUserDialogProps) {
+export function DeleteUserDialog({
+  isOpen,
+  user,
+  onClose,
+  onDeleteSuccess,
+}: DeleteUserDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const deleteMutation = useDeleteUser();
 
@@ -26,6 +32,7 @@ export function DeleteUserDialog({ isOpen, user, onClose }: DeleteUserDialogProp
     try {
       await deleteMutation.mutateAsync(user.id);
       onClose();
+      onDeleteSuccess?.();
     } catch {
       // Error is handled by the mutation
     }
