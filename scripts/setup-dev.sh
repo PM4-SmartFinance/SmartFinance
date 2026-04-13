@@ -23,11 +23,11 @@ docker compose -f docker-compose.dev.yml up -d
 echo "Waiting for PostgreSQL to be ready..."
 for i in {30..1}; do
   if docker exec smartfinance-postgres-1 pg_isready -U smartfinance > /dev/null 2>&1; then
-    echo "✓ Database is ready"
+    echo "Database is ready"
     break
   fi
   if [ $i -eq 1 ]; then
-    echo "❌ Database failed to start!"
+    echo "Database failed to start!"
     exit 1
   fi
   sleep 1
@@ -37,25 +37,19 @@ done
 echo "Running Prisma migrations..."
 cd backend
 if ! bunx --bun prisma migrate deploy; then
-  echo "❌ Migrations failed!"
+  echo "Migrations failed!"
   exit 1
 fi
 
 echo "Seeding development data..."
 if ! bun run prisma/seed.ts; then
-  echo "❌ Seeding failed!"
+  echo "Seeding failed!"
   exit 1
-fi
-
-echo "Verifying seed data..."
-if ! bun run ../scripts/debug-auth.ts > /dev/null 2>&1; then
-  echo "⚠️  Warning: Could not verify seed data."
-  echo "Run: bun run scripts/debug-auth.ts"
 fi
 cd ..
 
 echo ""
-echo "✅ Setup Successful!"
+echo "Setup successful!"
 echo ""
 echo "To start development servers, run these in separate terminals:"
 echo "  bun run --filter @smartfinance/backend dev"

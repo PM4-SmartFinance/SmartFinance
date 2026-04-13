@@ -35,16 +35,9 @@ bunx --bun prisma migrate deploy
 
 echo "Seeding development data..."
 if ! bun run prisma/seed.ts; then
-  echo "❌ Seeding failed! Check database and try again."
+	echo "Seeding failed! Check database and try again."
   cd ..
   exit 1
-fi
-
-echo "Verifying seed data in database..."
-if ! bun run ../scripts/debug-auth.ts > /dev/null 2>&1; then
-  echo "⚠️  Warning: Seed verification failed."
-  echo "Run: bun run scripts/debug-auth.ts"
-  echo "to see detailed diagnostics."
 fi
 
 cd ..
