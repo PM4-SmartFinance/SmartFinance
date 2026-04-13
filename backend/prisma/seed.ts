@@ -84,7 +84,6 @@ async function main() {
     });
 
     // 4. Seed user
-    console.log("Creating development user...");
     const hashedPassword = await argon2.hash("password123");
     const user = await prisma.dimUser.upsert({
       where: { email: "dev@smartfinance.local" },
@@ -96,10 +95,8 @@ async function main() {
         defaultCurrencyId: chf.id,
       },
     });
-    console.log(`  + User: ${user.email}`);
 
     // 5. Seed account
-    console.log("Creating user account...");
     const account = await prisma.dimAccount.upsert({
       where: { userId_iban: { userId: user.id, iban: "CH93 0076 2011 6238 5295 7" } },
       update: {},
@@ -110,10 +107,8 @@ async function main() {
         userId: user.id,
       },
     });
-    console.log(`  + Account: ${account.name} (${account.iban})`);
 
     // 6. Seed a specific User-Owned Category (Example of custom category)
-    console.log("Creating user-owned category...");
     const userCategory = await prisma.dimCategory.upsert({
       where: { userId_categoryName: { userId: user.id, categoryName: "Hobby" } },
       update: {},
@@ -122,7 +117,6 @@ async function main() {
         userId: user.id,
       },
     });
-    console.log(`  + User Category: ${userCategory.categoryName}`);
 
     // 7. Seed merchant
     let merchant = await prisma.dimMerchant.findFirst({
@@ -138,7 +132,6 @@ async function main() {
 
     // 8. Seed merchant-category mapping
     // Note: We use the user-owned category created in step 6
-    console.log("Creating merchant-category mapping...");
     await prisma.userMerchantMapping.upsert({
       where: { userId_merchantId: { userId: user.id, merchantId: merchant.id } },
       update: { categoryId: userCategory.id },
@@ -148,7 +141,6 @@ async function main() {
         categoryId: userCategory.id,
       },
     });
-    console.log(`  + Merchant Mapping: ${merchant.name} -> ${userCategory.categoryName}`);
 
     // 9. Seed transaction
     const existingTx = await prisma.factTransactions.findFirst({
