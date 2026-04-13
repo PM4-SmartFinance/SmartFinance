@@ -37,5 +37,14 @@ pnpm-lock.yaml
 # MCP
 .mcp.json
 
+# Docker
+docker-compose.local.yml
+
 # Wiki (separate git repo)
 wiki/
+
+# Claude Code (developer-specific)
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/issues/
+.claude/review/

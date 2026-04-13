@@ -10,22 +10,25 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "test:stress": "vitest run --config vitest.config.ts --include 'test/**/*.stress.spec.ts' --exclude ''",
+    "test:db:up": "docker compose -f ../docker-compose.test.yml up -d --wait",
+    "test:db:down": "docker compose -f ../docker-compose.test.yml down -v"
   },
   "dependencies": {
+    "@fastify/multipart": "^9.4.0",
+    "@fastify/rate-limit": "^10.3.0",
     "@fastify/secure-session": "^8.3.0",
     "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
     "argon2": "^0.44.0",
     "dotenv": "^17.3.1",
-    "fastify": "^5.8.2",
-    "pg": "^8.20.0"
+    "fastify": "^5.8.4",
+    "pg": "^8.20.0",
+    "prisma": "^7.5.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "@vitest/coverage-v8": "^4.0.18",
-    "@vitest/ui": "^4.0.18",
-    "tsx": "^4.21.0",
-    "vitest": "^4.0.18"
+    "tsx": "^4.21.0"
   }
 }

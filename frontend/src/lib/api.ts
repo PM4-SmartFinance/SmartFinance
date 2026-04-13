@@ -1,4 +1,4 @@
-const BASE_URL = "/api/v1";
+const BASE_URL = `${import.meta.env.VITE_API_BASE_URL ?? ""}/api/v1`;
 
 export class ApiError extends Error {
   constructor(
@@ -12,13 +12,16 @@ export class ApiError extends Error {
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const isFormData = init?.body instanceof FormData;
+  const hasBody = init?.body != null;
   const response = await fetch(`${BASE_URL}${path}`, {
     ...init,
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
+    headers: isFormData
+      ? (init?.headers ?? {})
+      : hasBody
+        ? { "Content-Type": "application/json", ...init?.headers }
+        : (init?.headers ?? {}),
   });
 
   if (!response.ok) {
@@ -28,7 +31,8 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       // non-JSON error body — leave as null
     }
-    const message = (body as { message?: string } | null)?.message ?? response.statusText;
+    const message =
+      (body as { error?: { message?: string } } | null)?.error?.message ?? response.statusText;
     throw new ApiError(response.status, body, message);
   }
 
@@ -58,4 +62,7 @@ export const api = {
     }),
 
   delete: <T>(path: string, init?: RequestInit) => apiFetch<T>(path, { ...init, method: "DELETE" }),
+
+  upload: <T>(path: string, formData: FormData) =>
+    apiFetch<T>(path, { method: "POST", body: formData }),
 };

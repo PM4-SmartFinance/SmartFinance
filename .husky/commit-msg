@@ -1,0 +1,25 @@
+#!/bin/sh
+
+commit_msg=$(cat "$1")
+
+# Allow merge commits and revert commits through without validation
+case "$commit_msg" in
+  Merge*|Revert*) exit 0 ;;
+esac
+
+pattern='^(feat|fix|docs|style|refactor|test|chore)\((frontend|backend|docker|db|root)\): \[KAN-[0-9]+\] .+'
+
+if ! echo "$commit_msg" | grep -qE "$pattern"; then
+  echo ""
+  echo "ERROR: Invalid commit message format."
+  echo ""
+  echo "  Expected: <type>(<scope>): [KAN-<id>] <subject>"
+  echo "  Example:  feat(backend): [KAN-10] implement RBAC middleware"
+  echo ""
+  echo "  Types:  feat | fix | docs | style | refactor | test | chore"
+  echo "  Scopes: frontend | backend | docker | db | root"
+  echo ""
+  echo "  Your message: $commit_msg"
+  echo ""
+  exit 1
+fi

@@ -21,8 +21,14 @@
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  width: 100%;
+}
 body {
   margin: 0;
+  display: block;
   background: var(--wf-bg);
   font-family: var(--wf-font);
   color: var(--wf-text);
@@ -47,7 +53,7 @@ body {
   color: #b2dfdb;
 }
 
-.wf-app-nav button {
+.wf-app-nav a {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.25);
   color: #b0bec5;
@@ -56,10 +62,11 @@ body {
   font-family: var(--wf-font);
   font-size: 11px;
   cursor: pointer;
+  text-decoration: none;
 }
 
-.wf-app-nav button.active,
-.wf-app-nav button:hover {
+.wf-app-nav a.active,
+.wf-app-nav a:hover {
   background: #455a64;
   color: #fff;
   border-color: rgba(255, 255, 255, 0.5);
@@ -352,7 +359,8 @@ body {
   display: flex;
   align-items: flex-end;
   gap: 7px;
-  height: 70px;
+  height: 90px;
+  overflow: hidden;
 }
 
 .wf-chart-bar {

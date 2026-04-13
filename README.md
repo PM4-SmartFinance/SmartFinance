@@ -1,227 +1,133 @@
 # SmartFinance
 
-A self-hosted personal finance management platform for importing, categorizing, and visualizing bank transactions. Academic semester project (PM4) at ZHAW School of Engineering.
+> A self-hosted personal finance management platform for importing, categorizing, and visualizing bank transactions.
+
+Academic semester project (PM4) at ZHAW School of Engineering.
+
+## At a Glance
+
+[![Latest release](https://img.shields.io/github/v/release/PM4-SmartFinance/SmartFinance?label=latest%20release)](https://github.com/PM4-SmartFinance/SmartFinance/releases)
+[![CI on main](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/ci.yml?query=branch%3Amain)
+[![Release / CD](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/cd.yml/badge.svg)](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/cd.yml)
+
+## Project Status
+
+**Current version:** See the latest release badge above.  
+**Production branch:** `main`  
+**Staging branch:** `develop`
+
+| Branch    | CI Status                                                                                                                                                                                                                | CD Status                                                                                                                                                                         |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `main`    | [![CI on main](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/ci.yml?query=branch%3Amain)          | [![Release / CD](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/cd.yml/badge.svg)](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/cd.yml) |
+| `develop` | [![CI on develop](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/ci.yml?query=branch%3Adevelop) | Not applicable; CD is triggered by published releases from `main`                                                                                                                 |
+
+The badges above reflect the latest GitHub Actions results for each branch. CI runs on both `main` and `develop`; CD is release-driven and publishes Docker images when a GitHub Release is published.
+
+## Start Here
+
+Choose the path that matches what you want to do.
+
+| If you want to...                | Do this                             |
+| -------------------------------- | ----------------------------------- |
+| Use the app on your own machine  | Follow the self-hosting steps below |
+| Develop or contribute            | Follow the contributor steps below  |
+| Check the full technical details | Open the wiki links at the bottom   |
+
+> Windows note: self-hosting uses a `.bat` file and does not require WSL2. Development on Windows still assumes WSL2 because the scripts are shell-based.
 
 ## Prerequisites
 
-- [Bun](https://bun.sh/) (v1.2+) — used as package manager and script runner
-- [Node.js](https://nodejs.org/) (v22 LTS) — runtime for backend tooling (pinned via `.tool-versions`)
-- [Docker](https://www.docker.com/) & Docker Compose — for running PostgreSQL and production deployment
+Before running or developing the application, make sure these are installed.
 
-## Project Structure
+| Tool                    | Needed for                              | Get it                                                                                                                                        |
+| ----------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Docker & Docker Compose | Running the app locally or self-hosting | [Download Docker Desktop](https://www.docker.com/products/docker-desktop/).                                                                   |
+| Bun (v1.2+)             | Development and local scripts           | [Install Bun](https://bun.sh/docs/installation).                                                                                              |
+| Node.js (v22 LTS)       | Backend tooling                         | [Download Node.js](https://nodejs.org/en/download).                                                                                           |
 
-```
-SmartFinance/
-├── frontend/          # React + TypeScript + Vite (PWA)
-├── backend/           # Node.js REST API (Fastify)
-├── docker/            # Dockerfiles and Docker Compose config
-├── wiki/              # Project documentation (separate git repo)
-├── package.json       # Root workspace config and shared scripts
-├── tsconfig.base.json # Shared TypeScript base config (strict mode)
-├── eslint.config.mjs  # Shared ESLint flat config
-├── .prettierrc        # Shared Prettier config
-└── .editorconfig      # Editor settings (indent, charset, line endings)
-```
+> Linux users: your distro package manager probably already has this under control, but the links are here anyway for those rare moments when the package manager is feeling dramatic.
 
-This is a **Bun workspaces monorepo**. The root `package.json` defines two workspaces: `frontend/` and `backend/`. Shared dev dependencies (TypeScript, ESLint, Prettier) are installed at the root. Each workspace manages its own application dependencies.
+---
 
-## Quick Start (Docker)
+## Quick Start
 
-Run the full stack from pre-built images — no local toolchain needed. This is what the CD pipeline does on the server.
+### Self-Hosting on Linux or macOS
 
-**Requirements:** Docker v29+ with the Compose plugin.
+1. Open a terminal.
+2. Run the user setup script.
 
 ```bash
-cp .env.example .env   # Copy the example env file and fill in your values
-docker compose up -d   # Start Traefik, PostgreSQL, backend, and frontend
+./scripts/setup-user.sh
 ```
 
-See `.env.example` for all required variables (domain, DB credentials, session secret, GHCR repository).
+3. Open the app in your browser at `http://localhost` or at your configured domain.
 
-## Development Setup
+### Self-Hosting on Windows
 
-For contributors working on the codebase locally.
+1. Open PowerShell or Command Prompt.
+2. Run the Windows setup script.
 
-### 1. Install dependencies
-
-```bash
-bun install
+```dos
+scripts\setup-user.bat
 ```
 
-This installs all dependencies for the root and both workspaces in one step. It also sets up Husky git hooks so that ESLint and Prettier run automatically on every commit via lint-staged.
+3. Open the app in your browser at `http://localhost` or at your configured domain.
 
-### 2. Start the local database
+If you want the full deployment flow, required environment variables, or rollback details, use [Chapter 11: Installation (Deployment)](https://github.com/PM4-SmartFinance/SmartFinance/wiki/11.-Installation-Deployment).
+
+### Contributing on Linux, macOS, or WSL2
+
+1. Open a terminal.
+2. Run the developer setup script.
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d
-cp backend/.env.dev backend/.env
+./scripts/setup-dev.sh
 ```
 
-Run Prisma migrations and seed:
+3. Start the backend and frontend in separate terminals.
 
 ```bash
-cd backend
-bunx prisma migrate deploy
-bunx prisma db seed
-```
-
-### 3. Run the full stack
-
-Run frontend and backend in separate terminals:
-
-```bash
-# Terminal 1 — Backend
 bun run --filter @smartfinance/backend dev
+```
 
-# Terminal 2 — Frontend
+```bash
 bun run --filter @smartfinance/frontend dev
 ```
 
-The frontend dev server runs at `http://localhost:5173`.
+On Windows, this workflow currently assumes WSL2 because the scripts and tooling are shell-based.
 
-### Wireframe preview
+For the complete local setup, test database workflow, and troubleshooting guidance, use [Chapter 11: Installation (Deployment)](https://github.com/PM4-SmartFinance/SmartFinance/wiki/11.-Installation-Deployment) and [Chapter 12: Operation and Support](https://github.com/PM4-SmartFinance/SmartFinance/wiki/12.-Operation-and-Support).
 
-The frontend renders a wireframe preview shell in development. Start the frontend dev server and open `http://localhost:5173` — use the top navigation bar to switch between wireframe views. Source files are in `frontend/src/wireframes/`.
+### Testing
 
-### Stop / reset the database
-
-```bash
-docker compose -f docker-compose.dev.yml down      # Stop PostgreSQL
-docker compose -f docker-compose.dev.yml down -v    # Stop and delete all data
-```
-
-## Available Scripts
-
-Run these from the **project root**:
-
-| Command                | Description                      |
-| ---------------------- | -------------------------------- |
-| `bun run lint`         | Lint all files with ESLint       |
-| `bun run lint:fix`     | Lint and auto-fix issues         |
-| `bun run format`       | Format all files with Prettier   |
-| `bun run format:check` | Check formatting without writing |
-
-Workspace-specific scripts (defined in each workspace's `package.json`) can be run with `--filter`:
+Use these scripts from the repository root:
 
 ```bash
-bun run --filter @smartfinance/frontend <script>
-bun run --filter @smartfinance/backend <script>
+bun run test
+bun run test:coverage
 ```
 
-## Shared Configuration
+Detailed testing conventions are documented in [TEST.md](TEST.md) and the wiki chapters that cover implementation and operations.
 
-### TypeScript (`tsconfig.base.json`)
+### Need a quick sanity check?
 
-Strict base config that both workspaces extend. Key settings:
+After setup, the safest first check is:
 
-- `strict: true` — all strict checks enabled
-- `target: ES2022`, `lib: ES2024` — modern JS output with access to latest APIs (`Object.groupBy`, `Promise.withResolvers`, etc.)
-- `moduleResolution: bundler` — for Vite/bundler compatibility
-- `noUncheckedIndexedAccess: true` — forces null checks on array/object indexed access
-- `exactOptionalPropertyTypes: true` — distinguishes `undefined` from missing properties
+1. Open the app in the browser.
+2. Log in or create the first account.
+3. Confirm the dashboard loads without errors.
+4. If anything fails, use the troubleshooting notes in [Chapter 11](https://github.com/PM4-SmartFinance/SmartFinance/wiki/11.-Installation-Deployment) and [Chapter 12](https://github.com/PM4-SmartFinance/SmartFinance/wiki/12.-Operation-and-Support).
 
-Each workspace should create its own `tsconfig.json` that extends the base:
+---
 
-```jsonc
-// frontend/tsconfig.json
-{
-  "extends": "../tsconfig.base.json",
-  "compilerOptions": {
-    "lib": ["ES2024", "DOM", "DOM.Iterable"],
-    "jsx": "react-jsx",
-    // ... workspace-specific overrides
-  },
-  "include": ["src"],
-}
-```
+## Documentation & Architecture
 
-```jsonc
-// backend/tsconfig.json
-{
-  "extends": "../tsconfig.base.json",
-  "compilerOptions": {
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
-    // ... workspace-specific overrides
-  },
-  "include": ["src"],
-}
-```
+The README stays intentionally short. The wiki is the source of truth for architecture, data model, deployment, and operations.
 
-### ESLint (`eslint.config.mjs`)
-
-ESLint 10 flat config using `defineConfig()` with:
-
-- `@eslint/js` recommended rules
-- `typescript-eslint` recommended rules
-- `@eslint-react/eslint-plugin` recommended rules — scoped to `frontend/**/*.{ts,tsx}`
-- `eslint-plugin-react-hooks` v7 — scoped to `frontend/**/*.{ts,tsx}`, includes React Compiler rules
-- `eslint-plugin-react-refresh` — validates fast refresh compatibility
-- `eslint-config-prettier` — disables rules that conflict with Prettier
-
-### Prettier (`.prettierrc`)
-
-- Semicolons, double quotes, 2-space indent, trailing commas, 100 char print width
-
-### EditorConfig (`.editorconfig`)
-
-- 2-space indent, LF line endings, UTF-8, trim trailing whitespace
-
-## Implementing Frontend and Backend
-
-### Frontend (`frontend/`)
-
-React 19 + TypeScript + Vite application with react-router v7 (data router API).
-
-```
-frontend/src/
-├── components/    # Shared UI components (e.g. ProtectedRoute)
-├── contexts/      # React context providers (e.g. AuthProvider)
-├── pages/         # Route-level page components
-├── router.tsx     # Route config (createBrowserRouter)
-├── App.tsx        # Root component (AuthProvider + RouterProvider)
-└── main.tsx       # Entry point
-```
-
-Key conventions:
-
-- No business logic in React components — all processing happens in the backend
-- Use Zustand for client state, TanStack Query for server state
-- All data flows through the REST API (`/api/v1`)
-- Semantic HTML, accessible form controls
-
-### Backend (`backend/`)
-
-The backend workspace is for the Node.js REST API. To scaffold it:
-
-1. Add dependencies to `backend/package.json` (Fastify, Prisma, etc.)
-2. Create a `backend/tsconfig.json` extending `../tsconfig.base.json` (set `module: nodenext`, `moduleResolution: nodenext`)
-3. Add source code under `backend/src/` following the layered architecture:
-   - `controllers/` — HTTP request/response handling
-   - `services/` — business logic
-   - `repositories/` — data access (Prisma/TypeORM)
-   - `middleware/` — auth, validation, error handling
-4. Add scripts (`dev`, `build`, `start`) to `backend/package.json`
-
-Key conventions:
-
-- All endpoints under `/api/v1`
-- Repository pattern for all database access
-- All write operations within explicit DB transactions
-- Centralized error handling middleware
-- Input validation on all endpoints (server-side)
-
-## Tech Stack
-
-- **Frontend:** React (TypeScript), Vite, PWA
-- **Backend:** Node.js, Fastify, REST API
-- **Database:** PostgreSQL with Prisma or TypeORM
-- **State Management:** Zustand (client), TanStack Query (server)
-- **Deployment:** Docker / Docker Compose
-- **CI:** GitHub Actions (lint, test, build on every PR)
-
-## Links
-
-- **API Documentation:** See [`backend/API.md`](backend/API.md) for all endpoints, request/response formats, and a Postman collection
-- **Jira:** https://smartfinancepm4.atlassian.net/jira/software/projects/KAN/boards/2
-- **Wiki:** See `wiki/` directory for full software guidebook documentation
+- [Wiki home](https://github.com/PM4-SmartFinance/SmartFinance/wiki)
+- [Architecture](https://github.com/PM4-SmartFinance/SmartFinance/wiki/06.-Architecture)
+- [Data model](https://github.com/PM4-SmartFinance/SmartFinance/wiki/09.-Data)
+- [Deployment](https://github.com/PM4-SmartFinance/SmartFinance/wiki/11.-Installation-Deployment)
+- [Operations](https://github.com/PM4-SmartFinance/SmartFinance/wiki/12.-Operation-and-Support)
+- [Decision log](https://github.com/PM4-SmartFinance/SmartFinance/wiki/13.-Decision-Log)
+- [Contributing guide](CONTRIBUTING.md)

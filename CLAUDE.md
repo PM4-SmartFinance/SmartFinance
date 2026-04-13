@@ -9,7 +9,7 @@ A self-hosted personal finance management platform for importing, categorizing, 
 - **Database:** PostgreSQL with ORM (Prisma or TypeORM)
 - **State Management:** Zustand (client state), TanStack Query (server state)
 - **Deployment:** Docker / Docker Compose
-- **CI:** GitHub Actions (lint, test, build on every PR)
+- **CI:** GitHub Actions (lint, test, Docker build on every PR to `main`/`develop`)
 
 ## Project Structure
 
@@ -170,6 +170,14 @@ This project uses **Fastify 5** (`fastify@^5.3.0`). Always use Fastify 5 APIs.
 - 85%+ automatic categorization accuracy via rules
 - Deployment reproducible within 30 minutes, max 5 setup steps
 
+## Tasks
+
+Reusable task definitions live in `.claude/tasks/`. When a user says "run task <name>", read and execute `.claude/tasks/<name>.md`.
+
+Available tasks:
+
+- `pr-review` — full PR review against Jira requirements, best practices, and dependency health
+
 ## Running the Project
 
 See `README.md` for two setup paths: **Quick Start (Docker)** for running from pre-built images, or **Development Setup** for local development with Bun.
@@ -181,16 +189,61 @@ See `README.md` for two setup paths: **Quick Start (Docker)** for running from p
 
 ## Git
 
+### Branching Model
+
+Two permanent branches:
+
+- **`main`** (Production) — stable, release-only. Never commit directly. Updated only via release PRs from `develop` at end of sprint.
+- **`develop`** (Pre-Production) — active integration branch. All feature/bugfix PRs target `develop`.
+
+### Branch Rules
+
 - Never add a Co-Authored-By line to commit messages.
-- No direct commits to `main`. All work happens on feature branches.
+- No direct commits to `main` or `develop`. All work happens on feature branches.
+- Feature branches always branch off `develop`, not `main`.
 - Branch naming: `<type>/<JIRA-ID>-<description>` (e.g., `feature/KAN-19-import-adapter-interface`, `bugfix/KAN-22-postgres-connection-timeout`)
   - Types: `feature/`, `bugfix/`, `docs/`, `refactor/`
 - Commit messages follow Conventional Commits with Jira ID: `<type>(<scope>): [<JIRA-ID>] <subject>`
   - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
   - Scopes: `frontend`, `backend`, `docker`, `db`, `root`
   - Example: `feat(backend): [KAN-10] implement RBAC middleware for protected routes`
-- PRs: include Jira ID in title (e.g., `[KAN-23] Define branching strategy`), squash and merge into `main`, delete branch after merge
+- **Stale branches:** PRs from branches that have significantly diverged from `develop` will be rejected. Diverged branches must be rebased or branched into a realign branch. A new Jira ticket must be created for the realignment and linked to the original ticket.
 - Pre-commit hooks (Husky + lint-staged) auto-format and lint staged files. Never bypass with `--no-verify`.
+
+### Pull Requests
+
+- PRs target `develop` (not `main`). Release PRs from `develop` → `main` happen at end of sprint.
+- Include Jira ID in title (e.g., `[KAN-23] Define branching strategy`), squash and merge, delete branch after merge.
+- **Deadline:** No new PRs on Friday mornings. Cutoff for PR creation is **Thursday 20:00**.
+- **Approval:** Every PR requires explicit approval from the Project Owner.
+- **PR Description Template:**
+
+  ```markdown
+  ## Summary
+
+  <1–3 sentences: what was done and why>
+
+  ## Changes
+
+  - **[scope]** [concrete change description]
+  - **[scope]** [concrete change description]
+
+  ## Verified
+
+  - [x] bun install succeeds
+  - [x] [add specific verification checks]
+
+  ## Notes
+
+  <optional: trade-offs, follow-ups, or decisions for reviewers>
+  ```
+
+- CI status checks (Docker build, lint, tests) must pass before merging.
+
+### Releases
+
+- At sprint end, create a release PR from `develop` → `main`.
+- After merging, create a version tag (e.g., `v2.0.0`) via GitHub Releases pointing to `main`.
 
 ### Pull Request Description Template
 
