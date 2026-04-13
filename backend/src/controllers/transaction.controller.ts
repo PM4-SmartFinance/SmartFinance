@@ -18,6 +18,7 @@ interface ListTransactionsQuery {
   categoryId?: string;
   minAmount?: number;
   maxAmount?: number;
+  search?: string;
 }
 
 const FORMAT_ENCODING: Record<ImportFormat, string> = {
@@ -40,6 +41,7 @@ const listTransactionsSchema = {
       categoryId: { type: "string" },
       minAmount: { type: "number" },
       maxAmount: { type: "number" },
+      search: { type: "string", minLength: 1, maxLength: 200 },
     },
   },
 } as const;
