@@ -25,12 +25,20 @@ rm -rf node_modules backend/node_modules frontend/node_modules
 echo "Reinstalling dependencies with Bun..."
 bun install
 
+echo "Ensuring backend Prisma module links..."
+mkdir -p backend/node_modules
+ln -sfn ../../node_modules/@prisma backend/node_modules/@prisma
+ln -sfn ../../node_modules/prisma backend/node_modules/prisma
+
 echo "Restarting development database..."
 docker compose -f docker-compose.dev.yml down -v
 docker compose -f docker-compose.dev.yml up -d --wait
 
-echo "Running Prisma migrations..."
+echo "Generating Prisma client..."
 cd backend
+bunx --bun prisma generate
+
+echo "Running Prisma migrations..."
 bunx --bun prisma migrate deploy
 
 echo "Seeding development data..."
