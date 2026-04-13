@@ -40,7 +40,7 @@ services:
       - internal
 
   backend:
-    image: ghcr.io/${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}/backend:latest
+    image: ghcr.io/${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}/backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -62,7 +62,7 @@ services:
       - proxy
 
   frontend:
-    image: ghcr.io/${GITHUB_REPOSITORY}/frontend:latest
+    image: ghcr.io/${GITHUB_REPOSITORY}/frontend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     labels:
       - traefik.enable=true
