@@ -6,9 +6,12 @@ We tightly integrate GitHub with Jira. By including Jira ticket IDs in our branc
 
 ## 1. Branching Workflow
 
-The `main` branch is the single source of truth and must always be in a deployable state. Direct commits to `main` are strictly prohibited.
+SmartFinance uses two permanent branches:
 
-All new development must happen in isolated branches created from the latest `main`.
+- **`main`** (Production) — Stable, release-only. Never commit directly. Updated only via release PRs from `develop` at end of sprint.
+- **`develop`** (Pre-Production/Staging) — Active integration branch. All feature/bugfix PRs target `develop` for testing before release.
+
+All new development must happen in isolated branches created from the latest `develop`. Direct commits to `main` or `develop` are strictly prohibited.
 
 ## 2. Branch Naming Conventions
 
@@ -47,31 +50,43 @@ Format: `<type>(<scope>): [<JIRA-ID>] <subject>`
   - `fix(frontend): [KAN-15] resolve layout shift on mobile dashboard`
   - `docs(root): [KAN-23] add CONTRIBUTING.md with team branching strategy`
 
-* **Types:**
-  - `feat`: A new feature
-  - `fix`: A bug fix
-  - `docs`: Documentation only changes
-  - `style`: Changes that do not affect the meaning of the code (formatting)
-  - `refactor`: A code change that neither fixes a bug nor adds a feature
-  - `test`: Adding missing tests or correcting existing tests
-  - `chore`: Changes to the build process or auxiliary tools
-
-* **Scopes (Optional):** Indicate the part of the monorepo affected (e.g., `frontend`, `backend`, `docker`, `db`, `root`).
-
-* **Examples:**
-  - `feat(backend): [KAN-10] implement RBAC middleware for protected routes`
-  - `fix(frontend): [KAN-15] resolve layout shift on mobile dashboard`
-  - `docs(root): [KAN-23] add CONTRIBUTING.md with team branching strategy`
-
 ## 4. Pull Request (PR) Process
 
-1. Open a PR against the `main` branch once your feature or fix is complete.
+1. Open a PR against the `develop` branch once your feature or fix is complete.
 2. Include the Jira ticket ID in the PR title (e.g., `[KAN-23] Define branching strategy`). This automatically links the PR to Jira.
 3. Ensure the automated CI pipeline passes successfully.
 4. Request a review from at least one other team member.
 5. Address any feedback and update the branch.
-6. Once approved, use **Squash and Merge** to integrate your code into `main`.
+6. Once approved, use **Squash and Merge** to integrate your code into `develop`.
 7. Delete the feature branch after merging.
+
+**PR Deadline:** All PRs must be submitted by **Thursday 20:00** to allow sufficient review time before sprint closure. PRs submitted after this deadline will be deferred to the next sprint.
+
+**Release PRs:** At the end of each sprint, a release PR is created from `develop` → `main`. This is the only time code is merged into `main`.
+
+### PR Description Template
+
+Use this template for all PR descriptions:
+
+```markdown
+## Summary
+
+<1–3 sentences: what was done and why>
+
+## Changes
+
+- **[scope]** [concrete change description]
+- **[scope]** [concrete change description]
+
+## Verified
+
+- [x] bun install succeeds
+- [x] [add specific verification checks]
+
+## Notes
+
+<optional: trade-offs, follow-ups, or decisions for reviewers>
+```
 
 ## 5. Pre-commit Hooks and Linting
 
