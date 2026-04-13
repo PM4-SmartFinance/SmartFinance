@@ -15,7 +15,6 @@ const TEXT = {
   heading: "Dashboard",
   subtitle: "View your financial overview at a glance",
   greeting: "Welcome back",
-  profile: "Profile",
   signOut: "Sign out",
   signingOut: "Signing out…",
 } as const;
@@ -50,17 +49,26 @@ export function DashboardPage() {
               {user ? `${TEXT.greeting}, ${user.email}` : TEXT.subtitle}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Link
-              to="/profile"
-              className="inline-flex h-8 items-center rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
-            >
-              {TEXT.profile}
-            </Link>
+          <nav className="flex items-center gap-1">
+            {[
+              { to: "/transactions", label: "Transactions" },
+              { to: "/budgets", label: "Budgets" },
+              { to: "/categories", label: "Categories" },
+              { to: "/profile", label: "Profile" },
+              ...(user?.role === "ADMIN" ? [{ to: "/admin/users", label: "Users" }] : []),
+            ].map(({ to, label }) => (
+              <Link
+                key={to}
+                to={to}
+                className="inline-flex h-8 items-center rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                {label}
+              </Link>
+            ))}
             <Button variant="outline" size="sm" disabled={isPending} onClick={() => logout()}>
               {isPending ? TEXT.signingOut : TEXT.signOut}
             </Button>
-          </div>
+          </nav>
         </header>
 
         {/* ── Date Range Picker ── */}
@@ -82,36 +90,40 @@ export function DashboardPage() {
           <CategoryBreakdownChart />
 
           {/* ── Recent Transactions (Full Width) ── */}
-          <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
-            <CardHeader>
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider">
-                Recent Transactions
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex min-h-48 items-center justify-center rounded bg-muted/30 px-4 text-center">
-                <div className="text-sm italic text-muted-foreground">
-                  📋 Transaction list table (Date, Description, Category, Amount, Status)
+          <Link to="/transactions" className="col-span-1 sm:col-span-2 lg:col-span-3">
+            <Card className="transition-colors hover:border-foreground/20">
+              <CardHeader>
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider">
+                  Recent Transactions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex min-h-48 items-center justify-center rounded bg-muted/30 px-4 text-center">
+                  <div className="text-sm italic text-muted-foreground">
+                    Transaction list table (Date, Description, Category, Amount, Status)
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Link>
 
           {/* ── Budget Progress (Full Width) ── */}
-          <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
-            <CardHeader>
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider">
-                Budget Progress
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex min-h-48 items-center justify-center rounded bg-muted/30 px-4 text-center">
-                <div className="text-sm italic text-muted-foreground">
-                  📈 Budget progress bars (Category name, progress % bar, spent vs. limit)
+          <Link to="/budgets" className="col-span-1 sm:col-span-2 lg:col-span-3">
+            <Card className="transition-colors hover:border-foreground/20">
+              <CardHeader>
+                <CardTitle className="text-xs font-semibold uppercase tracking-wider">
+                  Budget Progress
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex min-h-48 items-center justify-center rounded bg-muted/30 px-4 text-center">
+                  <div className="text-sm italic text-muted-foreground">
+                    Budget progress bars (Category name, progress % bar, spent vs. limit)
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Link>
 
           {/* ── CSV Import ── */}
           <CsvImportCard />

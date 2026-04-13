@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter } from "react-router";
 import { TransactionsPage } from "./TransactionsPage";
 import { useTransactionsStore } from "../store/transactionsStore";
 import * as apiModule from "../lib/api";
@@ -82,7 +83,9 @@ describe("TransactionsPage", () => {
   const renderTransactionsPage = () => {
     return render(
       <QueryClientProvider client={queryClient}>
-        <TransactionsPage />
+        <BrowserRouter>
+          <TransactionsPage />
+        </BrowserRouter>
       </QueryClientProvider>,
     );
   };
@@ -190,6 +193,9 @@ describe("TransactionsPage", () => {
     const categorySelect = screen.getByLabelText("Category") as HTMLSelectElement;
     await userEvent.selectOptions(categorySelect, "cat-1");
 
+    const applyButton = screen.getByRole("button", { name: "Apply" });
+    await userEvent.click(applyButton);
+
     await waitFor(() => {
       const calls = vi.mocked(apiModule.api.get).mock.calls;
       expect(calls.length).toBeGreaterThan(0);
@@ -210,7 +216,9 @@ describe("TransactionsPage", () => {
     const startDateInput = screen.getByLabelText("Start Date") as HTMLInputElement;
     const endDateInput = screen.getByLabelText("End Date") as HTMLInputElement;
 
+    await userEvent.clear(startDateInput);
     await userEvent.type(startDateInput, "2026-03-01");
+    await userEvent.clear(endDateInput);
     await userEvent.type(endDateInput, "2026-04-30");
 
     const applyButton = screen.getByRole("button", { name: "Apply" });
