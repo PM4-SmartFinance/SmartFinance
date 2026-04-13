@@ -17,6 +17,7 @@ export interface ListTransactionsParams {
   categoryId?: string;
   minAmount?: number;
   maxAmount?: number;
+  search?: string;
 }
 
 function dateStringToId(s: string): number {
@@ -53,6 +54,7 @@ export async function listTransactions(params: ListTransactionsParams) {
     categoryId,
     minAmount,
     maxAmount,
+    search,
   } = params;
 
   if (minAmount !== undefined && maxAmount !== undefined && minAmount > maxAmount) {
@@ -75,11 +77,10 @@ export async function listTransactions(params: ListTransactionsParams) {
     };
   }
 
-  if (categoryId) {
+  if (categoryId || search) {
     where.merchant = {
-      mappings: {
-        some: { userId, categoryId },
-      },
+      ...(search ? { name: { contains: search, mode: "insensitive" as const } } : {}),
+      ...(categoryId ? { mappings: { some: { userId, categoryId } } } : {}),
     };
   }
 

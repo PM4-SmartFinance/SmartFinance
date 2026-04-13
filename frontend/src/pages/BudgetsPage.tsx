@@ -7,10 +7,10 @@ import { BudgetProgressCard } from "../components/BudgetProgressCard";
 import { CreateEditBudgetDialog } from "../components/CreateEditBudgetDialog";
 import { DeleteBudgetDialog } from "../components/DeleteBudgetDialog";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router";
+import { Link } from "react-router";
+import { ArrowLeft } from "lucide-react";
 
 export function BudgetsPage() {
-  const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -121,9 +121,13 @@ export function BudgetsPage() {
             <p className="text-sm text-muted-foreground">
               Set spending limits per category and monitor progress
             </p>
-            <Button className="mt-2 w-fit" size="sm" onClick={() => navigate("/")}>
+            <Link
+              to="/"
+              className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="size-4" />
               Back to Dashboard
-            </Button>
+            </Link>
           </div>
           <Button onClick={handleCreate} size="sm">
             Create Budget
