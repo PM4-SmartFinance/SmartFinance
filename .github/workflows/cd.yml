@@ -8,6 +8,8 @@ on:
       - completed
     branches:
       - main
+  schedule:
+    - cron: "0 2 * * *" # Daily at 02:00 UTC from develop
 
 jobs:
   guard:
@@ -80,9 +82,10 @@ jobs:
           cache-to: type=gha,mode=max,scope=frontend
 
   deploy:
-    name: Deploy to Server
+    name: Deploy to Production
     runs-on: ubuntu-24.04
     needs: docker
+    if: github.event_name == 'release'
     environment: production
     steps:
       - name: Deploy via SSH
@@ -97,4 +100,67 @@ jobs:
             docker compose pull
             docker compose up -d --remove-orphans
             docker compose exec -T backend npx prisma migrate deploy
+            docker image prune -f
+
+  docker-test:
+    name: Build & Push Docker Images (develop)
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'schedule'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository }}/backend:develop
+          cache-from: type=gha,scope=backend-test
+          cache-to: type=gha,mode=max,scope=backend-test
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository }}/frontend:develop
+          cache-from: type=gha,scope=frontend-test
+          cache-to: type=gha,mode=max,scope=frontend-test
+
+  deploy-test:
+    name: Deploy to Test Environment
+    runs-on: ubuntu-24.04
+    needs: docker-test
+    if: github.event_name == 'schedule'
+    environment: test
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            cd /opt/smartfinance-test
+            IMAGE_TAG=develop docker compose pull
+            IMAGE_TAG=develop docker compose up -d --remove-orphans
+            IMAGE_TAG=develop docker compose exec -T backend npx prisma migrate deploy
             docker image prune -f
