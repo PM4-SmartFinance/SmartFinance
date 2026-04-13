@@ -10,6 +10,8 @@ on:
       - main
   schedule:
     - cron: "0 2 * * *" # Daily at 02:00 UTC from develop
+  release:
+    types: [published]
 
 jobs:
   docker:
