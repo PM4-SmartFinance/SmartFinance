@@ -1,6 +1,7 @@
 import argon2 from "argon2";
 import { ServiceError } from "../errors.js";
 import * as userRepository from "../repositories/user.repository.js";
+import * as categoryService from "./category.service.js";
 import {
   BootstrapForbiddenError,
   BootstrapUnauthorizedError,
@@ -70,7 +71,7 @@ export async function onboardUser(
     throw new ServiceError(500, `Default currency ${DEFAULT_CURRENCY_CODE} not configured`);
   }
 
-  let user;
+  let user: Awaited<ReturnType<typeof userRepository.createUserAtomic>>;
   try {
     user = await userRepository.createUserAtomic(requestingUser, {
       email: payload.email,
@@ -79,6 +80,18 @@ export async function onboardUser(
       ...(payload.displayName !== undefined && { name: payload.displayName }),
       ...(payload.role !== undefined && { role: payload.role }),
     });
+    const defaultCategories = ["Groceries", "Housing", "Transport", "Entertainment", "Income"];
+
+    await Promise.all(
+      defaultCategories.map((categoryName) =>
+        categoryService.createCategory(categoryName, user.id).catch((err) => {
+          console.error(
+            `Failed to create default category ${categoryName} for user ${user.id}`,
+            err,
+          );
+        }),
+      ),
+    );
   } catch (err) {
     if (err instanceof BootstrapUnauthorizedError) throw new ServiceError(401, "Unauthorized");
     if (err instanceof BootstrapForbiddenError) throw new ServiceError(403, "Forbidden");
