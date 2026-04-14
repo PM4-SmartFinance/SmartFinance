@@ -23,31 +23,7 @@ async function main() {
   console.log("Starting database seeding...");
 
   await prisma.$transaction(async (prisma) => {
-    // 1. Seed Global Categories (Available to everyone)
-    console.log("Creating global categories...");
-    for (const cat of DEFAULT_CATEGORIES) {
-      // Check if this global category already exists
-      const existing = await prisma.dimCategory.findFirst({
-        where: {
-          categoryName: cat.categoryName,
-          userId: null,
-        },
-      });
-
-      if (!existing) {
-        await prisma.dimCategory.create({
-          data: {
-            categoryName: cat.categoryName,
-            userId: null,
-          },
-        });
-        console.log(`  + Created global category: ${cat.categoryName}`);
-      } else {
-        console.log(`  - Global category already exists: ${cat.categoryName}`);
-      }
-    }
-
-    // 2. Seed currencies
+    // 1. Seed currencies
     const chf = await prisma.dimCurrency.upsert({
       where: { code: "CHF" },
       update: {},
@@ -66,7 +42,7 @@ async function main() {
       create: { code: "USD", name: "US Dollar", format: "$1,234.56" },
     });
 
-    // 3. Seed date dimension
+    // 2. Seed date dimension
     const today = new Date();
     const dateId = parseInt(
       `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`,
@@ -83,7 +59,7 @@ async function main() {
       },
     });
 
-    // 4. Seed user
+    // 3. Seed user
     const hashedPassword = await argon2.hash("password123");
     const user = await prisma.dimUser.upsert({
       where: { email: "dev@smartfinance.local" },
@@ -95,6 +71,20 @@ async function main() {
         defaultCurrencyId: chf.id,
       },
     });
+
+    // 4. Seed User's Default Categories
+    console.log("Creating default categories for dev user...");
+    for (const cat of DEFAULT_CATEGORIES) {
+      await prisma.dimCategory.upsert({
+        where: { userId_categoryName: { userId: user.id, categoryName: cat.categoryName } },
+        update: {},
+        create: {
+          categoryName: cat.categoryName,
+          userId: user.id,
+        },
+      });
+      console.log(`  + Ensured category: ${cat.categoryName}`);
+    }
 
     // 5. Seed account
     const account = await prisma.dimAccount.upsert({
@@ -160,6 +150,7 @@ async function main() {
           accountId: account.id,
           merchantId: merchant.id,
           dateId: dimDate.id,
+          categoryId: userCategory.id,
         },
       });
       console.log("  + Created test transaction");
