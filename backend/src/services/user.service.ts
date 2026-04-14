@@ -1,5 +1,6 @@
 import argon2 from "argon2";
 import { ServiceError } from "../errors.js";
+import { Prisma } from "@prisma/client";
 import * as userRepository from "../repositories/user.repository.js";
 import * as categoryService from "./category.service.js";
 import {
@@ -96,6 +97,8 @@ export async function onboardUser(
     if (err instanceof BootstrapUnauthorizedError) throw new ServiceError(401, "Unauthorized");
     if (err instanceof BootstrapForbiddenError) throw new ServiceError(403, "Forbidden");
     if (err instanceof EmailConflictError) throw new ServiceError(409, "Email already in use");
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034")
+      throw new ServiceError(401, "Unauthorized");
     throw err;
   }
 

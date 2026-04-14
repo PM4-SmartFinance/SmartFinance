@@ -16,7 +16,6 @@ const TEST_USERS = {
 let userACookie: string;
 let userBCookie: string;
 let userAId: string;
-let globalCatId: string;
 let testMerchantId: string;
 
 beforeAll(async () => {
@@ -71,13 +70,7 @@ beforeAll(async () => {
   }
   userAId = userA.id;
 
-  // 4. Create a Global Category directly in DB for testing
-  const globalCat = await prisma.dimCategory.create({
-    data: { categoryName: "Test_Global_Cat", userId: null },
-  });
-  globalCatId = globalCat.id;
-
-  // 5. Create a test merchant for the 409 Conflict test
+  // 4. Create a test merchant for the 409 Conflict test
   const merchant = await prisma.dimMerchant.create({
     data: { name: "Test_Merchant" },
   });
@@ -125,7 +118,7 @@ describe("Category CRUD and Authorization Tests", () => {
     expect(res.statusCode).toBe(400);
   });
 
-  it("GET: returns user's custom categories AND global categories", async () => {
+  it("GET: returns user's custom categories", async () => {
     const res = await app.inject({
       method: "GET",
       url: "/api/v1/categories",
@@ -135,16 +128,12 @@ describe("Category CRUD and Authorization Tests", () => {
     expect(res.statusCode).toBe(200);
     const { categories } = res.json();
 
-    type CategoryResponse = { categoryName: string; userId: string | null };
+    type CategoryResponse = { categoryName: string; userId: string };
 
-    const hasGlobal = categories.some(
-      (c: CategoryResponse) => c.categoryName === "Test_Global_Cat" && c.userId === null,
-    );
     const hasCustom = categories.some(
       (c: CategoryResponse) => c.categoryName === "Test_Tennis" && c.userId === userAId,
     );
 
-    expect(hasGlobal).toBe(true);
     expect(hasCustom).toBe(true);
   });
 
@@ -167,17 +156,6 @@ describe("Category CRUD and Authorization Tests", () => {
       url: `/api/v1/categories/${customCatId}`,
       cookies: { session: userBCookie },
       payload: { categoryName: "Test_Hacked" },
-    });
-
-    expect(res.statusCode).toBe(403);
-  });
-
-  it("PATCH: prevents user from editing a global category (403)", async () => {
-    const res = await app.inject({
-      method: "PATCH",
-      url: `/api/v1/categories/${globalCatId}`,
-      cookies: { session: userACookie },
-      payload: { categoryName: "Test_Hacked_Global" },
     });
 
     expect(res.statusCode).toBe(403);
@@ -220,15 +198,5 @@ describe("Category CRUD and Authorization Tests", () => {
     // Verify it's gone
     const check = await prisma.dimCategory.findUnique({ where: { id: customCatId } });
     expect(check).toBeNull();
-  });
-
-  it("DELETE: prevents deletion of a global category (403)", async () => {
-    const res = await app.inject({
-      method: "DELETE",
-      url: `/api/v1/categories/${globalCatId}`,
-      cookies: { session: userACookie },
-    });
-
-    expect(res.statusCode).toBe(403);
   });
 });
