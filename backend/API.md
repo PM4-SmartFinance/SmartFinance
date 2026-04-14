@@ -698,7 +698,7 @@ All category endpoints require an authenticated session with the `USER` role.
 
 ### GET /categories
 
-Returns all categories available to the authenticated user — both global system categories (`userId: null`) and the user's custom categories.
+Returns all categories available to the authenticated user — this includes their generated default examples and any custom categories they have created.
 
 **Response 200:**
 
@@ -707,7 +707,7 @@ Returns all categories available to the authenticated user — both global syste
   {
     "id": "uuid",
     "categoryName": "Groceries",
-    "userId": null,
+    "userId": "uuid",
     "createdAt": "2026-03-29T10:00:00.000Z",
     "updatedAt": "2026-03-29T10:00:00.000Z"
   },
@@ -751,7 +751,7 @@ Creates a new custom category for the authenticated user.
 
 ### PATCH /categories/:id
 
-Updates the name of a user's own custom category. Global categories cannot be modified.
+Updates the name of a user's own custom category.
 
 **Request Body:**
 
@@ -773,20 +773,20 @@ Updates the name of a user's own custom category. Global categories cannot be mo
 
 **Response 400:** Missing or invalid `categoryName`, or invalid UUID
 **Response 401:** Not authenticated
-**Response 403:** Cannot modify global categories or another user's category
+**Response 403:** Cannot modify another user's category
 **Response 404:** Category not found
 
 ### DELETE /categories/:id
 
-Deletes a user's own custom category. Global categories cannot be deleted. Deletion is blocked if the category is referenced by transactions or merchant mappings.
+Deletes a user's own custom category. Deletion is blocked if the category is currently referenced by transactions, budgets, rules, or merchant mappings.
 
 **Response 204:** Category deleted (no body)
 
 **Response 400:** Invalid UUID
 **Response 401:** Not authenticated
-**Response 403:** Cannot delete global categories or another user's category
+**Response 403:** Cannot delete another user's category
 **Response 404:** Category not found
-**Response 409:** Category is in use by transactions or merchant mappings
+**Response 409:** Category is in use by transactions, budgets, rules, or merchant mappings and cannot be deleted
 
 ---
 
