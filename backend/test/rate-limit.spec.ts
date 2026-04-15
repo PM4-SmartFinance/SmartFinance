@@ -1,0 +1,150 @@
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { buildApp } from "../src/app.js";
+import { prisma } from "../src/prisma.js";
+import type { FastifyInstance } from "fastify";
+
+/**
+ * Rate-limit integration tests (KAN-104).
+ *
+ * `buildApp` disables the global rate limiter whenever the process is
+ * running under Vitest so that integration suites don't produce false
+ * 429s from their own burst traffic. That guard also hides real
+ * regressions in brute-force protection, so these tests opt back in via
+ * `buildApp({ forceRateLimit: true })` and verify the per-route limits
+ * declared on `POST /auth/login` and `POST /users` (max 10 per minute).
+ *
+ * Each describe builds its own app so the in-memory rate-limit buckets
+ * are isolated from any other test and from each other.
+ */
+
+type InjectCookie = { name: string; value: string };
+
+const TEST_PASSWORD = "Password123!";
+const LOGIN_EMAIL = "rate-limit-login@example.com";
+const USERS_ADMIN_EMAIL = "rate-limit-users-admin@example.com";
+
+async function ensureCurrency(): Promise<void> {
+  await prisma.dimCurrency.upsert({
+    where: { code: "CHF" },
+    create: { code: "CHF", name: "Swiss Franc", format: "CHF 1'234.56" },
+    update: {},
+  });
+}
+
+async function bootstrapAdmin(
+  app: FastifyInstance,
+  email: string,
+  password: string,
+): Promise<void> {
+  const res = await app.inject({
+    method: "POST",
+    url: "/api/v1/users",
+    payload: { email, password },
+  });
+  if (res.statusCode !== 201) {
+    throw new Error(`Bootstrap failed: ${res.statusCode} ${res.body}`);
+  }
+}
+
+async function loginAs(app: FastifyInstance, email: string, password: string): Promise<string> {
+  const res = await app.inject({
+    method: "POST",
+    url: "/api/v1/auth/login",
+    payload: { email, password },
+  });
+  if (res.statusCode !== 200) {
+    throw new Error(`Login failed: ${res.statusCode} ${res.body}`);
+  }
+  const cookies = (res.cookies as InjectCookie[] | undefined) ?? [];
+  const session = cookies.find((c) => c.name === "session");
+  if (!session) throw new Error("Login succeeded but no session cookie was issued");
+  return session.value;
+}
+
+describe("Rate limit — POST /api/v1/auth/login (max 10 / minute)", () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    await prisma.dimUser.deleteMany();
+    await ensureCurrency();
+    // Force the limiter on despite NODE_ENV=test / VITEST being set.
+    app = await buildApp({ forceRateLimit: true });
+    await app.ready();
+    // Bootstrap counts toward POST /users bucket on this app, but each
+    // describe uses its own app so that does not leak into the /users
+    // test below.
+    await bootstrapAdmin(app, LOGIN_EMAIL, TEST_PASSWORD);
+  });
+
+  afterAll(async () => {
+    await prisma.dimUser.deleteMany({ where: { email: LOGIN_EMAIL } });
+    await app.close();
+  });
+
+  it("allows requests 1 through 10 and returns 429 on request 11", async () => {
+    for (let attempt = 1; attempt <= 10; attempt++) {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email: LOGIN_EMAIL, password: TEST_PASSWORD },
+      });
+      expect(res.statusCode, `login attempt ${attempt} should succeed`).toBe(200);
+    }
+
+    const blocked = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: { email: LOGIN_EMAIL, password: TEST_PASSWORD },
+    });
+    expect(blocked.statusCode).toBe(429);
+  });
+});
+
+describe("Rate limit — POST /api/v1/users (max 10 / minute, admin creation path)", () => {
+  let app: FastifyInstance;
+  let adminSession: string;
+  const createdEmails: string[] = [USERS_ADMIN_EMAIL];
+
+  beforeAll(async () => {
+    await prisma.dimUser.deleteMany();
+    await ensureCurrency();
+    app = await buildApp({ forceRateLimit: true });
+    await app.ready();
+    // Bootstrap is POST /users request #1 against this app's limiter
+    // bucket. The remaining 9 successful creations happen inside the
+    // test body so the assertion covers the explicit 1..10 range.
+    await bootstrapAdmin(app, USERS_ADMIN_EMAIL, TEST_PASSWORD);
+    adminSession = await loginAs(app, USERS_ADMIN_EMAIL, TEST_PASSWORD);
+  });
+
+  afterAll(async () => {
+    await prisma.dimUser.deleteMany({ where: { email: { in: createdEmails } } });
+    await app.close();
+  });
+
+  it("allows requests 1 through 10 (bootstrap + 9 admin creates) and returns 429 on request 11", async () => {
+    // Bootstrap above was request 1. Perform 9 more admin-authenticated
+    // creates to reach the cap.
+    for (let attempt = 2; attempt <= 10; attempt++) {
+      const email = `rate-limit-user-${attempt}@example.com`;
+      createdEmails.push(email);
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/users",
+        payload: { email, password: TEST_PASSWORD },
+        cookies: { session: adminSession },
+      });
+      expect(res.statusCode, `POST /users attempt ${attempt} should succeed`).toBe(201);
+    }
+
+    const blockedEmail = "rate-limit-user-11@example.com";
+    createdEmails.push(blockedEmail);
+    const blocked = await app.inject({
+      method: "POST",
+      url: "/api/v1/users",
+      payload: { email: blockedEmail, password: TEST_PASSWORD },
+      cookies: { session: adminSession },
+    });
+    expect(blocked.statusCode).toBe(429);
+  });
+});

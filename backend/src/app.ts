@@ -14,7 +14,16 @@ import { categoryRuleRoutes } from "./controllers/category-rule.controller.js";
 import { dashboardRoutes } from "./controllers/dashboard.controller.js";
 import { categoryRoutes } from "./controllers/category.controller.js";
 
-export async function buildApp() {
+export interface BuildAppOptions {
+  /**
+   * Force the rate limiter to register even when running under
+   * `NODE_ENV=test` or Vitest. Used by rate-limit integration tests
+   * (KAN-104) so CI catches brute-force-protection regressions.
+   */
+  forceRateLimit?: boolean;
+}
+
+export async function buildApp(options: BuildAppOptions = {}) {
   const app = Fastify({ logger: true });
   setLogger(app.log);
 
@@ -42,9 +51,10 @@ export async function buildApp() {
   //
   // Disabled in the test environment: integration tests legitimately hit
   // these endpoints many times per second via `app.inject`, which would
-  // otherwise trip the limiter and produce false 429s.
+  // otherwise trip the limiter and produce false 429s. Tests that need to
+  // verify the limiter itself pass `forceRateLimit: true` to opt back in.
   const isTest = process.env["NODE_ENV"] === "test" || process.env["VITEST"] !== undefined;
-  if (!isTest) {
+  if (!isTest || options.forceRateLimit) {
     await app.register(rateLimit, {
       global: false,
       max: 100,
