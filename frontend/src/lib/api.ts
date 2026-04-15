@@ -13,12 +13,15 @@ export class ApiError extends Error {
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const isFormData = init?.body instanceof FormData;
+  const hasBody = init?.body != null;
   const response = await fetch(`${BASE_URL}${path}`, {
     ...init,
     credentials: "include",
     headers: isFormData
       ? (init?.headers ?? {})
-      : { "Content-Type": "application/json", ...init?.headers },
+      : hasBody
+        ? { "Content-Type": "application/json", ...init?.headers }
+        : (init?.headers ?? {}),
   });
 
   if (!response.ok) {
