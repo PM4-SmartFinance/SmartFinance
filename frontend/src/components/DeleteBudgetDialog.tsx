@@ -1,5 +1,5 @@
-import { useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { useDialog } from "../hooks/useDialog";
 
 interface DeleteBudgetDialogProps {
   isOpen: boolean;
@@ -22,15 +22,7 @@ export function DeleteBudgetDialog({
   onConfirm,
   onCancel,
 }: DeleteBudgetDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      dialogRef.current?.showModal();
-    } else {
-      dialogRef.current?.close();
-    }
-  }, [isOpen]);
+  const dialogRef = useDialog(isOpen);
 
   const handleConfirmClick = () => {
     onConfirm(budgetId);

@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useCreateBudget, useUpdateBudget } from "../lib/queries/budgets";
 import type { Budget } from "../lib/queries/budgets";
 import { useCategories } from "../lib/queries/categories";
 import { ApiError } from "../lib/api";
+import { useDialog } from "../hooks/useDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,20 +56,11 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
   }, [isOpen, budget]);
 
   const [formState, setFormState] = useState<FormState>(() => getInitialFormState());
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const dialogRef = useDialog(isOpen);
 
   const createMutation = useCreateBudget();
   const updateMutation = useUpdateBudget();
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
-
-  // Manage dialog open/close
-  useEffect(() => {
-    if (isOpen) {
-      dialogRef.current?.showModal();
-    } else {
-      dialogRef.current?.close();
-    }
-  }, [isOpen]);
 
   // Reset form when budget or isOpen changes
   useEffect(() => {
