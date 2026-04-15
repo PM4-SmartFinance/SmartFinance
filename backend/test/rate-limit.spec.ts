@@ -4,17 +4,13 @@ import { prisma } from "../src/prisma.js";
 import type { FastifyInstance } from "fastify";
 
 /**
- * Rate-limit integration tests (KAN-104).
+ * `buildApp` disables the global rate limiter under Vitest so normal
+ * integration suites don't trip 429s. These tests opt back in via
+ * `forceRateLimit: true` to verify the per-route limits on
+ * `POST /auth/login` and `POST /users`.
  *
- * `buildApp` disables the global rate limiter whenever the process is
- * running under Vitest so that integration suites don't produce false
- * 429s from their own burst traffic. That guard also hides real
- * regressions in brute-force protection, so these tests opt back in via
- * `buildApp({ forceRateLimit: true })` and verify the per-route limits
- * declared on `POST /auth/login` and `POST /users` (max 10 per minute).
- *
- * Each describe builds its own app so the in-memory rate-limit buckets
- * are isolated from any other test and from each other.
+ * Each describe builds its own app so the in-memory buckets stay
+ * isolated.
  */
 
 type InjectCookie = { name: string; value: string };
@@ -67,12 +63,8 @@ describe("Rate limit — POST /api/v1/auth/login (max 10 / minute)", () => {
   beforeAll(async () => {
     await prisma.dimUser.deleteMany();
     await ensureCurrency();
-    // Force the limiter on despite NODE_ENV=test / VITEST being set.
     app = await buildApp({ forceRateLimit: true });
     await app.ready();
-    // Bootstrap counts toward POST /users bucket on this app, but each
-    // describe uses its own app so that does not leak into the /users
-    // test below.
     await bootstrapAdmin(app, LOGIN_EMAIL, TEST_PASSWORD);
   });
 
@@ -110,9 +102,8 @@ describe("Rate limit — POST /api/v1/users (max 10 / minute, admin creation pat
     await ensureCurrency();
     app = await buildApp({ forceRateLimit: true });
     await app.ready();
-    // Bootstrap is POST /users request #1 against this app's limiter
-    // bucket. The remaining 9 successful creations happen inside the
-    // test body so the assertion covers the explicit 1..10 range.
+    // Bootstrap counts as request #1 on the /users bucket; the remaining
+    // 9 successful creates happen in the test body to reach the cap.
     await bootstrapAdmin(app, USERS_ADMIN_EMAIL, TEST_PASSWORD);
     adminSession = await loginAs(app, USERS_ADMIN_EMAIL, TEST_PASSWORD);
   });
@@ -123,8 +114,6 @@ describe("Rate limit — POST /api/v1/users (max 10 / minute, admin creation pat
   });
 
   it("allows requests 1 through 10 (bootstrap + 9 admin creates) and returns 429 on request 11", async () => {
-    // Bootstrap above was request 1. Perform 9 more admin-authenticated
-    // creates to reach the cap.
     for (let attempt = 2; attempt <= 10; attempt++) {
       const email = `rate-limit-user-${attempt}@example.com`;
       createdEmails.push(email);
