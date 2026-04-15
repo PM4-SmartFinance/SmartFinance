@@ -17,6 +17,9 @@ jobs:
   docker:
     name: Build & Push Docker Images
     runs-on: ubuntu-24.04
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      github.event_name == 'release'
     permissions:
       contents: read
       packages: write
@@ -94,10 +97,11 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
+            set -euo pipefail
             cd /opt/smartfinance
-            docker compose pull
-            docker compose up -d --remove-orphans
-            docker compose exec -T backend npx prisma migrate deploy
+            IMAGE_TAG=${{ github.ref_name }} docker compose pull
+            IMAGE_TAG=${{ github.ref_name }} docker compose up -d --remove-orphans
+            IMAGE_TAG=${{ github.ref_name }} docker compose exec -T backend npx prisma migrate deploy
             docker image prune -f
 
   docker-test:
