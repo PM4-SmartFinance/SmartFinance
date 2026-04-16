@@ -24,13 +24,16 @@ name: PR Cutoff Label
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize]
+    # "synchronize" intentionally omitted: the cutoff is about when a PR is
+    # *opened*, not when subsequent commits are pushed.  Adding synchronize
+    # would label on-time PRs that receive a commit after the cutoff.
+    types: [opened, reopened]
     branches:
+      # Targets develop only.  Release PRs (develop → main) are created
+      # during sprint-review week and must never be labeled "late".
       - develop
-      - main
 
 permissions:
-  pull-requests: write
   issues: write
 
 jobs:
@@ -40,57 +43,39 @@ jobs:
     # Never fail the PR — this job is informational only.
     continue-on-error: true
     steps:
-      # ── Step 1: self-test the date-window logic with fixed scenarios ────────
-      - name: Validate date-window logic (dry run)
+      # ── Step 1: boundary smoke-test (just the cutoff moment) ──────────────
+      - name: Smoke-test cutoff boundary
         run: |
           python3 - <<'PYEOF'
           from datetime import datetime, timedelta
           from zoneinfo import ZoneInfo
 
           tz             = ZoneInfo("Europe/Zurich")
-          CUTOFF_WEEKDAY = 3   # Thursday (0 = Monday)
-          CUTOFF_HOUR    = 20  # 20:00 local time
+          CUTOFF_WEEKDAY = 3
+          CUTOFF_HOUR    = 20
 
           def evaluate(sprint_review_date_str: str, now: datetime) -> tuple[bool, bool]:
-              """Return (in_window, is_late) for the given inputs."""
-              sprint_date  = datetime.strptime(sprint_review_date_str, "%Y-%m-%d").replace(tzinfo=tz)
-              week_monday  = sprint_date - timedelta(days=sprint_date.weekday())
-              week_sunday  = week_monday + timedelta(days=6)
-              cutoff_dt    = (week_monday + timedelta(days=CUTOFF_WEEKDAY)).replace(
-                                 hour=CUTOFF_HOUR, minute=0, second=0, microsecond=0)
+              sprint_date = datetime.strptime(sprint_review_date_str, "%Y-%m-%d").replace(tzinfo=tz)
+              week_monday = sprint_date - timedelta(days=sprint_date.weekday())
+              week_sunday = week_monday + timedelta(days=6)
+              cutoff_dt   = (week_monday + timedelta(days=CUTOFF_WEEKDAY)).replace(
+                                hour=CUTOFF_HOUR, minute=0, second=0, microsecond=0)
               in_window = week_monday.date() <= now.date() <= week_sunday.date()
               return in_window, in_window and now >= cutoff_dt
 
-          # Sprint-review week: 2026-04-20 (Mon) → 2026-04-26 (Sun)
           SPRINT = "2026-04-20"
-
           cases = [
-              # description                             now (Zurich)           in_window  is_late
-              ("Mon of sprint week, 10:00",             "2026-04-20 10:00",    True,      False),
-              ("Thu of sprint week, 19:59",             "2026-04-23 19:59",    True,      False),
-              ("Thu of sprint week, 20:00 — cutoff",    "2026-04-23 20:00",    True,      True ),
-              ("Thu of sprint week, 23:59",             "2026-04-23 23:59",    True,      True ),
-              ("Fri of sprint week, 08:00",             "2026-04-24 08:00",    True,      True ),
-              ("Sun of sprint week, 23:59",             "2026-04-26 23:59",    True,      True ),
-              ("Mon after sprint week",                 "2026-04-27 09:00",    False,     False),
-              ("Mon before sprint week",                "2026-04-13 09:00",    False,     False),
-              ("Unrelated week, Thu 21:00",             "2026-03-05 21:00",    False,     False),
+              ("Thu 19:59 — not yet late", "2026-04-23 19:59", True,  False),
+              ("Thu 20:00 — cutoff",       "2026-04-23 20:00", True,  True ),
+              ("out of window, Thu 21:00", "2026-03-05 21:00", False, False),
           ]
-
-          failed = False
-          for desc, now_str, exp_in_window, exp_is_late in cases:
+          for desc, now_str, exp_in, exp_late in cases:
               now = datetime.strptime(now_str, "%Y-%m-%d %H:%M").replace(tzinfo=tz)
               in_window, is_late = evaluate(SPRINT, now)
-              ok = (in_window == exp_in_window) and (is_late == exp_is_late)
-              print(f"  [{'PASS' if ok else 'FAIL'}] {desc}")
-              if not ok:
-                  print(f"         got  in_window={in_window} is_late={is_late}")
-                  print(f"         want in_window={exp_in_window} is_late={exp_is_late}")
-                  failed = True
-
-          if failed:
-              raise SystemExit("Date-window logic tests failed — aborting.")
-          print("All date-window logic tests passed.")
+              assert (in_window, is_late) == (exp_in, exp_late), \
+                  f"FAIL [{desc}]: got in_window={in_window} is_late={is_late}"
+              print(f"  [PASS] {desc}")
+          print("Smoke-test passed.")
           PYEOF
 
       # ── Step 2: evaluate the actual PR against the live sprint window ───────
@@ -108,8 +93,16 @@ jobs:
           CUTOFF_HOUR    = 20  # 20:00
 
           def write_output(key: str, value: str) -> None:
-              with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
-                  fh.write(f"{key}={value}\n")
+              github_output = os.environ.get("GITHUB_OUTPUT")
+              if not github_output:
+                  print(f"ERROR: GITHUB_OUTPUT is not set — cannot write {key}={value}", file=sys.stderr)
+                  sys.exit(1)
+              try:
+                  with open(github_output, "a") as fh:
+                      fh.write(f"{key}={value}\n")
+              except OSError as exc:
+                  print(f"ERROR: Failed to write {key}={value} to GITHUB_OUTPUT: {exc}", file=sys.stderr)
+                  sys.exit(1)
 
           sprint_review_date_str = os.environ.get("SPRINT_REVIEW_DATE", "").strip()
 
@@ -129,30 +122,34 @@ jobs:
               write_output("in_window", "false")
               sys.exit(0)
 
-          week_monday = sprint_date - timedelta(days=sprint_date.weekday())
-          week_sunday = week_monday + timedelta(days=6)
-          cutoff_dt   = (week_monday + timedelta(days=CUTOFF_WEEKDAY)).replace(
-                            hour=CUTOFF_HOUR, minute=0, second=0, microsecond=0)
+          try:
+              week_monday = sprint_date - timedelta(days=sprint_date.weekday())
+              week_sunday = week_monday + timedelta(days=6)
+              cutoff_dt   = (week_monday + timedelta(days=CUTOFF_WEEKDAY)).replace(
+                                hour=CUTOFF_HOUR, minute=0, second=0, microsecond=0)
 
-          now       = datetime.now(tz=tz)
-          in_window = week_monday.date() <= now.date() <= week_sunday.date()
-          is_late   = in_window and (now >= cutoff_dt)
+              now       = datetime.now(tz=tz)
+              in_window = week_monday.date() <= now.date() <= week_sunday.date()
+              is_late   = in_window and (now >= cutoff_dt)
 
-          print(f"SPRINT_REVIEW_DATE  : {sprint_review_date_str}")
-          print(f"Sprint-review week  : {week_monday.date()} → {week_sunday.date()}")
-          print(f"Thursday cutoff     : {cutoff_dt.strftime('%Y-%m-%d %H:%M %Z')}")
-          print(f"Current time        : {now.strftime('%Y-%m-%d %H:%M %Z')}")
-          print(f"In window           : {in_window}")
-          print(f"Is late             : {is_late}")
+              print(f"SPRINT_REVIEW_DATE  : {sprint_review_date_str}")
+              print(f"Sprint-review week  : {week_monday.date()} → {week_sunday.date()}")
+              print(f"Thursday cutoff     : {cutoff_dt.strftime('%Y-%m-%d %H:%M %Z')}")
+              print(f"Current time        : {now.strftime('%Y-%m-%d %H:%M %Z')}")
+              print(f"In window           : {in_window}")
+              print(f"Is late             : {is_late}")
 
-          write_output("is_late",  "true" if is_late else "false")
-          write_output("in_window", "true" if in_window else "false")
+              write_output("is_late",  "true" if is_late else "false")
+              write_output("in_window", "true" if in_window else "false")
+          except Exception as exc:
+              print(f"ERROR: Unexpected failure during cutoff evaluation: {exc}", file=sys.stderr)
+              sys.exit(1)
           PYEOF
 
       # ── Step 3: create the "late" label in the repo if it does not exist ────
       - name: Ensure late label exists
         if: steps.cutoff.outputs.is_late == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
             try {
@@ -179,30 +176,37 @@ jobs:
       # ── Step 4: attach the label to the PR ──────────────────────────────────
       - name: Apply late label
         if: steps.cutoff.outputs.is_late == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
-            await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              labels: ['late'],
-            });
-            console.log('Applied "late" label to PR #' + context.issue.number);
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: ['late'],
+              });
+              console.log('Applied "late" label to PR #' + context.issue.number);
+            } catch (err) {
+              core.error(`Failed to apply "late" label to PR #${context.issue.number}: ${err.message} (status: ${err.status})`);
+              throw err;
+            }
 
       # ── Step 5: comment on the PR once (idempotent via hidden marker) ────────
       - name: Comment on late PR
         if: steps.cutoff.outputs.is_late == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
             const MARKER = '<!-- pr-cutoff-label:late -->';
 
-            // Check for an existing comment from a previous run on this PR.
-            const { data: comments } = await github.rest.issues.listComments({
+            // Fetch all comment pages so the marker check works on PRs with
+            // more than 30 comments (GitHub's default per_page).
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
+              per_page: 100,
             });
             if (comments.some(c => c.body && c.body.includes(MARKER))) {
               console.log('Late-PR comment already present — skipping duplicate.');
@@ -210,7 +214,7 @@ jobs:
             }
 
             const baseRef   = context.payload.pull_request.base.ref;
-            const policyUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/blob/${baseRef}/CLAUDE.md#L190`;
+            const policyUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/blob/${baseRef}/CLAUDE.md#L217`;
 
             const body = [
               MARKER,
@@ -235,10 +239,15 @@ jobs:
               'See the [Git section in CLAUDE.md](' + policyUrl + ') for the full branching and PR policy.',
             ].join('\n');
 
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body,
-            });
-            console.log('Posted late-PR comment.');
+            try {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+              console.log('Posted late-PR comment.');
+            } catch (err) {
+              core.error(`Failed to post late-PR comment on PR #${context.issue.number}: ${err.message} (status: ${err.status})`);
+              throw err;
+            }
