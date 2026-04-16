@@ -1,12 +1,7 @@
 import { Link } from "react-router";
 import { useDashboardBudgets } from "../lib/queries/dashboard";
+import { getBudgetStatus } from "./budgetUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-
-export function getBudgetStatus(percentageUsed: number): "on-track" | "approaching" | "exceeded" {
-  if (percentageUsed >= 100) return "exceeded";
-  if (percentageUsed >= 70) return "approaching";
-  return "on-track";
-}
 
 export function BudgetWidget() {
   const { data, isLoading, error } = useDashboardBudgets();
@@ -87,9 +82,4 @@ export function BudgetWidget() {
       </Card>
     </Link>
   );
-
-  // NOTE: Future enhancement (next sprint) — detailed granular view can be added here
-  // by creating a separate BudgetDetailedWidget component that shows individual
-  // budget cards, spending breakdown, and progress bars. Both would use the same
-  // useDashboardBudgets() hook and getBudgetStatus() helper for consistency.
 }
