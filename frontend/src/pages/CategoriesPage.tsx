@@ -615,9 +615,11 @@ export function CategoriesPage() {
                                   Matching transactions:
                                 </p>
                                 <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
-                                  {previewMatchesByCategory[category.id].map((name, index) => (
-                                    <li key={`${name}-${index}`}>{name}</li>
-                                  ))}
+                                  {(previewMatchesByCategory[category.id] ?? []).map(
+                                    (name, index) => (
+                                      <li key={`${name}-${index}`}>{name}</li>
+                                    ),
+                                  )}
                                 </ul>
                               </div>
                             )}

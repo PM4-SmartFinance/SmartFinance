@@ -1,4 +1,9 @@
+import { Prisma } from "@prisma/client";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+function d(value: string | number) {
+  return new Prisma.Decimal(value);
+}
 
 vi.mock("../repositories/category-rule.repository.js", () => ({
   findAllByUser: vi.fn(),
@@ -165,9 +170,9 @@ describe("category-rule.service", () => {
   describe("previewRule", () => {
     it("returns match count and top matching transaction samples", async () => {
       mockTransactionRepo.findUncategorizedForUser.mockResolvedValue([
-        { id: "tx-1", amount: -12.5, dateId: 20260412, merchant: { name: "Coop" } },
-        { id: "tx-2", amount: -8.75, dateId: 20260413, merchant: { name: "Coop City" } },
-        { id: "tx-3", amount: -19.9, dateId: 20260414, merchant: { name: "Migros" } },
+        { id: "tx-1", amount: d(-12.5), dateId: 20260412, merchant: { name: "Coop" } },
+        { id: "tx-2", amount: d(-8.75), dateId: 20260413, merchant: { name: "Coop City" } },
+        { id: "tx-3", amount: d(-19.9), dateId: 20260414, merchant: { name: "Migros" } },
       ] as never);
 
       const result = await service.previewRule("user-1", {
@@ -198,13 +203,13 @@ describe("category-rule.service", () => {
 
     it("returns the three newest matching transaction samples", async () => {
       mockTransactionRepo.findUncategorizedForUser.mockResolvedValue([
-        { id: "tx-1", amount: -1, dateId: 20260410, merchant: { name: "Coop" } },
-        { id: "tx-2", amount: -2, dateId: 20260416, merchant: { name: "Coop" } },
-        { id: "tx-3", amount: -3, dateId: 20260412, merchant: { name: "Coop Pronto" } },
-        { id: "tx-4", amount: -4, dateId: 20260415, merchant: { name: "Coop City" } },
-        { id: "tx-5", amount: -5, dateId: 20260414, merchant: { name: "Coop Bau" } },
-        { id: "tx-6", amount: -6, dateId: 20260411, merchant: { name: "Coop Restaurant" } },
-        { id: "tx-7", amount: -7, dateId: 20260413, merchant: { name: "Coop Extra" } },
+        { id: "tx-1", amount: d(-1), dateId: 20260410, merchant: { name: "Coop" } },
+        { id: "tx-2", amount: d(-2), dateId: 20260416, merchant: { name: "Coop" } },
+        { id: "tx-3", amount: d(-3), dateId: 20260412, merchant: { name: "Coop Pronto" } },
+        { id: "tx-4", amount: d(-4), dateId: 20260415, merchant: { name: "Coop City" } },
+        { id: "tx-5", amount: d(-5), dateId: 20260414, merchant: { name: "Coop Bau" } },
+        { id: "tx-6", amount: d(-6), dateId: 20260411, merchant: { name: "Coop Restaurant" } },
+        { id: "tx-7", amount: d(-7), dateId: 20260413, merchant: { name: "Coop Extra" } },
       ] as never);
 
       const result = await service.previewRule("user-1", {

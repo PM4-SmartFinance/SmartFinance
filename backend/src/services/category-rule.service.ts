@@ -104,7 +104,7 @@ export async function previewRule(
       matchedTransactions.push({
         id: tx.id,
         merchantName: name,
-        amount: tx.amount,
+        amount: tx.amount.toNumber(),
         dateId: tx.dateId,
       });
     }
