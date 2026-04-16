@@ -8,7 +8,6 @@ import { transactionRoutes } from "./controllers/transaction.controller.js";
 import { setLogger } from "./logger.js";
 import { budgetRoutes } from "./controllers/budget.controller.js";
 import { userRoutes } from "./controllers/user.controller.js";
-import { singleTransactionRoutes } from "./controllers/transactions.controller.js";
 import { accountRoutes } from "./controllers/account.controller.js";
 import { categoryRuleRoutes } from "./controllers/category-rule.controller.js";
 import { dashboardRoutes } from "./controllers/dashboard.controller.js";
@@ -57,7 +56,6 @@ export async function buildApp() {
   await app.register(healthRoutes, { prefix: "/api/v1" });
   await app.register(authRoutes, { prefix: "/api/v1" });
   await app.register(transactionRoutes, { prefix: "/api/v1" });
-  await app.register(singleTransactionRoutes, { prefix: "/api/v1" });
   await app.register(budgetRoutes, { prefix: "/api/v1" });
   await app.register(dashboardRoutes, { prefix: "/api/v1" });
   await app.register(userRoutes, { prefix: "/api/v1" });
