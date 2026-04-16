@@ -141,16 +141,19 @@ export async function updateUser(
     throw new ServiceError(400, "Invalid role");
   }
 
-  // Admins cannot change the role of other admins
+  // Admins cannot change the role of or deactivate other admins
   const target = await userRepository.findById(id);
   if (!target) throw new ServiceError(404, "Not found");
+  if (target.role === "ADMIN" && payload.active !== undefined) {
+    throw new ServiceError(403, "Cannot deactivate an admin account");
+  }
   if (
     isAdmin &&
     requestingUser.id !== id &&
     target.role === "ADMIN" &&
     payload.role !== undefined
   ) {
-    throw new ServiceError(403, "Cannot change the role of another admin");
+    throw new ServiceError(403, "Cannot modify another admin account");
   }
 
   // Build update data only with allowed fields
@@ -185,8 +188,8 @@ export async function deleteUser(requestingUser: { id: string; role: string } | 
   const existing = await userRepository.findById(id);
   if (!existing) throw new ServiceError(404, "Not found");
 
-  if (isAdmin && requestingUser.id !== id && existing.role === "ADMIN") {
-    throw new ServiceError(403, "Cannot delete another admin");
+  if (existing.role === "ADMIN") {
+    throw new ServiceError(403, "Cannot delete an admin account");
   }
 
   await userRepository.updateUserById(id, { active: false });
