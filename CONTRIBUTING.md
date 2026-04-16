@@ -29,7 +29,7 @@ Format: `<type>/<JIRA-ID>-<description>`
 
 We follow Conventional Commits to make our history readable. You must include the Jira ticket ID in your commit message. This ensures every individual code change is logged in the history of the Jira ticket.
 
-Format: `<type>(<scope>): [<JIRA-ID>] <subject>`
+Format: `<type>(<scope>)?: [<JIRA-ID>] <subject>`
 
 - **Types:**
   - `feat`: A new feature
@@ -39,26 +39,13 @@ Format: `<type>(<scope>): [<JIRA-ID>] <subject>`
   - `refactor`: A code change that neither fixes a bug nor adds a feature
   - `test`: Adding missing tests or correcting existing tests
   - `chore`: Changes to the build process or auxiliary tools
+  - `ci`: Changes to CI/CD configuration
+  - `build`: Changes that affect the build system or dependencies
+  - `perf`: Changes that improve performance
 
-- **Scopes (Optional):** Indicate the part of the monorepo affected (e.g., `frontend`, `backend`, `docker`, `db`, `root`).
+- **Scope (Optional):** Use any lowercase scope text to indicate the affected part of the monorepo (for example, `frontend`, `backend`, `docker`, `db`, `root`, `infra`).
 
 - **Examples:**
-  - `feat(backend): [KAN-10] implement RBAC middleware for protected routes`
-  - `fix(frontend): [KAN-15] resolve layout shift on mobile dashboard`
-  - `docs(root): [KAN-23] add CONTRIBUTING.md with team branching strategy`
-
-* **Types:**
-  - `feat`: A new feature
-  - `fix`: A bug fix
-  - `docs`: Documentation only changes
-  - `style`: Changes that do not affect the meaning of the code (formatting)
-  - `refactor`: A code change that neither fixes a bug nor adds a feature
-  - `test`: Adding missing tests or correcting existing tests
-  - `chore`: Changes to the build process or auxiliary tools
-
-* **Scopes (Optional):** Indicate the part of the monorepo affected (e.g., `frontend`, `backend`, `docker`, `db`, `root`).
-
-* **Examples:**
   - `feat(backend): [KAN-10] implement RBAC middleware for protected routes`
   - `fix(frontend): [KAN-15] resolve layout shift on mobile dashboard`
   - `docs(root): [KAN-23] add CONTRIBUTING.md with team branching strategy`
