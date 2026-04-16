@@ -141,6 +141,18 @@ export async function updateUser(
     throw new ServiceError(400, "Invalid role");
   }
 
+  // Admins cannot change the role of other admins
+  const target = await userRepository.findById(id);
+  if (!target) throw new ServiceError(404, "Not found");
+  if (
+    isAdmin &&
+    requestingUser.id !== id &&
+    target.role === "ADMIN" &&
+    payload.role !== undefined
+  ) {
+    throw new ServiceError(403, "Cannot change the role of another admin");
+  }
+
   // Build update data only with allowed fields
   const data: { name?: string | null; role?: string; active?: boolean } = {};
   if (payload.name !== undefined) data.name = payload.name;
@@ -149,10 +161,7 @@ export async function updateUser(
 
   if (Object.keys(data).length === 0) throw new ServiceError(400, "No updatable fields");
 
-  const existing = await userRepository.findById(id);
-  if (!existing) throw new ServiceError(404, "Not found");
-
-  const oldRole = existing.role;
+  const oldRole = target.role;
   const updated = await userRepository.updateUserById(id, data);
 
   // Emit ROLE_CHANGED audit event if role changed
@@ -175,6 +184,10 @@ export async function deleteUser(requestingUser: { id: string; role: string } | 
 
   const existing = await userRepository.findById(id);
   if (!existing) throw new ServiceError(404, "Not found");
+
+  if (isAdmin && requestingUser.id !== id && existing.role === "ADMIN") {
+    throw new ServiceError(403, "Cannot delete another admin");
+  }
 
   await userRepository.updateUserById(id, { active: false });
 

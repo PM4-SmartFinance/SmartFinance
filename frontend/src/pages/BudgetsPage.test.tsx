@@ -167,7 +167,7 @@ describe("BudgetsPage", () => {
     renderPage();
 
     await waitFor(() => expect(screen.getAllByRole("button", { name: "Edit" })).toHaveLength(2));
-    expect(screen.getByRole("button", { name: "Back to Dashboard" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to Dashboard" })).toBeInTheDocument();
 
     const showModalMock = vi.mocked(window.HTMLDialogElement.prototype.showModal);
     const callsBefore = showModalMock.mock.calls.length;

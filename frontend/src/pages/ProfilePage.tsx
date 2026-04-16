@@ -7,11 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { SeparatorLine } from "@/components/ui/separatorLine";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { CheckCircle2, AlertCircle, ChevronLeft, User, Lock } from "lucide-react";
+import { CheckCircle2, AlertCircle, ArrowLeft, User, Lock } from "lucide-react";
 
 interface ProfileData {
   id: string;
@@ -25,48 +23,6 @@ const PROFILE_QUERY = {
   queryFn: () => api.get<{ user: ProfileData }>("/users/me"),
 } as const;
 
-const TEXT = {
-  backToDashboard: "Dashboard",
-  pageTitle: "Profile",
-  pageDescription: "Manage your account details",
-  profileCard: {
-    title: "Account information",
-    description: "Update your display name and email address.",
-    nameLabel: "Display name",
-    namePlaceholder: "Your name",
-    emailLabel: "Email address",
-    saveBtn: "Save changes",
-    savingBtn: "Saving…",
-    successMsg: "Profile updated successfully.",
-  },
-  passwordCard: {
-    title: "Change password",
-    description:
-      "Enter your current password before setting a new one. You will be signed out after a successful change.",
-    currentLabel: "Current password",
-    newLabel: "New password",
-    confirmLabel: "Confirm new password",
-    changeBtn: "Change password",
-    changingBtn: "Changing…",
-    successMsg: "Password changed. Please sign in again.",
-    mismatchError: "New passwords do not match.",
-  },
-  genericError: "Something went wrong. Please try again.",
-  fetchError: "Failed to load your profile. Please refresh the page.",
-} as const;
-
-function getInitials(name: string | null | undefined, email: string | undefined): string {
-  if (name) {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  }
-  return email?.[0]?.toUpperCase() ?? "U";
-}
-
 export function ProfilePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -74,7 +30,6 @@ export function ProfilePage() {
   const { data, isPending: isProfileLoading, isError: isProfileError } = useQuery(PROFILE_QUERY);
   const profile = data?.user;
 
-  // ── Profile form state ─────────────────────────────────────────────────────
   const [profileSuccess, setProfileSuccess] = useState(false);
 
   const {
@@ -82,8 +37,8 @@ export function ProfilePage() {
     isPending: isSaving,
     error: profileError,
   } = useMutation({
-    mutationFn: (data: { displayName: string; email: string }) =>
-      api.patch<{ user: ProfileData }>("/users/me", data),
+    mutationFn: (input: { displayName: string; email: string }) =>
+      api.patch<{ user: ProfileData }>("/users/me", input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["users", "me"] });
       void queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
@@ -92,7 +47,6 @@ export function ProfilePage() {
     onError: () => setProfileSuccess(false),
   });
 
-  // ── Password form state ────────────────────────────────────────────────────
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -104,11 +58,10 @@ export function ProfilePage() {
     isPending: isChanging,
     error: passwordError,
   } = useMutation({
-    mutationFn: (data: { currentPassword: string; newPassword: string }) =>
-      api.post<{ ok: boolean }>("/users/me/change-password", data),
+    mutationFn: (input: { currentPassword: string; newPassword: string }) =>
+      api.post<{ ok: boolean }>("/users/me/change-password", input),
     onSuccess: async () => {
       setPasswordSuccess(true);
-      // Session was deleted on the server — clear client state and redirect
       await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
       setTimeout(() => navigate("/login"), 1500);
     },
@@ -130,7 +83,7 @@ export function ProfilePage() {
     setConfirmError(null);
     setPasswordSuccess(false);
     if (newPassword !== confirmPassword) {
-      setConfirmError(TEXT.passwordCard.mismatchError);
+      setConfirmError("New passwords do not match.");
       return;
     }
     changePassword({ currentPassword, newPassword });
@@ -140,75 +93,68 @@ export function ProfilePage() {
     profileError instanceof ApiError
       ? profileError.message
       : profileError
-        ? TEXT.genericError
+        ? "Something went wrong. Please try again."
         : null;
 
   const passwordErrorMessage =
     passwordError instanceof ApiError
       ? passwordError.message
       : passwordError
-        ? TEXT.genericError
+        ? "Something went wrong. Please try again."
         : null;
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 lg:px-8">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6"
-        >
-          <ChevronLeft className="size-4" />
-          {TEXT.backToDashboard}
-        </Link>
-
-        {/* ── Page header with avatar ── */}
-        <header className="mb-8 flex items-center gap-4">
-          {isProfileLoading ? (
-            <>
-              <Skeleton className="size-14 rounded-full" />
-              <div className="space-y-2">
-                <Skeleton className="h-8 w-32" />
-                <Skeleton className="h-4 w-48" />
-              </div>
-            </>
-          ) : isProfileError ? (
-            <h1 className="text-2xl font-bold text-foreground">{TEXT.pageTitle}</h1>
-          ) : (
-            <>
-              <Avatar className="size-14">
-                <AvatarFallback className="text-lg font-semibold">
-                  {getInitials(profile?.name, profile?.email)}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-bold text-foreground">
-                    {profile?.name ?? profile?.email ?? TEXT.pageTitle}
-                  </h1>
-                  {profile?.role && (
-                    <Badge variant="secondary" className="capitalize">
-                      {profile.role}
-                    </Badge>
-                  )}
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <header className="mb-8">
+          <div className="flex items-center gap-4">
+            {isProfileLoading ? (
+              <>
+                <Skeleton className="size-14 rounded-full" />
+                <div className="space-y-2">
+                  <Skeleton className="h-8 w-32" />
+                  <Skeleton className="h-4 w-48" />
                 </div>
-                <p className="text-sm text-muted-foreground">{profile?.email}</p>
-              </div>
-            </>
-          )}
+              </>
+            ) : isProfileError ? (
+              <h1 className="text-4xl font-bold text-foreground">Profile</h1>
+            ) : (
+              <>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-4xl font-bold text-foreground">
+                      {profile?.name ?? profile?.email ?? "Profile"}
+                    </h1>
+                    {profile?.role && (
+                      <Badge variant="secondary" className="capitalize">
+                        {profile.role.toLowerCase()}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground">{profile?.email}</p>
+                </div>
+              </>
+            )}
+          </div>
+          <Link
+            to="/"
+            className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="size-4" />
+            Back to Dashboard
+          </Link>
         </header>
 
         <div className="flex flex-col gap-6">
-          {/* ── Profile info form ── */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <User className="size-4 text-muted-foreground" />
-                <CardTitle className="text-base">{TEXT.profileCard.title}</CardTitle>
+                <CardTitle className="text-base">Account information</CardTitle>
               </div>
-              <CardDescription>{TEXT.profileCard.description}</CardDescription>
+              <CardDescription>Update your display name and email address.</CardDescription>
             </CardHeader>
-            <SeparatorLine />
-            <CardContent className="pt-6">
+            <CardContent>
               {isProfileLoading ? (
                 <div className="flex flex-col gap-4">
                   <div className="space-y-1.5">
@@ -224,25 +170,27 @@ export function ProfilePage() {
               ) : isProfileError ? (
                 <Alert variant="destructive">
                   <AlertCircle className="size-4" />
-                  <AlertDescription>{TEXT.fetchError}</AlertDescription>
+                  <AlertDescription>
+                    Failed to load your profile. Please refresh the page.
+                  </AlertDescription>
                 </Alert>
               ) : (
                 <form onSubmit={handleProfileSubmit} className="flex flex-col gap-4">
                   <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="display-name">{TEXT.profileCard.nameLabel}</Label>
+                    <Label htmlFor="display-name">Display name</Label>
                     <Input
                       id="display-name"
                       name="displayName"
                       type="text"
                       defaultValue={profile?.name ?? ""}
-                      placeholder={TEXT.profileCard.namePlaceholder}
+                      placeholder="Your name"
                       autoComplete="name"
                       onChange={() => setProfileSuccess(false)}
                     />
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="profile-email">{TEXT.profileCard.emailLabel}</Label>
+                    <Label htmlFor="profile-email">Email address</Label>
                     <Input
                       id="profile-email"
                       name="email"
@@ -266,32 +214,33 @@ export function ProfilePage() {
                       className="border-green-500/50 text-green-700 dark:text-green-400 [&>svg]:text-green-600"
                     >
                       <CheckCircle2 className="size-4" />
-                      <AlertDescription>{TEXT.profileCard.successMsg}</AlertDescription>
+                      <AlertDescription>Profile updated successfully.</AlertDescription>
                     </Alert>
                   )}
 
                   <Button type="submit" disabled={isSaving} className="self-start">
-                    {isSaving ? TEXT.profileCard.savingBtn : TEXT.profileCard.saveBtn}
+                    {isSaving ? "Saving\u2026" : "Save changes"}
                   </Button>
                 </form>
               )}
             </CardContent>
           </Card>
 
-          {/* ── Change password form ── */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Lock className="size-4 text-muted-foreground" />
-                <CardTitle className="text-base">{TEXT.passwordCard.title}</CardTitle>
+                <CardTitle className="text-base">Change password</CardTitle>
               </div>
-              <CardDescription>{TEXT.passwordCard.description}</CardDescription>
+              <CardDescription>
+                Enter your current password before setting a new one. You will be signed out after a
+                successful change.
+              </CardDescription>
             </CardHeader>
-            <SeparatorLine />
-            <CardContent className="pt-6">
+            <CardContent>
               <form onSubmit={handlePasswordSubmit} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="current-password">{TEXT.passwordCard.currentLabel}</Label>
+                  <Label htmlFor="current-password">Current password</Label>
                   <Input
                     id="current-password"
                     type="password"
@@ -303,7 +252,7 @@ export function ProfilePage() {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="new-password">{TEXT.passwordCard.newLabel}</Label>
+                  <Label htmlFor="new-password">New password</Label>
                   <Input
                     id="new-password"
                     type="password"
@@ -316,7 +265,7 @@ export function ProfilePage() {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="confirm-password">{TEXT.passwordCard.confirmLabel}</Label>
+                  <Label htmlFor="confirm-password">Confirm new password</Label>
                   <Input
                     id="confirm-password"
                     type="password"
@@ -342,7 +291,7 @@ export function ProfilePage() {
                     className="border-green-500/50 text-green-700 dark:text-green-400 [&>svg]:text-green-600"
                   >
                     <CheckCircle2 className="size-4" />
-                    <AlertDescription>{TEXT.passwordCard.successMsg}</AlertDescription>
+                    <AlertDescription>Password changed. Please sign in again.</AlertDescription>
                   </Alert>
                 )}
 
@@ -352,7 +301,7 @@ export function ProfilePage() {
                   disabled={isChanging}
                   className="self-start"
                 >
-                  {isChanging ? TEXT.passwordCard.changingBtn : TEXT.passwordCard.changeBtn}
+                  {isChanging ? "Changing\u2026" : "Change password"}
                 </Button>
               </form>
             </CardContent>

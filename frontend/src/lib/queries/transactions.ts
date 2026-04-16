@@ -32,6 +32,7 @@ export interface TransactionsFilters {
   categoryId?: string | null | undefined;
   minAmount?: number;
   maxAmount?: number;
+  search?: string | null | undefined;
 }
 
 export const transactionsQueryConfig = (filters: TransactionsFilters = {}) => ({
@@ -47,6 +48,7 @@ export const transactionsQueryConfig = (filters: TransactionsFilters = {}) => ({
     if (filters.categoryId) params.append("categoryId", filters.categoryId);
     if (filters.minAmount !== undefined) params.append("minAmount", filters.minAmount.toString());
     if (filters.maxAmount !== undefined) params.append("maxAmount", filters.maxAmount.toString());
+    if (filters.search) params.append("search", filters.search);
 
     const queryString = params.toString();
     const url = `/transactions${queryString ? `?${queryString}` : ""}`;

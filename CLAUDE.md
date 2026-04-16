@@ -214,8 +214,30 @@ Two permanent branches:
 
 - PRs target `develop` (not `main`). Release PRs from `develop` → `main` happen at end of sprint.
 - Include Jira ID in title (e.g., `[KAN-23] Define branching strategy`), squash and merge, delete branch after merge.
-- **Deadline:** No new PRs on Friday mornings. Cutoff for PR creation is **Thursday 22:00**.
+- **Deadline:** No new PRs on Friday mornings. Cutoff for PR creation is **Thursday 20:00**.
 - **Approval:** Every PR requires explicit approval from the Project Owner.
+- **PR Description Template:**
+
+  ```markdown
+  ## Summary
+
+  <1–3 sentences: what was done and why>
+
+  ## Changes
+
+  - **[scope]** [concrete change description]
+  - **[scope]** [concrete change description]
+
+  ## Verified
+
+  - [x] bun install succeeds
+  - [x] [add specific verification checks]
+
+  ## Notes
+
+  <optional: trade-offs, follow-ups, or decisions for reviewers>
+  ```
+
 - CI status checks (Docker build, lint, tests) must pass before merging.
 
 ### Releases

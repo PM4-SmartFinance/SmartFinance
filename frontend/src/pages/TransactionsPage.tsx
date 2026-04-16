@@ -6,6 +6,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { Link } from "react-router";
+import { ArrowLeft } from "lucide-react";
+
+function formatDate(date: Date): string {
+  return date.toISOString().split("T")[0]!;
+}
+
+function getDefaultStartDate(): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 1);
+  return formatDate(d);
+}
+
+function getDefaultEndDate(): string {
+  return formatDate(new Date());
+}
 
 export function TransactionsPage() {
   const page = useTransactionsStore((s) => s.page);
@@ -15,15 +31,19 @@ export function TransactionsPage() {
   const startDate = useTransactionsStore((s) => s.startDate);
   const endDate = useTransactionsStore((s) => s.endDate);
   const categoryId = useTransactionsStore((s) => s.categoryId);
+  const search = useTransactionsStore((s) => s.search);
   const setPage = useTransactionsStore((s) => s.setPage);
   const setSortBy = useTransactionsStore((s) => s.setSortBy);
   const setCategoryId = useTransactionsStore((s) => s.setCategoryId);
   const setStartDate = useTransactionsStore((s) => s.setStartDate);
   const setEndDate = useTransactionsStore((s) => s.setEndDate);
+  const setSearch = useTransactionsStore((s) => s.setSearch);
   const resetFilters = useTransactionsStore((s) => s.resetFilters);
 
-  const [tempStartDate, setTempStartDate] = useState(startDate || "");
-  const [tempEndDate, setTempEndDate] = useState(endDate || "");
+  const [tempStartDate, setTempStartDate] = useState(startDate || getDefaultStartDate());
+  const [tempEndDate, setTempEndDate] = useState(endDate || getDefaultEndDate());
+  const [tempCategoryId, setTempCategoryId] = useState(categoryId || "");
+  const [tempSearch, setTempSearch] = useState(search || "");
 
   const { data: categoriesData, error: categoriesError } = useCategories();
   const categories = categoriesData ?? [];
@@ -37,22 +57,27 @@ export function TransactionsPage() {
     limit,
     sortBy,
     sortOrder,
-    startDate: startDate || undefined,
-    endDate: endDate || undefined,
+    startDate: startDate || getDefaultStartDate(),
+    endDate: endDate || getDefaultEndDate(),
     categoryId: categoryId || undefined,
+    search: search || undefined,
   });
 
   const transactions = transactionsData?.data ?? [];
   const meta = transactionsData?.meta;
 
-  const handleApplyDateFilter = () => {
+  const handleApplyFilters = () => {
     setStartDate(tempStartDate || null);
     setEndDate(tempEndDate || null);
+    setCategoryId(tempCategoryId || null);
+    setSearch(tempSearch || null);
   };
 
   const handleClearFilters = () => {
-    setTempStartDate("");
-    setTempEndDate("");
+    setTempStartDate(getDefaultStartDate());
+    setTempEndDate(getDefaultEndDate());
+    setTempCategoryId("");
+    setTempSearch("");
     resetFilters();
   };
 
@@ -65,6 +90,13 @@ export function TransactionsPage() {
       <main className="min-h-screen bg-background">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <h1 className="text-4xl font-bold text-foreground">Transactions</h1>
+          <Link
+            to="/"
+            className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="size-4" />
+            Back to Dashboard
+          </Link>
           <div className="mt-8 rounded bg-red-50 p-4 text-sm text-red-600">
             Failed to load transactions. Please try again later.
           </div>
@@ -77,7 +109,13 @@ export function TransactionsPage() {
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <h1 className="text-4xl font-bold text-foreground">Transactions</h1>
-
+        <Link
+          to="/"
+          className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" />
+          Back to Dashboard
+        </Link>
         {/* Filters */}
         <Card className="mt-6 p-4">
           <div className="space-y-4">
@@ -113,8 +151,8 @@ export function TransactionsPage() {
                 <Label htmlFor="category">Category</Label>
                 <select
                   id="category"
-                  value={categoryId || ""}
-                  onChange={(e) => setCategoryId(e.target.value || null)}
+                  value={tempCategoryId}
+                  onChange={(e) => setTempCategoryId(e.target.value)}
                   disabled={isLoading}
                   className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -128,16 +166,29 @@ export function TransactionsPage() {
                   ))}
                 </select>
               </div>
+            </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-end gap-2">
-                <Button onClick={handleApplyDateFilter} disabled={isLoading} className="flex-1">
-                  Apply
-                </Button>
-                <Button onClick={handleClearFilters} variant="outline" disabled={isLoading}>
-                  Clear
-                </Button>
-              </div>
+            {/* Search */}
+            <div className="space-y-2">
+              <Label htmlFor="search">Search</Label>
+              <Input
+                id="search"
+                type="text"
+                value={tempSearch}
+                onChange={(e) => setTempSearch(e.target.value)}
+                placeholder="Search by merchant name..."
+                disabled={isLoading}
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2">
+              <Button onClick={handleApplyFilters} disabled={isLoading} size="sm">
+                Apply
+              </Button>
+              <Button onClick={handleClearFilters} variant="outline" disabled={isLoading} size="sm">
+                Clear
+              </Button>
             </div>
           </div>
         </Card>

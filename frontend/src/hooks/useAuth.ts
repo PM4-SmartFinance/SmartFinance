@@ -1,12 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
+import type { User } from "../lib/queries/users";
 
-export interface User {
-  id: string;
-  email: string;
-  name?: string | null;
-  role: string;
-}
+export type { User };
 
 interface MeResponse {
   user: User;

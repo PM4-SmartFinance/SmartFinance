@@ -8,8 +8,8 @@ We tightly integrate GitHub with Jira. By including Jira ticket IDs in our branc
 
 SmartFinance uses two permanent branches:
 
-- **`main`** (Production) — stable, release-only. Never commit directly. Updated only via release PRs from `develop` at end of sprint.
-- **`develop`** (Pre-Production/Staging) — active integration branch. All feature/bugfix PRs target `develop` for testing before release.
+- **`main`** (Production) — Stable, release-only. Never commit directly. Updated only via release PRs from `develop` at end of sprint.
+- **`develop`** (Pre-Production/Staging) — Active integration branch. All feature/bugfix PRs target `develop` for testing before release.
 
 All new development must happen in isolated branches created from the latest `develop`. Direct commits to `main` or `develop` are strictly prohibited.
 
@@ -63,7 +63,33 @@ Format: `<type>(<scope>)?: [<JIRA-ID>] <subject>`
 6. Once approved, use **Squash and Merge** to integrate your code into `develop`.
 7. Delete the feature branch after merging.
 
+**PR Deadline:** All PRs must be submitted by **Thursday 20:00** to allow sufficient review time before sprint closure. PRs submitted after this deadline will be deferred to the next sprint.
+
 **Release PRs:** At the end of each sprint, a release PR is created from `develop` → `main`. This is the only time code is merged into `main`.
+
+### PR Description Template
+
+Use this template for all PR descriptions:
+
+```markdown
+## Summary
+
+<1–3 sentences: what was done and why>
+
+## Changes
+
+- **[scope]** [concrete change description]
+- **[scope]** [concrete change description]
+
+## Verified
+
+- [x] bun install succeeds
+- [x] [add specific verification checks]
+
+## Notes
+
+<optional: trade-offs, follow-ups, or decisions for reviewers>
+```
 
 ## 5. Pre-commit Hooks and Linting
 

@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft } from "lucide-react";
 
 interface RuleEditorState {
   pattern: string;
@@ -297,8 +298,9 @@ export function CategoriesPage() {
           </p>
           <Link
             to="/"
-            className="mt-4 inline-flex h-8 items-center rounded-md bg-black px-3 text-sm font-medium text-white hover:bg-black/90"
+            className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
+            <ArrowLeft className="size-4" />
             Back to Dashboard
           </Link>
         </header>
