@@ -1,7 +1,9 @@
-name: Manual Release from Develop
+name: Release from GitHub Release
 
 on:
-  workflow_dispatch:
+  release:
+    types:
+      - published
 
 jobs:
   release:

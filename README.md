@@ -21,7 +21,7 @@ Academic semester project (PM4) at ZHAW School of Engineering.
 | `main`    | [![CI on main](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/ci.yml?query=branch%3Amain)          | [![Production CD](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/cd.yml/badge.svg)](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/cd.yml) |
 | `develop` | [![CI on develop](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/ci.yml?query=branch%3Adevelop) | Nightly staging deployment runs from `develop`                                                                                                                                   |
 
-The badges above reflect the latest GitHub Actions results for each branch. CI runs on both `main` and `develop`; production CD runs from `main` pushes after a release PR merges, while `develop` keeps a nightly staging deployment.
+The badges above reflect the latest GitHub Actions results for each branch. CI runs on both `main` and `develop`; production CD runs from `main` pushes after a release PR merges, while `develop` keeps a nightly staging deployment. Publishing a GitHub Release can promote the latest healthy staging state from `develop` into `main`.
 
 ## Start Here
 

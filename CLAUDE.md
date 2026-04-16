@@ -243,7 +243,7 @@ Two permanent branches:
 ### Releases
 
 - At sprint end, create a release PR from `develop` → `main`.
-- The manual release GitHub Action may open or reuse that release PR after the latest successful staging run on `develop`.
+- Publishing a GitHub Release may open or reuse that release PR after the latest successful staging run on `develop`.
 - When the release PR merges, production CD runs automatically from the resulting `main` push.
 
 ### Pull Request Description Template
