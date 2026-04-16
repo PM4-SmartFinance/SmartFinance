@@ -132,6 +132,14 @@ export function useDeleteCategoryRule() {
 export function useRuleMatchPreview() {
   return useMutation({
     mutationFn: (draft: RuleDraft) =>
-      api.post<{ matchCount: number }>("/category-rules/preview", draft),
+      api.post<{
+        matchCount: number;
+        matchedTransactions: Array<{
+          id: string;
+          merchantName: string;
+          amount: number;
+          dateId: number;
+        }>;
+      }>("/category-rules/preview", draft),
   });
 }

@@ -156,7 +156,29 @@ describe("CategoriesPage", () => {
       }
 
       if (path === "/category-rules/preview") {
-        return Promise.resolve({ matchCount: 7 });
+        return Promise.resolve({
+          matchCount: 7,
+          matchedTransactions: [
+            {
+              id: "tx-1",
+              merchantName: "Coop",
+              amount: -12.5,
+              dateId: 20260412,
+            },
+            {
+              id: "tx-2",
+              merchantName: "Coop City",
+              amount: -8.75,
+              dateId: 20260413,
+            },
+            {
+              id: "tx-3",
+              merchantName: "Coop Extra",
+              amount: -5.25,
+              dateId: 20260414,
+            },
+          ],
+        });
       }
 
       return Promise.resolve({});
@@ -204,6 +226,28 @@ describe("CategoriesPage", () => {
     await waitFor(() => {
       const categoryGetCalls = mockGet.mock.calls.filter((call) => call[0] === "/categories");
       expect(categoryGetCalls.length).toBeGreaterThan(1);
+    });
+  });
+
+  it("shows matching transactions from live preview", async () => {
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+    });
+
+    const input = screen.getByLabelText("New rule pattern for Groceries");
+    fireEvent.change(input, { target: { value: "co" } });
+
+    await waitFor(() => {
+      expect(screen.getByText("Matching transactions:")).toBeInTheDocument();
+      const matchingSection = screen.getByText("Matching transactions:").closest("div");
+      expect(matchingSection).toBeTruthy();
+      const transactionItems = within(matchingSection!).getAllByRole("listitem");
+      expect(transactionItems).toHaveLength(3);
+      expect(transactionItems[0]).toHaveTextContent("Coop");
+      expect(transactionItems[1]).toHaveTextContent("Coop City");
+      expect(transactionItems[2]).toHaveTextContent("Coop Extra");
     });
   });
 

@@ -87,7 +87,12 @@ export async function bulkImport(
 export async function findUncategorizedForUser(userId: string) {
   return prisma.factTransactions.findMany({
     where: { userId, categoryId: null, manualOverride: false },
-    select: { id: true, merchant: { select: { name: true } } },
+    select: {
+      id: true,
+      amount: true,
+      dateId: true,
+      merchant: { select: { name: true } },
+    },
   });
 }
 

@@ -35,6 +35,13 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function formatDateId(dateId: number): string {
+  const year = Math.trunc(dateId / 10000);
+  const month = Math.trunc((dateId % 10000) / 100) - 1;
+  const day = dateId % 100;
+  return new Date(Date.UTC(year, month, day)).toLocaleDateString("de-CH");
+}
+
 export function CategoriesPage() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
@@ -42,6 +49,9 @@ export function CategoriesPage() {
   const [createCategoryError, setCreateCategoryError] = useState<string | null>(null);
   const [errorByCategory, setErrorByCategory] = useState<Record<string, string>>({});
   const [previewByCategory, setPreviewByCategory] = useState<Record<string, string>>({});
+  const [previewMatchesByCategory, setPreviewMatchesByCategory] = useState<
+    Record<string, string[]>
+  >({});
   const [previewErrorByCategory, setPreviewErrorByCategory] = useState<Record<string, string>>({});
   const [ruleDraftByCategory, setRuleDraftByCategory] = useState<Record<string, RuleEditorState>>(
     {},
@@ -234,6 +244,7 @@ export function CategoriesPage() {
         [categoryId]: { pattern: "", matchType: "contains", priority: 0 },
       }));
       setPreviewByCategory((prev) => ({ ...prev, [categoryId]: "" }));
+      setPreviewMatchesByCategory((prev) => ({ ...prev, [categoryId]: [] }));
       setPreviewError(categoryId, null);
     } catch (error) {
       setCategoryError(categoryId, getErrorMessage(error, "Failed to create rule."));
@@ -264,6 +275,15 @@ export function CategoriesPage() {
         ...prev,
         [categoryId]: `${response.matchCount} existing transactions would match.`,
       }));
+      setPreviewMatchesByCategory((prev) => ({
+        ...prev,
+        [categoryId]: (response.matchedTransactions ?? []).map((transaction) => {
+          const amount = `${transaction.amount < 0 ? "−" : ""}CHF ${Math.abs(
+            transaction.amount,
+          ).toFixed(2)}`;
+          return `${transaction.merchantName} · ${formatDateId(transaction.dateId)} · ${amount}`;
+        }),
+      }));
       setPreviewError(categoryId, null);
     } catch (error) {
       if (previewRequestVersionRef.current[categoryId] !== requestVersion) {
@@ -271,6 +291,7 @@ export function CategoriesPage() {
       }
 
       setPreviewByCategory((prev) => ({ ...prev, [categoryId]: "" }));
+      setPreviewMatchesByCategory((prev) => ({ ...prev, [categoryId]: [] }));
       if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
         setPreviewError(categoryId, error.message);
         return;
@@ -587,6 +608,18 @@ export function CategoriesPage() {
                               <p className="mt-2 text-xs text-muted-foreground">
                                 {previewByCategory[category.id]}
                               </p>
+                            )}
+                            {(previewMatchesByCategory[category.id]?.length ?? 0) > 0 && (
+                              <div className="mt-2">
+                                <p className="text-xs font-medium text-muted-foreground">
+                                  Matching transactions:
+                                </p>
+                                <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
+                                  {previewMatchesByCategory[category.id].map((name, index) => (
+                                    <li key={`${name}-${index}`}>{name}</li>
+                                  ))}
+                                </ul>
+                              </div>
                             )}
                             {previewErrorByCategory[category.id] && (
                               <p className="mt-2 text-xs text-destructive">

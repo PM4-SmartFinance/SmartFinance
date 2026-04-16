@@ -175,7 +175,12 @@ describe("findUncategorizedForUser", () => {
 
     expect(prisma.factTransactions.findMany).toHaveBeenCalledWith({
       where: { userId: "user-1", categoryId: null, manualOverride: false },
-      select: { id: true, merchant: { select: { name: true } } },
+      select: {
+        id: true,
+        amount: true,
+        dateId: true,
+        merchant: { select: { name: true } },
+      },
     });
   });
 
@@ -187,7 +192,7 @@ describe("findUncategorizedForUser", () => {
   });
 
   it("returns the results from the query", async () => {
-    const rows = [{ id: "tx-1", merchant: { name: "Migros" } }];
+    const rows = [{ id: "tx-1", amount: -12.5, dateId: 20260412, merchant: { name: "Migros" } }];
     // @ts-expect-error -- mock returns a partial shape
     vi.mocked(prisma.factTransactions.findMany).mockResolvedValue(rows);
 
