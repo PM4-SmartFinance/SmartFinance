@@ -1,9 +1,9 @@
 name: CD
 
 on:
-  release:
-    types:
-      - published
+  push:
+    branches:
+      - main
   schedule:
     - cron: "0 2 * * *" # Daily at 02:00 UTC from develop
 
@@ -11,7 +11,7 @@ jobs:
   docker:
     name: Build & Push Docker Images
     runs-on: ubuntu-24.04
-    if: github.event_name == 'release'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: read
       packages: write
@@ -34,9 +34,6 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}/backend
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
             type=sha,prefix=,format=short
             type=raw,value=latest
 
@@ -57,9 +54,6 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}/frontend
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
             type=sha,prefix=,format=short
             type=raw,value=latest
 
@@ -78,7 +72,7 @@ jobs:
     name: Deploy to Production
     runs-on: ubuntu-24.04
     needs: docker
-    if: github.event_name == 'release'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment: production
     steps:
       - name: Deploy via SSH

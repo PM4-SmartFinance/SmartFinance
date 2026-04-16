@@ -64,6 +64,8 @@ Format: `<type>(<scope>): [<JIRA-ID>] <subject>`
 
 **Release PRs:** At the end of each sprint, a release PR is created from `develop` → `main`. This is the only time code is merged into `main`.
 
+The manual release GitHub Action may create or reuse that release PR after the latest successful staging run on `develop`, then auto-merge it so production delivery starts from the resulting `main` push.
+
 ### PR Description Template
 
 Use this template for all PR descriptions:

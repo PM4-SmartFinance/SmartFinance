@@ -243,7 +243,8 @@ Two permanent branches:
 ### Releases
 
 - At sprint end, create a release PR from `develop` → `main`.
-- After merging, create a version tag (e.g., `v2.0.0`) via GitHub Releases pointing to `main`.
+- The manual release GitHub Action may open or reuse that release PR after the latest successful staging run on `develop`.
+- When the release PR merges, production CD runs automatically from the resulting `main` push.
 
 ### Pull Request Description Template
 

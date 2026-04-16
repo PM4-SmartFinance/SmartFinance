@@ -1,0 +1,48 @@
+name: Manual Release from Develop
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check latest develop staging run
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          latest_conclusion="$(gh api "repos/${{ github.repository }}/actions/workflows/cd.yml/runs?branch=develop&status=completed&per_page=1" --jq '.workflow_runs[0].conclusion // ""')"
+
+          if [ "$latest_conclusion" != "success" ]; then
+            echo "Latest staging run on develop was not successful. Aborting release."
+            exit 1
+          fi
+
+      - name: Create or reuse release PR
+        id: release_pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pr_number="$(gh pr list --base main --head develop --state open --json number --jq '.[0].number // empty')"
+
+          if [ -z "$pr_number" ]; then
+            pr_url="$(gh pr create \
+              --base main \
+              --head develop \
+              --title "[KAN-121] Release develop to main" \
+              --body "Manual release button pressed after the latest staging run on develop succeeded." \
+              --repo "${{ github.repository }}")"
+            pr_number="$(gh pr view "$pr_url" --json number --jq '.number')"
+          fi
+
+          echo "number=$pr_number" >> "$GITHUB_OUTPUT"
+
+      - name: Enable auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge "${{ steps.release_pr.outputs.number }}" --auto --squash --repo "${{ github.repository }}"
