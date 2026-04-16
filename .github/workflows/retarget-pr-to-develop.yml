@@ -1,0 +1,18 @@
+name: Retarget PR to Develop
+
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  retarget:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Change base branch to develop
+        if: github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref != 'develop' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr edit ${{ github.event.pull_request.number }} --base develop --repo ${{ github.repository }}
