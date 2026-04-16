@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ApiError } from "../lib/api";
 import {
   useCategories,
@@ -42,10 +42,13 @@ export function CategoriesPage() {
   const [createCategoryError, setCreateCategoryError] = useState<string | null>(null);
   const [errorByCategory, setErrorByCategory] = useState<Record<string, string>>({});
   const [previewByCategory, setPreviewByCategory] = useState<Record<string, string>>({});
+  const [previewErrorByCategory, setPreviewErrorByCategory] = useState<Record<string, string>>({});
   const [ruleDraftByCategory, setRuleDraftByCategory] = useState<Record<string, RuleEditorState>>(
     {},
   );
   const [ruleEditorById, setRuleEditorById] = useState<Record<string, RuleEditorState>>({});
+  const previewTimerByCategoryRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const previewRequestVersionRef = useRef<Record<string, number>>({});
 
   const {
     data: categories = [],
@@ -162,6 +165,37 @@ export function CategoriesPage() {
 
   function setRuleDraft(categoryId: string, draft: RuleEditorState) {
     setRuleDraftByCategory((prev) => ({ ...prev, [categoryId]: draft }));
+    scheduleLivePreview(categoryId, draft);
+  }
+
+  useEffect(() => {
+    return () => {
+      Object.values(previewTimerByCategoryRef.current).forEach((timerId) => {
+        clearTimeout(timerId);
+      });
+    };
+  }, []);
+
+  function setPreviewError(categoryId: string, message: string | null) {
+    setPreviewErrorByCategory((prev) => {
+      if (message === null) {
+        const next = { ...prev };
+        delete next[categoryId];
+        return next;
+      }
+      return { ...prev, [categoryId]: message };
+    });
+  }
+
+  function scheduleLivePreview(categoryId: string, draft: RuleEditorState) {
+    const existingTimer = previewTimerByCategoryRef.current[categoryId];
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
+    previewTimerByCategoryRef.current[categoryId] = setTimeout(() => {
+      void handleLivePreviewRule(categoryId, draft);
+    }, 300);
   }
 
   function getRuleEditor(rule: CategoryRule): RuleEditorState {
@@ -200,42 +234,48 @@ export function CategoriesPage() {
         [categoryId]: { pattern: "", matchType: "contains", priority: 0 },
       }));
       setPreviewByCategory((prev) => ({ ...prev, [categoryId]: "" }));
+      setPreviewError(categoryId, null);
     } catch (error) {
       setCategoryError(categoryId, getErrorMessage(error, "Failed to create rule."));
     }
   }
 
-  async function handlePreviewRule(categoryId: string) {
-    const draft = getRuleDraft(categoryId);
+  async function handleLivePreviewRule(categoryId: string, draft: RuleEditorState) {
     if (!draft.pattern.trim()) {
-      setCategoryError(categoryId, "Rule pattern is required for preview.");
+      setPreviewByCategory((prev) => ({ ...prev, [categoryId]: "" }));
+      setPreviewError(categoryId, null);
       return;
     }
 
-    setCategoryError(categoryId, null);
-    setPreviewByCategory((prev) => ({ ...prev, [categoryId]: "" }));
+    setPreviewError(categoryId, null);
     const payload: RuleDraft = {
       categoryId,
       pattern: draft.pattern.trim(),
       matchType: draft.matchType,
       priority: Number.isNaN(draft.priority) ? 0 : draft.priority,
     };
+    const requestVersion = (previewRequestVersionRef.current[categoryId] ?? 0) + 1;
+    previewRequestVersionRef.current[categoryId] = requestVersion;
 
     try {
       const response = await previewRule.mutateAsync(payload);
+      if (previewRequestVersionRef.current[categoryId] !== requestVersion) return;
       setPreviewByCategory((prev) => ({
         ...prev,
         [categoryId]: `${response.matchCount} existing transactions would match.`,
       }));
+      setPreviewError(categoryId, null);
     } catch (error) {
-      if (error instanceof ApiError && error.status === 404) {
-        setPreviewByCategory((prev) => ({
-          ...prev,
-          [categoryId]: "Match preview is not available yet.",
-        }));
+      if (previewRequestVersionRef.current[categoryId] !== requestVersion) {
         return;
       }
-      setCategoryError(categoryId, getErrorMessage(error, "Failed to preview rule matches."));
+
+      setPreviewByCategory((prev) => ({ ...prev, [categoryId]: "" }));
+      if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
+        setPreviewError(categoryId, error.message);
+        return;
+      }
+      setPreviewError(categoryId, "Failed to preview rule matches.");
     }
   }
 
@@ -541,19 +581,16 @@ export function CategoriesPage() {
                                 >
                                   Add Rule
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handlePreviewRule(category.id)}
-                                  disabled={previewRule.isPending}
-                                >
-                                  Match Preview
-                                </Button>
                               </div>
                             </div>
                             {previewByCategory[category.id] && (
                               <p className="mt-2 text-xs text-muted-foreground">
                                 {previewByCategory[category.id]}
+                              </p>
+                            )}
+                            {previewErrorByCategory[category.id] && (
+                              <p className="mt-2 text-xs text-destructive">
+                                {previewErrorByCategory[category.id]}
                               </p>
                             )}
                           </div>

@@ -236,7 +236,7 @@ describe("CategoriesPage", () => {
     });
   });
 
-  it("calls match preview endpoint and shows result", async () => {
+  it("calls preview endpoint live and updates the preview chip", async () => {
     renderWithProviders();
 
     await waitFor(() => {
@@ -246,9 +246,6 @@ describe("CategoriesPage", () => {
     fireEvent.change(screen.getByLabelText("New rule pattern for Groceries"), {
       target: { value: "coop" },
     });
-    const previewButtons = screen.getAllByRole("button", { name: "Match Preview" });
-    expect(previewButtons.length).toBeGreaterThan(0);
-    fireEvent.click(previewButtons[0]!);
 
     await waitFor(() => {
       expect(mockPost).toHaveBeenCalledWith("/category-rules/preview", {
@@ -258,6 +255,84 @@ describe("CategoriesPage", () => {
         priority: 0,
       });
       expect(screen.getByText("7 existing transactions would match.")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("New rule match type for Groceries"), {
+      target: { value: "exact" },
+    });
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith("/category-rules/preview", {
+        categoryId: "cat-1",
+        pattern: "coop",
+        matchType: "exact",
+        priority: 0,
+      });
+    });
+  });
+
+  it("shows inline preview error for invalid live preview requests", async () => {
+    const { ApiError: MockApiError } = await import("../lib/api");
+    mockPost.mockImplementation((path: string, body: unknown) => {
+      if (path === "/categories") {
+        const payload = body as { categoryName: string };
+        categories = [
+          ...categories,
+          {
+            id: `cat-${categories.length + 1}`,
+            categoryName: payload.categoryName,
+            userId: "user-1",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ];
+        return Promise.resolve(categories[categories.length - 1]);
+      }
+
+      if (path === "/category-rules") {
+        const payload = body as {
+          categoryId: string;
+          pattern: string;
+          matchType: "exact" | "contains";
+          priority: number;
+        };
+        rules = [
+          ...rules,
+          {
+            id: `rule-${rules.length + 1}`,
+            userId: "user-1",
+            ...payload,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ];
+        return Promise.resolve({ rule: rules[rules.length - 1] });
+      }
+
+      if (path === "/category-rules/preview") {
+        return Promise.reject(new MockApiError(422, "Pattern must be at least 2 characters."));
+      }
+
+      return Promise.resolve({});
+    });
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("New rule pattern for Groceries"), {
+      target: { value: "x" },
+    });
+
+    const groceriesCard = screen.getByText("Groceries").closest('[data-slot="card"]');
+    expect(groceriesCard).toBeTruthy();
+
+    await waitFor(() => {
+      expect(
+        within(groceriesCard!).getByText("Pattern must be at least 2 characters."),
+      ).toBeInTheDocument();
     });
   });
 
