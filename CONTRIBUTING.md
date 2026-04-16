@@ -6,9 +6,12 @@ We tightly integrate GitHub with Jira. By including Jira ticket IDs in our branc
 
 ## 1. Branching Workflow
 
-The `main` branch is the single source of truth and must always be in a deployable state. Direct commits to `main` are strictly prohibited.
+SmartFinance uses two permanent branches:
 
-All new development must happen in isolated branches created from the latest `main`.
+- **`main`** (Production) — stable, release-only. Never commit directly. Updated only via release PRs from `develop` at end of sprint.
+- **`develop`** (Pre-Production/Staging) — active integration branch. All feature/bugfix PRs target `develop` for testing before release.
+
+All new development must happen in isolated branches created from the latest `develop`. Direct commits to `main` or `develop` are strictly prohibited.
 
 ## 2. Branch Naming Conventions
 
@@ -52,13 +55,15 @@ Format: `<type>(<scope>)?: [<JIRA-ID>] <subject>`
 
 ## 4. Pull Request (PR) Process
 
-1. Open a PR against the `main` branch once your feature or fix is complete.
+1. Open a PR against the `develop` branch once your feature or fix is complete.
 2. Include the Jira ticket ID in the PR title (e.g., `[KAN-23] Define branching strategy`). This automatically links the PR to Jira.
 3. Ensure the automated CI pipeline passes successfully.
 4. Request a review from at least one other team member.
 5. Address any feedback and update the branch.
-6. Once approved, use **Squash and Merge** to integrate your code into `main`.
+6. Once approved, use **Squash and Merge** to integrate your code into `develop`.
 7. Delete the feature branch after merging.
+
+**Release PRs:** At the end of each sprint, a release PR is created from `develop` → `main`. This is the only time code is merged into `main`.
 
 ## 5. Pre-commit Hooks and Linting
 
