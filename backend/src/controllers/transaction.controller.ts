@@ -70,7 +70,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
     {
       preHandler: requireRole("USER"),
       schema: {
-        body: { type: "object", additionalProperties: false },
+        body: { anyOf: [{ type: "object", additionalProperties: false }, { type: "null" }] },
         response: {
           200: {
             type: "object",
