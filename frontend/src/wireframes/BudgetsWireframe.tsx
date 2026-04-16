@@ -31,7 +31,7 @@ function statusLabel(pct: number) {
   return "On track";
 }
 
-export default function BudgetsWireframe() {
+export function BudgetsWireframe() {
   const over = BUDGETS.filter((b) => b.spent > b.limit).length;
   const onTrack = BUDGETS.filter((b) => b.spent / b.limit < 0.85).length;
 
