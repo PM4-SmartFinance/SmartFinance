@@ -1,0 +1,244 @@
+name: PR Cutoff Label
+
+# Applies a "late" label when a PR is opened after the Thursday 20:00
+# cutoff during sprint-review week, as defined by the SPRINT_REVIEW_DATE
+# repository variable.
+#
+# SPRINT_REVIEW_DATE — any ISO date (YYYY-MM-DD) that falls within the
+# sprint-review week.  The Thursday of that same ISO week is the cutoff.
+# PRs opened on Thursday ≥ 20:00 or on Friday–Sunday of that week are
+# labelled "late".  Outside sprint-review week the label is never applied.
+#
+# Rollout / cleanup procedure
+# ────────────────────────────
+# At the start of each sprint:
+#   1. Go to Settings → Secrets and variables → Actions → Variables.
+#   2. Edit SPRINT_REVIEW_DATE to any date within the upcoming sprint-review
+#      week (e.g. the date of the sprint review meeting, YYYY-MM-DD).
+#   3. No workflow change is needed — the new window activates automatically.
+#   4. After the sprint-review week ends, the label stops being applied until
+#      SPRINT_REVIEW_DATE is updated for the following sprint.
+#
+# If SPRINT_REVIEW_DATE is unset or blank the workflow exits silently without
+# labelling anything, so removing the variable disables enforcement entirely.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches:
+      - develop
+      - main
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  check-cutoff:
+    name: Sprint-Review PR Cutoff Check
+    runs-on: ubuntu-24.04
+    # Never fail the PR — this job is informational only.
+    continue-on-error: true
+    steps:
+      # ── Step 1: self-test the date-window logic with fixed scenarios ────────
+      - name: Validate date-window logic (dry run)
+        run: |
+          python3 - <<'PYEOF'
+          from datetime import datetime, timedelta
+          from zoneinfo import ZoneInfo
+
+          tz             = ZoneInfo("Europe/Zurich")
+          CUTOFF_WEEKDAY = 3   # Thursday (0 = Monday)
+          CUTOFF_HOUR    = 20  # 20:00 local time
+
+          def evaluate(sprint_review_date_str: str, now: datetime) -> tuple[bool, bool]:
+              """Return (in_window, is_late) for the given inputs."""
+              sprint_date  = datetime.strptime(sprint_review_date_str, "%Y-%m-%d").replace(tzinfo=tz)
+              week_monday  = sprint_date - timedelta(days=sprint_date.weekday())
+              week_sunday  = week_monday + timedelta(days=6)
+              cutoff_dt    = (week_monday + timedelta(days=CUTOFF_WEEKDAY)).replace(
+                                 hour=CUTOFF_HOUR, minute=0, second=0, microsecond=0)
+              in_window = week_monday.date() <= now.date() <= week_sunday.date()
+              return in_window, in_window and now >= cutoff_dt
+
+          # Sprint-review week: 2026-04-20 (Mon) → 2026-04-26 (Sun)
+          SPRINT = "2026-04-20"
+
+          cases = [
+              # description                             now (Zurich)           in_window  is_late
+              ("Mon of sprint week, 10:00",             "2026-04-20 10:00",    True,      False),
+              ("Thu of sprint week, 19:59",             "2026-04-23 19:59",    True,      False),
+              ("Thu of sprint week, 20:00 — cutoff",    "2026-04-23 20:00",    True,      True ),
+              ("Thu of sprint week, 23:59",             "2026-04-23 23:59",    True,      True ),
+              ("Fri of sprint week, 08:00",             "2026-04-24 08:00",    True,      True ),
+              ("Sun of sprint week, 23:59",             "2026-04-26 23:59",    True,      True ),
+              ("Mon after sprint week",                 "2026-04-27 09:00",    False,     False),
+              ("Mon before sprint week",                "2026-04-13 09:00",    False,     False),
+              ("Unrelated week, Thu 21:00",             "2026-03-05 21:00",    False,     False),
+          ]
+
+          failed = False
+          for desc, now_str, exp_in_window, exp_is_late in cases:
+              now = datetime.strptime(now_str, "%Y-%m-%d %H:%M").replace(tzinfo=tz)
+              in_window, is_late = evaluate(SPRINT, now)
+              ok = (in_window == exp_in_window) and (is_late == exp_is_late)
+              print(f"  [{'PASS' if ok else 'FAIL'}] {desc}")
+              if not ok:
+                  print(f"         got  in_window={in_window} is_late={is_late}")
+                  print(f"         want in_window={exp_in_window} is_late={exp_is_late}")
+                  failed = True
+
+          if failed:
+              raise SystemExit("Date-window logic tests failed — aborting.")
+          print("All date-window logic tests passed.")
+          PYEOF
+
+      # ── Step 2: evaluate the actual PR against the live sprint window ───────
+      - name: Evaluate sprint-review cutoff
+        id: cutoff
+        env:
+          SPRINT_REVIEW_DATE: ${{ vars.SPRINT_REVIEW_DATE }}
+        run: |
+          python3 - <<'PYEOF'
+          import os, sys
+          from datetime import datetime, timedelta
+          from zoneinfo import ZoneInfo
+
+          CUTOFF_WEEKDAY = 3   # Thursday
+          CUTOFF_HOUR    = 20  # 20:00
+
+          def write_output(key: str, value: str) -> None:
+              with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+                  fh.write(f"{key}={value}\n")
+
+          sprint_review_date_str = os.environ.get("SPRINT_REVIEW_DATE", "").strip()
+
+          if not sprint_review_date_str:
+              print("SPRINT_REVIEW_DATE is not configured — skipping cutoff check.")
+              write_output("is_late",  "false")
+              write_output("in_window", "false")
+              sys.exit(0)
+
+          tz = ZoneInfo("Europe/Zurich")
+
+          try:
+              sprint_date = datetime.strptime(sprint_review_date_str, "%Y-%m-%d").replace(tzinfo=tz)
+          except ValueError:
+              print(f"Invalid SPRINT_REVIEW_DATE value: {sprint_review_date_str!r} (expected YYYY-MM-DD) — skipping.")
+              write_output("is_late",  "false")
+              write_output("in_window", "false")
+              sys.exit(0)
+
+          week_monday = sprint_date - timedelta(days=sprint_date.weekday())
+          week_sunday = week_monday + timedelta(days=6)
+          cutoff_dt   = (week_monday + timedelta(days=CUTOFF_WEEKDAY)).replace(
+                            hour=CUTOFF_HOUR, minute=0, second=0, microsecond=0)
+
+          now       = datetime.now(tz=tz)
+          in_window = week_monday.date() <= now.date() <= week_sunday.date()
+          is_late   = in_window and (now >= cutoff_dt)
+
+          print(f"SPRINT_REVIEW_DATE  : {sprint_review_date_str}")
+          print(f"Sprint-review week  : {week_monday.date()} → {week_sunday.date()}")
+          print(f"Thursday cutoff     : {cutoff_dt.strftime('%Y-%m-%d %H:%M %Z')}")
+          print(f"Current time        : {now.strftime('%Y-%m-%d %H:%M %Z')}")
+          print(f"In window           : {in_window}")
+          print(f"Is late             : {is_late}")
+
+          write_output("is_late",  "true" if is_late else "false")
+          write_output("in_window", "true" if in_window else "false")
+          PYEOF
+
+      # ── Step 3: create the "late" label in the repo if it does not exist ────
+      - name: Ensure late label exists
+        if: steps.cutoff.outputs.is_late == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              await github.rest.issues.getLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'late',
+              });
+            } catch (err) {
+              if (err.status === 404) {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: 'late',
+                  color: 'd93f0b',
+                  description: 'PR opened after the Thursday 20:00 sprint-review cutoff',
+                });
+                console.log('Created "late" label.');
+              } else {
+                throw err;
+              }
+            }
+
+      # ── Step 4: attach the label to the PR ──────────────────────────────────
+      - name: Apply late label
+        if: steps.cutoff.outputs.is_late == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['late'],
+            });
+            console.log('Applied "late" label to PR #' + context.issue.number);
+
+      # ── Step 5: comment on the PR once (idempotent via hidden marker) ────────
+      - name: Comment on late PR
+        if: steps.cutoff.outputs.is_late == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const MARKER = '<!-- pr-cutoff-label:late -->';
+
+            // Check for an existing comment from a previous run on this PR.
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            if (comments.some(c => c.body && c.body.includes(MARKER))) {
+              console.log('Late-PR comment already present — skipping duplicate.');
+              return;
+            }
+
+            const baseRef   = context.payload.pull_request.base.ref;
+            const policyUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/blob/${baseRef}/CLAUDE.md#L190`;
+
+            const body = [
+              MARKER,
+              '## ⚠️ Late PR — past the Thursday 20:00 cutoff',
+              '',
+              'This pull request was opened **after the sprint-review week cutoff** defined in the [Git policy](' + policyUrl + ').',
+              '',
+              '> **Policy:** PRs must be created by **Thursday 20:00 (Europe/Zurich)** during sprint-review week.',
+              '',
+              '---',
+              '',
+              '### Updating `SPRINT_REVIEW_DATE` for the next sprint',
+              '',
+              '`SPRINT_REVIEW_DATE` is a repository Actions variable that pins the sprint-review week.',
+              'Update it at the start of each sprint so the cutoff window advances:',
+              '',
+              '1. Go to **Settings → Secrets and variables → Actions → Variables**.',
+              '2. Edit `SPRINT_REVIEW_DATE` to any ISO date (`YYYY-MM-DD`) that falls within the **upcoming** sprint-review week (e.g. the date of the sprint review meeting itself).',
+              '3. No workflow change is needed — the new window is active on the next PR event.',
+              '4. To disable enforcement entirely, delete or blank the variable.',
+              '',
+              'See the [Git section in CLAUDE.md](' + policyUrl + ') for the full branching and PR policy.',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+            console.log('Posted late-PR comment.');
