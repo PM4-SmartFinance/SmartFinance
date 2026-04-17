@@ -46,7 +46,7 @@ Format: `<type>(<scope>)?: [<JIRA-ID>] <subject>`
   - `build`: Changes that affect the build system or dependencies
   - `perf`: Changes that improve performance
 
-- **Scope (Optional):** Use any lowercase scope text to indicate the affected part of the monorepo (for example, `frontend`, `backend`, `docker`, `db`, `root`, `infra`).
+- **Scope (Optional):** Use lowercase scope text (letters and optional hyphens) to indicate the affected part of the monorepo (for example, `frontend`, `back-end`, `ci-cd`, `docker`, `db`, `root`, `infra`).
 
 - **Examples:**
   - `feat(backend): [KAN-10] implement RBAC middleware for protected routes`
