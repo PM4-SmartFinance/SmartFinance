@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useBudgets, useDeleteBudget } from "../lib/queries/budgets";
+import { useBudgets, useDeleteBudget, getBudgetTypeLabel } from "../lib/queries/budgets";
 import type { Budget } from "../lib/queries/budgets";
 import { ApiError } from "../lib/api";
 import { useCategories } from "../lib/queries/categories";
-import { BudgetProgressCard } from "../components/BudgetProgressCard";
+import { BudgetCategoryGroup } from "../components/BudgetProgressCard";
 import { CreateEditBudgetDialog } from "../components/CreateEditBudgetDialog";
 import { DeleteBudgetDialog } from "../components/DeleteBudgetDialog";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ export function BudgetsPage() {
   const [budgetToDelete, setBudgetToDelete] = useState<{
     id: string;
     categoryName: string;
-    monthYear: string;
+    budgetLabel: string;
   } | null>(null);
 
   const { data: budgets = [], isLoading, error } = useBudgets();
@@ -46,14 +46,10 @@ export function BudgetsPage() {
   };
 
   const handleDeleteClick = (budget: Budget) => {
-    const monthYear = new Date(budget.year, budget.month - 1).toLocaleDateString("en-US", {
-      month: "long",
-      year: "numeric",
-    });
     setBudgetToDelete({
       id: budget.id,
       categoryName: getCategoryName(budget.categoryId),
-      monthYear,
+      budgetLabel: getBudgetTypeLabel(budget.type, budget.month, budget.year),
     });
     setDeleteDialogOpen(true);
   };
@@ -134,21 +130,21 @@ export function BudgetsPage() {
           </Button>
         </header>
 
-        {/* Budget Grid */}
+        {/* Budget Groups */}
         {budgets.length === 0 ? (
           <div className="text-center text-muted-foreground">
             <p>No budgets yet. Create one to get started.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {budgets.map((budget) => (
-              <BudgetProgressCard
-                key={budget.id}
-                budget={budget}
-                categoryName={getCategoryName(budget.categoryId)}
+            {groupBudgetsByCategory(budgets).map(([categoryId, categoryBudgets]) => (
+              <BudgetCategoryGroup
+                key={categoryId}
+                categoryName={getCategoryName(categoryId)}
+                budgets={categoryBudgets}
                 onEdit={handleEdit}
                 onDelete={handleDeleteClick}
-                isDeleting={isDeleting && budgetToDelete?.id === budget.id}
+                deletingBudgetId={isDeleting ? budgetToDelete?.id : undefined}
               />
             ))}
           </div>
@@ -168,7 +164,7 @@ export function BudgetsPage() {
           isOpen={deleteDialogOpen}
           budgetId={budgetToDelete.id}
           categoryName={budgetToDelete.categoryName}
-          monthYear={budgetToDelete.monthYear}
+          budgetLabel={budgetToDelete.budgetLabel}
           isDeleting={isDeleting}
           error={deleteError}
           onConfirm={handleConfirmDelete}
@@ -177,4 +173,14 @@ export function BudgetsPage() {
       )}
     </main>
   );
+}
+
+function groupBudgetsByCategory(budgets: Budget[]): [string, Budget[]][] {
+  const groups = new Map<string, Budget[]>();
+  for (const b of budgets) {
+    const list = groups.get(b.categoryId) ?? [];
+    list.push(b);
+    groups.set(b.categoryId, list);
+  }
+  return [...groups.entries()];
 }
