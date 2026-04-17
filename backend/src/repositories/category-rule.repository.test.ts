@@ -272,7 +272,7 @@ describe("category-rule.repository", () => {
 
       expect(result).toEqual({ id: "cat-1" });
       expect(mockDimCategory.findFirst).toHaveBeenCalledWith({
-        where: { id: "cat-1", OR: [{ userId: "user-1" }, { userId: null }] },
+        where: { id: "cat-1", OR: [{ userId: "user-1" }] },
         select: { id: true },
       });
     });
