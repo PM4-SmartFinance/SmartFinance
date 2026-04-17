@@ -189,3 +189,51 @@ describe("Rate limit — POST /api/v1/users (max 10 / minute, admin creation pat
     expect(body.message).not.toMatch(/at\s+\w+\s+\(/); // no stack traces
   });
 });
+
+describe("Rate limit — POST /api/v1/users (unauthenticated bootstrap path)", () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    await prisma.dimUser.deleteMany();
+    await ensureCurrency();
+    app = await buildApp({ forceRateLimit: true });
+    await app.ready();
+  });
+
+  afterAll(async () => {
+    await prisma.dimUser.deleteMany();
+    await app.close();
+  });
+
+  it("rate-limits unauthenticated requests after 10 attempts", async () => {
+    for (let attempt = 1; attempt <= 10; attempt++) {
+      const email = `rate-limit-unauth-${attempt}@example.com`;
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/users",
+        payload: { email, password: TEST_PASSWORD },
+      });
+      // First request bootstraps (201); subsequent unauthenticated
+      // requests are rejected — all count toward the rate-limit bucket
+      if (attempt === 1) {
+        expect(res.statusCode, "bootstrap request should succeed").toBe(201);
+      } else {
+        expect([401, 403], `unauthenticated attempt ${attempt} should be rejected`).toContain(
+          res.statusCode,
+        );
+      }
+    }
+
+    const blocked = await app.inject({
+      method: "POST",
+      url: "/api/v1/users",
+      payload: { email: "rate-limit-unauth-blocked@example.com", password: TEST_PASSWORD },
+    });
+    expect(blocked.statusCode).toBe(429);
+    expect(blocked.headers["retry-after"]).toBeDefined();
+    expect(Number(blocked.headers["retry-after"])).toBeGreaterThan(0);
+    const body = blocked.json();
+    expect(body).toHaveProperty("message");
+    expect(body.message).not.toMatch(/at\s+\w+\s+\(/); // no stack traces
+  });
+});
