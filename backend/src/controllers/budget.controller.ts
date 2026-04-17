@@ -14,7 +14,10 @@ interface CreateBudgetBody {
 }
 
 interface UpdateBudgetBody {
-  limitAmount: number;
+  categoryId?: string;
+  month?: number;
+  year?: number;
+  limitAmount?: number;
 }
 
 const createBudgetSchema = {
@@ -30,8 +33,10 @@ const createBudgetSchema = {
 
 const updateBudgetSchema = {
   type: "object",
-  required: ["limitAmount"],
   properties: {
+    categoryId: { type: "string" },
+    month: { type: "integer", minimum: 1, maximum: 12 },
+    year: { type: "integer", minimum: 2000 },
     limitAmount: { type: "number", exclusiveMinimum: 0 },
   },
 } as const;
@@ -79,11 +84,7 @@ export async function budgetRoutes(app: FastifyInstance): Promise<void> {
     },
     async (request, reply) => {
       const session = request.session.get("user")!;
-      const budget = await budgetService.updateBudget(
-        request.params.id,
-        session.id,
-        request.body.limitAmount,
-      );
+      const budget = await budgetService.updateBudget(request.params.id, session.id, request.body);
       return reply.send({ budget });
     },
   );

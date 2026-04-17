@@ -57,25 +57,48 @@ export async function create(data: {
   }
 }
 
-export async function update(id: string, userId: string, limitAmount: number) {
+export async function update(
+  id: string,
+  userId: string,
+  updates: {
+    categoryId?: string;
+    month?: number;
+    year?: number;
+    limitAmount?: number;
+  },
+) {
   return prisma.$transaction(async (tx) => {
     const existing = await tx.dimBudget.findFirst({ where: { id, userId } });
     if (!existing) {
       throw new ServiceError(404, "Budget not found");
     }
 
-    const budget = await tx.dimBudget.update({
-      where: { id },
-      data: { limitAmount: new Prisma.Decimal(limitAmount) },
-    });
+    try {
+      const budget = await tx.dimBudget.update({
+        where: { id },
+        data: {
+          ...(updates.categoryId !== undefined && { categoryId: updates.categoryId }),
+          ...(updates.month !== undefined && { month: updates.month }),
+          ...(updates.year !== undefined && { year: updates.year }),
+          ...(updates.limitAmount !== undefined && {
+            limitAmount: new Prisma.Decimal(updates.limitAmount),
+          }),
+        },
+      });
 
-    const spending = await computeSpendingSingle(
-      userId,
-      budget.categoryId,
-      budget.month,
-      budget.year,
-    );
-    return { ...budget, currentSpending: spending };
+      const spending = await computeSpendingSingle(
+        userId,
+        budget.categoryId,
+        budget.month,
+        budget.year,
+      );
+      return { ...budget, currentSpending: spending };
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        throw new ServiceError(409, "Budget already exists for this category and month");
+      }
+      throw err;
+    }
   });
 }
 

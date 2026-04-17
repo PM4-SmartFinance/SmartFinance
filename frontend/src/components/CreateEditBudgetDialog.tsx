@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useCreateBudget, useUpdateBudget } from "../lib/queries/budgets";
 import type { Budget } from "../lib/queries/budgets";
 import { useCategories } from "../lib/queries/categories";
 import { ApiError } from "../lib/api";
+import { useDialog } from "../hooks/useDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,20 +56,11 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
   }, [isOpen, budget]);
 
   const [formState, setFormState] = useState<FormState>(() => getInitialFormState());
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const dialogRef = useDialog(isOpen);
 
   const createMutation = useCreateBudget();
   const updateMutation = useUpdateBudget();
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
-
-  // Manage dialog open/close
-  useEffect(() => {
-    if (isOpen) {
-      dialogRef.current?.showModal();
-    } else {
-      dialogRef.current?.close();
-    }
-  }, [isOpen]);
 
   // Reset form when budget or isOpen changes
   useEffect(() => {
@@ -90,11 +82,29 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
     }
 
     if (budget) {
-      // Edit mode
+      // Edit mode: send all fields that may have changed
+      if (!formState.categoryId) {
+        setFormState((prev) => ({ ...prev, error: "Please select a category" }));
+        return;
+      }
+      if (!formState.month) {
+        setFormState((prev) => ({ ...prev, error: "Please select a month" }));
+        return;
+      }
+      if (!formState.year) {
+        setFormState((prev) => ({ ...prev, error: "Please select a year" }));
+        return;
+      }
+
       try {
         await updateMutation.mutateAsync({
           id: budget.id,
-          input: { limitAmount: parseFloat(formState.limitAmount) },
+          input: {
+            categoryId: formState.categoryId,
+            month: parseInt(formState.month),
+            year: parseInt(formState.year),
+            limitAmount: parseFloat(formState.limitAmount),
+          },
         });
         onClose();
       } catch (err) {
@@ -159,73 +169,67 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
             <div className="rounded bg-red-50 p-2 text-sm text-red-600">{formState.error}</div>
           )}
 
-          {!budget && (
-            <>
-              {/* Category Select */}
-              <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
-                <select
-                  id="category"
-                  value={formState.categoryId}
-                  onChange={(e) =>
-                    setFormState((prev) => ({ ...prev, categoryId: e.target.value }))
-                  }
-                  disabled={isSubmitting || categoriesLoading}
-                  className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="">Select a category…</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.categoryName}
-                    </option>
-                  ))}
-                </select>
-              </div>
+          {/* Category Select */}
+          <div className="space-y-2">
+            <Label htmlFor="category">Category</Label>
+            <select
+              id="category"
+              value={formState.categoryId}
+              onChange={(e) => setFormState((prev) => ({ ...prev, categoryId: e.target.value }))}
+              disabled={isSubmitting || categoriesLoading}
+              className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">Select a category…</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.categoryName}
+                </option>
+              ))}
+            </select>
+          </div>
 
-              {/* Month Select */}
-              <div className="space-y-2">
-                <Label htmlFor="month">Month</Label>
-                <select
-                  id="month"
-                  value={formState.month}
-                  onChange={(e) => setFormState((prev) => ({ ...prev, month: e.target.value }))}
-                  disabled={isSubmitting}
-                  className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="">Select a month…</option>
-                  {months.map((m) => {
-                    const monthName = new Date(currentYear, m - 1).toLocaleDateString("en-US", {
-                      month: "long",
-                    });
-                    return (
-                      <option key={m} value={m}>
-                        {monthName}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
+          {/* Month Select */}
+          <div className="space-y-2">
+            <Label htmlFor="month">Month</Label>
+            <select
+              id="month"
+              value={formState.month}
+              onChange={(e) => setFormState((prev) => ({ ...prev, month: e.target.value }))}
+              disabled={isSubmitting}
+              className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">Select a month…</option>
+              {months.map((m) => {
+                const monthName = new Date(currentYear, m - 1).toLocaleDateString("en-US", {
+                  month: "long",
+                });
+                return (
+                  <option key={m} value={m}>
+                    {monthName}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
 
-              {/* Year Select */}
-              <div className="space-y-2">
-                <Label htmlFor="year">Year</Label>
-                <select
-                  id="year"
-                  value={formState.year}
-                  onChange={(e) => setFormState((prev) => ({ ...prev, year: e.target.value }))}
-                  disabled={isSubmitting}
-                  className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="">Select a year…</option>
-                  {years.map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </>
-          )}
+          {/* Year Select */}
+          <div className="space-y-2">
+            <Label htmlFor="year">Year</Label>
+            <select
+              id="year"
+              value={formState.year}
+              onChange={(e) => setFormState((prev) => ({ ...prev, year: e.target.value }))}
+              disabled={isSubmitting}
+              className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">Select a year…</option>
+              {years.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {/* Spending Limit */}
           <div className="space-y-2">

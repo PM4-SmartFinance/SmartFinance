@@ -550,7 +550,7 @@ Creates a new budget for a category and calendar month.
 
 ### PATCH /budgets/:id
 
-Updates the spending limit of an existing budget. Only budgets owned by the authenticated user can be updated.
+Updates an existing budget. Supports full budget mutation including category, month, year, and limit amount. Only budgets owned by the authenticated user can be updated.
 
 **Path Parameters:**
 
@@ -560,9 +560,14 @@ Updates the spending limit of an existing budget. Only budgets owned by the auth
 
 **Request Body:**
 
-| Field         | Type   | Required | Validation  |
-| ------------- | ------ | -------- | ----------- |
-| `limitAmount` | number | yes      | Must be > 0 |
+| Field         | Type   | Required | Validation                        |
+| ------------- | ------ | -------- | --------------------------------- |
+| `categoryId`  | string | no       | Must belong to authenticated user |
+| `month`       | number | no       | Between 1 and 12                  |
+| `year`        | number | no       | 2000 or later                     |
+| `limitAmount` | number | no       | Must be > 0                       |
+
+At least one field must be provided.
 
 **Response 200:**
 
@@ -588,9 +593,10 @@ Updates the spending limit of an existing budget. Only budgets owned by the auth
 }
 ```
 
-**Response 400:** Invalid input (limitAmount <= 0)
+**Response 400:** Invalid input (month out of range, limitAmount <= 0, invalid year)
 **Response 401:** Not authenticated
-**Response 404:** Budget not found or does not belong to the authenticated user
+**Response 404:** Budget not found, does not belong to the authenticated user, or referenced category not found
+**Response 409:** Target budget combination already exists for another budget
 
 ---
 
