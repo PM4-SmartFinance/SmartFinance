@@ -12,10 +12,19 @@ export function useDialog(isOpen: boolean) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      dialogRef.current?.showModal();
-    } else {
-      dialogRef.current?.close();
+    const dialog = dialogRef.current;
+    if (!dialog) {
+      if (isOpen && import.meta.env.DEV) {
+        console.warn(
+          "useDialog: dialogRef is not attached to a <dialog> element. Pass the returned ref to the <dialog> element.",
+        );
+      }
+      return;
+    }
+    if (isOpen && !dialog.open) {
+      dialog.showModal();
+    } else if (!isOpen && dialog.open) {
+      dialog.close();
     }
   }, [isOpen]);
 
