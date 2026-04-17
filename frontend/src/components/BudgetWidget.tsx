@@ -1,11 +1,31 @@
 import { Link } from "react-router";
 import { useDashboardBudgets } from "../lib/queries/dashboard";
+import type { Budget } from "../lib/queries/budgets";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
 export function getBudgetStatus(percentageUsed: number): "on-track" | "approaching" | "exceeded" {
   if (percentageUsed >= 100) return "exceeded";
   if (percentageUsed >= 70) return "approaching";
   return "on-track";
+}
+
+/**
+ * For each category, pick the most specific budget that is active.
+ * Uses `isActive` and `priority` from the backend response.
+ */
+function getMostSpecificBudgets(budgets: Budget[]): Budget[] {
+  const activeBudgets = budgets.filter((b) => b.isActive);
+
+  // Group by category, keep highest priority
+  const byCategory = new Map<string, Budget>();
+  for (const b of activeBudgets) {
+    const existing = byCategory.get(b.categoryId);
+    if (!existing || b.priority > existing.priority) {
+      byCategory.set(b.categoryId, b);
+    }
+  }
+
+  return [...byCategory.values()];
 }
 
 export function BudgetWidget() {
@@ -39,17 +59,10 @@ export function BudgetWidget() {
     );
   }
 
-  // Get current month and year
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1;
-  const currentYear = now.getFullYear();
-
-  // Filter budgets for current month
-  const currentMonthBudgets =
-    data?.filter((b) => b.month === currentMonth && b.year === currentYear) || [];
+  const activeBudgets = getMostSpecificBudgets(data ?? []);
 
   // Count budgets by status
-  const statusCounts = currentMonthBudgets.reduce(
+  const statusCounts = activeBudgets.reduce(
     (acc, b) => {
       const status = getBudgetStatus(b.percentageUsed);
       acc[status] += 1;
@@ -67,10 +80,8 @@ export function BudgetWidget() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {currentMonthBudgets.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No budgets set for {currentMonth}/{currentYear}. Click to create one.
-            </p>
+          {activeBudgets.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No active budgets. Click to create one.</p>
           ) : (
             <div className="space-y-2">
               <p className="text-sm font-medium">
@@ -78,8 +89,8 @@ export function BudgetWidget() {
                 limit, {statusCounts["exceeded"]} exceeded
               </p>
               <p className="text-xs text-muted-foreground">
-                {currentMonthBudgets.length} active budget
-                {currentMonthBudgets.length !== 1 ? "s" : ""} for {currentMonth}/{currentYear}
+                {activeBudgets.length} active budget
+                {activeBudgets.length !== 1 ? "s" : ""}
               </p>
             </div>
           )}
@@ -87,9 +98,4 @@ export function BudgetWidget() {
       </Card>
     </Link>
   );
-
-  // NOTE: Future enhancement (next sprint) — detailed granular view can be added here
-  // by creating a separate BudgetDetailedWidget component that shows individual
-  // budget cards, spending breakdown, and progress bars. Both would use the same
-  // useDashboardBudgets() hook and getBudgetStatus() helper for consistency.
 }

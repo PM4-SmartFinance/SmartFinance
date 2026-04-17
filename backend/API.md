@@ -472,7 +472,7 @@ All budget endpoints require an authenticated session with the `USER` role.
 
 ### GET /budgets
 
-Returns all budgets for the authenticated user, ordered by year and month descending. Each budget includes dynamically calculated status fields: `currentSpending`, `percentageUsed`, `remainingAmount`, and `isOverBudget`.
+Returns all budgets for the authenticated user, ordered by type, then year and month descending. Each budget includes dynamically calculated status fields: `currentSpending`, `percentageUsed`, `remainingAmount`, and `isOverBudget`.
 
 **Response 200:**
 
@@ -482,12 +482,10 @@ Returns all budgets for the authenticated user, ordered by year and month descen
     {
       "id": "uuid",
       "categoryId": "uuid",
-      "month": 3,
-      "year": 2026,
+      "type": "MONTHLY",
+      "month": 0,
+      "year": 0,
       "limitAmount": "500.00",
-      "budgetLimitDay": null,
-      "budgetLimitMonth": null,
-      "budgetLimitYear": null,
       "active": true,
       "currentSpending": "142.50",
       "percentageUsed": 28.5,
@@ -506,16 +504,17 @@ Returns all budgets for the authenticated user, ordered by year and month descen
 
 ### POST /budgets
 
-Creates a new budget for a category and calendar month.
+Creates a new budget for a category. Supports six budget types: general recurring (`DAILY`, `MONTHLY`, `YEARLY`) and specific period (`SPECIFIC_MONTH`, `SPECIFIC_YEAR`, `SPECIFIC_MONTH_YEAR`).
 
 **Request Body:**
 
-| Field         | Type    | Required | Validation                                      |
-| ------------- | ------- | -------- | ----------------------------------------------- |
-| `categoryId`  | string  | yes      | Must be a valid category (user-owned or global) |
-| `month`       | integer | yes      | 1–12                                            |
-| `year`        | integer | yes      | >= 2000                                         |
-| `limitAmount` | number  | yes      | Must be > 0                                     |
+| Field         | Type    | Required    | Validation                                                                                     |
+| ------------- | ------- | ----------- | ---------------------------------------------------------------------------------------------- |
+| `categoryId`  | string  | yes         | Must be a valid category (user-owned or global)                                                |
+| `type`        | string  | yes         | One of: `DAILY`, `MONTHLY`, `YEARLY`, `SPECIFIC_MONTH`, `SPECIFIC_YEAR`, `SPECIFIC_MONTH_YEAR` |
+| `limitAmount` | number  | yes         | Must be > 0                                                                                    |
+| `month`       | integer | conditional | Required for `SPECIFIC_MONTH` and `SPECIFIC_MONTH_YEAR` (1–12)                                 |
+| `year`        | integer | conditional | Required for `SPECIFIC_YEAR` and `SPECIFIC_MONTH_YEAR` (>= 2000)                               |
 
 **Response 201:**
 
@@ -524,12 +523,10 @@ Creates a new budget for a category and calendar month.
   "budget": {
     "id": "uuid",
     "categoryId": "uuid",
-    "month": 3,
-    "year": 2026,
+    "type": "MONTHLY",
+    "month": 0,
+    "year": 0,
     "limitAmount": "500.00",
-    "budgetLimitDay": null,
-    "budgetLimitMonth": null,
-    "budgetLimitYear": null,
     "active": true,
     "currentSpending": "0",
     "percentageUsed": 0,
@@ -541,10 +538,10 @@ Creates a new budget for a category and calendar month.
 }
 ```
 
-**Response 400:** Invalid input (month out of range, limitAmount <= 0, missing fields)
+**Response 400:** Invalid input (invalid type, missing required month/year for type, limitAmount <= 0)
 **Response 401:** Not authenticated
 **Response 404:** Category not found or does not belong to the authenticated user
-**Response 409:** Budget already exists for this category and month
+**Response 409:** Budget already exists for this category and type
 
 ---
 
@@ -571,12 +568,10 @@ Updates the spending limit of an existing budget. Only budgets owned by the auth
   "budget": {
     "id": "uuid",
     "categoryId": "uuid",
-    "month": 3,
-    "year": 2026,
+    "type": "MONTHLY",
+    "month": 0,
+    "year": 0,
     "limitAmount": "750.00",
-    "budgetLimitDay": null,
-    "budgetLimitMonth": null,
-    "budgetLimitYear": null,
     "active": true,
     "currentSpending": "142.50",
     "percentageUsed": 19,

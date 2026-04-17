@@ -1,13 +1,24 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
 
+export type BudgetType =
+  | "DAILY"
+  | "MONTHLY"
+  | "YEARLY"
+  | "SPECIFIC_MONTH"
+  | "SPECIFIC_YEAR"
+  | "SPECIFIC_MONTH_YEAR";
+
 export interface Budget {
   id: string;
   categoryId: string;
+  type: BudgetType;
   month: number;
   year: number;
   limitAmount: string;
   active: boolean;
+  isActive: boolean;
+  priority: number;
   currentSpending: string;
   percentageUsed: number;
   remainingAmount: string;
@@ -18,9 +29,10 @@ export interface Budget {
 
 export interface CreateBudgetInput {
   categoryId: string;
-  month: number;
-  year: number;
+  type: BudgetType;
   limitAmount: number;
+  month?: number;
+  year?: number;
 }
 
 export interface UpdateBudgetInput {
@@ -50,8 +62,7 @@ export function useCreateBudget() {
         return old ? [response.budget, ...old] : [response.budget];
       });
     },
-    onError: (error) => {
-      console.error("[useCreateBudget]", error);
+    onError: () => {
       queryClient.invalidateQueries({ queryKey: BUDGETS_QUERY_KEY });
     },
   });
@@ -70,8 +81,7 @@ export function useUpdateBudget() {
           : [response.budget];
       });
     },
-    onError: (error) => {
-      console.error("[useUpdateBudget]", error);
+    onError: () => {
       queryClient.invalidateQueries({ queryKey: BUDGETS_QUERY_KEY });
     },
   });
@@ -87,9 +97,33 @@ export function useDeleteBudget() {
         return old ? old.filter((b) => b.id !== id) : [];
       });
     },
-    onError: (error) => {
-      console.error("[useDeleteBudget]", error);
+    onError: () => {
       queryClient.invalidateQueries({ queryKey: BUDGETS_QUERY_KEY });
     },
   });
+}
+
+/** Human-readable label for a budget type + month/year combo */
+export function getBudgetTypeLabel(type: BudgetType, month: number, year: number): string {
+  switch (type) {
+    case "DAILY":
+      return "Daily Budget";
+    case "MONTHLY":
+      return "Monthly Budget";
+    case "YEARLY":
+      return "Yearly Budget";
+    case "SPECIFIC_MONTH": {
+      const name = new Date(2000, month - 1).toLocaleDateString("en-US", { month: "long" });
+      return `${name} (recurring)`;
+    }
+    case "SPECIFIC_YEAR":
+      return `${year}`;
+    case "SPECIFIC_MONTH_YEAR": {
+      const name = new Date(year, month - 1).toLocaleDateString("en-US", {
+        month: "long",
+        year: "numeric",
+      });
+      return name;
+    }
+  }
 }

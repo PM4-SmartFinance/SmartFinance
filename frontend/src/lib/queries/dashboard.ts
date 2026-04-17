@@ -92,17 +92,5 @@ export function useDashboardCategories() {
   });
 }
 
-// Budgets Hook
-export function useDashboardBudgets() {
-  return useQuery({
-    queryKey: ["dashboard", "budgets"] as const,
-    queryFn: async () => {
-      const res = await api.get<{ budgets: Budget[] }>("/budgets");
-      if (!Array.isArray(res.budgets)) {
-        throw new Error("Unexpected response shape from /budgets endpoint");
-      }
-      return res.budgets;
-    },
-    staleTime: DASHBOARD_STALE_TIME,
-  });
-}
+// Budgets Hook — reuses the same query key as useBudgets for shared cache
+export { useBudgets as useDashboardBudgets } from "./budgets";
