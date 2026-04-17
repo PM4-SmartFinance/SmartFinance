@@ -78,15 +78,41 @@ export async function deleteRule(id: string, userId: string) {
 export async function previewRule(
   userId: string,
   rule: { pattern: string; matchType: MatchType; categoryId: string; priority: number },
-): Promise<{ matchCount: number }> {
+): Promise<{
+  matchCount: number;
+  matchedTransactions: Array<{
+    id: string;
+    merchantName: string;
+    amount: number;
+    dateId: number;
+  }>;
+}> {
   const transactions = await transactionRepository.findUncategorizedForUser(userId);
   let matchCount = 0;
+  const matchedTransactions: Array<{
+    id: string;
+    merchantName: string;
+    amount: number;
+    dateId: number;
+  }> = [];
+
   for (const tx of transactions) {
     const name = tx.merchant?.name;
     if (!name) continue;
     if (matchTransaction(name, [rule]) !== null) {
       matchCount++;
+      matchedTransactions.push({
+        id: tx.id,
+        merchantName: name,
+        amount: tx.amount.toNumber(),
+        dateId: tx.dateId,
+      });
     }
   }
-  return { matchCount };
+
+  const latestMatches = matchedTransactions
+    .sort((left, right) => right.dateId - left.dateId || left.id.localeCompare(right.id))
+    .slice(0, 3);
+
+  return { matchCount, matchedTransactions: latestMatches };
 }

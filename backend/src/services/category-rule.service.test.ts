@@ -1,4 +1,9 @@
+import { Prisma } from "@prisma/client";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+function d(value: string | number) {
+  return new Prisma.Decimal(value);
+}
 
 vi.mock("../repositories/category-rule.repository.js", () => ({
   findAllByUser: vi.fn(),
@@ -9,11 +14,17 @@ vi.mock("../repositories/category-rule.repository.js", () => ({
   findCategoryForUser: vi.fn(),
 }));
 
+vi.mock("../repositories/transaction.repository.js", () => ({
+  findUncategorizedForUser: vi.fn(),
+}));
+
 import * as service from "./category-rule.service.js";
 import * as repo from "../repositories/category-rule.repository.js";
+import * as transactionRepo from "../repositories/transaction.repository.js";
 import { DuplicateRuleError, ServiceError } from "../errors.js";
 
 const mockRepo = vi.mocked(repo);
+const mockTransactionRepo = vi.mocked(transactionRepo);
 
 const sampleRule = {
   id: "rule-1",
@@ -153,6 +164,72 @@ describe("category-rule.service", () => {
       mockRepo.remove.mockResolvedValue(false);
 
       await expect(service.deleteRule("nonexistent", "user-1")).rejects.toThrow(ServiceError);
+    });
+  });
+
+  describe("previewRule", () => {
+    it("returns match count and top matching transaction samples", async () => {
+      mockTransactionRepo.findUncategorizedForUser.mockResolvedValue([
+        { id: "tx-1", amount: d(-12.5), dateId: 20260412, merchant: { name: "Coop" } },
+        { id: "tx-2", amount: d(-8.75), dateId: 20260413, merchant: { name: "Coop City" } },
+        { id: "tx-3", amount: d(-19.9), dateId: 20260414, merchant: { name: "Migros" } },
+      ] as never);
+
+      const result = await service.previewRule("user-1", {
+        categoryId: "cat-1",
+        pattern: "co",
+        matchType: "contains",
+        priority: 0,
+      });
+
+      expect(result).toEqual({
+        matchCount: 2,
+        matchedTransactions: [
+          {
+            id: "tx-2",
+            merchantName: "Coop City",
+            amount: -8.75,
+            dateId: 20260413,
+          },
+          {
+            id: "tx-1",
+            merchantName: "Coop",
+            amount: -12.5,
+            dateId: 20260412,
+          },
+        ],
+      });
+    });
+
+    it("returns the three newest matching transaction samples", async () => {
+      mockTransactionRepo.findUncategorizedForUser.mockResolvedValue([
+        { id: "tx-1", amount: d(-1), dateId: 20260410, merchant: { name: "Coop" } },
+        { id: "tx-2", amount: d(-2), dateId: 20260416, merchant: { name: "Coop" } },
+        { id: "tx-3", amount: d(-3), dateId: 20260412, merchant: { name: "Coop Pronto" } },
+        { id: "tx-4", amount: d(-4), dateId: 20260415, merchant: { name: "Coop City" } },
+        { id: "tx-5", amount: d(-5), dateId: 20260414, merchant: { name: "Coop Bau" } },
+        { id: "tx-6", amount: d(-6), dateId: 20260411, merchant: { name: "Coop Restaurant" } },
+        { id: "tx-7", amount: d(-7), dateId: 20260413, merchant: { name: "Coop Extra" } },
+      ] as never);
+
+      const result = await service.previewRule("user-1", {
+        categoryId: "cat-1",
+        pattern: "co",
+        matchType: "contains",
+        priority: 0,
+      });
+
+      expect(result.matchCount).toBe(7);
+      expect(result.matchedTransactions).toHaveLength(3);
+      expect(result.matchedTransactions[0]).toMatchObject({ id: "tx-2", merchantName: "Coop" });
+      expect(result.matchedTransactions[1]).toMatchObject({
+        id: "tx-4",
+        merchantName: "Coop City",
+      });
+      expect(result.matchedTransactions[2]).toMatchObject({
+        id: "tx-5",
+        merchantName: "Coop Bau",
+      });
     });
   });
 });
