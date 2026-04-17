@@ -92,8 +92,8 @@ describe("Rate limit — POST /api/v1/auth/login (max 10 / minute)", () => {
     expect(blocked.headers["retry-after"]).toBeDefined();
     expect(Number(blocked.headers["retry-after"])).toBeGreaterThan(0);
     const body = blocked.json();
-    expect(body).toHaveProperty("message");
-    expect(body.message).not.toMatch(/at\s+\w+\s+\(/); // no stack traces
+    expect(body).toHaveProperty("error.message");
+    expect(body.error.message).not.toMatch(/at\s+\w+\s+\(/); // no stack traces
   });
 });
 
@@ -134,8 +134,8 @@ describe("Rate limit — POST /api/v1/auth/login counts failed attempts (wrong p
     expect(blocked.headers["retry-after"]).toBeDefined();
     expect(Number(blocked.headers["retry-after"])).toBeGreaterThan(0);
     const body = blocked.json();
-    expect(body).toHaveProperty("message");
-    expect(body.message).not.toMatch(/at\s+\w+\s+\(/); // no stack traces
+    expect(body).toHaveProperty("error.message");
+    expect(body.error.message).not.toMatch(/at\s+\w+\s+\(/); // no stack traces
   });
 });
 
@@ -185,8 +185,8 @@ describe("Rate limit — POST /api/v1/users (max 10 / minute, admin creation pat
     expect(blocked.headers["retry-after"]).toBeDefined();
     expect(Number(blocked.headers["retry-after"])).toBeGreaterThan(0);
     const body = blocked.json();
-    expect(body).toHaveProperty("message");
-    expect(body.message).not.toMatch(/at\s+\w+\s+\(/); // no stack traces
+    expect(body).toHaveProperty("error.message");
+    expect(body.error.message).not.toMatch(/at\s+\w+\s+\(/); // no stack traces
   });
 });
 
@@ -201,7 +201,7 @@ describe("Rate limit — POST /api/v1/users (unauthenticated bootstrap path)", (
   });
 
   afterAll(async () => {
-    await prisma.dimUser.deleteMany();
+    await prisma.dimUser.deleteMany({ where: { email: { startsWith: "rate-limit-unauth-" } } });
     await app.close();
   });
 
@@ -233,7 +233,7 @@ describe("Rate limit — POST /api/v1/users (unauthenticated bootstrap path)", (
     expect(blocked.headers["retry-after"]).toBeDefined();
     expect(Number(blocked.headers["retry-after"])).toBeGreaterThan(0);
     const body = blocked.json();
-    expect(body).toHaveProperty("message");
-    expect(body.message).not.toMatch(/at\s+\w+\s+\(/); // no stack traces
+    expect(body).toHaveProperty("error.message");
+    expect(body.error.message).not.toMatch(/at\s+\w+\s+\(/); // no stack traces
   });
 });
