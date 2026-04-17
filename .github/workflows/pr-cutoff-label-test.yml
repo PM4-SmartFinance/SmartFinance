@@ -1,0 +1,92 @@
+name: PR Cutoff Label — Logic Tests
+
+# Runs the full date-window test suite only when the labeler workflow itself
+# changes.  Kept separate so the 17-case suite does not run on every PR.
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/pr-cutoff-label.yml
+      - .github/workflows/pr-cutoff-label-test.yml
+
+jobs:
+  test-logic:
+    name: Date-Window Logic Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Run full date-window test suite
+        run: |
+          python3 - <<'PYEOF'
+          from datetime import datetime, timedelta
+          from zoneinfo import ZoneInfo
+
+          tz             = ZoneInfo("Europe/Zurich")
+          CUTOFF_WEEKDAY = 3   # Thursday (0 = Monday)
+          CUTOFF_HOUR    = 20  # 20:00 local time
+
+          def evaluate(sprint_review_date_str: str, now: datetime) -> tuple[bool, bool]:
+              """Return (in_window, is_late) for the given inputs."""
+              sprint_date = datetime.strptime(sprint_review_date_str, "%Y-%m-%d").replace(tzinfo=tz)
+              week_monday = sprint_date - timedelta(days=sprint_date.weekday())
+              week_sunday = week_monday + timedelta(days=6)
+              cutoff_dt   = (week_monday + timedelta(days=CUTOFF_WEEKDAY)).replace(
+                                hour=CUTOFF_HOUR, minute=0, second=0, microsecond=0)
+              in_window = week_monday.date() <= now.date() <= week_sunday.date()
+              return in_window, in_window and now >= cutoff_dt
+
+          # ── Nominal cases: sprint-review week 2026-04-20 (Mon) → 2026-04-26 (Sun) ──
+          SPRINT = "2026-04-20"
+
+          grouped = [
+              (SPRINT, "Mon of sprint week, 10:00",            "2026-04-20 10:00", True,  False),
+              (SPRINT, "Thu of sprint week, 19:59",            "2026-04-23 19:59", True,  False),
+              (SPRINT, "Thu of sprint week, 20:00 — cutoff",   "2026-04-23 20:00", True,  True ),
+              (SPRINT, "Thu of sprint week, 23:59",            "2026-04-23 23:59", True,  True ),
+              (SPRINT, "Fri of sprint week, 08:00",            "2026-04-24 08:00", True,  True ),
+              (SPRINT, "Sat of sprint week, 14:00",            "2026-04-25 14:00", True,  True ),
+              (SPRINT, "Sun of sprint week, 23:59",            "2026-04-26 23:59", True,  True ),
+              (SPRINT, "Mon after sprint week",                "2026-04-27 09:00", False, False),
+              (SPRINT, "Mon before sprint week",               "2026-04-13 09:00", False, False),
+              (SPRINT, "Unrelated week, Thu 21:00",            "2026-03-05 21:00", False, False),
+          ]
+
+          # ── DST cases: clocks spring forward Sun 2026-03-29 02:00 CET → CEST ──
+          # Sprint-review week 2026-03-30 (Mon CEST) → 2026-04-05 (Sun CEST)
+          SPRINT_POST_DST = "2026-03-30"
+
+          grouped += [
+              (SPRINT_POST_DST, "Post-DST Thu, 19:59 CEST",            "2026-04-02 19:59", True,  False),
+              (SPRINT_POST_DST, "Post-DST Thu, 20:00 CEST — cutoff",   "2026-04-02 20:00", True,  True ),
+              (SPRINT_POST_DST, "Post-DST Fri, 10:00 CEST",            "2026-04-03 10:00", True,  True ),
+              (SPRINT_POST_DST, "Post-DST Mon after, 09:00 CEST",      "2026-04-06 09:00", False, False),
+          ]
+
+          # ── Weekend SPRINT_REVIEW_DATE inputs ────────────────────────────────
+          # Operators often set SPRINT_REVIEW_DATE to the sprint review meeting
+          # date, which can be a Saturday or Sunday.  Week derivation must still
+          # resolve to the correct Monday–Sunday window.
+          SPRINT_SAT = "2026-04-25"  # Saturday of the 2026-04-20 week
+          SPRINT_SUN = "2026-04-26"  # Sunday  of the 2026-04-20 week
+
+          grouped += [
+              (SPRINT_SAT, "Sat input: Thu 20:00 is late",          "2026-04-23 20:00", True,  True ),
+              (SPRINT_SAT, "Sat input: Thu 19:59 is not late",      "2026-04-23 19:59", True,  False),
+              (SPRINT_SUN, "Sun input: Mon after is out of window",  "2026-04-27 09:00", False, False),
+          ]
+
+          failed = False
+          for sprint, desc, now_str, exp_in_window, exp_is_late in grouped:
+              now = datetime.strptime(now_str, "%Y-%m-%d %H:%M").replace(tzinfo=tz)
+              in_window, is_late = evaluate(sprint, now)
+              ok = (in_window == exp_in_window) and (is_late == exp_is_late)
+              print(f"  [{'PASS' if ok else 'FAIL'}] {desc}")
+              if not ok:
+                  print(f"         sprint={sprint}")
+                  print(f"         got  in_window={in_window} is_late={is_late}")
+                  print(f"         want in_window={exp_in_window} is_late={exp_is_late}")
+                  failed = True
+
+          if failed:
+              raise SystemExit("Date-window logic tests failed.")
+          print(f"\nAll {len(grouped)} tests passed.")
+          PYEOF

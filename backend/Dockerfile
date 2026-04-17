@@ -11,6 +11,7 @@ RUN bun install --frozen-lockfile
 
 COPY tsconfig.base.json ./
 COPY backend/tsconfig.json ./backend/
+COPY backend/tsconfig.seed.json ./backend/
 COPY backend/src ./backend/src
 COPY backend/prisma ./backend/prisma
 COPY backend/prisma.config.ts ./backend/prisma.config.ts
@@ -18,6 +19,7 @@ RUN cd backend && DATABASE_URL=postgresql://build:build@localhost/build bunx pri
 
 WORKDIR /app/backend
 RUN bun run build
+RUN bunx tsc --project tsconfig.seed.json
 
 # Use slim (Debian/glibc) so sodium-native can use its linux-arm64/linux-x64 prebuilts.
 FROM node:22-slim AS deps
