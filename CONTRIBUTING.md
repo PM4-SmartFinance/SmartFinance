@@ -60,6 +60,8 @@ Format: `<type>(<scope>): [<JIRA-ID>] <subject>`
 6. Once approved, use **Squash and Merge** to integrate your code into `develop`.
 7. Delete the feature branch after merging.
 
+**Code Ownership:** Critical security and authentication paths are protected by [`.github/CODEOWNERS`](.github/CODEOWNERS). PRs that modify these files will automatically request a review from the designated code owner. The CODEOWNERS approval is required before merge (enforced via branch protection on `develop`).
+
 **PR Deadline:** All PRs must be submitted by **Thursday 20:00** to allow sufficient review time before sprint closure. PRs submitted after this deadline will be deferred to the next sprint.
 
 **Release PRs:** At the end of each sprint, a release PR is created from `develop` → `main`. This is the only time code is merged into `main`.
