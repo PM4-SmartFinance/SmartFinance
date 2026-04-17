@@ -99,9 +99,10 @@ jobs:
           script: |
             set -euo pipefail
             cd /opt/smartfinance
-            IMAGE_TAG=${{ github.ref_name }} docker compose pull
-            IMAGE_TAG=${{ github.ref_name }} docker compose up -d --remove-orphans
-            IMAGE_TAG=${{ github.ref_name }} docker compose exec -T backend npx prisma migrate deploy
+            IMAGE_TAG=$(echo "${{ github.ref_name }}" | sed 's/^[vV]//')
+            IMAGE_TAG=$IMAGE_TAG docker compose pull
+            IMAGE_TAG=$IMAGE_TAG docker compose up -d --remove-orphans
+            IMAGE_TAG=$IMAGE_TAG docker compose exec -T backend npx prisma migrate deploy
             docker image prune -f
 
   docker-test:
