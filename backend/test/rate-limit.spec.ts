@@ -92,6 +92,43 @@ describe("Rate limit — POST /api/v1/auth/login (max 10 / minute)", () => {
   });
 });
 
+describe("Rate limit — POST /api/v1/auth/login counts failed attempts (wrong password)", () => {
+  let app: FastifyInstance;
+  const INVALID_LOGIN_EMAIL = "rate-limit-invalid@example.com";
+
+  beforeAll(async () => {
+    await prisma.dimUser.deleteMany();
+    await ensureCurrency();
+    app = await buildApp({ forceRateLimit: true });
+    await app.ready();
+    await bootstrapAdmin(app, INVALID_LOGIN_EMAIL, TEST_PASSWORD);
+  });
+
+  afterAll(async () => {
+    await prisma.dimUser.deleteMany({ where: { email: INVALID_LOGIN_EMAIL } });
+    await app.close();
+  });
+
+  it("counts wrong-password attempts against the rate-limit bucket and blocks at request 11", async () => {
+    for (let attempt = 1; attempt <= 10; attempt++) {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/auth/login",
+        payload: { email: INVALID_LOGIN_EMAIL, password: "WrongPassword123!" },
+      });
+      // Failed logins must still count — this is the actual brute-force threat model
+      expect(res.statusCode, `failed login attempt ${attempt} should return 401`).toBe(401);
+    }
+
+    const blocked = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: { email: INVALID_LOGIN_EMAIL, password: "WrongPassword123!" },
+    });
+    expect(blocked.statusCode).toBe(429);
+  });
+});
+
 describe("Rate limit — POST /api/v1/users (max 10 / minute, admin creation path)", () => {
   let app: FastifyInstance;
   let adminSession: string;
