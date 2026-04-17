@@ -205,9 +205,9 @@ Two permanent branches:
 - Feature branches always branch off `develop`, not `main`.
 - Branch naming: `<type>/<JIRA-ID>-<description>` (e.g., `feature/KAN-19-import-adapter-interface`, `bugfix/KAN-22-postgres-connection-timeout`)
   - Types: `feature/`, `bugfix/`, `docs/`, `refactor/`
-- Commit messages follow Conventional Commits with Jira ID: `<type>(<scope>): [<JIRA-ID>] <subject>`
-  - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
-  - Scopes: `frontend`, `backend`, `docker`, `db`, `root`
+- Commit messages follow Conventional Commits with Jira ID: `<type>(<scope>)?: [<JIRA-ID>] <subject>`
+  - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `ci`, `build`, `perf`
+  - Scope is optional and can be any lowercase text (for example: `frontend`, `backend`, `docker`, `db`, `root`, `infra`)
   - Example: `feat(backend): [KAN-10] implement RBAC middleware for protected routes`
 - **Stale branches:** PRs from branches that have significantly diverged from `develop` will be rejected. Diverged branches must be rebased or branched into a realign branch. A new Jira ticket must be created for the realignment and linked to the original ticket.
 - Pre-commit hooks (Husky + lint-staged) auto-format and lint staged files. Never bypass with `--no-verify`.
