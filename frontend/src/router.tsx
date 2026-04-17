@@ -6,8 +6,9 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { BudgetsPage } from "./pages/BudgetsPage";
 import { TransactionsPage } from "./pages/TransactionsPage";
 import { CategoriesPage } from "./pages/CategoriesPage";
-import { AdminUsersPage } from "./pages/AdminUsersPage";
-import { ProfilePage } from "./pages/ProfilePage";
+import { SettingsUsers } from "./pages/SettingsUsers";
+import { SettingsProfile } from "./pages/SettingsProfile";
+import { SettingsLayout } from "./pages/SettingsLayout";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import LoginWireframe from "./wireframes/LoginWireframe";
@@ -41,15 +42,22 @@ export const router = createBrowserRouter([
         element: <CategoriesPage />,
       },
       {
-        path: "/profile",
-        element: <ProfilePage />,
-      },
-      {
-        element: <AdminRoute />,
+        path: "/settings",
+        element: <SettingsLayout />,
         children: [
+          { index: true, element: <Navigate to="/settings/profile" replace /> },
           {
-            path: "/admin/users",
-            element: <AdminUsersPage />,
+            path: "profile",
+            element: <SettingsProfile />,
+          },
+          {
+            element: <AdminRoute />,
+            children: [
+              {
+                path: "users",
+                element: <SettingsUsers />,
+              },
+            ],
           },
         ],
       },
