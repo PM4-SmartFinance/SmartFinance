@@ -118,7 +118,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
         if (err instanceof ApiError) {
           setFormState((prev) => ({ ...prev, error: err.message || "Failed to update budget" }));
         } else {
-          throw err;
+          setFormState((prev) => ({ ...prev, error: "An unexpected error occurred" }));
         }
       }
     } else {
@@ -159,7 +159,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
         if (err instanceof ApiError) {
           setFormState((prev) => ({ ...prev, error: err.message || "Failed to create budget" }));
         } else {
-          throw err;
+          setFormState((prev) => ({ ...prev, error: "An unexpected error occurred" }));
         }
       }
     }

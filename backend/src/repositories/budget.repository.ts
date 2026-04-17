@@ -102,7 +102,7 @@ function getDateFilter(type: BudgetType, month: number, year: number) {
     case "YEARLY":
       return { date: { year: currentYear } };
     case "SPECIFIC_MONTH":
-      return { date: { month, year: currentYear } };
+      return { date: { month } };
     case "SPECIFIC_YEAR":
       return { date: { year } };
     case "SPECIFIC_MONTH_YEAR":
@@ -163,7 +163,8 @@ async function computeSpendingBatch(
         periodFilters.push({ month: 0, year: currentYear });
         break;
       case "SPECIFIC_MONTH":
-        periodFilters.push({ month: b.month, year: currentYear });
+        // Recurring month across all years — use year=0 sentinel
+        periodFilters.push({ month: b.month, year: 0 });
         break;
       case "SPECIFIC_YEAR":
         periodFilters.push({ month: 0, year: b.year });
@@ -182,10 +183,13 @@ async function computeSpendingBatch(
   // Build OR filters for date dimension
   const dateFilters: Prisma.FactTransactionsWhereInput[] = [];
   for (const p of uniquePeriods) {
-    if (p.month === 0) {
+    if (p.month === 0 && p.year !== 0) {
       // Yearly — match all months in that year
       dateFilters.push({ date: { year: p.year } });
-    } else {
+    } else if (p.month !== 0 && p.year === 0) {
+      // Recurring month — match that month across all years
+      dateFilters.push({ date: { month: p.month } });
+    } else if (p.month !== 0 && p.year !== 0) {
       dateFilters.push({ date: { month: p.month, year: p.year } });
     }
   }
@@ -253,7 +257,7 @@ async function computeSpendingBatch(
           matches = date.year === currentYear;
           break;
         case "SPECIFIC_MONTH":
-          matches = date.month === budget.month && date.year === currentYear;
+          matches = date.month === budget.month;
           break;
         case "SPECIFIC_YEAR":
           matches = date.year === budget.year;

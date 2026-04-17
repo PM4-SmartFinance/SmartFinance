@@ -46,6 +46,7 @@ export function BudgetsPage() {
   };
 
   const handleDeleteClick = (budget: Budget) => {
+    setDeleteError("");
     setBudgetToDelete({
       id: budget.id,
       categoryName: getCategoryName(budget.categoryId),

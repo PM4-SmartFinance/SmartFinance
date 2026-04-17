@@ -11,9 +11,9 @@ ALTER TABLE "DimBudget" ADD COLUMN "type" "BudgetType" NOT NULL DEFAULT 'MONTHLY
 UPDATE "DimBudget" SET "type" = 'SPECIFIC_MONTH_YEAR';
 
 -- Drop unused limit columns
-ALTER TABLE "DimBudget" DROP COLUMN "budgetLimitDay";
-ALTER TABLE "DimBudget" DROP COLUMN "budgetLimitMonth";
-ALTER TABLE "DimBudget" DROP COLUMN "budgetLimitYear";
+ALTER TABLE "DimBudget" DROP COLUMN IF EXISTS "budgetLimitDay";
+ALTER TABLE "DimBudget" DROP COLUMN IF EXISTS "budgetLimitMonth";
+ALTER TABLE "DimBudget" DROP COLUMN IF EXISTS "budgetLimitYear";
 
 -- Change month/year defaults to 0 (existing rows keep their values)
 ALTER TABLE "DimBudget" ALTER COLUMN "month" SET DEFAULT 0;
