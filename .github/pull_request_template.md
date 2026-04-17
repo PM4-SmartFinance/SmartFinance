@@ -16,3 +16,7 @@
 
 ## Notes
 *(e.g., Used a Star Schema over traditional normalization to improve reporting performance.)*
+
+---
+
+> **Second reviewer:** If this PR modifies more than 500 lines of code, please request a second reviewer before merging.
