@@ -5,16 +5,13 @@ import { BrowserRouter } from "react-router";
 import { BudgetWidget, getBudgetStatus } from "./BudgetWidget";
 import type { Budget } from "../lib/queries/budgets";
 
-const now = new Date();
-const currentMonth = now.getMonth() + 1;
-const currentYear = now.getFullYear();
-
 const mockBudgets: Budget[] = [
   {
     id: "budget-1",
     categoryId: "cat-1",
-    month: currentMonth,
-    year: currentYear,
+    type: "MONTHLY",
+    month: 0,
+    year: 0,
     limitAmount: "500.00",
     currentSpending: "250.00",
     percentageUsed: 50,
@@ -27,8 +24,9 @@ const mockBudgets: Budget[] = [
   {
     id: "budget-2",
     categoryId: "cat-2",
-    month: currentMonth,
-    year: currentYear,
+    type: "MONTHLY",
+    month: 0,
+    year: 0,
     limitAmount: "300.00",
     currentSpending: "210.00",
     percentageUsed: 70,
@@ -41,8 +39,9 @@ const mockBudgets: Budget[] = [
   {
     id: "budget-3",
     categoryId: "cat-3",
-    month: currentMonth,
-    year: currentYear,
+    type: "MONTHLY",
+    month: 0,
+    year: 0,
     limitAmount: "200.00",
     currentSpending: "220.00",
     percentageUsed: 110,
@@ -101,28 +100,22 @@ describe("BudgetWidget", () => {
     });
   });
 
-  it("displays current month and budget count", async () => {
+  it("displays active budget count", async () => {
     renderWithRouter(<BudgetWidget />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText(new RegExp(`3 active budgets for ${currentMonth}/${currentYear}`)),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/3 active budgets/)).toBeInTheDocument();
     });
   });
 
-  it("shows empty state when no budgets exist for current month", async () => {
+  it("shows empty state when no budgets exist", async () => {
     const apiMock = await vi.importMock("../lib/api");
     apiMock.api.get.mockResolvedValueOnce({ budgets: [] });
 
     renderWithRouter(<BudgetWidget />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText(
-          new RegExp(`No budgets set for ${currentMonth}/${currentYear}. Click to create one.`),
-        ),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/No active budgets\. Click to create one\./)).toBeInTheDocument();
     });
   });
 

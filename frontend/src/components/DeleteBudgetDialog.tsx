@@ -5,7 +5,7 @@ interface DeleteBudgetDialogProps {
   isOpen: boolean;
   budgetId: string;
   categoryName: string;
-  monthYear: string;
+  budgetLabel: string;
   isDeleting?: boolean;
   error?: string;
   onConfirm: (budgetId: string) => void | Promise<void>;
@@ -16,7 +16,7 @@ export function DeleteBudgetDialog({
   isOpen,
   budgetId,
   categoryName,
-  monthYear,
+  budgetLabel,
   isDeleting,
   error,
   onConfirm,
@@ -35,17 +35,17 @@ export function DeleteBudgetDialog({
   return (
     <dialog
       ref={dialogRef}
-      className="w-full max-w-sm rounded-lg shadow-lg backdrop:bg-black/50 open:flex open:items-center open:justify-center"
+      className="m-auto w-full max-w-sm rounded-lg shadow-lg backdrop:bg-black/50 open:flex open:items-center open:justify-center"
       onClose={handleDialogClose}
     >
-      <div className="rounded-lg bg-background p-6 shadow-lg">
+      <div className="w-full rounded-lg bg-background p-6 shadow-lg">
         <h2 className="mb-4 text-xl font-semibold text-foreground">Delete Budget?</h2>
 
         {error && <div className="mb-4 rounded bg-red-50 p-2 text-sm text-red-600">{error}</div>}
 
         <p className="mb-6 text-sm text-muted-foreground">
-          Are you sure you want to delete the budget for <strong>{categoryName}</strong> in{" "}
-          <strong>{monthYear}</strong>? This action cannot be undone.
+          Are you sure you want to delete the <strong>{budgetLabel}</strong> budget for{" "}
+          <strong>{categoryName}</strong>? This action cannot be undone.
         </p>
 
         <div className="flex gap-2">

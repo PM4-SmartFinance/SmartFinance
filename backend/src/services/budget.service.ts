@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, BudgetType } from "@prisma/client";
 import { ServiceError } from "../errors.js";
 import * as budgetRepository from "../repositories/budget.repository.js";
 
@@ -19,18 +19,41 @@ export async function listBudgets(userId: string) {
   return budgets.map((b) => ({ ...b, ...calculateBudgetStatus(b.currentSpending, b.limitAmount) }));
 }
 
+const TYPES_REQUIRING_MONTH: BudgetType[] = ["SPECIFIC_MONTH", "SPECIFIC_MONTH_YEAR"];
+const TYPES_REQUIRING_YEAR: BudgetType[] = ["SPECIFIC_YEAR", "SPECIFIC_MONTH_YEAR"];
+
 export async function createBudget(
   userId: string,
   categoryId: string,
-  month: number,
-  year: number,
+  type: BudgetType,
   limitAmount: number,
+  month?: number,
+  year?: number,
 ) {
   const category = await budgetRepository.findCategoryForUser(categoryId, userId);
   if (!category) {
     throw new ServiceError(404, "Category not found");
   }
-  const budget = await budgetRepository.create({ userId, categoryId, month, year, limitAmount });
+
+  // Validate month/year presence based on type
+  if (TYPES_REQUIRING_MONTH.includes(type) && (month === undefined || month < 1 || month > 12)) {
+    throw new ServiceError(400, "month is required for this budget type (1-12)");
+  }
+  if (TYPES_REQUIRING_YEAR.includes(type) && (year === undefined || year < 2000)) {
+    throw new ServiceError(400, "year is required for this budget type (>= 2000)");
+  }
+
+  const resolvedMonth = TYPES_REQUIRING_MONTH.includes(type) ? month! : 0;
+  const resolvedYear = TYPES_REQUIRING_YEAR.includes(type) ? year! : 0;
+
+  const budget = await budgetRepository.create({
+    userId,
+    categoryId,
+    type,
+    month: resolvedMonth,
+    year: resolvedYear,
+    limitAmount,
+  });
   return { ...budget, ...calculateBudgetStatus(budget.currentSpending, budget.limitAmount) };
 }
 
