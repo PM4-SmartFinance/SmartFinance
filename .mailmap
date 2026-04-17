@@ -1,0 +1,38 @@
+# Canonical identity map — collapses duplicate Git identities to 9 humans.
+# Format: Canonical Name <canonical@email> Commit Name <commit@email>
+
+# Maximilian Seifert
+Maximilian Seifert <Maxlemore97@gmail.com> Maximilian Seifert <Maximilian.Seifert@dodis.ch>
+Maximilian Seifert <Maxlemore97@gmail.com> Maximilian Seifert <30655722+Maxlemore97@users.noreply.github.com>
+
+# Sebastian Hagemann
+Sebastian Hagemann <sebastian.hagemann95@gmail.com> Senobare <sebastian.hagemann95@gmail.com>
+Sebastian Hagemann <sebastian.hagemann95@gmail.com> Sebastian <110818250+Senobare@users.noreply.github.com>
+Sebastian Hagemann <sebastian.hagemann95@gmail.com> Senobare <sebastian.hagemann@proton.me>
+
+# Mohammed Seifeddine Bachhammer
+Mohammed Seifeddine Bachhammer <bachhmoh@students.zhaw.ch> bachhmoh <bachhmoh@students.zhaw.ch>
+Mohammed Seifeddine Bachhammer <bachhmoh@students.zhaw.ch> seifeddinebach <149529770+seifeddinebach@users.noreply.github.com>
+
+# Joel Widmer
+Joel Widmer <widmejo1@students.zhaw.ch> Widmer Joel <widmejo1@students.zhaw.ch>
+Joel Widmer <widmejo1@students.zhaw.ch> JWidmer <widmejo1@students.zhaw.ch>
+
+# Thomas Topuz
+Thomas Topuz <Thomatop@gmail.com> Thomas Topuz <49570615+ThomasTopuz@users.noreply.github.com>
+
+# Serafino Balbo
+Serafino Balbo <balboser@students.zhaw.ch> balboser <balboser@students.zhaw.ch>
+Serafino Balbo <balboser@students.zhaw.ch> balbosl <145274084+balbosl@users.noreply.github.com>
+
+# Shaban Rexhepi
+Shaban Rexhepi <rexshaban@gmail.com> shabanrexhepi <rexshaban@gmail.com>
+Shaban Rexhepi <rexshaban@gmail.com> shabanrexhepi <113478038+shabanrexhepi@users.noreply.github.com>
+Shaban Rexhepi <rexshaban@gmail.com> Shaban Rexhepi <shaban.rexhepi@bexio.com>
+
+# Mico Anteo
+Mico Anteo <micoant1@students.zhaw.ch> Mico Anteo (micoant1) <micoant1@students.zhaw.ch>
+Mico Anteo <micoant1@students.zhaw.ch> Anteo <39634497+Anteox@users.noreply.github.com>
+
+# Jorin Heer
+Jorin Heer <jorin.heer@gmail.com> Jorin Heer <82088522+JorinHeer@users.noreply.github.com>
