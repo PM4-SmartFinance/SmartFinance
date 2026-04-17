@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { getProfile, updateProfile, changePassword } from "./user.service.js";
+import {
+  getProfile,
+  updateProfile,
+  changePassword,
+  deleteUser,
+  updateUser,
+} from "./user.service.js";
 import * as userRepository from "../repositories/user.repository.js";
 import { EmailConflictError } from "../repositories/user.repository.js";
 import * as auditService from "./audit.service.js";
@@ -17,6 +23,7 @@ vi.mock("../repositories/user.repository.js", () => ({
   findByIdWithPassword: vi.fn(),
   updateProfileAtomic: vi.fn(),
   updatePassword: vi.fn(),
+  updateUserById: vi.fn(),
   EmailConflictError: class EmailConflictError extends Error {
     constructor() {
       super("Email already in use");
@@ -192,5 +199,145 @@ describe("user.service", () => {
         expect(auditService.logEvent).toHaveBeenCalledWith("PASSWORD_CHANGED", "user-1");
       });
     });
+  });
+});
+
+const adminUser = { id: "admin-1", role: "ADMIN", email: "admin@example.com" };
+const regularUser = { id: "user-2", role: "USER", email: "user@example.com" };
+
+describe("deleteUser", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("deactivates a regular user when called by an admin", async () => {
+    vi.mocked(userRepository.findById).mockResolvedValue(regularUser);
+    vi.mocked(userRepository.updateUserById).mockResolvedValue({ ...regularUser, active: false });
+
+    await deleteUser(adminUser, regularUser.id);
+
+    expect(userRepository.updateUserById).toHaveBeenCalledWith(regularUser.id, { active: false });
+  });
+
+  it("throws 403 when an admin attempts to delete another admin", async () => {
+    const targetAdmin = { id: "admin-2", role: "ADMIN", email: "admin2@example.com" };
+    vi.mocked(userRepository.findById).mockResolvedValue(targetAdmin);
+
+    await expect(deleteUser(adminUser, targetAdmin.id)).rejects.toMatchObject({
+      statusCode: 403,
+      message: "Cannot delete an admin account",
+    });
+
+    expect(userRepository.updateUserById).not.toHaveBeenCalled();
+  });
+
+  it("throws 403 when a non-admin attempts to delete a different user", async () => {
+    await expect(deleteUser(regularUser, "user-99")).rejects.toMatchObject({
+      statusCode: 403,
+    });
+
+    expect(userRepository.findById).not.toHaveBeenCalled();
+    expect(userRepository.updateUserById).not.toHaveBeenCalled();
+  });
+
+  it("throws 401 when the requesting user is null", async () => {
+    await expect(deleteUser(null, regularUser.id)).rejects.toMatchObject({
+      statusCode: 401,
+    });
+  });
+
+  it("throws 404 when the target user does not exist", async () => {
+    vi.mocked(userRepository.findById).mockResolvedValue(null);
+
+    await expect(deleteUser(adminUser, "ghost-id")).rejects.toMatchObject({
+      statusCode: 404,
+      message: "Not found",
+    });
+
+    expect(userRepository.updateUserById).not.toHaveBeenCalled();
+  });
+
+  it("throws 403 when an admin attempts to deactivate themselves", async () => {
+    vi.mocked(userRepository.findById).mockResolvedValue(adminUser);
+
+    await expect(deleteUser(adminUser, adminUser.id)).rejects.toMatchObject({
+      statusCode: 403,
+      message: "Cannot delete an admin account",
+    });
+
+    expect(userRepository.updateUserById).not.toHaveBeenCalled();
+  });
+
+  it("allows a regular user to deactivate themselves", async () => {
+    vi.mocked(userRepository.findById).mockResolvedValue(regularUser);
+    vi.mocked(userRepository.updateUserById).mockResolvedValue(undefined);
+
+    await deleteUser(regularUser, regularUser.id);
+
+    expect(userRepository.updateUserById).toHaveBeenCalledWith(regularUser.id, { active: false });
+  });
+
+  it("fires USER_DELETED audit event on successful deletion", async () => {
+    vi.mocked(userRepository.findById).mockResolvedValue(regularUser);
+    vi.mocked(userRepository.updateUserById).mockResolvedValue(undefined);
+
+    await deleteUser(adminUser, regularUser.id);
+
+    await vi.waitFor(() => {
+      expect(auditService.logEvent).toHaveBeenCalledWith("USER_DELETED", adminUser.id, {
+        targetUserId: regularUser.id,
+        email: regularUser.email,
+      });
+    });
+  });
+});
+
+describe("updateUser — deactivation guard", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("throws 403 when an admin attempts to deactivate another admin", async () => {
+    const targetAdmin = { id: "admin-2", role: "ADMIN", email: "admin2@example.com" };
+    vi.mocked(userRepository.findById).mockResolvedValue(targetAdmin);
+
+    await expect(updateUser(adminUser, targetAdmin.id, { active: false })).rejects.toMatchObject({
+      statusCode: 403,
+      message: "Cannot deactivate an admin account",
+    });
+
+    expect(userRepository.updateUserById).not.toHaveBeenCalled();
+  });
+
+  it("throws 403 when an admin attempts to deactivate themselves via PATCH", async () => {
+    vi.mocked(userRepository.findById).mockResolvedValue(adminUser);
+
+    await expect(updateUser(adminUser, adminUser.id, { active: false })).rejects.toMatchObject({
+      statusCode: 403,
+      message: "Cannot deactivate an admin account",
+    });
+
+    expect(userRepository.updateUserById).not.toHaveBeenCalled();
+  });
+
+  it("throws 403 when an admin attempts to change another admin's role", async () => {
+    const targetAdmin = { id: "admin-2", role: "ADMIN", email: "admin2@example.com" };
+    vi.mocked(userRepository.findById).mockResolvedValue(targetAdmin);
+
+    await expect(updateUser(adminUser, targetAdmin.id, { role: "USER" })).rejects.toMatchObject({
+      statusCode: 403,
+      message: "Cannot modify another admin account",
+    });
+
+    expect(userRepository.updateUserById).not.toHaveBeenCalled();
+  });
+
+  it("allows an admin to deactivate a regular user", async () => {
+    vi.mocked(userRepository.findById).mockResolvedValue(regularUser);
+    vi.mocked(userRepository.updateUserById).mockResolvedValue({ ...regularUser, active: false });
+
+    await updateUser(adminUser, regularUser.id, { active: false });
+
+    expect(userRepository.updateUserById).toHaveBeenCalledWith(regularUser.id, { active: false });
   });
 });

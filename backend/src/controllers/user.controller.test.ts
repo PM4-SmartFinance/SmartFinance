@@ -13,6 +13,11 @@ vi.mock("../services/user.service.js", () => ({
   getProfile: vi.fn(),
   updateProfile: vi.fn(),
   changePassword: vi.fn(),
+  deleteUser: vi.fn(),
+  onboardUser: vi.fn(),
+  listUsers: vi.fn(),
+  getUserById: vi.fn(),
+  updateUser: vi.fn(),
 }));
 
 import * as userService from "../services/user.service.js";
@@ -20,6 +25,7 @@ import * as userService from "../services/user.service.js";
 const mockGetProfile = vi.mocked(userService.getProfile);
 const mockUpdateProfile = vi.mocked(userService.updateProfile);
 const mockChangePassword = vi.mocked(userService.changePassword);
+const mockDeleteUser = vi.mocked(userService.deleteUser);
 
 const profileFixture = {
   id: "user-1",
@@ -269,5 +275,97 @@ describe("POST /api/v1/users/me/change-password", () => {
     });
 
     expect(response.statusCode).toBe(401);
+  });
+});
+
+describe("DELETE /api/v1/users/:id", () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    app = buildTestApp();
+    await app.register(userRoutes, { prefix: "/api/v1" });
+    await app.ready();
+  });
+
+  afterAll(() => app.close());
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sessionUser = { id: "admin-1", role: "ADMIN", email: "admin@example.com" };
+  });
+
+  it("returns 204 when an admin deletes a regular user", async () => {
+    mockDeleteUser.mockResolvedValue(undefined);
+
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/api/v1/users/user-2",
+    });
+
+    expect(response.statusCode).toBe(204);
+    expect(mockDeleteUser).toHaveBeenCalledExactlyOnceWith(
+      { id: "admin-1", role: "ADMIN", email: "admin@example.com" },
+      "user-2",
+    );
+  });
+
+  it("returns 403 when the service blocks an admin from deleting another admin", async () => {
+    const { ServiceError } = await import("../errors.js");
+    mockDeleteUser.mockRejectedValue(new ServiceError(403, "Cannot delete another admin"));
+
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/api/v1/users/admin-2",
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  it("returns 403 when a non-admin attempts to delete a different user", async () => {
+    sessionUser = { id: "user-1", role: "USER", email: "user@example.com" };
+
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/api/v1/users/user-99",
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(mockDeleteUser).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 when an admin attempts to delete themselves", async () => {
+    const { ServiceError } = await import("../errors.js");
+    mockDeleteUser.mockRejectedValue(new ServiceError(403, "Cannot delete an admin account"));
+
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/api/v1/users/admin-1",
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  it("returns 404 when the target user does not exist", async () => {
+    const { ServiceError } = await import("../errors.js");
+    mockDeleteUser.mockRejectedValue(new ServiceError(404, "Not found"));
+
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/api/v1/users/ghost-id",
+    });
+
+    expect(response.statusCode).toBe(404);
+  });
+
+  it("returns 401 when there is no session", async () => {
+    sessionUser = undefined;
+
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/api/v1/users/user-2",
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(mockDeleteUser).not.toHaveBeenCalled();
   });
 });
