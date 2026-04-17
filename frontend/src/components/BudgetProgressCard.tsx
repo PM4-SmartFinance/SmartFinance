@@ -1,41 +1,13 @@
-import type { Budget, BudgetType } from "../lib/queries/budgets";
+import type { Budget } from "../lib/queries/budgets";
 import { getBudgetTypeLabel } from "../lib/queries/budgets";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-const TYPE_PRIORITY: Record<BudgetType, number> = {
-  DAILY: 0,
-  YEARLY: 1,
-  MONTHLY: 1,
-  SPECIFIC_YEAR: 2,
-  SPECIFIC_MONTH: 2,
-  SPECIFIC_MONTH_YEAR: 3,
-};
-
-function isActiveNow(budget: Budget): boolean {
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1;
-  const currentYear = now.getFullYear();
-
-  switch (budget.type) {
-    case "DAILY":
-    case "MONTHLY":
-    case "YEARLY":
-      return true;
-    case "SPECIFIC_MONTH":
-      return budget.month === currentMonth;
-    case "SPECIFIC_YEAR":
-      return budget.year === currentYear;
-    case "SPECIFIC_MONTH_YEAR":
-      return budget.month === currentMonth && budget.year === currentYear;
-  }
-}
-
 function getMostSpecificActiveBudget(budgets: Budget[]): Budget | null {
   let best: Budget | null = null;
   for (const b of budgets) {
-    if (!isActiveNow(b)) continue;
-    if (!best || TYPE_PRIORITY[b.type] > TYPE_PRIORITY[best.type]) {
+    if (!b.isActive) continue;
+    if (!best || b.priority > best.priority) {
       best = b;
     }
   }
@@ -47,7 +19,7 @@ interface BudgetCategoryGroupProps {
   budgets: Budget[];
   onEdit: (budget: Budget) => void;
   onDelete: (budget: Budget) => void;
-  deletingBudgetId?: string;
+  deletingBudgetId?: string | undefined;
 }
 
 export function BudgetCategoryGroup({
@@ -71,7 +43,7 @@ export function BudgetCategoryGroup({
         {/* Individual budget rows — most specific first */}
         <div className="flex flex-col gap-3">
           {[...budgets]
-            .sort((a, b) => TYPE_PRIORITY[b.type] - TYPE_PRIORITY[a.type])
+            .sort((a, b) => b.priority - a.priority)
             .map((budget) => (
               <BudgetRow
                 key={budget.id}

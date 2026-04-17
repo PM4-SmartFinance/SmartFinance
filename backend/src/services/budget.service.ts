@@ -14,9 +14,42 @@ export function calculateBudgetStatus(
   return { percentageUsed, remainingAmount, isOverBudget };
 }
 
+const TYPE_PRIORITY: Record<BudgetType, number> = {
+  DAILY: 0,
+  MONTHLY: 1,
+  YEARLY: 1,
+  SPECIFIC_MONTH: 2,
+  SPECIFIC_YEAR: 2,
+  SPECIFIC_MONTH_YEAR: 3,
+};
+
+function isBudgetActiveNow(type: BudgetType, month: number, year: number): boolean {
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+
+  switch (type) {
+    case "DAILY":
+    case "MONTHLY":
+    case "YEARLY":
+      return true;
+    case "SPECIFIC_MONTH":
+      return month === currentMonth;
+    case "SPECIFIC_YEAR":
+      return year === currentYear;
+    case "SPECIFIC_MONTH_YEAR":
+      return month === currentMonth && year === currentYear;
+  }
+}
+
 export async function listBudgets(userId: string) {
   const budgets = await budgetRepository.findAllByUser(userId);
-  return budgets.map((b) => ({ ...b, ...calculateBudgetStatus(b.currentSpending, b.limitAmount) }));
+  return budgets.map((b) => ({
+    ...b,
+    ...calculateBudgetStatus(b.currentSpending, b.limitAmount),
+    isActive: isBudgetActiveNow(b.type, b.month, b.year),
+    priority: TYPE_PRIORITY[b.type],
+  }));
 }
 
 const TYPES_REQUIRING_MONTH: BudgetType[] = ["SPECIFIC_MONTH", "SPECIFIC_MONTH_YEAR"];
@@ -54,7 +87,12 @@ export async function createBudget(
     year: resolvedYear,
     limitAmount,
   });
-  return { ...budget, ...calculateBudgetStatus(budget.currentSpending, budget.limitAmount) };
+  return {
+    ...budget,
+    ...calculateBudgetStatus(budget.currentSpending, budget.limitAmount),
+    isActive: isBudgetActiveNow(type, resolvedMonth, resolvedYear),
+    priority: TYPE_PRIORITY[type],
+  };
 }
 
 export async function updateBudget(id: string, userId: string, limitAmount: number) {
@@ -62,7 +100,12 @@ export async function updateBudget(id: string, userId: string, limitAmount: numb
     throw new ServiceError(400, "limitAmount must be greater than 0");
   }
   const budget = await budgetRepository.update(id, userId, limitAmount);
-  return { ...budget, ...calculateBudgetStatus(budget.currentSpending, budget.limitAmount) };
+  return {
+    ...budget,
+    ...calculateBudgetStatus(budget.currentSpending, budget.limitAmount),
+    isActive: isBudgetActiveNow(budget.type, budget.month, budget.year),
+    priority: TYPE_PRIORITY[budget.type],
+  };
 }
 
 export async function deleteBudget(id: string, userId: string) {

@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import { useDashboardBudgets } from "../lib/queries/dashboard";
-import type { Budget, BudgetType } from "../lib/queries/budgets";
+import type { Budget } from "../lib/queries/budgets";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
 export function getBudgetStatus(percentageUsed: number): "on-track" | "approaching" | "exceeded" {
@@ -9,46 +9,18 @@ export function getBudgetStatus(percentageUsed: number): "on-track" | "approachi
   return "on-track";
 }
 
-/** Priority order: higher = more specific */
-const TYPE_PRIORITY: Record<BudgetType, number> = {
-  DAILY: 0,
-  YEARLY: 1,
-  MONTHLY: 1,
-  SPECIFIC_YEAR: 2,
-  SPECIFIC_MONTH: 2,
-  SPECIFIC_MONTH_YEAR: 3,
-};
-
 /**
- * For each category, pick the most specific budget that is active
- * (i.e., whose time period includes the current date).
+ * For each category, pick the most specific budget that is active.
+ * Uses `isActive` and `priority` from the backend response.
  */
 function getMostSpecificBudgets(budgets: Budget[]): Budget[] {
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1;
-  const currentYear = now.getFullYear();
-
-  // Filter to budgets whose period covers "now"
-  const activeBudgets = budgets.filter((b) => {
-    switch (b.type) {
-      case "DAILY":
-      case "MONTHLY":
-      case "YEARLY":
-        return true; // general budgets are always active
-      case "SPECIFIC_MONTH":
-        return b.month === currentMonth;
-      case "SPECIFIC_YEAR":
-        return b.year === currentYear;
-      case "SPECIFIC_MONTH_YEAR":
-        return b.month === currentMonth && b.year === currentYear;
-    }
-  });
+  const activeBudgets = budgets.filter((b) => b.isActive);
 
   // Group by category, keep highest priority
   const byCategory = new Map<string, Budget>();
   for (const b of activeBudgets) {
     const existing = byCategory.get(b.categoryId);
-    if (!existing || TYPE_PRIORITY[b.type] > TYPE_PRIORITY[existing.type]) {
+    if (!existing || b.priority > existing.priority) {
       byCategory.set(b.categoryId, b);
     }
   }

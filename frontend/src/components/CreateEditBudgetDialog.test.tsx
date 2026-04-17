@@ -48,6 +48,8 @@ const mockBudget: Budget = {
   year: 0,
   limitAmount: "500.00",
   active: true,
+  isActive: true,
+  priority: 1,
   currentSpending: "142.50",
   percentageUsed: 28.5,
   remainingAmount: "357.50",
