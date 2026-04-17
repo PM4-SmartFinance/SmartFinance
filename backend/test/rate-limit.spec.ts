@@ -89,6 +89,11 @@ describe("Rate limit — POST /api/v1/auth/login (max 10 / minute)", () => {
       payload: { email: LOGIN_EMAIL, password: TEST_PASSWORD },
     });
     expect(blocked.statusCode).toBe(429);
+    expect(blocked.headers["retry-after"]).toBeDefined();
+    expect(Number(blocked.headers["retry-after"])).toBeGreaterThan(0);
+    const body = blocked.json();
+    expect(body).toHaveProperty("message");
+    expect(body.message).not.toMatch(/at\s+\w+\s+\(/); // no stack traces
   });
 });
 
@@ -126,6 +131,11 @@ describe("Rate limit — POST /api/v1/auth/login counts failed attempts (wrong p
       payload: { email: INVALID_LOGIN_EMAIL, password: "WrongPassword123!" },
     });
     expect(blocked.statusCode).toBe(429);
+    expect(blocked.headers["retry-after"]).toBeDefined();
+    expect(Number(blocked.headers["retry-after"])).toBeGreaterThan(0);
+    const body = blocked.json();
+    expect(body).toHaveProperty("message");
+    expect(body.message).not.toMatch(/at\s+\w+\s+\(/); // no stack traces
   });
 });
 
@@ -172,5 +182,10 @@ describe("Rate limit — POST /api/v1/users (max 10 / minute, admin creation pat
       cookies: { session: adminSession },
     });
     expect(blocked.statusCode).toBe(429);
+    expect(blocked.headers["retry-after"]).toBeDefined();
+    expect(Number(blocked.headers["retry-after"])).toBeGreaterThan(0);
+    const body = blocked.json();
+    expect(body).toHaveProperty("message");
+    expect(body.message).not.toMatch(/at\s+\w+\s+\(/); // no stack traces
   });
 });
