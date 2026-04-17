@@ -50,8 +50,7 @@ export function useCreateBudget() {
         return old ? [response.budget, ...old] : [response.budget];
       });
     },
-    onError: (error) => {
-      console.error("[useCreateBudget]", error);
+    onError: () => {
       queryClient.invalidateQueries({ queryKey: BUDGETS_QUERY_KEY });
     },
   });
@@ -70,8 +69,7 @@ export function useUpdateBudget() {
           : [response.budget];
       });
     },
-    onError: (error) => {
-      console.error("[useUpdateBudget]", error);
+    onError: () => {
       queryClient.invalidateQueries({ queryKey: BUDGETS_QUERY_KEY });
     },
   });
@@ -87,8 +85,7 @@ export function useDeleteBudget() {
         return old ? old.filter((b) => b.id !== id) : [];
       });
     },
-    onError: (error) => {
-      console.error("[useDeleteBudget]", error);
+    onError: () => {
       queryClient.invalidateQueries({ queryKey: BUDGETS_QUERY_KEY });
     },
   });

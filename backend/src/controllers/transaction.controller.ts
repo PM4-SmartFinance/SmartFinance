@@ -54,8 +54,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       preHandler: requireRole("USER"),
     },
     async (request, reply) => {
-      const user = request.session.get("user");
-      if (!user) throw new ServiceError(401, "Unauthorized");
+      const user = request.session.get("user")!;
 
       const result = await transactionService.listTransactions({
         userId: user.id,
@@ -71,6 +70,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
     {
       preHandler: requireRole("USER"),
       schema: {
+        body: { anyOf: [{ type: "object", additionalProperties: false }, { type: "null" }] },
         response: {
           200: {
             type: "object",
@@ -81,8 +81,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       },
     },
     async (request, reply) => {
-      const user = request.session.get("user");
-      if (!user) throw new ServiceError(401, "Unauthorized");
+      const user = request.session.get("user")!;
       const result = await transactionService.autoCategorizeTransactions(user.id);
       return reply.send(result);
     },
@@ -108,8 +107,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       },
       async (request, reply) => {
         const { accountId, format } = request.query;
-        const user = request.session.get("user");
-        if (!user) throw new ServiceError(401, "Unauthorized");
+        const user = request.session.get("user")!;
 
         const fileData = await request.file();
         if (!fileData) {
