@@ -34,11 +34,36 @@ export async function createBudget(
   return { ...budget, ...calculateBudgetStatus(budget.currentSpending, budget.limitAmount) };
 }
 
-export async function updateBudget(id: string, userId: string, limitAmount: number) {
-  if (limitAmount <= 0) {
+export async function updateBudget(
+  id: string,
+  userId: string,
+  updates: {
+    categoryId?: string;
+    month?: number;
+    year?: number;
+    limitAmount?: number;
+  },
+) {
+  // Validate provided fields
+  if (updates.limitAmount !== undefined && updates.limitAmount <= 0) {
     throw new ServiceError(400, "limitAmount must be greater than 0");
   }
-  const budget = await budgetRepository.update(id, userId, limitAmount);
+  if (updates.month !== undefined && (updates.month < 1 || updates.month > 12)) {
+    throw new ServiceError(400, "month must be between 1 and 12");
+  }
+  if (updates.year !== undefined && updates.year < 2000) {
+    throw new ServiceError(400, "year must be 2000 or later");
+  }
+
+  // Validate category if provided
+  if (updates.categoryId !== undefined) {
+    const category = await budgetRepository.findCategoryForUser(updates.categoryId, userId);
+    if (!category) {
+      throw new ServiceError(404, "Category not found");
+    }
+  }
+
+  const budget = await budgetRepository.update(id, userId, updates);
   return { ...budget, ...calculateBudgetStatus(budget.currentSpending, budget.limitAmount) };
 }
 

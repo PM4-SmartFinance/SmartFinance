@@ -24,7 +24,10 @@ export interface CreateBudgetInput {
 }
 
 export interface UpdateBudgetInput {
-  limitAmount: number;
+  categoryId?: string;
+  month?: number;
+  year?: number;
+  limitAmount?: number;
 }
 
 const BUDGETS_QUERY_KEY = ["budgets"] as const;
