@@ -55,7 +55,7 @@ export function BudgetWidget() {
     );
   }
 
-  const activeBudgets = getMostSpecificBudgets(data ?? []);
+  const activeBudgets = getMostSpecificBudgets(data?.budgets ?? []);
 
   // Count budgets by status
   const statusCounts = activeBudgets.reduce(
