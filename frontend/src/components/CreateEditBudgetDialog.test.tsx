@@ -247,7 +247,12 @@ describe("CreateEditBudgetDialog", () => {
       await user.click(screen.getByRole("button", { name: "Save Changes" }));
 
       await waitFor(() => expect(onClose).toHaveBeenCalled());
-      expect(mockPatch).toHaveBeenCalledWith("/budgets/budget-1", { limitAmount: 750 });
+      expect(mockPatch).toHaveBeenCalledWith("/budgets/budget-1", {
+        limitAmount: 750,
+        categoryId: "cat-1",
+        type: "MONTHLY",
+        active: true,
+      });
     });
 
     it("displays ApiError message on failed create", async () => {
