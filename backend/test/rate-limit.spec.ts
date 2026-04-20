@@ -61,6 +61,8 @@ describe("Rate limit — POST /api/v1/auth/login (max 10 / minute)", () => {
   let app: FastifyInstance;
 
   beforeAll(async () => {
+    // Bootstrap requires being the first user (auto-promotes to ADMIN),
+    // so the table must be empty — scoped deletes are not sufficient here.
     await prisma.dimUser.deleteMany();
     await ensureCurrency();
     app = await buildApp({ forceRateLimit: true });
@@ -91,6 +93,7 @@ describe("Rate limit — POST /api/v1/auth/login (max 10 / minute)", () => {
     expect(blocked.statusCode).toBe(429);
     expect(blocked.headers["retry-after"]).toBeDefined();
     expect(Number(blocked.headers["retry-after"])).toBeGreaterThan(0);
+    expect(Number(blocked.headers["retry-after"])).toBeLessThanOrEqual(60);
     const body = blocked.json();
     expect(body).toHaveProperty("error.message");
     expect(body.error.message).not.toMatch(/at\s+\w+\s+\(/); // no stack traces
@@ -102,6 +105,8 @@ describe("Rate limit — POST /api/v1/auth/login counts failed attempts (wrong p
   const INVALID_LOGIN_EMAIL = "rate-limit-invalid@example.com";
 
   beforeAll(async () => {
+    // Bootstrap requires being the first user (auto-promotes to ADMIN),
+    // so the table must be empty — scoped deletes are not sufficient here.
     await prisma.dimUser.deleteMany();
     await ensureCurrency();
     app = await buildApp({ forceRateLimit: true });
@@ -133,6 +138,7 @@ describe("Rate limit — POST /api/v1/auth/login counts failed attempts (wrong p
     expect(blocked.statusCode).toBe(429);
     expect(blocked.headers["retry-after"]).toBeDefined();
     expect(Number(blocked.headers["retry-after"])).toBeGreaterThan(0);
+    expect(Number(blocked.headers["retry-after"])).toBeLessThanOrEqual(60);
     const body = blocked.json();
     expect(body).toHaveProperty("error.message");
     expect(body.error.message).not.toMatch(/at\s+\w+\s+\(/); // no stack traces
@@ -145,6 +151,8 @@ describe("Rate limit — POST /api/v1/users (max 10 / minute, admin creation pat
   const createdEmails: string[] = [USERS_ADMIN_EMAIL];
 
   beforeAll(async () => {
+    // Bootstrap requires being the first user (auto-promotes to ADMIN),
+    // so the table must be empty — scoped deletes are not sufficient here.
     await prisma.dimUser.deleteMany();
     await ensureCurrency();
     app = await buildApp({ forceRateLimit: true });
@@ -184,6 +192,7 @@ describe("Rate limit — POST /api/v1/users (max 10 / minute, admin creation pat
     expect(blocked.statusCode).toBe(429);
     expect(blocked.headers["retry-after"]).toBeDefined();
     expect(Number(blocked.headers["retry-after"])).toBeGreaterThan(0);
+    expect(Number(blocked.headers["retry-after"])).toBeLessThanOrEqual(60);
     const body = blocked.json();
     expect(body).toHaveProperty("error.message");
     expect(body.error.message).not.toMatch(/at\s+\w+\s+\(/); // no stack traces
@@ -194,6 +203,8 @@ describe("Rate limit — POST /api/v1/users (unauthenticated bootstrap path)", (
   let app: FastifyInstance;
 
   beforeAll(async () => {
+    // Bootstrap requires being the first user (auto-promotes to ADMIN),
+    // so the table must be empty — scoped deletes are not sufficient here.
     await prisma.dimUser.deleteMany();
     await ensureCurrency();
     app = await buildApp({ forceRateLimit: true });
@@ -232,6 +243,7 @@ describe("Rate limit — POST /api/v1/users (unauthenticated bootstrap path)", (
     expect(blocked.statusCode).toBe(429);
     expect(blocked.headers["retry-after"]).toBeDefined();
     expect(Number(blocked.headers["retry-after"])).toBeGreaterThan(0);
+    expect(Number(blocked.headers["retry-after"])).toBeLessThanOrEqual(60);
     const body = blocked.json();
     expect(body).toHaveProperty("error.message");
     expect(body.error.message).not.toMatch(/at\s+\w+\s+\(/); // no stack traces
