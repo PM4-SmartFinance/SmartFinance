@@ -14,7 +14,12 @@ import { categoryRuleRoutes } from "./controllers/category-rule.controller.js";
 import { dashboardRoutes } from "./controllers/dashboard.controller.js";
 import { categoryRoutes } from "./controllers/category.controller.js";
 
-export async function buildApp() {
+export interface BuildAppOptions {
+  /** Register the rate limiter even under NODE_ENV=test / VITEST. */
+  forceRateLimit?: boolean;
+}
+
+export async function buildApp(options: BuildAppOptions = {}) {
   const app = Fastify({ logger: true });
   setLogger(app.log);
 
@@ -44,7 +49,7 @@ export async function buildApp() {
   // these endpoints many times per second via `app.inject`, which would
   // otherwise trip the limiter and produce false 429s.
   const isTest = process.env["NODE_ENV"] === "test" || process.env["VITEST"] !== undefined;
-  if (!isTest) {
+  if (!isTest || options.forceRateLimit) {
     await app.register(rateLimit, {
       global: false,
       max: 100,
