@@ -2,13 +2,8 @@ import { Link } from "react-router";
 import { useDashboardBudgets } from "../lib/queries/dashboard";
 import type { Budget } from "../lib/queries/budgets";
 import { getMostSpecificActiveBudget } from "../lib/queries/budgets";
+import { getBudgetStatus } from "./budgetUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-
-export function getBudgetStatus(percentageUsed: number): "on-track" | "approaching" | "exceeded" {
-  if (percentageUsed >= 100) return "exceeded";
-  if (percentageUsed >= 70) return "approaching";
-  return "on-track";
-}
 
 /**
  * For each category, pick the most specific active budget.

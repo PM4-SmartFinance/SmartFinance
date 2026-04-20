@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router";
-import { BudgetWidget, getBudgetStatus } from "./BudgetWidget";
+import { BudgetWidget } from "./BudgetWidget";
+import { getBudgetStatus } from "./budgetUtils";
 import type { Budget } from "../lib/queries/budgets";
 
 const mockBudgets: Budget[] = [
