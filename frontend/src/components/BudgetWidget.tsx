@@ -1,7 +1,28 @@
 import { Link } from "react-router";
 import { useDashboardBudgets } from "../lib/queries/dashboard";
+import type { Budget } from "../lib/queries/budgets";
+import { getMostSpecificActiveBudget } from "../lib/queries/budgets";
 import { getBudgetStatus } from "./budgetUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+
+/**
+ * For each category, pick the most specific active budget.
+ */
+function getMostSpecificBudgets(budgets: Budget[]): Budget[] {
+  const byCategory = new Map<string, Budget[]>();
+  for (const b of budgets) {
+    const list = byCategory.get(b.categoryId) ?? [];
+    list.push(b);
+    byCategory.set(b.categoryId, list);
+  }
+
+  const result: Budget[] = [];
+  for (const categoryBudgets of byCategory.values()) {
+    const best = getMostSpecificActiveBudget(categoryBudgets);
+    if (best) result.push(best);
+  }
+  return result;
+}
 
 export function BudgetWidget() {
   const { data, isLoading, error } = useDashboardBudgets();
@@ -34,17 +55,10 @@ export function BudgetWidget() {
     );
   }
 
-  // Get current month and year
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1;
-  const currentYear = now.getFullYear();
-
-  // Filter budgets for current month
-  const currentMonthBudgets =
-    data?.filter((b) => b.month === currentMonth && b.year === currentYear) || [];
+  const activeBudgets = getMostSpecificBudgets(data ?? []);
 
   // Count budgets by status
-  const statusCounts = currentMonthBudgets.reduce(
+  const statusCounts = activeBudgets.reduce(
     (acc, b) => {
       const status = getBudgetStatus(b.percentageUsed);
       acc[status] += 1;
@@ -62,10 +76,8 @@ export function BudgetWidget() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {currentMonthBudgets.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No budgets set for {currentMonth}/{currentYear}. Click to create one.
-            </p>
+          {activeBudgets.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No active budgets. Click to create one.</p>
           ) : (
             <div className="space-y-2">
               <p className="text-sm font-medium">
@@ -73,8 +85,8 @@ export function BudgetWidget() {
                 limit, {statusCounts["exceeded"]} exceeded
               </p>
               <p className="text-xs text-muted-foreground">
-                {currentMonthBudgets.length} active budget
-                {currentMonthBudgets.length !== 1 ? "s" : ""} for {currentMonth}/{currentYear}
+                {activeBudgets.length} active budget
+                {activeBudgets.length !== 1 ? "s" : ""}
               </p>
             </div>
           )}
