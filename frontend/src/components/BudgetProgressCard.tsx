@@ -1,18 +1,7 @@
 import type { Budget } from "../lib/queries/budgets";
-import { getBudgetTypeLabel } from "../lib/queries/budgets";
+import { getBudgetTypeLabel, getMostSpecificActiveBudget } from "../lib/queries/budgets";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-
-function getMostSpecificActiveBudget(budgets: Budget[]): Budget | null {
-  let best: Budget | null = null;
-  for (const b of budgets) {
-    if (!b.isActive) continue;
-    if (!best || b.priority > best.priority) {
-      best = b;
-    }
-  }
-  return best;
-}
 
 interface BudgetCategoryGroupProps {
   categoryName: string;

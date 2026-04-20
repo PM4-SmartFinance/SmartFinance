@@ -16,8 +16,11 @@ export interface Budget {
   month: number;
   year: number;
   limitAmount: string;
+  /** DB soft-delete flag — whether this budget record is enabled */
   active: boolean;
+  /** Computed by backend: whether this budget's time period includes the current date */
   isActive: boolean;
+  /** Computed by backend: specificity rank (higher = more specific type) */
   priority: number;
   currentSpending: string;
   percentageUsed: number;
@@ -101,6 +104,18 @@ export function useDeleteBudget() {
       queryClient.invalidateQueries({ queryKey: BUDGETS_QUERY_KEY });
     },
   });
+}
+
+/** Pick the single most specific active budget from a list (highest priority wins) */
+export function getMostSpecificActiveBudget(budgets: Budget[]): Budget | null {
+  let best: Budget | null = null;
+  for (const b of budgets) {
+    if (!b.isActive) continue;
+    if (!best || b.priority > best.priority) {
+      best = b;
+    }
+  }
+  return best;
 }
 
 /** Human-readable label for a budget type + month/year combo */

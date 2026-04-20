@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useCreateBudget, useUpdateBudget } from "../lib/queries/budgets";
 import type { Budget, BudgetType } from "../lib/queries/budgets";
 import { useCategories } from "../lib/queries/categories";
@@ -16,6 +16,16 @@ interface CreateEditBudgetDialogProps {
 
 type EntryMode = "general" | "specific";
 
+const emptyFormState: FormState = {
+  entryMode: "general",
+  limitAmount: "",
+  categoryId: "",
+  generalType: "MONTHLY",
+  specificMonth: "",
+  specificYear: "",
+  error: "",
+};
+
 interface FormState {
   entryMode: EntryMode;
   limitAmount: string;
@@ -29,58 +39,38 @@ interface FormState {
 }
 
 export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBudgetDialogProps) {
-  const getInitialFormState = useMemo(() => {
-    return (): FormState => {
-      if (!isOpen) {
-        return {
-          entryMode: "general",
-          limitAmount: "",
-          categoryId: "",
-          generalType: "MONTHLY",
-          specificMonth: "",
-          specificYear: "",
-          error: "",
-        };
-      }
-
-      if (budget) {
-        return {
-          entryMode: isGeneralType(budget.type) ? "general" : "specific",
-          limitAmount: budget.limitAmount,
-          categoryId: budget.categoryId,
-          generalType: isGeneralType(budget.type)
-            ? (budget.type as "DAILY" | "MONTHLY" | "YEARLY")
-            : "MONTHLY",
-          specificMonth: budget.month > 0 ? budget.month.toString() : "",
-          specificYear: budget.year > 0 ? budget.year.toString() : "",
-          error: "",
-        };
-      }
-
-      return {
-        entryMode: "general",
-        limitAmount: "",
-        categoryId: "",
-        generalType: "MONTHLY",
-        specificMonth: "",
-        specificYear: "",
-        error: "",
-      };
-    };
-  }, [isOpen, budget]);
-
-  const [formState, setFormState] = useState<FormState>(() => getInitialFormState());
+  const [formState, setFormState] = useState<FormState>(emptyFormState);
   const dialogRef = useDialog(isOpen);
 
   const createMutation = useCreateBudget();
   const updateMutation = useUpdateBudget();
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
 
-  // Reset form when budget or isOpen changes
+  // Reset form when dialog opens/closes or budget changes
   useEffect(() => {
-    // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect
-    setFormState(getInitialFormState());
-  }, [getInitialFormState]);
+    if (!isOpen) {
+      // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect
+      setFormState(emptyFormState);
+      return;
+    }
+    if (budget) {
+      // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect
+      setFormState({
+        entryMode: isGeneralType(budget.type) ? "general" : "specific",
+        limitAmount: budget.limitAmount,
+        categoryId: budget.categoryId,
+        generalType: isGeneralType(budget.type)
+          ? (budget.type as "DAILY" | "MONTHLY" | "YEARLY")
+          : "MONTHLY",
+        specificMonth: budget.month > 0 ? budget.month.toString() : "",
+        specificYear: budget.year > 0 ? budget.year.toString() : "",
+        error: "",
+      });
+    } else {
+      // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect
+      setFormState(emptyFormState);
+    }
+  }, [isOpen, budget]);
 
   const handleDialogClose = () => {
     onClose();
@@ -94,7 +84,8 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
     const hasYear = formState.specificYear !== "";
     if (hasMonth && hasYear) return "SPECIFIC_MONTH_YEAR";
     if (hasMonth) return "SPECIFIC_MONTH";
-    return "SPECIFIC_YEAR";
+    if (hasYear) return "SPECIFIC_YEAR";
+    throw new Error("unreachable: no month or year selected for specific budget");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -118,7 +109,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
         if (err instanceof ApiError) {
           setFormState((prev) => ({ ...prev, error: err.message || "Failed to update budget" }));
         } else {
-          setFormState((prev) => ({ ...prev, error: "An unexpected error occurred" }));
+          throw err;
         }
       }
     } else {
@@ -159,7 +150,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
         if (err instanceof ApiError) {
           setFormState((prev) => ({ ...prev, error: err.message || "Failed to create budget" }));
         } else {
-          setFormState((prev) => ({ ...prev, error: "An unexpected error occurred" }));
+          throw err;
         }
       }
     }

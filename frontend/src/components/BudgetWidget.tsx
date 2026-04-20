@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { useDashboardBudgets } from "../lib/queries/dashboard";
 import type { Budget } from "../lib/queries/budgets";
+import { getMostSpecificActiveBudget } from "../lib/queries/budgets";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
 export function getBudgetStatus(percentageUsed: number): "on-track" | "approaching" | "exceeded" {
@@ -10,22 +11,22 @@ export function getBudgetStatus(percentageUsed: number): "on-track" | "approachi
 }
 
 /**
- * For each category, pick the most specific budget that is active.
- * Uses `isActive` and `priority` from the backend response.
+ * For each category, pick the most specific active budget.
  */
 function getMostSpecificBudgets(budgets: Budget[]): Budget[] {
-  const activeBudgets = budgets.filter((b) => b.isActive);
-
-  // Group by category, keep highest priority
-  const byCategory = new Map<string, Budget>();
-  for (const b of activeBudgets) {
-    const existing = byCategory.get(b.categoryId);
-    if (!existing || b.priority > existing.priority) {
-      byCategory.set(b.categoryId, b);
-    }
+  const byCategory = new Map<string, Budget[]>();
+  for (const b of budgets) {
+    const list = byCategory.get(b.categoryId) ?? [];
+    list.push(b);
+    byCategory.set(b.categoryId, list);
   }
 
-  return [...byCategory.values()];
+  const result: Budget[] = [];
+  for (const categoryBudgets of byCategory.values()) {
+    const best = getMostSpecificActiveBudget(categoryBudgets);
+    if (best) result.push(best);
+  }
+  return result;
 }
 
 export function BudgetWidget() {
