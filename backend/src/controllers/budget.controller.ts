@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { requireRole } from "../middleware/rbac.js";
 import * as budgetService from "../services/budget.service.js";
-import type { BudgetType } from "@prisma/client";
+import { BudgetType } from "@prisma/client";
 
 interface BudgetParams {
   id: string;
@@ -19,14 +19,7 @@ interface UpdateBudgetBody {
   limitAmount: number;
 }
 
-const BUDGET_TYPES = [
-  "DAILY",
-  "MONTHLY",
-  "YEARLY",
-  "SPECIFIC_MONTH",
-  "SPECIFIC_YEAR",
-  "SPECIFIC_MONTH_YEAR",
-];
+const BUDGET_TYPES = Object.values(BudgetType);
 
 const createBudgetSchema = {
   type: "object",

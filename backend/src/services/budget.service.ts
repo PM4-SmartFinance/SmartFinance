@@ -23,7 +23,7 @@ const TYPE_PRIORITY: Record<BudgetType, number> = {
   SPECIFIC_MONTH_YEAR: 3,
 };
 
-function isBudgetActiveNow(type: BudgetType, month: number, year: number): boolean {
+export function isBudgetActiveNow(type: BudgetType, month: number, year: number): boolean {
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
