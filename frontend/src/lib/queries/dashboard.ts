@@ -33,49 +33,14 @@ export interface CategoryBreakdown {
   total: number;
 }
 
-export function extractArray<T>(value: unknown): T[] {
-  if (Array.isArray(value)) {
-    return value;
-  }
-
-  if (
-    value &&
-    typeof value === "object" &&
-    "data" in value &&
-    Array.isArray((value as { data?: unknown }).data)
-  ) {
-    return (value as { data: T[] }).data;
-  }
-
-  if (import.meta.env.DEV && value != null) {
-    console.warn("[extractArray] Unexpected response shape, returning empty array:", value);
-  }
-  return [];
-}
-
-export function toTrendDataPoints(raw: unknown): TrendDataPoint[] {
-  const data = extractArray<TrendDataPoint | MonthlyTrendPoint>(raw);
-
-  return data
-    .map((point) => {
-      if ("date" in point && "amount" in point) {
-        return {
-          date: point.date,
-          amount: Number(point.amount),
-        };
-      }
-
-      if ("year" in point && "month" in point && "expenses" in point) {
-        const month = String(point.month).padStart(2, "0");
-        return {
-          date: `${point.year}-${month}-01`,
-          amount: Number(point.expenses),
-        };
-      }
-
-      return null;
-    })
-    .filter((point): point is TrendDataPoint => point !== null);
+export function toTrendDataPoints(data: MonthlyTrendPoint[]): TrendDataPoint[] {
+  return data.map((point) => {
+    const month = String(point.month).padStart(2, "0");
+    return {
+      date: `${point.year}-${month}-01`,
+      amount: point.expenses,
+    };
+  });
 }
 
 // Re-export for consumers that import Budget from dashboard queries
@@ -105,8 +70,8 @@ export function useDashboardTrends() {
     queryKey: ["dashboard", "trends", { startDate, endDate }] as const,
     queryFn: async () => {
       const params = new URLSearchParams({ startDate, endDate });
-      const response = await api.get<unknown>(`/dashboard/trends?${params}`);
-      return toTrendDataPoints(response);
+      const { data } = await api.get<{ data: MonthlyTrendPoint[] }>(`/dashboard/trends?${params}`);
+      return toTrendDataPoints(data);
     },
     staleTime: DASHBOARD_STALE_TIME,
   });
@@ -119,26 +84,13 @@ export function useDashboardCategories() {
 
   return useQuery({
     queryKey: ["dashboard", "categories", { startDate, endDate }] as const,
-    queryFn: async () => {
+    queryFn: () => {
       const params = new URLSearchParams({ startDate, endDate });
-      const response = await api.get<unknown>(`/dashboard/categories?${params}`);
-      return extractArray<CategoryBreakdown>(response);
+      return api.get<CategoryBreakdown[]>(`/dashboard/categories?${params}`);
     },
     staleTime: DASHBOARD_STALE_TIME,
   });
 }
 
-// Budgets Hook
-export function useDashboardBudgets() {
-  return useQuery({
-    queryKey: ["dashboard", "budgets"] as const,
-    queryFn: async () => {
-      const res = await api.get<{ budgets: Budget[] }>("/budgets");
-      if (!Array.isArray(res.budgets)) {
-        throw new Error("Unexpected response shape from /budgets endpoint");
-      }
-      return res.budgets;
-    },
-    staleTime: DASHBOARD_STALE_TIME,
-  });
-}
+// Budgets Hook — reuses the same query key as useBudgets for shared cache
+export { useBudgets as useDashboardBudgets } from "./budgets";

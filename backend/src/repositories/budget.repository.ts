@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, BudgetType } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { ServiceError } from "../errors.js";
 
@@ -12,28 +12,25 @@ export async function findCategoryForUser(categoryId: string, userId: string) {
 export async function findAllByUser(userId: string) {
   const budgets = await prisma.dimBudget.findMany({
     where: { userId },
-    orderBy: [{ year: "desc" }, { month: "desc" }],
+    orderBy: [{ type: "asc" }, { year: "desc" }, { month: "desc" }],
   });
 
   if (budgets.length === 0) {
     return [];
   }
 
-  const spendingByKey = await computeSpendingBatch(
-    userId,
-    budgets.map((b) => ({ categoryId: b.categoryId, month: b.month, year: b.year })),
-  );
+  const spendingByKey = await computeSpendingBatch(userId, budgets);
 
   return budgets.map((b) => ({
     ...b,
-    currentSpending:
-      spendingByKey.get(`${b.categoryId}:${b.month}:${b.year}`) ?? new Prisma.Decimal(0),
+    currentSpending: spendingByKey.get(b.id) ?? new Prisma.Decimal(0),
   }));
 }
 
 export async function create(data: {
   userId: string;
   categoryId: string;
+  type: BudgetType;
   month: number;
   year: number;
   limitAmount: number;
@@ -43,6 +40,7 @@ export async function create(data: {
       data: {
         userId: data.userId,
         categoryId: data.categoryId,
+        type: data.type,
         month: data.month,
         year: data.year,
         limitAmount: new Prisma.Decimal(data.limitAmount),
@@ -51,7 +49,7 @@ export async function create(data: {
     return { ...budget, currentSpending: new Prisma.Decimal(0) };
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      throw new ServiceError(409, "Budget already exists for this category and month");
+      throw new ServiceError(409, "Budget already exists for this category and type");
     }
     throw err;
   }
@@ -72,6 +70,7 @@ export async function update(id: string, userId: string, limitAmount: number) {
     const spending = await computeSpendingSingle(
       userId,
       budget.categoryId,
+      budget.type,
       budget.month,
       budget.year,
     );
@@ -86,18 +85,45 @@ export async function remove(id: string, userId: string) {
   }
 }
 
+function getDateFilter(type: BudgetType, month: number, year: number) {
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  const currentDay = now.getDate();
+
+  switch (type) {
+    case "DAILY": {
+      // Build the integer dateId for today: YYYYMMDD
+      const dateId = currentYear * 10000 + currentMonth * 100 + currentDay;
+      return { dateId };
+    }
+    case "MONTHLY":
+      return { date: { month: currentMonth, year: currentYear } };
+    case "YEARLY":
+      return { date: { year: currentYear } };
+    case "SPECIFIC_MONTH":
+      return { date: { month } };
+    case "SPECIFIC_YEAR":
+      return { date: { year } };
+    case "SPECIFIC_MONTH_YEAR":
+      return { date: { month, year } };
+  }
+}
+
 async function computeSpendingSingle(
   userId: string,
   categoryId: string,
+  type: BudgetType,
   month: number,
   year: number,
 ) {
+  const dateFilter = getDateFilter(type, month, year);
   const result = await prisma.factTransactions.aggregate({
     _sum: { amount: true },
     where: {
       userId,
       merchant: { mappings: { some: { userId, categoryId } } },
-      date: { month, year },
+      ...dateFilter,
     },
   });
   return result._sum.amount ?? new Prisma.Decimal(0);
@@ -105,19 +131,73 @@ async function computeSpendingSingle(
 
 async function computeSpendingBatch(
   userId: string,
-  entries: { categoryId: string; month: number; year: number }[],
+  budgets: { id: string; categoryId: string; type: BudgetType; month: number; year: number }[],
 ) {
   const result = new Map<string, Prisma.Decimal>();
 
-  if (entries.length === 0) return result;
+  if (budgets.length === 0) return result;
 
-  const uniquePeriods = [...new Set(entries.map((e) => `${e.month}:${e.year}`))];
-  const uniqueCategories = [...new Set(entries.map((e) => e.categoryId))];
+  // Group budgets by their date filter to batch queries
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  const currentDay = now.getDate();
 
-  const dateFilters = uniquePeriods.map((p) => {
-    const parts = p.split(":");
-    return { date: { month: Number(parts[0]), year: Number(parts[1]) } };
-  });
+  const uniqueCategories = [...new Set(budgets.map((b) => b.categoryId))];
+
+  // Collect all unique period filters
+  const periodFilters: { month: number; year: number }[] = [];
+  const dailyDateId = currentYear * 10000 + currentMonth * 100 + currentDay;
+  let needsDaily = false;
+
+  for (const b of budgets) {
+    switch (b.type) {
+      case "DAILY":
+        needsDaily = true;
+        break;
+      case "MONTHLY":
+        periodFilters.push({ month: currentMonth, year: currentYear });
+        break;
+      case "YEARLY":
+        // For yearly, we need all months in the current year
+        periodFilters.push({ month: 0, year: currentYear });
+        break;
+      case "SPECIFIC_MONTH":
+        // Recurring month across all years — use year=0 sentinel
+        periodFilters.push({ month: b.month, year: 0 });
+        break;
+      case "SPECIFIC_YEAR":
+        periodFilters.push({ month: 0, year: b.year });
+        break;
+      case "SPECIFIC_MONTH_YEAR":
+        periodFilters.push({ month: b.month, year: b.year });
+        break;
+    }
+  }
+
+  // Deduplicate periods
+  const uniquePeriods = [
+    ...new Map(periodFilters.map((p) => [`${p.month}:${p.year}`, p])).values(),
+  ];
+
+  // Build OR filters for date dimension
+  const dateFilters: Prisma.FactTransactionsWhereInput[] = [];
+  for (const p of uniquePeriods) {
+    if (p.month === 0 && p.year !== 0) {
+      // Yearly — match all months in that year
+      dateFilters.push({ date: { year: p.year } });
+    } else if (p.month !== 0 && p.year === 0) {
+      // Recurring month — match that month across all years
+      dateFilters.push({ date: { month: p.month } });
+    } else if (p.month !== 0 && p.year !== 0) {
+      dateFilters.push({ date: { month: p.month, year: p.year } });
+    }
+  }
+  if (needsDaily) {
+    dateFilters.push({ dateId: dailyDateId });
+  }
+
+  if (dateFilters.length === 0) return result;
 
   const transactions = await prisma.factTransactions.findMany({
     where: {
@@ -156,15 +236,41 @@ async function computeSpendingBatch(
 
   const dateById = new Map(dates.map((d) => [d.id, d]));
 
+  // For each budget, accumulate matching transaction amounts
   for (const tx of transactions) {
     const date = dateById.get(tx.dateId);
     const cats = mappingsByMerchant.get(tx.merchantId);
     if (!date || !cats) continue;
 
-    for (const categoryId of cats) {
-      const key = `${categoryId}:${date.month}:${date.year}`;
-      const current = result.get(key) ?? new Prisma.Decimal(0);
-      result.set(key, current.add(tx.amount));
+    for (const budget of budgets) {
+      if (!cats.includes(budget.categoryId)) continue;
+
+      let matches = false;
+      switch (budget.type) {
+        case "DAILY":
+          matches = tx.dateId === dailyDateId;
+          break;
+        case "MONTHLY":
+          matches = date.month === currentMonth && date.year === currentYear;
+          break;
+        case "YEARLY":
+          matches = date.year === currentYear;
+          break;
+        case "SPECIFIC_MONTH":
+          matches = date.month === budget.month;
+          break;
+        case "SPECIFIC_YEAR":
+          matches = date.year === budget.year;
+          break;
+        case "SPECIFIC_MONTH_YEAR":
+          matches = date.month === budget.month && date.year === budget.year;
+          break;
+      }
+
+      if (matches) {
+        const current = result.get(budget.id) ?? new Prisma.Decimal(0);
+        result.set(budget.id, current.add(tx.amount));
+      }
     }
   }
 
