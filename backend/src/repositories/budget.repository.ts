@@ -60,6 +60,7 @@ export async function update(
   userId: string,
   updates: {
     categoryId?: string;
+    type?: BudgetType;
     month?: number;
     year?: number;
     limitAmount?: number;
@@ -76,6 +77,7 @@ export async function update(
         where: { id },
         data: {
           ...(updates.categoryId !== undefined && { categoryId: updates.categoryId }),
+          ...(updates.type !== undefined && { type: updates.type }),
           ...(updates.month !== undefined && { month: updates.month }),
           ...(updates.year !== undefined && { year: updates.year }),
           ...(updates.limitAmount !== undefined && {
@@ -87,6 +89,7 @@ export async function update(
       const spending = await computeSpendingSingle(
         userId,
         budget.categoryId,
+        budget.type,
         budget.month,
         budget.year,
       );
@@ -97,19 +100,6 @@ export async function update(
       }
       throw err;
     }
-    const budget = await tx.dimBudget.update({
-      where: { id },
-      data: { limitAmount: new Prisma.Decimal(limitAmount) },
-    });
-
-    const spending = await computeSpendingSingle(
-      userId,
-      budget.categoryId,
-      budget.type,
-      budget.month,
-      budget.year,
-    );
-    return { ...budget, currentSpending: spending };
   });
 }
 
