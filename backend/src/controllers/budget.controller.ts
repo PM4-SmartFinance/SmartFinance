@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { requireRole } from "../middleware/rbac.js";
 import * as budgetService from "../services/budget.service.js";
+import { BudgetType } from "@prisma/client";
 
 interface BudgetParams {
   id: string;
@@ -8,26 +9,38 @@ interface BudgetParams {
 
 interface CreateBudgetBody {
   categoryId: string;
-  month: number;
-  year: number;
+  type: BudgetType;
   limitAmount: number;
+  month?: number;
+  year?: number;
 }
 
 interface UpdateBudgetBody {
   categoryId?: string;
+  type?: BudgetType;
   month?: number;
   year?: number;
   limitAmount?: number;
 }
 
+const BUDGET_TYPES = [
+  "DAILY",
+  "MONTHLY",
+  "YEARLY",
+  "SPECIFIC_MONTH",
+  "SPECIFIC_YEAR",
+  "SPECIFIC_MONTH_YEAR",
+];
+
 const createBudgetSchema = {
   type: "object",
-  required: ["categoryId", "month", "year", "limitAmount"],
+  required: ["categoryId", "type", "limitAmount"],
   properties: {
     categoryId: { type: "string" },
+    type: { type: "string", enum: BUDGET_TYPES },
+    limitAmount: { type: "number", exclusiveMinimum: 0 },
     month: { type: "integer", minimum: 1, maximum: 12 },
     year: { type: "integer", minimum: 2000 },
-    limitAmount: { type: "number", exclusiveMinimum: 0 },
   },
 } as const;
 
@@ -35,6 +48,7 @@ const updateBudgetSchema = {
   type: "object",
   properties: {
     categoryId: { type: "string" },
+    type: { enum: BUDGET_TYPES },
     month: { type: "integer", minimum: 1, maximum: 12 },
     year: { type: "integer", minimum: 2000 },
     limitAmount: { type: "number", exclusiveMinimum: 0 },
@@ -64,13 +78,14 @@ export async function budgetRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: requireRole("USER"), schema: { body: createBudgetSchema } },
     async (request, reply) => {
       const session = request.session.get("user")!;
-      const { categoryId, month, year, limitAmount } = request.body;
+      const { categoryId, type, limitAmount, month, year } = request.body;
       const budget = await budgetService.createBudget(
         session.id,
         categoryId,
+        type,
+        limitAmount,
         month,
         year,
-        limitAmount,
       );
       return reply.status(201).send({ budget });
     },

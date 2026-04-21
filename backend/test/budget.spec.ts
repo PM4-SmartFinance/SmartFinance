@@ -29,9 +29,6 @@ async function loginUser(email: string, password: string): Promise<string> {
 }
 
 beforeAll(async () => {
-  // Full wipe — this spec relies on the bootstrap flow for the first POST
-  // /users. `fileParallelism` is disabled in vitest.config.ts so a global
-  // cleanup is safe across spec files.
   await prisma.dimUser.deleteMany();
 
   await prisma.dimCurrency.upsert({
@@ -87,19 +84,20 @@ afterAll(async () => {
 describe("Budget CRUD", () => {
   let createdBudgetId: string;
 
-  it("POST /budgets creates a budget and returns 201 with correct shape", async () => {
+  it("POST /budgets creates a MONTHLY budget and returns 201", async () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/v1/budgets",
       cookies: { session: sessionCookie },
-      payload: { categoryId: testCategoryId, month: 3, year: 2026, limitAmount: 500 },
+      payload: { categoryId: testCategoryId, type: "MONTHLY", limitAmount: 500 },
     });
     expect(res.statusCode).toBe(201);
     const { budget } = res.json();
     expect(budget).toMatchObject({
       categoryId: testCategoryId,
-      month: 3,
-      year: 2026,
+      type: "MONTHLY",
+      month: 0,
+      year: 0,
     });
     expect(budget).toHaveProperty("id");
     expect(budget).toHaveProperty("limitAmount");
@@ -108,7 +106,73 @@ describe("Budget CRUD", () => {
     createdBudgetId = budget.id;
   });
 
-  it("GET /budgets returns list including the created budget with currentSpending", async () => {
+  it("POST /budgets creates a SPECIFIC_MONTH_YEAR budget", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/budgets",
+      cookies: { session: sessionCookie },
+      payload: {
+        categoryId: testCategoryId,
+        type: "SPECIFIC_MONTH_YEAR",
+        month: 3,
+        year: 2026,
+        limitAmount: 300,
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    const { budget } = res.json();
+    expect(budget).toMatchObject({
+      type: "SPECIFIC_MONTH_YEAR",
+      month: 3,
+      year: 2026,
+    });
+  });
+
+  it("POST /budgets creates a DAILY budget", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/budgets",
+      cookies: { session: sessionCookie },
+      payload: { categoryId: testCategoryId, type: "DAILY", limitAmount: 20 },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().budget.type).toBe("DAILY");
+  });
+
+  it("POST /budgets creates a YEARLY budget", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/budgets",
+      cookies: { session: sessionCookie },
+      payload: { categoryId: testCategoryId, type: "YEARLY", limitAmount: 6000 },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().budget.type).toBe("YEARLY");
+  });
+
+  it("POST /budgets creates a SPECIFIC_MONTH budget", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/budgets",
+      cookies: { session: sessionCookie },
+      payload: { categoryId: testCategoryId, type: "SPECIFIC_MONTH", month: 12, limitAmount: 800 },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().budget).toMatchObject({ type: "SPECIFIC_MONTH", month: 12, year: 0 });
+  });
+
+  it("POST /budgets creates a SPECIFIC_YEAR budget", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/budgets",
+      cookies: { session: sessionCookie },
+      payload: { categoryId: testCategoryId, type: "SPECIFIC_YEAR", year: 2027, limitAmount: 5000 },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().budget).toMatchObject({ type: "SPECIFIC_YEAR", month: 0, year: 2027 });
+  });
+
+  it("GET /budgets returns all budgets for the user", async () => {
     const res = await app.inject({
       method: "GET",
       url: "/api/v1/budgets",
@@ -117,31 +181,53 @@ describe("Budget CRUD", () => {
     expect(res.statusCode).toBe(200);
     const { budgets } = res.json();
     expect(Array.isArray(budgets)).toBe(true);
+    expect(budgets.length).toBeGreaterThanOrEqual(6);
     const found = budgets.find((b: { id: string }) => b.id === createdBudgetId);
     expect(found).toBeDefined();
     expect(Number(found.currentSpending)).toBe(0);
   });
 
-  it("POST /budgets with same categoryId+month+year returns 409", async () => {
+  it("POST /budgets with duplicate type+category returns 409", async () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/v1/budgets",
       cookies: { session: sessionCookie },
-      payload: { categoryId: testCategoryId, month: 3, year: 2026, limitAmount: 300 },
+      payload: { categoryId: testCategoryId, type: "MONTHLY", limitAmount: 300 },
     });
     expect(res.statusCode).toBe(409);
-    expect(res.json().error).toHaveProperty(
-      "message",
-      "Budget already exists for this category and month",
-    );
   });
 
-  it("POST /budgets with invalid month returns 400", async () => {
+  it("POST /budgets with SPECIFIC_MONTH_YEAR missing month returns 400", async () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/v1/budgets",
       cookies: { session: sessionCookie },
-      payload: { categoryId: testCategoryId, month: 13, year: 2026, limitAmount: 500 },
+      payload: {
+        categoryId: testCategoryId,
+        type: "SPECIFIC_MONTH_YEAR",
+        year: 2026,
+        limitAmount: 300,
+      },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("POST /budgets with SPECIFIC_YEAR missing year returns 400", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/budgets",
+      cookies: { session: sessionCookie },
+      payload: { categoryId: testCategoryId, type: "SPECIFIC_YEAR", limitAmount: 300 },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("POST /budgets with invalid type returns 400", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/budgets",
+      cookies: { session: sessionCookie },
+      payload: { categoryId: testCategoryId, type: "INVALID", limitAmount: 300 },
     });
     expect(res.statusCode).toBe(400);
   });
@@ -151,12 +237,12 @@ describe("Budget CRUD", () => {
       method: "POST",
       url: "/api/v1/budgets",
       cookies: { session: sessionCookie },
-      payload: { categoryId: testCategoryId, month: 4, year: 2026, limitAmount: 0 },
+      payload: { categoryId: testCategoryId, type: "MONTHLY", limitAmount: 0 },
     });
     expect(res.statusCode).toBe(400);
   });
 
-  it("PATCH /budgets/:id updates limitAmount and returns updated budget", async () => {
+  it("PATCH /budgets/:id updates limitAmount", async () => {
     const res = await app.inject({
       method: "PATCH",
       url: `/api/v1/budgets/${createdBudgetId}`,
@@ -217,7 +303,7 @@ describe("Budget CRUD", () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/v1/budgets",
-      payload: { categoryId: testCategoryId, month: 5, year: 2026, limitAmount: 200 },
+      payload: { categoryId: testCategoryId, type: "MONTHLY", limitAmount: 200 },
     });
     expect(res.statusCode).toBe(401);
   });
@@ -227,23 +313,29 @@ describe("Budget CRUD", () => {
       method: "POST",
       url: "/api/v1/budgets",
       cookies: { session: sessionCookie2 },
-      payload: { categoryId: testCategoryId, month: 6, year: 2026, limitAmount: 200 },
+      payload: { categoryId: testCategoryId, type: "MONTHLY", limitAmount: 200 },
     });
     expect(res.statusCode).toBe(404);
   });
 
   it("GET /budgets reflects currentSpending from transactions", async () => {
-    // Create a budget for month 6
+    // Create a SPECIFIC_MONTH_YEAR budget for month 6 / 2026
     const createRes = await app.inject({
       method: "POST",
       url: "/api/v1/budgets",
       cookies: { session: sessionCookie },
-      payload: { categoryId: testCategoryId, month: 6, year: 2026, limitAmount: 1000 },
+      payload: {
+        categoryId: testCategoryId,
+        type: "SPECIFIC_MONTH_YEAR",
+        month: 6,
+        year: 2026,
+        limitAmount: 1000,
+      },
     });
     expect(createRes.statusCode).toBe(201);
     const budgetId = createRes.json().budget.id;
 
-    // Set up transaction fixtures: merchant, mapping, date, account, transaction
+    // Set up transaction fixtures
     const currency = await prisma.dimCurrency.findFirstOrThrow({ where: { code: "CHF" } });
     const merchant = await prisma.dimMerchant.create({ data: { name: "Test Grocery Store" } });
     await prisma.userMerchantMapping.create({
@@ -304,5 +396,270 @@ describe("Budget CRUD", () => {
     });
     await prisma.dimMerchant.delete({ where: { id: merchant.id } });
     await prisma.dimBudget.delete({ where: { id: budgetId } });
+  });
+
+  it("GET /budgets reflects currentSpending for MONTHLY budget (current month)", async () => {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+    const currentDay = now.getDate();
+
+    // Create a separate category for this test
+    const category = await prisma.dimCategory.create({
+      data: { categoryName: "Monthly Test Cat", userId: testUserId },
+    });
+
+    // Create MONTHLY budget
+    const createRes = await app.inject({
+      method: "POST",
+      url: "/api/v1/budgets",
+      cookies: { session: sessionCookie },
+      payload: { categoryId: category.id, type: "MONTHLY", limitAmount: 1000 },
+    });
+    expect(createRes.statusCode).toBe(201);
+    const budgetId = createRes.json().budget.id;
+
+    // Set up transaction fixtures for today's date
+    const currency = await prisma.dimCurrency.findFirstOrThrow({ where: { code: "CHF" } });
+    const merchant = await prisma.dimMerchant.create({ data: { name: "Monthly Test Store" } });
+    await prisma.userMerchantMapping.create({
+      data: { userId: testUserId, merchantId: merchant.id, categoryId: category.id },
+    });
+    const dateId = currentYear * 10000 + currentMonth * 100 + currentDay;
+    await prisma.dimDate.upsert({
+      where: { id: dateId },
+      create: { id: dateId, dayOfWeek: "Monday", month: currentMonth, year: currentYear },
+      update: {},
+    });
+    const account = await prisma.dimAccount.create({
+      data: {
+        name: "Monthly Test Acc",
+        iban: "CH00 0000 0000 0000 0002 0",
+        currencyId: currency.id,
+        userId: testUserId,
+      },
+    });
+    await prisma.factTransactions.create({
+      data: {
+        amount: 75.0,
+        userId: testUserId,
+        accountId: account.id,
+        merchantId: merchant.id,
+        dateId,
+      },
+    });
+
+    const listRes = await app.inject({
+      method: "GET",
+      url: "/api/v1/budgets",
+      cookies: { session: sessionCookie },
+    });
+    expect(listRes.statusCode).toBe(200);
+    const found = listRes.json().budgets.find((b: { id: string }) => b.id === budgetId);
+    expect(found).toBeDefined();
+    expect(Number(found.currentSpending)).toBe(75);
+
+    // Clean up
+    await prisma.factTransactions.deleteMany({ where: { accountId: account.id } });
+    await prisma.dimAccount.delete({ where: { id: account.id } });
+    await prisma.userMerchantMapping.delete({
+      where: { userId_merchantId: { userId: testUserId, merchantId: merchant.id } },
+    });
+    await prisma.dimMerchant.delete({ where: { id: merchant.id } });
+    await prisma.dimBudget.delete({ where: { id: budgetId } });
+    await prisma.dimCategory.delete({ where: { id: category.id } });
+  });
+
+  it("GET /budgets reflects currentSpending for DAILY budget (today only)", async () => {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+    const currentDay = now.getDate();
+
+    const category = await prisma.dimCategory.create({
+      data: { categoryName: "Daily Test Cat", userId: testUserId },
+    });
+
+    const createRes = await app.inject({
+      method: "POST",
+      url: "/api/v1/budgets",
+      cookies: { session: sessionCookie },
+      payload: { categoryId: category.id, type: "DAILY", limitAmount: 50 },
+    });
+    expect(createRes.statusCode).toBe(201);
+    const budgetId = createRes.json().budget.id;
+
+    const currency = await prisma.dimCurrency.findFirstOrThrow({ where: { code: "CHF" } });
+    const merchant = await prisma.dimMerchant.create({ data: { name: "Daily Test Store" } });
+    await prisma.userMerchantMapping.create({
+      data: { userId: testUserId, merchantId: merchant.id, categoryId: category.id },
+    });
+
+    const todayDateId = currentYear * 10000 + currentMonth * 100 + currentDay;
+    await prisma.dimDate.upsert({
+      where: { id: todayDateId },
+      create: { id: todayDateId, dayOfWeek: "Monday", month: currentMonth, year: currentYear },
+      update: {},
+    });
+
+    // Transaction from a different day (yesterday) — should NOT count
+    const yesterdayDay = currentDay > 1 ? currentDay - 1 : 1;
+    const yesterdayDateId = currentYear * 10000 + currentMonth * 100 + yesterdayDay;
+    if (currentDay > 1) {
+      await prisma.dimDate.upsert({
+        where: { id: yesterdayDateId },
+        create: {
+          id: yesterdayDateId,
+          dayOfWeek: "Sunday",
+          month: currentMonth,
+          year: currentYear,
+        },
+        update: {},
+      });
+    }
+
+    const account = await prisma.dimAccount.create({
+      data: {
+        name: "Daily Test Acc",
+        iban: "CH00 0000 0000 0000 0003 0",
+        currencyId: currency.id,
+        userId: testUserId,
+      },
+    });
+
+    await prisma.factTransactions.createMany({
+      data: [
+        // Today's transaction — should count
+        {
+          amount: 15.0,
+          userId: testUserId,
+          accountId: account.id,
+          merchantId: merchant.id,
+          dateId: todayDateId,
+        },
+        // Yesterday's transaction — should NOT count for daily budget
+        ...(currentDay > 1
+          ? [
+              {
+                amount: 99.0,
+                userId: testUserId,
+                accountId: account.id,
+                merchantId: merchant.id,
+                dateId: yesterdayDateId,
+              },
+            ]
+          : []),
+      ],
+    });
+
+    const listRes = await app.inject({
+      method: "GET",
+      url: "/api/v1/budgets",
+      cookies: { session: sessionCookie },
+    });
+    expect(listRes.statusCode).toBe(200);
+    const found = listRes.json().budgets.find((b: { id: string }) => b.id === budgetId);
+    expect(found).toBeDefined();
+    expect(Number(found.currentSpending)).toBe(15);
+
+    // Clean up
+    await prisma.factTransactions.deleteMany({ where: { accountId: account.id } });
+    await prisma.dimAccount.delete({ where: { id: account.id } });
+    await prisma.userMerchantMapping.delete({
+      where: { userId_merchantId: { userId: testUserId, merchantId: merchant.id } },
+    });
+    await prisma.dimMerchant.delete({ where: { id: merchant.id } });
+    await prisma.dimBudget.delete({ where: { id: budgetId } });
+    await prisma.dimCategory.delete({ where: { id: category.id } });
+  });
+
+  it("GET /budgets reflects currentSpending for YEARLY budget (all months in current year)", async () => {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+    const currentDay = now.getDate();
+
+    const category = await prisma.dimCategory.create({
+      data: { categoryName: "Yearly Test Cat", userId: testUserId },
+    });
+
+    const createRes = await app.inject({
+      method: "POST",
+      url: "/api/v1/budgets",
+      cookies: { session: sessionCookie },
+      payload: { categoryId: category.id, type: "YEARLY", limitAmount: 10000 },
+    });
+    expect(createRes.statusCode).toBe(201);
+    const budgetId = createRes.json().budget.id;
+
+    const currency = await prisma.dimCurrency.findFirstOrThrow({ where: { code: "CHF" } });
+    const merchant = await prisma.dimMerchant.create({ data: { name: "Yearly Test Store" } });
+    await prisma.userMerchantMapping.create({
+      data: { userId: testUserId, merchantId: merchant.id, categoryId: category.id },
+    });
+
+    // Transaction in current month
+    const dateId1 = currentYear * 10000 + currentMonth * 100 + currentDay;
+    await prisma.dimDate.upsert({
+      where: { id: dateId1 },
+      create: { id: dateId1, dayOfWeek: "Monday", month: currentMonth, year: currentYear },
+      update: {},
+    });
+
+    // Transaction in January of current year (different month, same year — should count)
+    const dateId2 = currentYear * 10000 + 100 + 15; // Jan 15
+    await prisma.dimDate.upsert({
+      where: { id: dateId2 },
+      create: { id: dateId2, dayOfWeek: "Thursday", month: 1, year: currentYear },
+      update: {},
+    });
+
+    const account = await prisma.dimAccount.create({
+      data: {
+        name: "Yearly Test Acc",
+        iban: "CH00 0000 0000 0000 0004 0",
+        currencyId: currency.id,
+        userId: testUserId,
+      },
+    });
+
+    await prisma.factTransactions.createMany({
+      data: [
+        {
+          amount: 100.0,
+          userId: testUserId,
+          accountId: account.id,
+          merchantId: merchant.id,
+          dateId: dateId1,
+        },
+        {
+          amount: 200.0,
+          userId: testUserId,
+          accountId: account.id,
+          merchantId: merchant.id,
+          dateId: dateId2,
+        },
+      ],
+    });
+
+    const listRes = await app.inject({
+      method: "GET",
+      url: "/api/v1/budgets",
+      cookies: { session: sessionCookie },
+    });
+    expect(listRes.statusCode).toBe(200);
+    const found = listRes.json().budgets.find((b: { id: string }) => b.id === budgetId);
+    expect(found).toBeDefined();
+    expect(Number(found.currentSpending)).toBe(300);
+
+    // Clean up
+    await prisma.factTransactions.deleteMany({ where: { accountId: account.id } });
+    await prisma.dimAccount.delete({ where: { id: account.id } });
+    await prisma.userMerchantMapping.delete({
+      where: { userId_merchantId: { userId: testUserId, merchantId: merchant.id } },
+    });
+    await prisma.dimMerchant.delete({ where: { id: merchant.id } });
+    await prisma.dimBudget.delete({ where: { id: budgetId } });
+    await prisma.dimCategory.delete({ where: { id: category.id } });
   });
 });

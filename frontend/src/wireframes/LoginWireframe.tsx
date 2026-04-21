@@ -6,7 +6,7 @@
  *
  * Future React components: Container › Card › TextInput › PasswordInput › Button › Anchor
  */
-export default function LoginWireframe() {
+export function LoginWireframe() {
   return (
     <div className="wf-login-page">
       {/* ── Logo ── */}
