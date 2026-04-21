@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router";
 import { DateRangePicker } from "../components/DateRangePicker";
 import { SummaryMetricsWidget } from "../components/SummaryMetricsWidget";
 
@@ -58,7 +59,11 @@ function renderWithQuery(component: React.ReactElement) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(<QueryClientProvider client={queryClient}>{component}</QueryClientProvider>);
+  return render(
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>{component}</QueryClientProvider>
+    </MemoryRouter>,
+  );
 }
 
 describe("Dashboard Date Filter Integration", () => {

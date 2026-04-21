@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router";
 import { SummaryMetricsWidget } from "./SummaryMetricsWidget";
 
 const mockSummaryData = {
@@ -25,7 +26,11 @@ function renderWithQuery(component: React.ReactElement) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(<QueryClientProvider client={queryClient}>{component}</QueryClientProvider>);
+  return render(
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>{component}</QueryClientProvider>
+    </MemoryRouter>,
+  );
 }
 
 describe("SummaryMetricsWidget", () => {

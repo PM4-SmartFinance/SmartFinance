@@ -7,12 +7,9 @@ import { Card, CardContent, CardHeader } from "./ui/card";
 
 const categoryHeader = (
   <CardHeader>
-    <Link
-      to="/categories"
-      className="text-xs font-semibold uppercase tracking-wider text-foreground hover:text-primary transition-colors"
-    >
+    <div className="text-xs font-semibold uppercase tracking-wider text-foreground">
       Spending by Category
-    </Link>
+    </div>
   </CardHeader>
 );
 
@@ -23,7 +20,7 @@ export function CategoryBreakdownChart() {
 
   if (error && !isNotFoundError) {
     return (
-      <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
+      <Card className="col-span-1 sm:col-span-2 lg:col-span-3 transition-all duration-200">
         {categoryHeader}
         <CardContent>
           <div className="rounded border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
@@ -36,7 +33,7 @@ export function CategoryBreakdownChart() {
 
   if (isLoading) {
     return (
-      <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
+      <Card className="col-span-1 sm:col-span-2 lg:col-span-3 transition-all duration-200">
         {categoryHeader}
         <CardContent>
           <div className="flex min-h-64 items-center justify-center rounded bg-muted/30">
@@ -49,7 +46,7 @@ export function CategoryBreakdownChart() {
 
   if (isNotFoundError || chartData.length === 0) {
     return (
-      <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
+      <Card className="col-span-1 sm:col-span-2 lg:col-span-3 transition-all duration-200">
         {categoryHeader}
         <CardContent>
           <div className="flex min-h-64 items-center justify-center rounded bg-muted/30 p-4 text-center">
@@ -63,39 +60,41 @@ export function CategoryBreakdownChart() {
   }
 
   return (
-    <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
-      {categoryHeader}
-      <CardContent>
-        <div className="h-64 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} layout="vertical" margin={{ left: 100, right: 20 }}>
-              <CartesianGrid stroke="hsl(var(--muted-foreground))" />
-              <XAxis
-                type="number"
-                stroke="hsl(var(--muted-foreground))"
-                style={{ fontSize: "12px" }}
-              />
-              <YAxis
-                dataKey="categoryName"
-                type="category"
-                stroke="hsl(var(--muted-foreground))"
-                style={{ fontSize: "12px" }}
-                width={90}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--background))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "4px",
-                }}
-                labelStyle={{ color: "hsl(var(--foreground))" }}
-                formatter={(value) => [formatCurrency(Number(value)), "Spent"]}
-              />
-              <Bar dataKey="total" fill="hsl(var(--primary))" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </CardContent>
-    </Card>
+    <Link to="/categories" className="group block transition-all">
+      <Card className="col-span-1 sm:col-span-2 lg:col-span-3 transition-all duration-200 cursor-pointer hover:border-primary/50 hover:shadow-md hover:bg-accent/5">
+        {categoryHeader}
+        <CardContent>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} layout="vertical" margin={{ left: 100, right: 20 }}>
+                <CartesianGrid stroke="hsl(var(--muted-foreground))" />
+                <XAxis
+                  type="number"
+                  stroke="hsl(var(--muted-foreground))"
+                  style={{ fontSize: "12px" }}
+                />
+                <YAxis
+                  dataKey="categoryName"
+                  type="category"
+                  stroke="hsl(var(--muted-foreground))"
+                  style={{ fontSize: "12px" }}
+                  width={90}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--background))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "4px",
+                  }}
+                  labelStyle={{ color: "hsl(var(--foreground))" }}
+                  formatter={(value) => [formatCurrency(Number(value)), "Spent"]}
+                />
+                <Bar dataKey="total" fill="hsl(var(--primary))" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }

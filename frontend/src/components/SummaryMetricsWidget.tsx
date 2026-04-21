@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { useDashboardSummary } from "../lib/queries/dashboard";
 import { formatCurrency } from "../lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -12,7 +13,7 @@ function MetricCard({
   isLoading: boolean;
 }) {
   return (
-    <Card className="flex-1">
+    <Card className="flex-1 transition-all duration-200 hover:border-primary/50 hover:shadow-md hover:bg-accent/5 group-hover:border-primary/50 group-hover:shadow-md group-hover:bg-accent/5">
       <CardHeader>
         <CardTitle className="text-xs font-semibold uppercase tracking-wider">{title}</CardTitle>
       </CardHeader>
@@ -42,22 +43,24 @@ export function SummaryMetricsWidget() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      <MetricCard
-        title="Net Balance"
-        value={data ? formatCurrency(data.netBalance) : "—"}
-        isLoading={isLoading}
-      />
-      <MetricCard
-        title="Total Expenses"
-        value={data ? formatCurrency(Math.abs(data.totalExpenses)) : "—"}
-        isLoading={isLoading}
-      />
-      <MetricCard
-        title="Total Income"
-        value={data ? formatCurrency(data.totalIncome) : "—"}
-        isLoading={isLoading}
-      />
-    </div>
+    <Link to="/transactions" className="group block transition-all">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <MetricCard
+          title="Net Balance"
+          value={data ? formatCurrency(data.netBalance) : "—"}
+          isLoading={isLoading}
+        />
+        <MetricCard
+          title="Total Expenses"
+          value={data ? formatCurrency(Math.abs(data.totalExpenses)) : "—"}
+          isLoading={isLoading}
+        />
+        <MetricCard
+          title="Total Income"
+          value={data ? formatCurrency(data.totalIncome) : "—"}
+          isLoading={isLoading}
+        />
+      </div>
+    </Link>
   );
 }
