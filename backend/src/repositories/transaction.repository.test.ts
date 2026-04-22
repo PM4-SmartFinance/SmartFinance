@@ -6,13 +6,22 @@ vi.mock("../prisma.js", () => ({
     $transaction: vi.fn(),
     factTransactions: {
       findMany: vi.fn(),
+      findUnique: vi.fn(),
       updateMany: vi.fn(),
     },
   },
 }));
 
-import { bulkImport, findUncategorizedForUser, bulkSetCategory } from "./transaction.repository.js";
+import {
+  bulkImport,
+  findUncategorizedForUser,
+  bulkSetCategory,
+  findByIdForUser,
+  updateById,
+  deleteById,
+} from "./transaction.repository.js";
 import { prisma } from "../prisma.js";
+import { ServiceError } from "../errors.js";
 
 const mockTransaction = vi.mocked(prisma.$transaction);
 
@@ -293,5 +302,167 @@ describe("bulkSetCategory", () => {
     expect(idLists[0]).toHaveLength(1000);
     expect(idLists[1]).toHaveLength(1000);
     expect(idLists[2]).toHaveLength(500);
+  });
+});
+
+const TX_ID = "tx-1";
+const USER_ID = "user-1";
+const CAT_ID = "cat-1";
+
+const baseTxRecord = {
+  id: TX_ID,
+  userId: USER_ID,
+  amount: 42,
+  notes: null,
+  manualOverride: false,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  accountId: "acc-1",
+  account: { name: "My Account", iban: "CH9300762011623852957" },
+  merchantId: "merchant-1",
+  merchant: { name: "Grocery Store" },
+  dateId: 20260326,
+  date: { id: 20260326, dayOfWeek: "Thursday", month: 3, year: 2026 },
+  categoryId: null,
+  category: null,
+};
+
+function makeCrudTx() {
+  return {
+    factTransactions: {
+      findUnique: vi.fn().mockResolvedValue({ id: TX_ID, userId: USER_ID }),
+      update: vi.fn().mockResolvedValue(baseTxRecord),
+      delete: vi.fn().mockResolvedValue(undefined),
+    },
+    dimCategory: {
+      findFirst: vi.fn().mockResolvedValue({ id: CAT_ID }),
+    },
+  };
+}
+
+describe("findByIdForUser", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // @ts-expect-error -- mock returns a partial shape
+    vi.mocked(prisma.factTransactions.findUnique).mockResolvedValue(baseTxRecord);
+  });
+
+  it("returns the transaction when it exists and belongs to the requesting user", async () => {
+    const result = await findByIdForUser(TX_ID, USER_ID);
+    expect(result).toEqual(baseTxRecord);
+  });
+
+  it("queries by the given id", async () => {
+    await findByIdForUser(TX_ID, USER_ID);
+    expect(prisma.factTransactions.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: TX_ID } }),
+    );
+  });
+
+  it("throws ServiceError 404 when the transaction does not exist", async () => {
+    vi.mocked(prisma.factTransactions.findUnique).mockResolvedValue(null);
+    await expect(findByIdForUser(TX_ID, USER_ID)).rejects.toThrow(
+      new ServiceError(404, "Transaction not found"),
+    );
+  });
+
+  it("throws ServiceError 404 when the transaction belongs to a different user (IDOR guard)", async () => {
+    // @ts-expect-error -- mock returns a partial shape
+    vi.mocked(prisma.factTransactions.findUnique).mockResolvedValue({
+      ...baseTxRecord,
+      userId: "other-user",
+    });
+    await expect(findByIdForUser(TX_ID, USER_ID)).rejects.toThrow(
+      new ServiceError(404, "Transaction not found"),
+    );
+  });
+});
+
+describe("updateById", () => {
+  let crudTx: ReturnType<typeof makeCrudTx>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    crudTx = makeCrudTx();
+    // @ts-expect-error -- partial stub of TransactionClient
+    vi.mocked(prisma.$transaction).mockImplementation((cb) => cb(crudTx));
+  });
+
+  it("throws ServiceError 404 when the transaction does not exist", async () => {
+    crudTx.factTransactions.findUnique.mockResolvedValue(null);
+    await expect(updateById(TX_ID, USER_ID, { notes: "x" })).rejects.toThrow(
+      new ServiceError(404, "Transaction not found"),
+    );
+  });
+
+  it("throws ServiceError 404 when the transaction belongs to a different user (IDOR guard)", async () => {
+    crudTx.factTransactions.findUnique.mockResolvedValue({ id: TX_ID, userId: "other" });
+    await expect(updateById(TX_ID, USER_ID, { notes: "x" })).rejects.toThrow(
+      new ServiceError(404, "Transaction not found"),
+    );
+  });
+
+  it("throws ServiceError 404 when the category does not exist or is inaccessible", async () => {
+    crudTx.dimCategory.findFirst.mockResolvedValue(null);
+    await expect(updateById(TX_ID, USER_ID, { categoryId: CAT_ID })).rejects.toThrow(
+      new ServiceError(404, "Category not found"),
+    );
+  });
+
+  it("skips category validation when only notes are updated", async () => {
+    await updateById(TX_ID, USER_ID, { notes: "memo" });
+    expect(crudTx.dimCategory.findFirst).not.toHaveBeenCalled();
+    expect(crudTx.factTransactions.update).toHaveBeenCalledOnce();
+  });
+
+  it("calls factTransactions.update with the correct where and data", async () => {
+    await updateById(TX_ID, USER_ID, { notes: "memo", categoryId: CAT_ID });
+    expect(crudTx.factTransactions.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: TX_ID },
+        data: { notes: "memo", categoryId: CAT_ID },
+      }),
+    );
+  });
+
+  it("returns the updated transaction from the database", async () => {
+    const updated = { ...baseTxRecord, notes: "memo" };
+    crudTx.factTransactions.update.mockResolvedValue(updated);
+    const result = await updateById(TX_ID, USER_ID, { notes: "memo" });
+    expect(result).toBe(updated);
+  });
+});
+
+describe("deleteById", () => {
+  let crudTx: ReturnType<typeof makeCrudTx>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    crudTx = makeCrudTx();
+    // @ts-expect-error -- partial stub of TransactionClient
+    vi.mocked(prisma.$transaction).mockImplementation((cb) => cb(crudTx));
+  });
+
+  it("throws ServiceError 404 when the transaction does not exist", async () => {
+    crudTx.factTransactions.findUnique.mockResolvedValue(null);
+    await expect(deleteById(TX_ID, USER_ID)).rejects.toThrow(
+      new ServiceError(404, "Transaction not found"),
+    );
+  });
+
+  it("throws ServiceError 404 when the transaction belongs to a different user (IDOR guard)", async () => {
+    crudTx.factTransactions.findUnique.mockResolvedValue({ id: TX_ID, userId: "other" });
+    await expect(deleteById(TX_ID, USER_ID)).rejects.toThrow(
+      new ServiceError(404, "Transaction not found"),
+    );
+  });
+
+  it("calls factTransactions.delete with the correct id", async () => {
+    await deleteById(TX_ID, USER_ID);
+    expect(crudTx.factTransactions.delete).toHaveBeenCalledWith({ where: { id: TX_ID } });
+  });
+
+  it("resolves without error on successful deletion", async () => {
+    await expect(deleteById(TX_ID, USER_ID)).resolves.not.toThrow();
   });
 });
