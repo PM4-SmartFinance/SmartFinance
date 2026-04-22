@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router";
 import { SpendingTrendChart } from "./SpendingTrendChart";
 
 const mockTrendData = {
@@ -26,7 +27,11 @@ function renderWithQuery(component: React.ReactElement) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(<QueryClientProvider client={queryClient}>{component}</QueryClientProvider>);
+  return render(
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>{component}</QueryClientProvider>
+    </MemoryRouter>,
+  );
 }
 
 describe("SpendingTrendChart", () => {
@@ -68,6 +73,46 @@ describe("SpendingTrendChart", () => {
       expect(
         screen.getByText("Failed to load spending trend data. Please try again."),
       ).toBeInTheDocument();
+    });
+  });
+
+  it("shows empty state when no data is available", async () => {
+    const apiMock = await vi.importMock("../lib/api");
+    apiMock.api.get.mockResolvedValueOnce({ data: [] });
+
+    renderWithQuery(<SpendingTrendChart />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "No spending data available for the selected period. Import transactions to see your trends.",
+        ),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("shows single month indicator when only one month has data", async () => {
+    const apiMock = await vi.importMock("../lib/api");
+    apiMock.api.get.mockResolvedValueOnce({
+      data: [{ year: 2026, month: 1, income: 5000, expenses: 2500.0 }],
+    });
+
+    renderWithQuery(<SpendingTrendChart />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Showing data for 1 month. Add more transactions to see trends over time.",
+        ),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("shows multi-month indicator when multiple months have data", async () => {
+    renderWithQuery(<SpendingTrendChart />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing spending trend for 3 months/)).toBeInTheDocument();
     });
   });
 });
