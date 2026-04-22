@@ -21,13 +21,6 @@ const TRANSACTION_SELECT = {
   category: { select: { id: true, categoryName: true } },
 } as const;
 
-export async function findById(id: string) {
-  return prisma.factTransactions.findUnique({
-    where: { id },
-    select: TRANSACTION_SELECT,
-  });
-}
-
 export async function findByIdForUser(id: string, userId: string) {
   const transaction = await prisma.factTransactions.findUnique({
     where: { id },
