@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 
 type SortColumn = "email" | "role" | "createdAt";
 
-export function AdminUsersPage() {
+export function SettingsUsers() {
   const [sortBy, setSortBy] = useState<SortColumn>("email");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -68,10 +68,10 @@ export function AdminUsersPage() {
   };
 
   return (
-    <main className="min-h-screen bg-background">
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-6">
         {/* Page Header */}
-        <header className="mb-8 flex items-center justify-between">
+        <header className="flex items-center justify-between">
           <div className="flex flex-col gap-2">
             <h1 className="text-4xl font-bold text-foreground">Users</h1>
             <p className="text-sm text-muted-foreground">Manage platform users and access</p>
@@ -125,6 +125,6 @@ export function AdminUsersPage() {
         }}
         onDeleteSuccess={selectedUser?.id === currentUser?.id ? () => logout() : undefined}
       />
-    </main>
+    </div>
   );
 }
