@@ -10,6 +10,7 @@ import { SpendingTrendChart } from "../components/SpendingTrendChart";
 import { CategoryBreakdownChart } from "../components/CategoryBreakdownChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CsvImportCard } from "../components/CsvImportCard";
+import { RecentTransactionsWidget } from "../components/RecentTransactionsWidget";
 
 const TEXT = {
   heading: "Dashboard",
@@ -90,22 +91,7 @@ export function DashboardPage() {
           <CategoryBreakdownChart />
 
           {/* ── Recent Transactions (Full Width) ── */}
-          <Link to="/transactions" className="col-span-1 sm:col-span-2 lg:col-span-3">
-            <Card className="transition-colors hover:border-foreground/20">
-              <CardHeader>
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider">
-                  Recent Transactions
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex min-h-48 items-center justify-center rounded bg-muted/30 px-4 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    View and manage all your transactions
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+          <RecentTransactionsWidget />
 
           {/* ── Budget Progress (Full Width) ── */}
           <Link to="/budgets" className="col-span-1 sm:col-span-2 lg:col-span-3">

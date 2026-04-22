@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,6 +59,8 @@ export function CsvImportCard() {
   const [typeError, setTypeError] = useState<string | null>(null);
   const [result, setResult] = useState<UploadResult | null>(null);
 
+  const queryClient = useQueryClient();
+
   const { data: accountsData, isError: isAccountsError } = useQuery({
     queryKey: ["accounts"],
     queryFn: () => api.get<{ accounts: Account[] }>("/accounts"),
@@ -86,6 +88,7 @@ export function CsvImportCard() {
     },
     onSuccess: (data) => {
       setResult(data);
+      void queryClient.invalidateQueries({ queryKey: ["transactions"] });
     },
   });
 
