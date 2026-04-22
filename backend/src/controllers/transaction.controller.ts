@@ -122,7 +122,8 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       schema: { params: transactionParamsSchema },
     },
     async (request, reply) => {
-      const user = request.session.get("user")!;
+      const user = request.session.get("user");
+      if (!user) throw new ServiceError(401, "Unauthorized");
       const transaction = await transactionService.getTransaction(request.params.id, user.id);
       return reply.send({ transaction });
     },
@@ -135,7 +136,8 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       schema: { params: transactionParamsSchema, body: patchTransactionBodySchema },
     },
     async (request, reply) => {
-      const user = request.session.get("user")!;
+      const user = request.session.get("user");
+      if (!user) throw new ServiceError(401, "Unauthorized");
       const transaction = await transactionService.updateTransaction(
         request.params.id,
         user.id,
@@ -152,7 +154,8 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       schema: { params: transactionParamsSchema },
     },
     async (request, reply) => {
-      const user = request.session.get("user")!;
+      const user = request.session.get("user");
+      if (!user) throw new ServiceError(401, "Unauthorized");
       await transactionService.deleteTransaction(request.params.id, user.id);
       return reply.status(204).send();
     },
