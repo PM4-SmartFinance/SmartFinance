@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAppStore } from "../store/appStore";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
@@ -39,9 +40,15 @@ export function DateRangePicker() {
   const endDate = useAppStore((s) => s.endDate);
   const setDateRange = useAppStore((s) => s.setDateRange);
 
-  const activeKey = getActivePresetKey(startDate, endDate);
+  const [customSelected, setCustomSelected] = useState(false);
+  const activeKey = customSelected ? "custom" : getActivePresetKey(startDate, endDate);
 
   const handlePreset = (key: string) => {
+    if (key === "custom") {
+      setCustomSelected(true);
+      return;
+    }
+    setCustomSelected(false);
     const preset = PRESETS.find((p) => p.key === key);
     if (!preset || preset.start === null) return;
     setDateRange(formatLocalDate(preset.start()), formatLocalDate(new Date()));
