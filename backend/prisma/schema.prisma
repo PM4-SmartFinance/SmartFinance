@@ -77,7 +77,7 @@ model DimCategory {
   id           String   @id @default(uuid())
   categoryName String
   userId       String
-  user         DimUser? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         DimUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
