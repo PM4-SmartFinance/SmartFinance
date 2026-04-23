@@ -29,15 +29,20 @@ const ACCOUNTS = [
   { id: "acc-2", name: "Savings", iban: "CH56 0483 5012 3456 7800 9" },
 ];
 
-function renderCard() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>
+function renderCard(queryClient?: QueryClient) {
+  const client =
+    queryClient ??
+    new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+
+  const renderResult = render(
+    <QueryClientProvider client={client}>
       <CsvImportCard />
     </QueryClientProvider>,
   );
+
+  return { ...renderResult, queryClient: client };
 }
 
 function makeCsvFile(name = "export.csv") {
@@ -284,6 +289,31 @@ describe("upload", () => {
     await waitFor(() =>
       expect(screen.getByText("3 transactions imported successfully.")).toBeInTheDocument(),
     );
+  });
+
+  it("invalidates budget queries after a successful import", async () => {
+    mockUpload.mockResolvedValue({ imported: 3 });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const invalidateQueriesSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    renderCard(queryClient);
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText("No accounts found. Create an account first."),
+      ).not.toBeInTheDocument(),
+    );
+
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    await userEvent.upload(input, makeCsvFile());
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+
+    await waitFor(() => {
+      expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ["budgets"] });
+      expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ["dashboard", "budgets"] });
+    });
   });
 
   it("uses singular 'transaction' when imported count is 1", async () => {
