@@ -621,7 +621,7 @@ export function CategoriesPage() {
                             </div>
                             {previewByCategory[category.id]?.message && (
                               <p className="mt-2 text-xs text-muted-foreground">
-                                {previewByCategory[category.id].message}
+                                {previewByCategory[category.id]?.message}
                               </p>
                             )}
                             {(previewByCategory[category.id]?.matches?.length ?? 0) > 0 && (
@@ -638,7 +638,7 @@ export function CategoriesPage() {
                             )}
                             {previewByCategory[category.id]?.error && (
                               <p className="mt-2 text-xs text-destructive">
-                                {previewByCategory[category.id].error}
+                                {previewByCategory[category.id]?.error}
                               </p>
                             )}
                           </div>
