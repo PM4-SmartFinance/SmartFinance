@@ -70,7 +70,7 @@ describe("BudgetProgressWidget", () => {
       categorySpending: [
         {
           categoryId: "cat-1",
-          spending: "10.00",
+          spending: "120.00",
           scaledLimit: "100.00",
           sourceBudgetType: "DAILY",
         },
@@ -117,5 +117,6 @@ describe("BudgetProgressWidget", () => {
     expect(screen.getByText("Yearly")).toBeInTheDocument();
     expect(screen.getAllByText("Tracked total").length).toBe(3);
     expect(screen.getAllByText("Hobby").length).toBeGreaterThan(0);
+    expect(screen.getByText("Over budget")).toBeInTheDocument();
   });
 });

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { Link } from "react-router";
 import { useCategories } from "../lib/queries/categories";
 import { useBudgets, type CategorySpending } from "../lib/queries/budgets";
@@ -62,6 +62,14 @@ function getCategoryLabel(categoryId: string, names: Map<string, string>): strin
   const known = names.get(categoryId);
   if (known) return known;
   return `Category ${categoryId.slice(0, 6)}`;
+}
+
+function getCategoryColor(categoryId: string): string {
+  let hash = 0;
+  for (let i = 0; i < categoryId.length; i += 1) {
+    hash = (hash * 31 + categoryId.charCodeAt(i)) >>> 0;
+  }
+  return INNER_COLORS[hash % INNER_COLORS.length]!;
 }
 
 export function BudgetProgressWidget() {
@@ -167,10 +175,10 @@ export function BudgetProgressWidget() {
 
               const innerData =
                 snapshot.categories.length > 0
-                  ? snapshot.categories.map((c, idx) => ({
+                  ? snapshot.categories.map((c) => ({
                       name: getCategoryLabel(c.categoryId, categoryNames),
                       value: c.spending,
-                      fill: INNER_COLORS[idx % INNER_COLORS.length],
+                      fill: getCategoryColor(c.categoryId),
                     }))
                   : [{ name: "No category spending", value: 1, fill: "hsl(var(--muted))" }];
 
@@ -208,30 +216,13 @@ export function BudgetProgressWidget() {
                             <Cell key={`${snapshot.label}-${entry.name}-inner`} fill={entry.fill} />
                           ))}
                         </Pie>
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--background))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "4px",
-                          }}
-                          formatter={(value, name) => [formatCurrency(Number(value)), String(name)]}
-                        />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
 
-                  <div className="mt-2 flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Spent</span>
-                    <span className="font-medium">{formatCurrency(snapshot.totalSpent)}</span>
-                  </div>
-                  <div className="mt-1 flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Tracked total</span>
-                    <span className="font-medium">{formatCurrency(snapshot.totalLimit)}</span>
-                  </div>
-
                   {snapshot.categories.length > 0 ? (
                     <ul className="mt-3 space-y-1">
-                      {snapshot.categories.slice(0, 4).map((cat, idx) => (
+                      {snapshot.categories.slice(0, 4).map((cat) => (
                         <li
                           key={`${snapshot.label}-${cat.categoryId}`}
                           className="flex items-center justify-between text-xs"
@@ -239,7 +230,7 @@ export function BudgetProgressWidget() {
                           <span className="inline-flex items-center gap-2 text-muted-foreground">
                             <span
                               className="inline-block h-2.5 w-2.5 rounded-full"
-                              style={{ backgroundColor: INNER_COLORS[idx % INNER_COLORS.length] }}
+                              style={{ backgroundColor: getCategoryColor(cat.categoryId) }}
                               aria-hidden="true"
                             />
                             {getCategoryLabel(cat.categoryId, categoryNames)}
@@ -250,6 +241,29 @@ export function BudgetProgressWidget() {
                     </ul>
                   ) : (
                     <p className="mt-3 text-xs text-muted-foreground">No category spending yet.</p>
+                  )}
+
+                  <div className="mt-3 flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Spent</span>
+                    <span className="font-medium">{formatCurrency(snapshot.totalSpent)}</span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-xs">
+                    <span className="inline-flex items-center gap-2 text-muted-foreground">
+                      <span
+                        className="inline-block h-2.5 w-2.5 rounded-full bg-black"
+                        aria-hidden="true"
+                      />
+                      Tracked total
+                    </span>
+                    <span className="font-medium">{formatCurrency(snapshot.totalLimit)}</span>
+                  </div>
+                  {snapshot.overBudget > 0 && (
+                    <div className="mt-1 flex items-center justify-between text-xs">
+                      <span className="text-destructive">Over budget</span>
+                      <span className="font-medium text-destructive">
+                        - {formatCurrency(snapshot.overBudget)}
+                      </span>
+                    </div>
                   )}
                 </div>
               );
