@@ -12,17 +12,17 @@ import { formatCurrency } from "../lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
 /** Format date string (YYYY-MM-DD) to readable month label (Jan 2026) */
-function formatMonthLabel(dateStr: string): string {
+export function formatMonthLabel(dateStr: string): string {
   const date = new Date(`${dateStr}T00:00:00Z`);
   return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
 }
 
 /** Format Y-axis currency values */
-function formatYAxisValue(value: number): string {
+export function formatYAxisValue(value: number): string {
   if (value >= 1000) {
-    return `$${(value / 1000).toFixed(1)}k`;
+    return `CHF ${(value / 1000).toFixed(1)}k`;
   }
-  return `$${Math.round(value)}`;
+  return `CHF ${Math.round(value)}`;
 }
 
 export function SpendingTrendChart() {
@@ -136,7 +136,6 @@ export function SpendingTrendChart() {
                 strokeWidth={3}
                 dot={{ fill: "hsl(var(--primary))", r: 5, strokeWidth: 0 }}
                 activeDot={{ r: 7, strokeWidth: 0 }}
-                isAnimationActive={true}
               />
             </LineChart>
           </ResponsiveContainer>
