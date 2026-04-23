@@ -20,7 +20,7 @@ export async function updateCategory(id: string, userId: string, categoryName: s
     throw new ServiceError(403, "Access denied");
   }
 
-  return categoryRepository.update(id, { categoryName });
+  return categoryRepository.update(id, userId, { categoryName });
 }
 
 export async function deleteCategory(id: string, userId: string) {
@@ -36,7 +36,7 @@ export async function deleteCategory(id: string, userId: string) {
   try {
     // Because we added onDelete: Restrict to the Prisma schema,
     // the database will automatically block the delete if the category is in use.
-    await categoryRepository.deleteById(id);
+    await categoryRepository.deleteById(id, userId);
   } catch (error) {
     // Catch the specific Postgres Foreign Key Constraint error
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {

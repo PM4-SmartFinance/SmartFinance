@@ -29,16 +29,18 @@ export async function create(data: { categoryName: string; userId: string }) {
   }
 }
 
-export async function update(id: string, data: { categoryName: string }) {
+export async function update(id: string, userId: string, data: { categoryName: string }) {
   return prisma.$transaction(async (tx) => {
+    const existing = await tx.dimCategory.findFirst({ where: { id, userId } });
+    if (!existing) throw new ServiceError(404, "Category not found");
     return tx.dimCategory.update({ where: { id }, data });
   });
 }
 
-/**
- * Attempts to delete the category.
- * If it is in use, Prisma will throw a P2003 error due to our Restrict constraints.
- */
-export async function deleteById(id: string) {
-  return prisma.dimCategory.delete({ where: { id } });
+export async function deleteById(id: string, userId: string) {
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.dimCategory.findFirst({ where: { id, userId } });
+    if (!existing) throw new ServiceError(404, "Category not found");
+    return tx.dimCategory.delete({ where: { id } });
+  });
 }
