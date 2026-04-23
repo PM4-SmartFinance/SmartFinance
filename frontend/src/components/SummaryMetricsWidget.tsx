@@ -13,7 +13,7 @@ function MetricCard({
   isLoading: boolean;
 }) {
   return (
-    <Card className="flex-1 transition-all duration-200 hover:border-primary/50 hover:shadow-md hover:bg-accent/5 group-hover:border-primary/50 group-hover:shadow-md group-hover:bg-accent/5">
+    <Card className="flex-1 transition-all duration-200 group-hover:border-primary/50 group-hover:shadow-md group-hover:bg-accent/5">
       <CardHeader>
         <CardTitle className="text-xs font-semibold uppercase tracking-wider">{title}</CardTitle>
       </CardHeader>
@@ -43,7 +43,7 @@ export function SummaryMetricsWidget() {
   }
 
   return (
-    <Link to="/transactions" className="group block transition-all">
+    <Link to="/transactions" aria-label="View transactions" className="group block transition-all">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <MetricCard
           title="Net Balance"

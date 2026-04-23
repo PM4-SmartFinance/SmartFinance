@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import { userEvent } from "@testing-library/user-event";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { SpendingTrendChart } from "./SpendingTrendChart";
@@ -74,5 +75,48 @@ describe("SpendingTrendChart", () => {
         screen.getByText("Failed to load spending trend data. Please try again."),
       ).toBeInTheDocument();
     });
+  });
+
+  it("renders as a clickable link to /transactions", () => {
+    renderWithQuery(<SpendingTrendChart />);
+    const link = screen.getByRole("link", { name: /monthly spending trend/i });
+    expect(link).toHaveAttribute("href", "/transactions");
+  });
+
+  it("renders link in loading state", () => {
+    renderWithQuery(<SpendingTrendChart />);
+    const link = screen.getByRole("link", { name: /monthly spending trend/i });
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute("href", "/transactions");
+  });
+
+  it("renders link in error state", async () => {
+    const apiMock = await vi.importMock("../lib/api");
+    apiMock.api.get.mockRejectedValueOnce(new Error("Failed to fetch"));
+
+    renderWithQuery(<SpendingTrendChart />);
+
+    await waitFor(() => {
+      const link = screen.getByRole("link", { name: /monthly spending trend/i });
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute("href", "/transactions");
+    });
+  });
+
+  it("supports keyboard navigation to /transactions link", async () => {
+    const user = userEvent.setup();
+    renderWithQuery(<SpendingTrendChart />);
+
+    const link = screen.getByRole("link", { name: /monthly spending trend/i });
+
+    // Initially not focused
+    expect(link).not.toHaveFocus();
+
+    // Tab to focus the link
+    await user.tab();
+    expect(link).toHaveFocus();
+
+    // Verify link has correct href
+    expect(link).toHaveAttribute("href", "/transactions");
   });
 });
