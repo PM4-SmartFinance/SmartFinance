@@ -66,20 +66,23 @@ describe("Dashboard Date Filter Integration", () => {
     vi.clearAllMocks();
   });
 
-  it("renders the date range picker with default values", () => {
+  it("renders the date range picker with preset buttons", () => {
     renderWithQuery(<DateRangePicker />);
 
-    const startInput = screen.getByLabelText("Start Date") as HTMLInputElement;
-    const endInput = screen.getByLabelText("End Date") as HTMLInputElement;
+    expect(screen.getByRole("button", { name: "Last 7 days" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Last 30 days" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Last 3 months" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Last year" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Custom" })).toBeInTheDocument();
 
-    expect(startInput).toBeInTheDocument();
-    expect(endInput).toBeInTheDocument();
-    expect(startInput.value).toBeTruthy();
-    expect(endInput.value).toBeTruthy();
+    // Date inputs are hidden until Custom is selected
+    expect(screen.queryByLabelText("Start Date")).not.toBeInTheDocument();
   });
 
-  it("updates date range when inputs change", async () => {
+  it("updates date range when inputs change in custom mode", async () => {
     renderWithQuery(<DateRangePicker />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
 
     const startInput = screen.getByLabelText("Start Date") as HTMLInputElement;
     const endInput = screen.getByLabelText("End Date") as HTMLInputElement;
@@ -93,33 +96,30 @@ describe("Dashboard Date Filter Integration", () => {
     });
   });
 
-  it("resets to 30-day range when reset button is clicked", async () => {
+  it("hides date inputs and resets range when a preset is clicked", async () => {
     renderWithQuery(<DateRangePicker />);
 
-    const startInput = screen.getByLabelText("Start Date") as HTMLInputElement;
+    // Enter custom mode
+    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
+    expect(screen.getByLabelText("Start Date")).toBeInTheDocument();
 
-    // Change dates first
-    fireEvent.change(startInput, { target: { value: "2025-01-01" } });
-
-    const resetButton = screen.getByText("Reset to 30d");
-    fireEvent.click(resetButton);
+    // Click a preset — inputs should disappear
+    fireEvent.click(screen.getByRole("button", { name: "Last 30 days" }));
 
     await waitFor(() => {
-      // After reset, the value should represent approximately 30 days from today
-      expect(startInput.value).toBeTruthy();
+      expect(screen.queryByLabelText("Start Date")).not.toBeInTheDocument();
     });
   });
 
-  it("enforces min/max date constraints", () => {
+  it("enforces min/max date constraints in custom mode", () => {
     renderWithQuery(<DateRangePicker />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
 
     const startInput = screen.getByLabelText("Start Date") as HTMLInputElement;
     const endInput = screen.getByLabelText("End Date") as HTMLInputElement;
 
-    // End date min should be the start date
     expect(endInput.getAttribute("min")).toBe(startInput.value);
-
-    // Start date max should be the end date
     expect(startInput.getAttribute("max")).toBe(endInput.value);
   });
 
