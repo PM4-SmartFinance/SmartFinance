@@ -83,8 +83,8 @@ describe("BudgetCategoryGroup", () => {
     const summary = screen.getByTestId("category-summary");
     expect(summary).toBeInTheDocument();
     // SPECIFIC_MONTH_YEAR is more specific than MONTHLY, should show its data
-    expect(summary).toHaveTextContent("$142.50");
-    expect(summary).toHaveTextContent("of $500.00");
+    expect(summary).toHaveTextContent("CHF 142.50");
+    expect(summary).toHaveTextContent("CHF 500.00");
   });
 
   it("renders spending info in both summary and budget row", () => {
@@ -97,10 +97,10 @@ describe("BudgetCategoryGroup", () => {
       />,
     );
 
-    // Appears in both summary and row
-    expect(screen.getAllByText("$142.50").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("$500.00").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("$357.50 left")).toBeInTheDocument();
+    // Appears in both summary and row (text may be split across elements)
+    expect(screen.getAllByText(/CHF\s*142\.50/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/CHF\s*500\.00/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/CHF\s*357\.50.*left/)).toBeInTheDocument();
   });
 
   it("renders multiple budget rows in one group", () => {
@@ -115,8 +115,8 @@ describe("BudgetCategoryGroup", () => {
 
     expect(screen.getByText("Monthly Budget")).toBeInTheDocument();
     expect(screen.getByText("Daily Budget")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Edit" })).toHaveLength(3);
-    expect(screen.getAllByRole("button", { name: "Delete" })).toHaveLength(3);
+    expect(screen.getAllByRole("button", { name: /^Edit / })).toHaveLength(3);
+    expect(screen.getAllByRole("button", { name: /^Delete / })).toHaveLength(3);
   });
 
   it("renders progress bars with correct colors", () => {
@@ -145,7 +145,7 @@ describe("BudgetCategoryGroup", () => {
       />,
     );
 
-    expect(screen.getByText("Over")).toBeInTheDocument();
+    expect(screen.getByText(/over$/)).toBeInTheDocument();
   });
 
   it("caps progress bar at 100% when exceeded", () => {
@@ -174,7 +174,7 @@ describe("BudgetCategoryGroup", () => {
       />,
     );
 
-    screen.getByRole("button", { name: "Edit" }).click();
+    screen.getByRole("button", { name: /^Edit / }).click();
     expect(mockOnEdit).toHaveBeenCalledWith(mockBudget);
   });
 
@@ -188,7 +188,7 @@ describe("BudgetCategoryGroup", () => {
       />,
     );
 
-    screen.getByRole("button", { name: "Delete" }).click();
+    screen.getByRole("button", { name: /^Delete / }).click();
     expect(mockOnDelete).toHaveBeenCalledWith(mockBudget);
   });
 
@@ -203,7 +203,7 @@ describe("BudgetCategoryGroup", () => {
       />,
     );
 
-    const deleteButtons = screen.getAllByRole("button", { name: /Delete|…/ });
+    const deleteButtons = screen.getAllByRole("button", { name: /^Delete / });
     expect(deleteButtons[0]).toBeDisabled();
     expect(deleteButtons[1]).not.toBeDisabled();
   });
