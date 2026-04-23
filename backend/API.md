@@ -929,6 +929,49 @@ Creates a new category rule.
 
 ---
 
+### POST /category-rules/preview
+
+Previews matching transactions for a proposed rule without creating it. Returns the count of uncategorized transactions that would match the pattern, along with up to 3 sample transactions. Useful for live preview as the user edits the rule pattern.
+
+**Request Body:**
+
+| Field        | Type    | Required | Validation                                            |
+| ------------ | ------- | -------- | ----------------------------------------------------- |
+| `pattern`    | string  | yes      | Non-empty string                                      |
+| `matchType`  | string  | yes      | `"exact"` or `"contains"`                             |
+| `categoryId` | string  | yes      | UUID, must be a valid category (user-owned or global) |
+| `priority`   | integer | yes      | >= 0                                                  |
+
+**Response 200:**
+
+```json
+{
+  "matchCount": 7,
+  "matchedTransactions": [
+    {
+      "id": "uuid",
+      "merchantName": "Migros",
+      "amount": -42.5,
+      "dateId": 20260401
+    },
+    {
+      "id": "uuid",
+      "merchantName": "Migros City",
+      "amount": -18.75,
+      "dateId": 20260325
+    }
+  ]
+}
+```
+
+`matchCount` is the total number of uncategorized transactions that match the pattern. `matchedTransactions` is an array of up to 3 recent matching transactions, ordered by date descending then by ID ascending. If no transactions match, `matchedTransactions` is an empty array.
+
+**Response 400:** Invalid input (missing fields, invalid matchType, invalid UUID)
+**Response 401:** Not authenticated
+**Response 404:** Category not found or does not belong to the authenticated user
+
+---
+
 ### PATCH /category-rules/:id
 
 Updates an existing category rule. Only rules owned by the authenticated user can be updated. At least one field must be provided.

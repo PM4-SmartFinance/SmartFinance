@@ -27,6 +27,15 @@ interface RuleEditorState {
   priority: number;
 }
 
+interface PreviewState {
+  message: string;
+  matches: Array<{
+    id: string;
+    display: string;
+  }>;
+  error: string | null;
+}
+
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof ApiError) {
     if (error.status >= 400 && error.status < 500) return error.message;
@@ -48,11 +57,7 @@ export function CategoriesPage() {
   const [editingCategoryName, setEditingCategoryName] = useState("");
   const [createCategoryError, setCreateCategoryError] = useState<string | null>(null);
   const [errorByCategory, setErrorByCategory] = useState<Record<string, string>>({});
-  const [previewByCategory, setPreviewByCategory] = useState<Record<string, string>>({});
-  const [previewMatchesByCategory, setPreviewMatchesByCategory] = useState<
-    Record<string, string[]>
-  >({});
-  const [previewErrorByCategory, setPreviewErrorByCategory] = useState<Record<string, string>>({});
+  const [previewByCategory, setPreviewByCategory] = useState<Record<string, PreviewState>>({});
   const [ruleDraftByCategory, setRuleDraftByCategory] = useState<Record<string, RuleEditorState>>(
     {},
   );
@@ -179,22 +184,34 @@ export function CategoriesPage() {
   }
 
   useEffect(() => {
+    const timerIds = previewTimerByCategoryRef.current;
     return () => {
-      Object.values(previewTimerByCategoryRef.current).forEach((timerId) => {
+      Object.values(timerIds).forEach((timerId) => {
         clearTimeout(timerId);
       });
     };
   }, []);
 
-  function setPreviewError(categoryId: string, message: string | null) {
-    setPreviewErrorByCategory((prev) => {
-      if (message === null) {
+  function setPreviewState(categoryId: string, update: Partial<PreviewState> | null) {
+    if (update === null) {
+      // Clear preview state
+      setPreviewByCategory((prev) => {
         const next = { ...prev };
         delete next[categoryId];
         return next;
-      }
-      return { ...prev, [categoryId]: message };
-    });
+      });
+    } else {
+      // Update or merge preview state
+      setPreviewByCategory((prev) => ({
+        ...prev,
+        [categoryId]: {
+          message: prev[categoryId]?.message ?? "",
+          matches: prev[categoryId]?.matches ?? [],
+          error: prev[categoryId]?.error ?? null,
+          ...update,
+        },
+      }));
+    }
   }
 
   function scheduleLivePreview(categoryId: string, draft: RuleEditorState) {
@@ -243,9 +260,7 @@ export function CategoriesPage() {
         ...prev,
         [categoryId]: { pattern: "", matchType: "contains", priority: 0 },
       }));
-      setPreviewByCategory((prev) => ({ ...prev, [categoryId]: "" }));
-      setPreviewMatchesByCategory((prev) => ({ ...prev, [categoryId]: [] }));
-      setPreviewError(categoryId, null);
+      setPreviewState(categoryId, null);
     } catch (error) {
       setCategoryError(categoryId, getErrorMessage(error, "Failed to create rule."));
     }
@@ -253,12 +268,11 @@ export function CategoriesPage() {
 
   async function handleLivePreviewRule(categoryId: string, draft: RuleEditorState) {
     if (!draft.pattern.trim()) {
-      setPreviewByCategory((prev) => ({ ...prev, [categoryId]: "" }));
-      setPreviewError(categoryId, null);
+      setPreviewState(categoryId, null);
       return;
     }
 
-    setPreviewError(categoryId, null);
+    setPreviewState(categoryId, { error: null });
     const payload: RuleDraft = {
       categoryId,
       pattern: draft.pattern.trim(),
@@ -271,32 +285,33 @@ export function CategoriesPage() {
     try {
       const response = await previewRule.mutateAsync(payload);
       if (previewRequestVersionRef.current[categoryId] !== requestVersion) return;
-      setPreviewByCategory((prev) => ({
-        ...prev,
-        [categoryId]: `${response.matchCount} existing transactions would match.`,
-      }));
-      setPreviewMatchesByCategory((prev) => ({
-        ...prev,
-        [categoryId]: (response.matchedTransactions ?? []).map((transaction) => {
+      setPreviewState(categoryId, {
+        message: `${response.matchCount} existing transactions would match.`,
+        matches: (response.matchedTransactions ?? []).map((transaction) => {
           const amount = `${transaction.amount < 0 ? "−" : ""}CHF ${Math.abs(
             transaction.amount,
           ).toFixed(2)}`;
-          return `${transaction.merchantName} · ${formatDateId(transaction.dateId)} · ${amount}`;
+          return {
+            id: transaction.id,
+            display: `${transaction.merchantName} · ${formatDateId(transaction.dateId)} · ${amount}`,
+          };
         }),
-      }));
-      setPreviewError(categoryId, null);
+        error: null,
+      });
     } catch (error) {
       if (previewRequestVersionRef.current[categoryId] !== requestVersion) {
         return;
       }
 
-      setPreviewByCategory((prev) => ({ ...prev, [categoryId]: "" }));
-      setPreviewMatchesByCategory((prev) => ({ ...prev, [categoryId]: [] }));
+      let errorMessage: string;
       if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
-        setPreviewError(categoryId, error.message);
-        return;
+        errorMessage = error.message;
+      } else {
+        // Log non-4xx errors (server errors, network issues, etc.) for debugging
+        console.error("Failed to preview rule matches:", error);
+        errorMessage = "Failed to preview rule matches.";
       }
-      setPreviewError(categoryId, "Failed to preview rule matches.");
+      setPreviewState(categoryId, { message: "", matches: [], error: errorMessage });
     }
   }
 
@@ -604,28 +619,26 @@ export function CategoriesPage() {
                                 </Button>
                               </div>
                             </div>
-                            {previewByCategory[category.id] && (
+                            {previewByCategory[category.id]?.message && (
                               <p className="mt-2 text-xs text-muted-foreground">
-                                {previewByCategory[category.id]}
+                                {previewByCategory[category.id].message}
                               </p>
                             )}
-                            {(previewMatchesByCategory[category.id]?.length ?? 0) > 0 && (
+                            {(previewByCategory[category.id]?.matches?.length ?? 0) > 0 && (
                               <div className="mt-2">
                                 <p className="text-xs font-medium text-muted-foreground">
                                   Matching transactions:
                                 </p>
                                 <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
-                                  {(previewMatchesByCategory[category.id] ?? []).map(
-                                    (name, index) => (
-                                      <li key={`${name}-${index}`}>{name}</li>
-                                    ),
-                                  )}
+                                  {(previewByCategory[category.id]?.matches ?? []).map((match) => (
+                                    <li key={match.id}>{match.display}</li>
+                                  ))}
                                 </ul>
                               </div>
                             )}
-                            {previewErrorByCategory[category.id] && (
+                            {previewByCategory[category.id]?.error && (
                               <p className="mt-2 text-xs text-destructive">
-                                {previewErrorByCategory[category.id]}
+                                {previewByCategory[category.id].error}
                               </p>
                             )}
                           </div>
