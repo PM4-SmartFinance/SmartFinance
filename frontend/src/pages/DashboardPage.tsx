@@ -74,6 +74,11 @@ export function DashboardPage() {
         {/* ── Date Range Picker ── */}
         <DateRangePicker />
 
+        {/* ── Spending Trend Chart ── */}
+        <section className="mb-8">
+          <SpendingTrendChart />
+        </section>
+
         {/* ── Summary Metrics ── */}
         <section className="mb-8">
           <SummaryMetricsWidget />
@@ -86,7 +91,6 @@ export function DashboardPage() {
 
         {/* ── Charts Grid ── */}
         <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
-          <SpendingTrendChart />
           <CategoryBreakdownChart />
 
           {/* ── Recent Transactions (Full Width) ── */}
