@@ -4,6 +4,17 @@ import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { SpendingTrendChart, formatMonthLabel, formatYAxisValue } from "./SpendingTrendChart";
 
+// Allow the LineChart and its children to render in jsdom without a real layout engine.
+vi.mock("recharts", async () => {
+  const Recharts = await vi.importActual<typeof import("recharts")>("recharts");
+  return {
+    ...Recharts,
+    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
+      <div style={{ width: 800, height: 400 }}>{children}</div>
+    ),
+  };
+});
+
 const mockTrendData = {
   data: [
     { year: 2025, month: 12, income: 5000, expenses: 2150.25 },
@@ -34,6 +45,60 @@ function renderWithQuery(component: React.ReactElement) {
   );
 }
 
+// ── formatMonthLabel ──────────────────────────────────────────────────────────
+
+describe("formatMonthLabel", () => {
+  it("formats a mid-year date as short month + full year", () => {
+    expect(formatMonthLabel("2026-06-15")).toBe("Jun 2026");
+  });
+
+  it("formats a year-boundary date (Dec → Jan) correctly", () => {
+    expect(formatMonthLabel("2025-12-01")).toBe("Dec 2025");
+    expect(formatMonthLabel("2026-01-01")).toBe("Jan 2026");
+  });
+
+  it("uses UTC so dates near midnight do not shift to a different month", () => {
+    // Without the T00:00:00Z suffix, new Date("2026-03-01") in some environments
+    // would be interpreted as local midnight, potentially shifting to Feb 28.
+    expect(formatMonthLabel("2026-03-01")).toBe("Mar 2026");
+  });
+
+  it("handles a leap year date correctly", () => {
+    expect(formatMonthLabel("2024-02-29")).toBe("Feb 2024");
+  });
+
+  it("returns 'Invalid Date' for an empty string", () => {
+    expect(formatMonthLabel("")).toBe("Invalid Date");
+  });
+});
+
+// ── formatYAxisValue ──────────────────────────────────────────────────────────
+
+describe("formatYAxisValue", () => {
+  it("formats values below 1000 as CHF + rounded integer", () => {
+    expect(formatYAxisValue(0)).toBe("CHF 0");
+    expect(formatYAxisValue(500)).toBe("CHF 500");
+    expect(formatYAxisValue(999)).toBe("CHF 999");
+  });
+
+  it("formats values at exactly 1000 using the compact k suffix", () => {
+    expect(formatYAxisValue(1000)).toBe("CHF 1.0k");
+  });
+
+  it("formats values above 1000 with one decimal place", () => {
+    expect(formatYAxisValue(1500)).toBe("CHF 1.5k");
+    expect(formatYAxisValue(2800)).toBe("CHF 2.8k");
+    expect(formatYAxisValue(12345)).toBe("CHF 12.3k");
+  });
+
+  it("rounds sub-1000 decimal values to nearest integer", () => {
+    expect(formatYAxisValue(123.4)).toBe("CHF 123");
+    expect(formatYAxisValue(123.6)).toBe("CHF 124");
+  });
+});
+
+// ── SpendingTrendChart component ──────────────────────────────────────────────
+
 describe("SpendingTrendChart", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -60,10 +125,10 @@ describe("SpendingTrendChart", () => {
     renderWithQuery(<SpendingTrendChart />);
 
     expect(screen.getByText("Loading chart…")).toBeInTheDocument();
+    expect(screen.queryByText(/Showing spending trend/)).not.toBeInTheDocument();
   });
 
   it("displays error state when data fetch fails", async () => {
-    // Mock API to return error
     const apiMock = await vi.importMock("../lib/api");
     apiMock.api.get.mockRejectedValueOnce(new Error("Failed to fetch"));
 
@@ -91,6 +156,14 @@ describe("SpendingTrendChart", () => {
     });
   });
 
+  it("renders the Recharts chart container when data is available", async () => {
+    renderWithQuery(<SpendingTrendChart />);
+
+    await waitFor(() => {
+      expect(document.querySelector(".recharts-wrapper")).toBeInTheDocument();
+    });
+  });
+
   it("shows single month indicator when only one month has data", async () => {
     const apiMock = await vi.importMock("../lib/api");
     apiMock.api.get.mockResolvedValueOnce({
@@ -114,102 +187,5 @@ describe("SpendingTrendChart", () => {
     await waitFor(() => {
       expect(screen.getByText(/Showing spending trend for 3 months/)).toBeInTheDocument();
     });
-  });
-});
-
-describe("formatMonthLabel", () => {
-  it("formats valid date string to month and year", () => {
-    expect(formatMonthLabel("2026-01-15")).toBe("Jan 2026");
-    expect(formatMonthLabel("2025-12-01")).toBe("Dec 2025");
-    expect(formatMonthLabel("2026-06-30")).toBe("Jun 2026");
-  });
-
-  it("handles year boundary dates correctly", () => {
-    expect(formatMonthLabel("2025-01-01")).toBe("Jan 2025");
-    expect(formatMonthLabel("2025-12-31")).toBe("Dec 2025");
-    expect(formatMonthLabel("2026-01-01")).toBe("Jan 2026");
-  });
-
-  it("returns fallback for invalid date strings", () => {
-    const result = formatMonthLabel("invalid-date");
-    expect(result).toBeDefined();
-    // Invalid dates in JavaScript toLocaleDateString return "Invalid Date"
-    expect(result).toContain("Invalid Date");
-  });
-
-  it("handles edge case: single digit month", () => {
-    expect(formatMonthLabel("2026-03-15")).toBe("Mar 2026");
-  });
-
-  it("handles edge case: leap year date", () => {
-    expect(formatMonthLabel("2024-02-29")).toBe("Feb 2024");
-  });
-});
-
-describe("formatYAxisValue", () => {
-  it("formats values below 1000 as whole currency amounts", () => {
-    expect(formatYAxisValue(0)).toBe("CHF 0");
-    expect(formatYAxisValue(500)).toBe("CHF 500");
-    expect(formatYAxisValue(999)).toBe("CHF 999");
-  });
-
-  it("formats values at and above 1000 with k suffix", () => {
-    expect(formatYAxisValue(1000)).toBe("CHF 1.0k");
-    expect(formatYAxisValue(1500)).toBe("CHF 1.5k");
-    expect(formatYAxisValue(2500)).toBe("CHF 2.5k");
-  });
-
-  it("handles large values correctly", () => {
-    expect(formatYAxisValue(10000)).toBe("CHF 10.0k");
-    expect(formatYAxisValue(100000)).toBe("CHF 100.0k");
-    expect(formatYAxisValue(999999)).toBe("CHF 1000.0k");
-  });
-
-  it("rounds sub-1000 values to nearest integer", () => {
-    expect(formatYAxisValue(123.4)).toBe("CHF 123");
-    expect(formatYAxisValue(123.6)).toBe("CHF 124");
-    expect(formatYAxisValue(999.5)).toBe("CHF 1000");
-  });
-
-  it("handles zero correctly", () => {
-    expect(formatYAxisValue(0)).toBe("CHF 0");
-  });
-});
-
-describe("SpendingTrendChart - Chart Rendering", () => {
-  it("renders Recharts LineChart container when data is available", async () => {
-    renderWithQuery(<SpendingTrendChart />);
-
-    await waitFor(() => {
-      // Verify chart container with data renders
-      const chartContainer = screen.getByText("Monthly Spending Trend");
-      expect(chartContainer).toBeInTheDocument();
-
-      // Verify chart metadata is rendered (data count indicator)
-      expect(screen.getByText(/Showing spending trend for 3 months/)).toBeInTheDocument();
-    });
-  });
-
-  it("does not render chart when no data is available", async () => {
-    const apiMock = await vi.importMock("../lib/api");
-    apiMock.api.get.mockResolvedValueOnce({ data: [] });
-
-    renderWithQuery(<SpendingTrendChart />);
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(
-          "No spending data available for the selected period. Import transactions to see your trends.",
-        ),
-      ).toBeInTheDocument();
-    });
-  });
-
-  it("does not render chart during loading state", () => {
-    renderWithQuery(<SpendingTrendChart />);
-
-    expect(screen.getByText("Loading chart…")).toBeInTheDocument();
-    // Verify the loading skeleton is shown instead of chart
-    expect(screen.queryByText(/Showing spending trend/)).not.toBeInTheDocument();
   });
 });

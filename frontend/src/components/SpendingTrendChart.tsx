@@ -17,7 +17,7 @@ export function formatMonthLabel(dateStr: string): string {
   return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
 }
 
-/** Format Y-axis currency values */
+/** Format Y-axis values as compact CHF amounts (e.g. CHF 1.5k, CHF 500) */
 export function formatYAxisValue(value: number): string {
   if (value >= 1000) {
     return `CHF ${(value / 1000).toFixed(1)}k`;
@@ -115,7 +115,7 @@ export function SpendingTrendChart() {
                 style={{ fontSize: "13px" }}
                 tick={{ fill: "hsl(var(--muted-foreground))" }}
                 axisLine={{ stroke: "hsl(var(--border))" }}
-                width={50}
+                width={68}
               />
               <Tooltip
                 contentStyle={{
