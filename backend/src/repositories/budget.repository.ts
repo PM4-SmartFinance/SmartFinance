@@ -4,7 +4,7 @@ import { ServiceError } from "../errors.js";
 
 export async function findCategoryForUser(categoryId: string, userId: string) {
   return prisma.dimCategory.findFirst({
-    where: { id: categoryId, OR: [{ userId }] },
+    where: { id: categoryId, userId },
     select: { id: true },
   });
 }
