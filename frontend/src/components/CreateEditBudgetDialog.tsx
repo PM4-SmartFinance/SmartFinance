@@ -23,6 +23,7 @@ const emptyFormState: FormState = {
   generalType: "MONTHLY",
   specificMonth: "",
   specificYear: "",
+  active: true,
   error: "",
 };
 
@@ -30,11 +31,10 @@ interface FormState {
   entryMode: EntryMode;
   limitAmount: string;
   categoryId: string;
-  // General mode
   generalType: "DAILY" | "MONTHLY" | "YEARLY";
-  // Specific mode
   specificMonth: string;
   specificYear: string;
+  active: boolean;
   error: string;
 }
 
@@ -64,6 +64,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
           : "MONTHLY",
         specificMonth: budget.month > 0 ? budget.month.toString() : "",
         specificYear: budget.year > 0 ? budget.year.toString() : "",
+        active: budget.active,
         error: "",
       });
     } else {
@@ -97,12 +98,38 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
       return;
     }
 
+    if (!formState.categoryId) {
+      setFormState((prev) => ({ ...prev, error: "Please select a category" }));
+      return;
+    }
+
+    if (formState.entryMode === "specific" && !formState.specificMonth && !formState.specificYear) {
+      setFormState((prev) => ({
+        ...prev,
+        error: "Please select at least a month or year for specific budgets",
+      }));
+      return;
+    }
+
+    const type = resolveBudgetType();
+
     if (budget) {
-      // Edit mode — only update limitAmount
+      // Edit mode — send all fields
       try {
         await updateMutation.mutateAsync({
           id: budget.id,
-          input: { limitAmount: parseFloat(formState.limitAmount) },
+          input: {
+            limitAmount: parseFloat(formState.limitAmount),
+            categoryId: formState.categoryId,
+            type,
+            ...(formState.specificMonth && formState.entryMode === "specific"
+              ? { month: parseInt(formState.specificMonth) }
+              : {}),
+            ...(formState.specificYear && formState.entryMode === "specific"
+              ? { year: parseInt(formState.specificYear) }
+              : {}),
+            active: formState.active,
+          },
         });
         onClose();
       } catch (err) {
@@ -114,25 +141,6 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
       }
     } else {
       // Create mode
-      if (!formState.categoryId) {
-        setFormState((prev) => ({ ...prev, error: "Please select a category" }));
-        return;
-      }
-
-      if (
-        formState.entryMode === "specific" &&
-        !formState.specificMonth &&
-        !formState.specificYear
-      ) {
-        setFormState((prev) => ({
-          ...prev,
-          error: "Please select at least a month or year for specific budgets",
-        }));
-        return;
-      }
-
-      const type = resolveBudgetType();
-
       try {
         await createMutation.mutateAsync({
           categoryId: formState.categoryId,
@@ -178,131 +186,125 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
             <div className="rounded bg-red-50 p-2 text-sm text-red-600">{formState.error}</div>
           )}
 
-          {!budget && (
+          {/* Category Select — shown for both create and edit */}
+          <div className="space-y-2">
+            <Label htmlFor="category">Category</Label>
+            <select
+              id="category"
+              value={formState.categoryId}
+              onChange={(e) => setFormState((prev) => ({ ...prev, categoryId: e.target.value }))}
+              disabled={isSubmitting || categoriesLoading}
+              className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">Select a category…</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.categoryName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Entry Mode Toggle */}
+          <div className="space-y-2">
+            <Label>Budget Type</Label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className={`flex-1 rounded border px-3 py-2 text-sm font-medium transition-colors ${
+                  formState.entryMode === "general"
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-input bg-background text-foreground hover:bg-muted"
+                }`}
+                onClick={() => setFormState((prev) => ({ ...prev, entryMode: "general" }))}
+                disabled={isSubmitting}
+              >
+                General
+              </button>
+              <button
+                type="button"
+                className={`flex-1 rounded border px-3 py-2 text-sm font-medium transition-colors ${
+                  formState.entryMode === "specific"
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-input bg-background text-foreground hover:bg-muted"
+                }`}
+                onClick={() => setFormState((prev) => ({ ...prev, entryMode: "specific" }))}
+                disabled={isSubmitting}
+              >
+                Specific
+              </button>
+            </div>
+          </div>
+
+          {/* General Mode: Period Dropdown */}
+          {formState.entryMode === "general" && (
+            <div className="space-y-2">
+              <Label htmlFor="period">Period</Label>
+              <select
+                id="period"
+                value={formState.generalType}
+                onChange={(e) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    generalType: e.target.value as "DAILY" | "MONTHLY" | "YEARLY",
+                  }))
+                }
+                disabled={isSubmitting}
+                className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="DAILY">Daily</option>
+                <option value="MONTHLY">Monthly</option>
+                <option value="YEARLY">Yearly</option>
+              </select>
+            </div>
+          )}
+
+          {/* Specific Mode: Month + Year pickers */}
+          {formState.entryMode === "specific" && (
             <>
-              {/* Category Select */}
               <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
+                <Label htmlFor="specific-month">Month (optional)</Label>
                 <select
-                  id="category"
-                  value={formState.categoryId}
+                  id="specific-month"
+                  value={formState.specificMonth}
                   onChange={(e) =>
-                    setFormState((prev) => ({ ...prev, categoryId: e.target.value }))
+                    setFormState((prev) => ({ ...prev, specificMonth: e.target.value }))
                   }
-                  disabled={isSubmitting || categoriesLoading}
+                  disabled={isSubmitting}
                   className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <option value="">Select a category…</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.categoryName}
+                  <option value="">Any month</option>
+                  {months.map((m) => {
+                    const monthName = new Date(currentYear, m - 1).toLocaleDateString("en-US", {
+                      month: "long",
+                    });
+                    return (
+                      <option key={m} value={m}>
+                        {monthName}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="specific-year">Year (optional)</Label>
+                <select
+                  id="specific-year"
+                  value={formState.specificYear}
+                  onChange={(e) =>
+                    setFormState((prev) => ({ ...prev, specificYear: e.target.value }))
+                  }
+                  disabled={isSubmitting}
+                  className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="">Any year</option>
+                  {years.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
                     </option>
                   ))}
                 </select>
               </div>
-
-              {/* Entry Mode Toggle */}
-              <div className="space-y-2">
-                <Label>Budget Type</Label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    className={`flex-1 rounded border px-3 py-2 text-sm font-medium transition-colors ${
-                      formState.entryMode === "general"
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-input bg-background text-foreground hover:bg-muted"
-                    }`}
-                    onClick={() => setFormState((prev) => ({ ...prev, entryMode: "general" }))}
-                    disabled={isSubmitting}
-                  >
-                    General
-                  </button>
-                  <button
-                    type="button"
-                    className={`flex-1 rounded border px-3 py-2 text-sm font-medium transition-colors ${
-                      formState.entryMode === "specific"
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-input bg-background text-foreground hover:bg-muted"
-                    }`}
-                    onClick={() => setFormState((prev) => ({ ...prev, entryMode: "specific" }))}
-                    disabled={isSubmitting}
-                  >
-                    Specific
-                  </button>
-                </div>
-              </div>
-
-              {/* General Mode: Period Dropdown */}
-              {formState.entryMode === "general" && (
-                <div className="space-y-2">
-                  <Label htmlFor="period">Period</Label>
-                  <select
-                    id="period"
-                    value={formState.generalType}
-                    onChange={(e) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        generalType: e.target.value as "DAILY" | "MONTHLY" | "YEARLY",
-                      }))
-                    }
-                    disabled={isSubmitting}
-                    className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="DAILY">Daily</option>
-                    <option value="MONTHLY">Monthly</option>
-                    <option value="YEARLY">Yearly</option>
-                  </select>
-                </div>
-              )}
-
-              {/* Specific Mode: Month + Year pickers */}
-              {formState.entryMode === "specific" && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="specific-month">Month (optional)</Label>
-                    <select
-                      id="specific-month"
-                      value={formState.specificMonth}
-                      onChange={(e) =>
-                        setFormState((prev) => ({ ...prev, specificMonth: e.target.value }))
-                      }
-                      disabled={isSubmitting}
-                      className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <option value="">Any month</option>
-                      {months.map((m) => {
-                        const monthName = new Date(currentYear, m - 1).toLocaleDateString("en-US", {
-                          month: "long",
-                        });
-                        return (
-                          <option key={m} value={m}>
-                            {monthName}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="specific-year">Year (optional)</Label>
-                    <select
-                      id="specific-year"
-                      value={formState.specificYear}
-                      onChange={(e) =>
-                        setFormState((prev) => ({ ...prev, specificYear: e.target.value }))
-                      }
-                      disabled={isSubmitting}
-                      className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <option value="">Any year</option>
-                      {years.map((y) => (
-                        <option key={y} value={y}>
-                          {y}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </>
-              )}
             </>
           )}
 
@@ -319,6 +321,32 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
               disabled={isSubmitting}
             />
           </div>
+
+          {/* Active Toggle — edit mode only */}
+          {budget && (
+            <div className="flex items-center gap-3">
+              <Label htmlFor="active-toggle" className="cursor-pointer">
+                Active
+              </Label>
+              <button
+                id="active-toggle"
+                type="button"
+                role="switch"
+                aria-checked={formState.active}
+                onClick={() => setFormState((prev) => ({ ...prev, active: !prev.active }))}
+                disabled={isSubmitting}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                  formState.active ? "bg-primary" : "bg-input"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none block size-5 rounded-full bg-background shadow-lg ring-0 transition-transform ${
+                    formState.active ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex gap-2">

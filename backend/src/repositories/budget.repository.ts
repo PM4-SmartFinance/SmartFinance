@@ -19,7 +19,12 @@ export async function findAllByUser(userId: string) {
     return [];
   }
 
-  const spendingByKey = await computeSpendingBatch(userId, budgets);
+  // Only compute spending for active budgets
+  const activeBudgets = budgets.filter((b) => b.active);
+  const spendingByKey =
+    activeBudgets.length > 0
+      ? await computeSpendingBatch(userId, activeBudgets)
+      : new Map<string, Prisma.Decimal>();
 
   return budgets.map((b) => ({
     ...b,
@@ -55,17 +60,54 @@ export async function create(data: {
   }
 }
 
-export async function update(id: string, userId: string, limitAmount: number) {
+export interface UpdateBudgetData {
+  limitAmount?: number;
+  categoryId?: string;
+  type?: BudgetType;
+  month?: number;
+  year?: number;
+  active?: boolean;
+}
+
+export async function update(id: string, userId: string, data: UpdateBudgetData) {
   return prisma.$transaction(async (tx) => {
     const existing = await tx.dimBudget.findFirst({ where: { id, userId } });
     if (!existing) {
       throw new ServiceError(404, "Budget not found");
     }
 
-    const budget = await tx.dimBudget.update({
-      where: { id },
-      data: { limitAmount: new Prisma.Decimal(limitAmount) },
-    });
+    const updateData: Prisma.DimBudgetUpdateInput = {};
+    if (data.limitAmount !== undefined) {
+      updateData.limitAmount = new Prisma.Decimal(data.limitAmount);
+    }
+    if (data.categoryId !== undefined) {
+      updateData.category = { connect: { id: data.categoryId } };
+    }
+    if (data.type !== undefined) {
+      updateData.type = data.type;
+    }
+    if (data.month !== undefined) {
+      updateData.month = data.month;
+    }
+    if (data.year !== undefined) {
+      updateData.year = data.year;
+    }
+    if (data.active !== undefined) {
+      updateData.active = data.active;
+    }
+
+    let budget;
+    try {
+      budget = await tx.dimBudget.update({
+        where: { id },
+        data: updateData,
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        throw new ServiceError(409, "Budget already exists for this category and type");
+      }
+      throw err;
+    }
 
     const spending = await computeSpendingSingle(
       userId,
@@ -126,7 +168,9 @@ async function computeSpendingSingle(
       ...dateFilter,
     },
   });
-  return result._sum.amount ?? new Prisma.Decimal(0);
+  // Expenses are stored as negative amounts; negate so spending is positive
+  const raw = result._sum.amount ?? new Prisma.Decimal(0);
+  return raw.negated();
 }
 
 async function computeSpendingBatch(
@@ -268,10 +312,52 @@ async function computeSpendingBatch(
       }
 
       if (matches) {
+        // Negate: expenses (negative amounts) count as positive spending
         const current = result.get(budget.id) ?? new Prisma.Decimal(0);
-        result.set(budget.id, current.add(tx.amount));
+        result.set(budget.id, current.add(tx.amount.negated()));
       }
     }
+  }
+
+  return result;
+}
+
+/**
+ * Compute total spending per category for a date range, using the same
+ * merchant→UserMerchantMapping→category attribution path as budget spending.
+ */
+export async function computeCategorySpendingForPeriod(
+  userId: string,
+  startDateId: number,
+  endDateId: number,
+): Promise<Map<string, Prisma.Decimal>> {
+  const transactions = await prisma.factTransactions.findMany({
+    where: {
+      userId,
+      dateId: { gte: startDateId, lte: endDateId },
+    },
+    select: { amount: true, merchantId: true },
+  });
+
+  if (transactions.length === 0) return new Map();
+
+  const merchantIds = [...new Set(transactions.map((t) => t.merchantId))];
+  const mappings = await prisma.userMerchantMapping.findMany({
+    where: { userId, merchantId: { in: merchantIds } },
+    select: { merchantId: true, categoryId: true },
+  });
+
+  const categoryByMerchant = new Map<string, string>();
+  for (const m of mappings) {
+    categoryByMerchant.set(m.merchantId, m.categoryId);
+  }
+
+  const result = new Map<string, Prisma.Decimal>();
+  for (const tx of transactions) {
+    const categoryId = categoryByMerchant.get(tx.merchantId);
+    if (!categoryId) continue;
+    const current = result.get(categoryId) ?? new Prisma.Decimal(0);
+    result.set(categoryId, current.add(tx.amount.negated()));
   }
 
   return result;
