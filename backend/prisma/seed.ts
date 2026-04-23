@@ -3,21 +3,13 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import argon2 from "argon2";
 
+import { DEFAULT_CATEGORIES } from "../src/services/user.service.js";
+
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
 });
 
 const prisma = new PrismaClient({ adapter });
-
-const DEFAULT_CATEGORIES = [
-  { categoryName: "Groceries" },
-  { categoryName: "Rent" },
-  { categoryName: "Transport" },
-  { categoryName: "Dining" },
-  { categoryName: "Entertainment" },
-  { categoryName: "Insurance" },
-  { categoryName: "Salary" },
-];
 
 async function main() {
   console.log("Starting database seeding...");
@@ -74,16 +66,16 @@ async function main() {
 
     // 4. Seed User's Default Categories
     console.log("Creating default categories for dev user...");
-    for (const cat of DEFAULT_CATEGORIES) {
+    for (const categoryName of DEFAULT_CATEGORIES) {
       await prisma.dimCategory.upsert({
-        where: { userId_categoryName: { userId: user.id, categoryName: cat.categoryName } },
+        where: { userId_categoryName: { userId: user.id, categoryName } },
         update: {},
         create: {
-          categoryName: cat.categoryName,
+          categoryName,
           userId: user.id,
         },
       });
-      console.log(`  + Ensured category: ${cat.categoryName}`);
+      console.log(`  + Ensured category: ${categoryName}`);
     }
 
     // 5. Seed account
@@ -121,7 +113,6 @@ async function main() {
     }
 
     // 8. Seed merchant-category mapping
-    // Note: We use the user-owned category created in step 6
     await prisma.userMerchantMapping.upsert({
       where: { userId_merchantId: { userId: user.id, merchantId: merchant.id } },
       update: { categoryId: userCategory.id },

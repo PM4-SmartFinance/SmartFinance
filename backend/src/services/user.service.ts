@@ -10,8 +10,11 @@ import {
 } from "../repositories/user.repository.js";
 import * as auditService from "./audit.service.js";
 import { logEvent } from "./audit.service.js";
+import { getLogger } from "../logger.js";
 
 const DEFAULT_CURRENCY_CODE = "CHF";
+
+export const DEFAULT_CATEGORIES = ["Groceries", "Housing", "Transport", "Entertainment", "Income"];
 
 // --- Profile functions (from develop) ---
 
@@ -81,24 +84,26 @@ export async function onboardUser(
       ...(payload.displayName !== undefined && { name: payload.displayName }),
       ...(payload.role !== undefined && { role: payload.role }),
     });
-    const defaultCategories = ["Groceries", "Housing", "Transport", "Entertainment", "Income"];
 
-    await Promise.all(
-      defaultCategories.map((categoryName) =>
-        categoryService.createCategory(categoryName, user.id).catch((err) => {
-          console.error(
-            `Failed to create default category ${categoryName} for user ${user.id}`,
-            err,
-          );
-        }),
-      ),
-    );
+    try {
+      await Promise.all(
+        DEFAULT_CATEGORIES.map((categoryName) =>
+          categoryService.createCategory(categoryName, user.id),
+        ),
+      );
+    } catch (categoryErr) {
+      getLogger().error(
+        { err: categoryErr, userId: user.id },
+        "Failed to create default categories during onboarding",
+      );
+      throw categoryErr;
+    }
   } catch (err) {
     if (err instanceof BootstrapUnauthorizedError) throw new ServiceError(401, "Unauthorized");
     if (err instanceof BootstrapForbiddenError) throw new ServiceError(403, "Forbidden");
     if (err instanceof EmailConflictError) throw new ServiceError(409, "Email already in use");
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034")
-      throw new ServiceError(401, "Unauthorized");
+      throw new ServiceError(503, "Transaction failed due to a write conflict");
     throw err;
   }
 
