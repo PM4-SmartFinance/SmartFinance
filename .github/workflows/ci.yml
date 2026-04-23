@@ -11,6 +11,18 @@ on:
       - develop
 
 jobs:
+  commit-msg-validation:
+    name: Validate Commit Messages
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate commit message format
+        run: |
+          chmod +x scripts/test-commit-msg.sh
+          ./scripts/test-commit-msg.sh
+        shell: bash
+
   lint:
     name: Lint & Format
     runs-on: ubuntu-24.04
