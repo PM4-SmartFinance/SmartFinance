@@ -358,14 +358,14 @@ describe("Budget CRUD", () => {
     await prisma.factTransactions.createMany({
       data: [
         {
-          amount: 50.25,
+          amount: -50.25,
           userId: testUserId,
           accountId: account.id,
           merchantId: merchant.id,
           dateId,
         },
         {
-          amount: 149.75,
+          amount: -149.75,
           userId: testUserId,
           accountId: account.id,
           merchantId: merchant.id,
@@ -441,7 +441,7 @@ describe("Budget CRUD", () => {
     });
     await prisma.factTransactions.create({
       data: {
-        amount: 75.0,
+        amount: -75.0,
         userId: testUserId,
         accountId: account.id,
         merchantId: merchant.id,
@@ -531,7 +531,7 @@ describe("Budget CRUD", () => {
       data: [
         // Today's transaction — should count
         {
-          amount: 15.0,
+          amount: -15.0,
           userId: testUserId,
           accountId: account.id,
           merchantId: merchant.id,
@@ -541,7 +541,7 @@ describe("Budget CRUD", () => {
         ...(currentDay > 1
           ? [
               {
-                amount: 99.0,
+                amount: -99.0,
                 userId: testUserId,
                 accountId: account.id,
                 merchantId: merchant.id,
@@ -626,14 +626,14 @@ describe("Budget CRUD", () => {
     await prisma.factTransactions.createMany({
       data: [
         {
-          amount: 100.0,
+          amount: -100.0,
           userId: testUserId,
           accountId: account.id,
           merchantId: merchant.id,
           dateId: dateId1,
         },
         {
-          amount: 200.0,
+          amount: -200.0,
           userId: testUserId,
           accountId: account.id,
           merchantId: merchant.id,

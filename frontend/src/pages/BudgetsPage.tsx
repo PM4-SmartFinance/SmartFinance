@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useBudgets, useDeleteBudget, getBudgetTypeLabel } from "../lib/queries/budgets";
-import type { Budget } from "../lib/queries/budgets";
+import type { Budget, BudgetsParams, PeriodFilter, CategorySpending } from "../lib/queries/budgets";
 import { ApiError } from "../lib/api";
 import { useCategories } from "../lib/queries/categories";
 import { BudgetCategoryGroup } from "../components/BudgetProgressCard";
@@ -9,6 +9,27 @@ import { DeleteBudgetDialog } from "../components/DeleteBudgetDialog";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router";
 import { ArrowLeft } from "lucide-react";
+
+const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
+  { value: "DAILY", label: "Daily" },
+  { value: "MONTHLY", label: "Monthly" },
+  { value: "YEARLY", label: "Yearly" },
+  { value: "DATE_RANGE", label: "Date Range" },
+];
+
+function formatLocalDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function getDefaultDateRange(): { start: string; end: string } {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate() - 30);
+  return { start: formatLocalDate(start), end: formatLocalDate(end) };
+}
 
 export function BudgetsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -21,9 +42,24 @@ export function BudgetsPage() {
     budgetLabel: string;
   } | null>(null);
 
-  const { data: budgets = [], isLoading, error } = useBudgets();
+  const [period, setPeriod] = useState<PeriodFilter>("MONTHLY");
+  const [dateRange, setDateRange] = useState(getDefaultDateRange);
+
+  const budgetParams: BudgetsParams =
+    period === "DATE_RANGE"
+      ? { period, startDate: dateRange.start, endDate: dateRange.end }
+      : { period };
+
+  const { data, isLoading, error } = useBudgets(budgetParams);
+  const budgets = data?.budgets ?? [];
+  const categorySpending = data?.categorySpending ?? [];
+
   const { data: categories = [], error: categoriesError } = useCategories();
   const { mutateAsync: deleteBudget, isPending: isDeleting } = useDeleteBudget();
+
+  const categorySpendingMap = new Map<string, CategorySpending>(
+    categorySpending.map((cs) => [cs.categoryId, cs]),
+  );
 
   const getCategoryName = (categoryId: string) => {
     const category = categories.find((c) => c.id === categoryId);
@@ -131,6 +167,58 @@ export function BudgetsPage() {
           </Button>
         </header>
 
+        {/* Period Filter */}
+        <div className="mb-6 flex flex-wrap items-end gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="period-filter" className="text-sm font-medium">
+              View Period
+            </label>
+            <select
+              id="period-filter"
+              value={period}
+              onChange={(e) => setPeriod(e.target.value as PeriodFilter)}
+              className="rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              {PERIOD_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {period === "DATE_RANGE" && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="range-start" className="text-sm font-medium">
+                  Start Date
+                </label>
+                <input
+                  id="range-start"
+                  type="date"
+                  value={dateRange.start}
+                  onChange={(e) => setDateRange((prev) => ({ ...prev, start: e.target.value }))}
+                  max={dateRange.end}
+                  className="rounded border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="range-end" className="text-sm font-medium">
+                  End Date
+                </label>
+                <input
+                  id="range-end"
+                  type="date"
+                  value={dateRange.end}
+                  onChange={(e) => setDateRange((prev) => ({ ...prev, end: e.target.value }))}
+                  min={dateRange.start}
+                  className="rounded border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+            </>
+          )}
+        </div>
+
         {/* Budget Groups */}
         {budgets.length === 0 ? (
           <div className="text-center text-muted-foreground">
@@ -143,6 +231,7 @@ export function BudgetsPage() {
                 key={categoryId}
                 categoryName={getCategoryName(categoryId)}
                 budgets={categoryBudgets}
+                categorySpending={categorySpendingMap.get(categoryId)}
                 onEdit={handleEdit}
                 onDelete={handleDeleteClick}
                 deletingBudgetId={isDeleting ? budgetToDelete?.id : undefined}
