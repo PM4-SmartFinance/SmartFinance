@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { formatLocalDate, subDays } from "../lib/dates";
 
 export interface DateRange {
   startDate: string; // YYYY-MM-DD date string
@@ -6,25 +7,17 @@ export interface DateRange {
 }
 
 export interface AppState extends DateRange {
-  setDateRange: (startDate: string, endDate: string) => void;
+  activePresetKey: string;
+  setDateRange: (startDate: string, endDate: string, presetKey: string) => void;
 }
 
-// Default to last 30 days
-const getDefaultDateRange = (): DateRange => {
+const getDefaultDateRange = (): DateRange & { activePresetKey: string } => {
   const endDate = new Date();
-  const startDate = new Date();
-  startDate.setDate(endDate.getDate() - 30);
-
-  const formatLocalDate = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
+  const startDate = subDays(endDate, 30);
   return {
     startDate: formatLocalDate(startDate),
     endDate: formatLocalDate(endDate),
+    activePresetKey: "30d",
   };
 };
 
@@ -33,8 +26,9 @@ const defaultRange = getDefaultDateRange();
 export const useAppStore = create<AppState>((set) => ({
   startDate: defaultRange.startDate,
   endDate: defaultRange.endDate,
-  setDateRange: (startDate: string, endDate: string) => {
+  activePresetKey: defaultRange.activePresetKey,
+  setDateRange: (startDate: string, endDate: string, presetKey: string) => {
     if (startDate > endDate) return;
-    set({ startDate, endDate });
+    set({ startDate, endDate, activePresetKey: presetKey });
   },
 }));
