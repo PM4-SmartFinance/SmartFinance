@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from "vites
 import type { FastifyInstance } from "fastify";
 import Fastify from "fastify";
 import { transactionRoutes } from "./transaction.controller.js";
+import { errorHandler } from "../middleware/error-handler.js";
+import { ServiceError } from "../errors.js";
 
 // Controlled session state — mutated per test to simulate auth scenarios.
 // The fake session shim below makes request.session.get() return this value,
@@ -145,6 +147,7 @@ const VALID_TX_ID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
 
 function buildTestApp() {
   const testApp = Fastify({ logger: false });
+  testApp.setErrorHandler(errorHandler);
   testApp.decorateRequest("session", null);
   testApp.addHook("onRequest", async (request) => {
     Object.defineProperty(request, "session", {
@@ -218,6 +221,24 @@ describe("GET /api/v1/transactions/:id", () => {
     });
     expect(response.statusCode).toBe(200);
     expect(mockGetTransaction).toHaveBeenCalledExactlyOnceWith(VALID_TX_ID, "admin-1");
+  });
+
+  it("returns 404 when service throws ServiceError 404", async () => {
+    mockGetTransaction.mockRejectedValue(new ServiceError(404, "Transaction not found"));
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/transactions/${VALID_TX_ID}`,
+    });
+    expect(response.statusCode).toBe(404);
+  });
+
+  it("returns 400 when :id is not a valid UUID", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/transactions/not-a-uuid",
+    });
+    expect(response.statusCode).toBe(400);
+    expect(mockGetTransaction).not.toHaveBeenCalled();
   });
 });
 
@@ -294,6 +315,39 @@ describe("PATCH /api/v1/transactions/:id", () => {
     expect(response.statusCode).toBe(403);
     expect(mockUpdateTransaction).not.toHaveBeenCalled();
   });
+
+  it("allows ADMIN to update transactions (role hierarchy)", async () => {
+    sessionUser = { id: "admin-1", role: "ADMIN", email: "a@example.com" };
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/transactions/${VALID_TX_ID}`,
+      payload: { notes: "admin edit" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(mockUpdateTransaction).toHaveBeenCalledExactlyOnceWith(VALID_TX_ID, "admin-1", {
+      notes: "admin edit",
+    });
+  });
+
+  it("returns 404 when service throws ServiceError 404", async () => {
+    mockUpdateTransaction.mockRejectedValue(new ServiceError(404, "Transaction not found"));
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/transactions/${VALID_TX_ID}`,
+      payload: { notes: "test" },
+    });
+    expect(response.statusCode).toBe(404);
+  });
+
+  it("returns 400 when :id is not a valid UUID", async () => {
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/transactions/not-a-uuid",
+      payload: { notes: "test" },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(mockUpdateTransaction).not.toHaveBeenCalled();
+  });
 });
 
 describe("DELETE /api/v1/transactions/:id", () => {
@@ -357,5 +411,23 @@ describe("DELETE /api/v1/transactions/:id", () => {
     });
     expect(response.statusCode).toBe(204);
     expect(mockDeleteTransaction).toHaveBeenCalledExactlyOnceWith(VALID_TX_ID, "admin-1");
+  });
+
+  it("returns 404 when service throws ServiceError 404", async () => {
+    mockDeleteTransaction.mockRejectedValue(new ServiceError(404, "Transaction not found"));
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/api/v1/transactions/${VALID_TX_ID}`,
+    });
+    expect(response.statusCode).toBe(404);
+  });
+
+  it("returns 400 when :id is not a valid UUID", async () => {
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/api/v1/transactions/not-a-uuid",
+    });
+    expect(response.statusCode).toBe(400);
+    expect(mockDeleteTransaction).not.toHaveBeenCalled();
   });
 });
