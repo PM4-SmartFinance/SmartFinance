@@ -1,6 +1,15 @@
 import type { FastifyRequest } from "fastify";
 import { ServiceError } from "../errors.js";
 
+/** Extract the authenticated user from the session or throw 401.
+ *  Use in route handlers guarded by `requireRole` — provides a typed,
+ *  non-null user without a `!` assertion. */
+export function getSessionUser(request: FastifyRequest) {
+  const user = request.session.get("user");
+  if (!user) throw new ServiceError(401, "Unauthorized");
+  return user;
+}
+
 export const ROLES = {
   ADMIN: 2,
   USER: 1,

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import multipart from "@fastify/multipart";
-import { requireRole } from "../middleware/rbac.js";
+import { requireRole, getSessionUser } from "../middleware/rbac.js";
 import { ServiceError } from "../errors.js";
 import type { ImportFormat } from "../services/import.service.js";
 import { importTransactions, SUPPORTED_FORMATS } from "../services/import.service.js";
@@ -81,8 +81,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       preHandler: requireRole("USER"),
     },
     async (request, reply) => {
-      const user = request.session.get("user");
-      if (!user) throw new ServiceError(401, "Unauthorized");
+      const user = getSessionUser(request);
 
       const result = await transactionService.listTransactions({
         userId: user.id,
@@ -98,6 +97,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
     {
       preHandler: requireRole("USER"),
       schema: {
+        body: { type: "null" },
         response: {
           200: {
             type: "object",
@@ -108,8 +108,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       },
     },
     async (request, reply) => {
-      const user = request.session.get("user");
-      if (!user) throw new ServiceError(401, "Unauthorized");
+      const user = getSessionUser(request);
       const result = await transactionService.autoCategorizeTransactions(user.id);
       return reply.send(result);
     },
@@ -122,8 +121,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       schema: { params: transactionParamsSchema },
     },
     async (request, reply) => {
-      const user = request.session.get("user");
-      if (!user) throw new ServiceError(401, "Unauthorized");
+      const user = getSessionUser(request);
       const transaction = await transactionService.getTransaction(request.params.id, user.id);
       return reply.send({ transaction });
     },
@@ -136,8 +134,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       schema: { params: transactionParamsSchema, body: patchTransactionBodySchema },
     },
     async (request, reply) => {
-      const user = request.session.get("user");
-      if (!user) throw new ServiceError(401, "Unauthorized");
+      const user = getSessionUser(request);
       const transaction = await transactionService.updateTransaction(
         request.params.id,
         user.id,
@@ -154,8 +151,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       schema: { params: transactionParamsSchema },
     },
     async (request, reply) => {
-      const user = request.session.get("user");
-      if (!user) throw new ServiceError(401, "Unauthorized");
+      const user = getSessionUser(request);
       await transactionService.deleteTransaction(request.params.id, user.id);
       return reply.status(204).send();
     },
@@ -181,8 +177,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       },
       async (request, reply) => {
         const { accountId, format } = request.query;
-        const user = request.session.get("user");
-        if (!user) throw new ServiceError(401, "Unauthorized");
+        const user = getSessionUser(request);
 
         const fileData = await request.file();
         if (!fileData) {
