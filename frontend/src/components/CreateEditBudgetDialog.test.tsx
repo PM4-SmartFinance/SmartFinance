@@ -43,10 +43,13 @@ const mockPatch = vi.mocked(api.patch);
 const mockBudget: Budget = {
   id: "budget-1",
   categoryId: "cat-1",
-  month: 3,
-  year: 2026,
+  type: "MONTHLY",
+  month: 0,
+  year: 0,
   limitAmount: "500.00",
   active: true,
+  isActive: true,
+  priority: 1,
   currentSpending: "142.50",
   percentageUsed: 28.5,
   remainingAmount: "357.50",
@@ -188,7 +191,7 @@ describe("CreateEditBudgetDialog", () => {
       expect(screen.getByText("Please select a category")).toBeInTheDocument();
     });
 
-    it("shows error for missing month in create mode", async () => {
+    it("shows error for missing month and year in specific mode", async () => {
       const user = userEvent.setup();
       renderDialog({ isOpen: true, budget: null, onClose: vi.fn() });
 
@@ -197,24 +200,13 @@ describe("CreateEditBudgetDialog", () => {
       const limitInput = screen.getByLabelText("Spending Limit");
       await user.type(limitInput, "100");
       await user.selectOptions(screen.getByLabelText("Category"), "cat-1");
+      // Switch to specific mode
+      await user.click(screen.getByRole("button", { name: "Specific" }));
       await user.click(screen.getByRole("button", { name: "Create Budget" }));
 
-      expect(screen.getByText("Please select a month")).toBeInTheDocument();
-    });
-
-    it("shows error for missing year in create mode", async () => {
-      const user = userEvent.setup();
-      renderDialog({ isOpen: true, budget: null, onClose: vi.fn() });
-
-      await waitFor(() => expect(screen.getByText("Groceries")).toBeInTheDocument());
-
-      const limitInput = screen.getByLabelText("Spending Limit");
-      await user.type(limitInput, "100");
-      await user.selectOptions(screen.getByLabelText("Category"), "cat-1");
-      await user.selectOptions(screen.getByLabelText("Month"), "3");
-      await user.click(screen.getByRole("button", { name: "Create Budget" }));
-
-      expect(screen.getByText("Please select a year")).toBeInTheDocument();
+      expect(
+        screen.getByText("Please select at least a month or year for specific budgets"),
+      ).toBeInTheDocument();
     });
   });
 
@@ -230,16 +222,13 @@ describe("CreateEditBudgetDialog", () => {
       await waitFor(() => expect(screen.getByText("Groceries")).toBeInTheDocument());
 
       await user.selectOptions(screen.getByLabelText("Category"), "cat-1");
-      await user.selectOptions(screen.getByLabelText("Month"), "3");
-      await user.selectOptions(screen.getByLabelText("Year"), "2026");
       await user.type(screen.getByLabelText("Spending Limit"), "500");
       await user.click(screen.getByRole("button", { name: "Create Budget" }));
 
       await waitFor(() => expect(onClose).toHaveBeenCalled());
       expect(mockPost).toHaveBeenCalledWith("/budgets", {
         categoryId: "cat-1",
-        month: 3,
-        year: 2026,
+        type: "MONTHLY",
         limitAmount: 500,
       });
     });
@@ -258,25 +247,32 @@ describe("CreateEditBudgetDialog", () => {
       await user.click(screen.getByRole("button", { name: "Save Changes" }));
 
       await waitFor(() => expect(onClose).toHaveBeenCalled());
-      expect(mockPatch).toHaveBeenCalledWith("/budgets/budget-1", { limitAmount: 750 });
+      expect(mockPatch).toHaveBeenCalledWith("/budgets/budget-1", {
+        limitAmount: 750,
+        categoryId: "cat-1",
+        type: "MONTHLY",
+        active: true,
+      });
     });
 
     it("displays ApiError message on failed create", async () => {
       const user = userEvent.setup();
-      mockPost.mockRejectedValue(new ApiError(409, null, "Budget already exists for this period"));
+      mockPost.mockRejectedValue(
+        new ApiError(409, null, "Budget already exists for this category and type"),
+      );
 
       renderDialog({ isOpen: true, budget: null, onClose: vi.fn() });
 
       await waitFor(() => expect(screen.getByText("Groceries")).toBeInTheDocument());
 
       await user.selectOptions(screen.getByLabelText("Category"), "cat-1");
-      await user.selectOptions(screen.getByLabelText("Month"), "3");
-      await user.selectOptions(screen.getByLabelText("Year"), "2026");
       await user.type(screen.getByLabelText("Spending Limit"), "500");
       await user.click(screen.getByRole("button", { name: "Create Budget" }));
 
       await waitFor(() =>
-        expect(screen.getByText("Budget already exists for this period")).toBeInTheDocument(),
+        expect(
+          screen.getByText("Budget already exists for this category and type"),
+        ).toBeInTheDocument(),
       );
     });
   });

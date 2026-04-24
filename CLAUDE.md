@@ -6,7 +6,7 @@ A self-hosted personal finance management platform for importing, categorizing, 
 
 - **Frontend:** React (TypeScript), Vite, PWA
 - **Backend:** Node.js, Fastify 5, REST API
-- **Database:** PostgreSQL with ORM (Prisma or TypeORM)
+- **Database:** PostgreSQL with Prisma ORM
 - **State Management:** Zustand (client state), TanStack Query (server state)
 - **Deployment:** Docker / Docker Compose
 - **CI:** GitHub Actions (lint, test, Docker build on every PR to `main`/`develop`)
@@ -34,7 +34,7 @@ All database access goes through the repository layer. No direct SQL from servic
 
 ## Key Design Decisions
 
-- **Authentication:** httpOnly cookie-based sessions, bcrypt/Argon2 password hashing, RBAC, optional TOTP 2FA
+- **Authentication:** httpOnly cookie-based sessions, Argon2 password hashing, RBAC, optional TOTP 2FA (planned)
 - **Backend is stateless** regarding request handling; persistent state lives in PostgreSQL only
 - **Backend-side filtering/aggregation/pagination** — never load full datasets into the frontend
 - **Extension architecture:** Modules register via defined interfaces, cannot access repository layer directly, cannot modify DB schema. Extensions use namespace-isolated JSON storage
@@ -45,12 +45,14 @@ All database access goes through the repository layer. No direct SQL from servic
 All endpoints under `/api/v1`. Authentication via httpOnly cookie session. RBAC enforced on all protected endpoints.
 
 - `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`
-- `GET|POST /users`, `GET|PATCH|DELETE /users/:id` (admin only)
-- `GET /transactions`, `GET|PATCH|DELETE /transactions/:id`, `POST /transactions/import`
+- `GET|POST /users`, `GET|PATCH|DELETE /users/:id` (admin only), `GET|PATCH /users/me`
+- `GET|POST /accounts`, `GET|PATCH|DELETE /accounts/:id`
+- `GET /transactions`, `GET|PATCH|DELETE /transactions/:id`, `POST /transactions/import`, `POST /transactions/auto-categorize`
 - `GET|POST /categories`, `PATCH|DELETE /categories/:id`
+- `GET|POST /category-rules`, `PATCH|DELETE /category-rules/:id`
 - `GET|POST /budgets`, `PATCH|DELETE /budgets/:id`
 - `GET /dashboard/summary|trends|categories`
-- `/modules/:moduleName/...` (extension endpoints)
+- `/modules/:moduleName/...` (extension endpoints, planned)
 
 ## Development Guidelines
 

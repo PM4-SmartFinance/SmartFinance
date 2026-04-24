@@ -1,0 +1,15 @@
+# CODEOWNERS — Critical Security & Authentication Paths
+#
+# These paths require approval from the designated code owner before merge.
+# GitHub will automatically request reviews from these owners on PRs
+# that modify the listed files.
+#
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Authentication controllers and services
+backend/src/controllers/auth.controller.ts  @Maxlemore97
+backend/src/controllers/user.controller.ts  @Maxlemore97
+backend/src/services/auth.service.ts        @Maxlemore97
+
+# Frontend authentication context
+frontend/src/contexts/AuthProvider.tsx       @Maxlemore97
