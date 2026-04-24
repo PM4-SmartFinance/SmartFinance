@@ -8,6 +8,7 @@ vi.mock("../prisma.js", () => ({
       findMany: vi.fn(),
       findUnique: vi.fn(),
       updateMany: vi.fn(),
+      count: vi.fn(),
     },
   },
 }));
@@ -19,6 +20,7 @@ import {
   findByIdForUser,
   updateById,
   deleteById,
+  findPreviewMatchesForUser,
 } from "./transaction.repository.js";
 import { prisma } from "../prisma.js";
 import { ServiceError } from "../errors.js";
@@ -184,7 +186,12 @@ describe("findUncategorizedForUser", () => {
 
     expect(prisma.factTransactions.findMany).toHaveBeenCalledWith({
       where: { userId: "user-1", categoryId: null, manualOverride: false },
-      select: { id: true, merchant: { select: { name: true } } },
+      select: {
+        id: true,
+        amount: true,
+        dateId: true,
+        merchant: { select: { name: true } },
+      },
     });
   });
 
@@ -196,7 +203,7 @@ describe("findUncategorizedForUser", () => {
   });
 
   it("returns the results from the query", async () => {
-    const rows = [{ id: "tx-1", merchant: { name: "Migros" } }];
+    const rows = [{ id: "tx-1", amount: -12.5, dateId: 20260412, merchant: { name: "Migros" } }];
     // @ts-expect-error -- mock returns a partial shape
     vi.mocked(prisma.factTransactions.findMany).mockResolvedValue(rows);
 
@@ -464,5 +471,98 @@ describe("deleteById", () => {
 
   it("resolves without error on successful deletion", async () => {
     await expect(deleteById(TX_ID, USER_ID)).resolves.not.toThrow();
+  });
+});
+
+describe("findPreviewMatchesForUser", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.$transaction).mockResolvedValue([0, []]);
+  });
+
+  it("returns zero matches when no transactions match the pattern", async () => {
+    vi.mocked(prisma.$transaction).mockResolvedValue([0, []]);
+
+    const result = await findPreviewMatchesForUser("user-1", "nomatch", "contains", 3);
+
+    expect(result).toEqual({ matchCount: 0, matchedTransactions: [] });
+  });
+
+  it("does not return transactions with null merchant even if pattern matches other fields", async () => {
+    vi.mocked(prisma.$transaction).mockResolvedValue([
+      1,
+      [
+        {
+          id: "tx-1",
+          amount: { toNumber: () => -12.5 },
+          dateId: 20260412,
+          merchant: { name: "Migros" },
+        },
+      ],
+    ]);
+
+    const result = await findPreviewMatchesForUser("user-1", "migros", "contains", 3);
+
+    expect(result.matchCount).toBe(1);
+    expect(result.matchedTransactions).toHaveLength(1);
+    expect(result.matchedTransactions[0]).toMatchObject({
+      id: "tx-1",
+      merchantName: "Migros",
+      amount: -12.5,
+      dateId: 20260412,
+    });
+  });
+
+  it("applies exact match filter when matchType is 'exact'", async () => {
+    vi.mocked(prisma.$transaction).mockResolvedValue([0, []]);
+
+    await findPreviewMatchesForUser("user-1", "Migros", "exact", 3);
+
+    const expectedWhere = {
+      userId: "user-1",
+      categoryId: null,
+      manualOverride: false,
+      merchant: { name: { equals: "Migros", mode: "insensitive" } },
+    };
+    expect(prisma.factTransactions.count).toHaveBeenCalledWith({ where: expectedWhere });
+    expect(prisma.factTransactions.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expectedWhere }),
+    );
+  });
+
+  it("applies contains match filter when matchType is 'contains'", async () => {
+    vi.mocked(prisma.$transaction).mockResolvedValue([0, []]);
+
+    await findPreviewMatchesForUser("user-1", "migr", "contains", 3);
+
+    const expectedWhere = {
+      userId: "user-1",
+      categoryId: null,
+      manualOverride: false,
+      merchant: { name: { contains: "migr", mode: "insensitive" } },
+    };
+    expect(prisma.factTransactions.count).toHaveBeenCalledWith({ where: expectedWhere });
+    expect(prisma.factTransactions.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expectedWhere }),
+    );
+  });
+
+  it("limits results to sampleLimit parameter", async () => {
+    vi.mocked(prisma.$transaction).mockResolvedValue([
+      5,
+      [
+        {
+          id: "tx-1",
+          amount: { toNumber: () => -12.5 },
+          dateId: 20260412,
+          merchant: { name: "Migros" },
+        },
+      ],
+    ]);
+
+    const result = await findPreviewMatchesForUser("user-1", "migros", "contains", 1);
+
+    expect(result.matchedTransactions).toHaveLength(1);
+    expect(result.matchCount).toBe(5);
   });
 });

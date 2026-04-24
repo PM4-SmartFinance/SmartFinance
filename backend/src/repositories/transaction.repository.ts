@@ -2,6 +2,7 @@ import { prisma } from "../prisma.js";
 import type { Prisma } from "@prisma/client";
 import type { ParsedTransaction } from "../services/importers/types.js";
 import { ServiceError } from "../errors.js";
+import type { MatchType } from "./category-rule.repository.js";
 
 const TRANSACTION_SELECT = {
   id: true,
@@ -172,8 +173,65 @@ export async function bulkImport(
 export async function findUncategorizedForUser(userId: string) {
   return prisma.factTransactions.findMany({
     where: { userId, categoryId: null, manualOverride: false },
-    select: { id: true, merchant: { select: { name: true } } },
+    select: {
+      id: true,
+      amount: true,
+      dateId: true,
+      merchant: { select: { name: true } },
+    },
   });
+}
+
+export async function findPreviewMatchesForUser(
+  userId: string,
+  pattern: string,
+  matchType: MatchType,
+  sampleLimit = 3,
+): Promise<{
+  matchCount: number;
+  matchedTransactions: Array<{
+    id: string;
+    merchantName: string;
+    amount: number;
+    dateId: number;
+  }>;
+}> {
+  const nameFilter: Prisma.DimMerchantWhereInput =
+    matchType === "exact"
+      ? { name: { equals: pattern, mode: "insensitive" } }
+      : { name: { contains: pattern, mode: "insensitive" } };
+
+  const where: Prisma.FactTransactionsWhereInput = {
+    userId,
+    categoryId: null,
+    manualOverride: false,
+    merchant: nameFilter,
+  };
+
+  const [matchCount, rows] = await prisma.$transaction([
+    prisma.factTransactions.count({ where }),
+    prisma.factTransactions.findMany({
+      where,
+      take: sampleLimit,
+      orderBy: [{ dateId: "desc" }, { id: "asc" }],
+      select: {
+        id: true,
+        amount: true,
+        dateId: true,
+        merchant: { select: { name: true } },
+      },
+    }),
+  ]);
+
+  return {
+    matchCount,
+    matchedTransactions: rows.map((tx) => ({
+      id: tx.id,
+      merchantName: tx.merchant.name,
+      amount: tx.amount.toNumber(),
+      dateId: tx.dateId,
+    })),
+  };
 }
 
 // Postgres has a hard limit of ~65k bind parameters per query (libpq protocol).
