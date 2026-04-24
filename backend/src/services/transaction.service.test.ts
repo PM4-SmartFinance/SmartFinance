@@ -199,6 +199,23 @@ describe("listTransactions", () => {
       const { where } = mockRepo.listTransactions.mock.calls[0]![0];
       expect(where.amount).toBeUndefined();
     });
+
+    it("search builds case-insensitive merchant name contains filter", async () => {
+      await listTransactions({ ...DEFAULT_PARAMS, search: "Migros" });
+      const { where } = mockRepo.listTransactions.mock.calls[0]![0];
+      expect(where.merchant).toEqual({
+        name: { contains: "Migros", mode: "insensitive" },
+      });
+    });
+
+    it("search combined with categoryId builds both merchant filters", async () => {
+      await listTransactions({ ...DEFAULT_PARAMS, search: "Coop", categoryId: "cat-1" });
+      const { where } = mockRepo.listTransactions.mock.calls[0]![0];
+      expect(where.merchant).toEqual({
+        name: { contains: "Coop", mode: "insensitive" },
+        mappings: { some: { userId: "user-1", categoryId: "cat-1" } },
+      });
+    });
   });
 
   describe("response shape", () => {
@@ -313,6 +330,13 @@ describe("updateTransaction", () => {
     const row = makeTxRow();
     mockRepo.updateById.mockResolvedValue(row);
     expect(await updateTransaction("tx-1", "user-1", { notes: "x" })).toBe(row);
+  });
+
+  it("propagates ServiceError from the repository", async () => {
+    mockRepo.updateById.mockRejectedValue(new ServiceError(404, "Transaction not found"));
+    await expect(updateTransaction("missing", "user-1", { notes: "x" })).rejects.toThrow(
+      new ServiceError(404, "Transaction not found"),
+    );
   });
 });
 
