@@ -1,6 +1,92 @@
 import { prisma } from "../prisma.js";
 import type { Prisma } from "@prisma/client";
 import type { ParsedTransaction } from "../services/importers/types.js";
+import { ServiceError } from "../errors.js";
+import type { MatchType } from "./category-rule.repository.js";
+
+const TRANSACTION_SELECT = {
+  id: true,
+  amount: true,
+  notes: true,
+  manualOverride: true,
+  createdAt: true,
+  updatedAt: true,
+  userId: true,
+  accountId: true,
+  account: { select: { name: true, iban: true } },
+  merchantId: true,
+  merchant: { select: { name: true } },
+  dateId: true,
+  date: { select: { id: true, dayOfWeek: true, month: true, year: true } },
+  categoryId: true,
+  category: { select: { id: true, categoryName: true } },
+} as const;
+
+export async function findByIdForUser(id: string, userId: string) {
+  const transaction = await prisma.factTransactions.findUnique({
+    where: { id },
+    select: TRANSACTION_SELECT,
+  });
+  if (!transaction) {
+    throw new ServiceError(404, "Transaction not found");
+  }
+  if (transaction.userId !== userId) {
+    throw new ServiceError(404, "Transaction not found");
+  }
+  return transaction;
+}
+
+export async function updateById(
+  id: string,
+  userId: string,
+  data: { categoryId?: string; notes?: string; manualOverride?: boolean },
+) {
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.factTransactions.findUnique({
+      where: { id },
+      select: { id: true, userId: true },
+    });
+    if (!existing) {
+      throw new ServiceError(404, "Transaction not found");
+    }
+    if (existing.userId !== userId) {
+      throw new ServiceError(404, "Transaction not found");
+    }
+
+    if (data.categoryId !== undefined) {
+      const category = await tx.dimCategory.findFirst({
+        where: { id: data.categoryId, userId },
+        select: { id: true },
+      });
+      if (!category) {
+        throw new ServiceError(404, "Category not found");
+      }
+    }
+
+    return tx.factTransactions.update({
+      where: { id },
+      data,
+      select: TRANSACTION_SELECT,
+    });
+  });
+}
+
+export async function deleteById(id: string, userId: string) {
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.factTransactions.findUnique({
+      where: { id },
+      select: { id: true, userId: true },
+    });
+    if (!existing) {
+      throw new ServiceError(404, "Transaction not found");
+    }
+    if (existing.userId !== userId) {
+      throw new ServiceError(404, "Transaction not found");
+    }
+
+    await tx.factTransactions.delete({ where: { id } });
+  });
+}
 
 export async function findAccountByIdAndUser(accountId: string, userId: string) {
   return prisma.dimAccount.findFirst({ where: { id: accountId, userId } });
@@ -87,8 +173,65 @@ export async function bulkImport(
 export async function findUncategorizedForUser(userId: string) {
   return prisma.factTransactions.findMany({
     where: { userId, categoryId: null, manualOverride: false },
-    select: { id: true, merchant: { select: { name: true } } },
+    select: {
+      id: true,
+      amount: true,
+      dateId: true,
+      merchant: { select: { name: true } },
+    },
   });
+}
+
+export async function findPreviewMatchesForUser(
+  userId: string,
+  pattern: string,
+  matchType: MatchType,
+  sampleLimit = 3,
+): Promise<{
+  matchCount: number;
+  matchedTransactions: Array<{
+    id: string;
+    merchantName: string;
+    amount: number;
+    dateId: number;
+  }>;
+}> {
+  const nameFilter: Prisma.DimMerchantWhereInput =
+    matchType === "exact"
+      ? { name: { equals: pattern, mode: "insensitive" } }
+      : { name: { contains: pattern, mode: "insensitive" } };
+
+  const where: Prisma.FactTransactionsWhereInput = {
+    userId,
+    categoryId: null,
+    manualOverride: false,
+    merchant: nameFilter,
+  };
+
+  const [matchCount, rows] = await prisma.$transaction([
+    prisma.factTransactions.count({ where }),
+    prisma.factTransactions.findMany({
+      where,
+      take: sampleLimit,
+      orderBy: [{ dateId: "desc" }, { id: "asc" }],
+      select: {
+        id: true,
+        amount: true,
+        dateId: true,
+        merchant: { select: { name: true } },
+      },
+    }),
+  ]);
+
+  return {
+    matchCount,
+    matchedTransactions: rows.map((tx) => ({
+      id: tx.id,
+      merchantName: tx.merchant.name,
+      amount: tx.amount.toNumber(),
+      dateId: tx.dateId,
+    })),
+  };
 }
 
 // Postgres has a hard limit of ~65k bind parameters per query (libpq protocol).

@@ -3,6 +3,29 @@ import { ServiceError } from "../errors.js";
 import * as transactionRepository from "../repositories/transaction.repository.js";
 import { autoCategorize } from "./categorization.service.js";
 
+export async function getTransaction(id: string, userId: string) {
+  return transactionRepository.findByIdForUser(id, userId);
+}
+
+export async function updateTransaction(
+  id: string,
+  userId: string,
+  data: { categoryId?: string; notes?: string },
+) {
+  const updateData: { categoryId?: string; notes?: string; manualOverride?: boolean } = {
+    ...data,
+  };
+  if (data.categoryId !== undefined) {
+    updateData.manualOverride = true;
+  }
+
+  return transactionRepository.updateById(id, userId, updateData);
+}
+
+export async function deleteTransaction(id: string, userId: string) {
+  await transactionRepository.deleteById(id, userId);
+}
+
 export type SortBy = "date" | "amount" | "merchant";
 export type SortOrder = "asc" | "desc";
 

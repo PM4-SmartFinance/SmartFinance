@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ApiError } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import {
   useCategories,
   useCategoryRules,
@@ -9,7 +9,6 @@ import {
   useCreateCategoryRule,
   useUpdateCategoryRule,
   useDeleteCategoryRule,
-  useRuleMatchPreview,
   type Category,
   type CategoryRule,
   type RuleDraft,
@@ -31,6 +30,13 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+export function formatDateId(dateId: number): string {
+  const year = Math.trunc(dateId / 10000);
+  const month = Math.trunc((dateId % 10000) / 100) - 1;
+  const day = dateId % 100;
+  return new Date(Date.UTC(year, month, day)).toLocaleDateString("de-CH");
+}
+
 export function CategoriesPage() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
@@ -38,6 +44,7 @@ export function CategoriesPage() {
   const [createCategoryError, setCreateCategoryError] = useState<string | null>(null);
   const [errorByCategory, setErrorByCategory] = useState<Record<string, string>>({});
   const [previewByCategory, setPreviewByCategory] = useState<Record<string, string>>({});
+  const [isPreviewing, setIsPreviewing] = useState(false);
 
   const {
     data: categories = [],
@@ -53,8 +60,6 @@ export function CategoriesPage() {
   const createRule = useCreateCategoryRule();
   const updateRule = useUpdateCategoryRule();
   const deleteRule = useDeleteCategoryRule();
-  const previewRule = useRuleMatchPreview();
-
   const rulesByCategory = useMemo(() => {
     return rules.reduce<Record<string, CategoryRule[]>>((acc, rule) => {
       const list = acc[rule.categoryId] ?? [];
@@ -143,6 +148,11 @@ export function CategoriesPage() {
     setCategoryError(categoryId, null);
     try {
       await deleteCategory.mutateAsync(categoryId);
+      setPreviewByCategory((prev) => {
+        const next = { ...prev };
+        delete next[categoryId];
+        return next;
+      });
     } catch (error) {
       setCategoryError(categoryId, getErrorMessage(error, "Failed to delete category."));
     }
@@ -180,12 +190,14 @@ export function CategoriesPage() {
     draft: { pattern: string; matchType: "exact" | "contains"; priority: number },
   ) {
     if (!draft.pattern.trim()) {
-      setCategoryError(categoryId, "Rule pattern is required for preview.");
+      setPreviewByCategory((prev) => {
+        const next = { ...prev };
+        delete next[categoryId];
+        return next;
+      });
       return;
     }
 
-    setCategoryError(categoryId, null);
-    setPreviewByCategory((prev) => ({ ...prev, [categoryId]: "" }));
     const payload: RuleDraft = {
       categoryId,
       pattern: draft.pattern.trim(),
@@ -193,21 +205,32 @@ export function CategoriesPage() {
       priority: Number.isNaN(draft.priority) ? 0 : draft.priority,
     };
 
+    setIsPreviewing(true);
     try {
-      const response = await previewRule.mutateAsync(payload);
-      setPreviewByCategory((prev) => ({
-        ...prev,
-        [categoryId]: `${response.matchCount} existing transactions would match.`,
-      }));
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 404) {
-        setPreviewByCategory((prev) => ({
-          ...prev,
-          [categoryId]: "Match preview is not available yet.",
-        }));
-        return;
+      const response = await api.post<{
+        matchCount: number;
+        matchedTransactions: Array<{
+          id: string;
+          merchantName: string;
+          amount: number;
+          dateId: number;
+        }>;
+      }>("/category-rules/preview", payload);
+
+      const lines = [`${response.matchCount} existing transactions would match.`];
+      for (const tx of response.matchedTransactions ?? []) {
+        const amount = `${tx.amount < 0 ? "−" : ""}CHF ${Math.abs(tx.amount).toFixed(2)}`;
+        lines.push(`  • ${tx.merchantName} · ${formatDateId(tx.dateId)} · ${amount}`);
       }
-      setCategoryError(categoryId, getErrorMessage(error, "Failed to preview rule matches."));
+      setPreviewByCategory((prev) => ({ ...prev, [categoryId]: lines.join("\n") }));
+    } catch (error) {
+      const msg =
+        error instanceof ApiError && error.status >= 400 && error.status < 500
+          ? error.message
+          : "Failed to preview rule matches.";
+      setPreviewByCategory((prev) => ({ ...prev, [categoryId]: msg }));
+    } finally {
+      setIsPreviewing(false);
     }
   }
 
@@ -394,7 +417,7 @@ export function CategoriesPage() {
                             onSubmit={(draft) => handleCreateRule(category.id, draft)}
                             onPreview={(draft) => handlePreviewRule(category.id, draft)}
                             isSubmitting={createRule.isPending}
-                            isPreviewing={previewRule.isPending}
+                            isPreviewing={isPreviewing}
                           />
 
                           <div className="space-y-2">
