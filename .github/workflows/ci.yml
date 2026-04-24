@@ -16,11 +16,26 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Validate commit message format
+      - name: Test commit message regex (regression)
+        run: bash scripts/test-commit-msg.sh
+
+      - name: Enforce format on PR commits
+        if: github.event_name == 'pull_request'
         run: |
-          chmod +x scripts/test-commit-msg.sh
-          ./scripts/test-commit-msg.sh
+          PATTERN=$(grep "^pattern=" .husky/commit-msg | sed "s/^pattern='//" | sed "s/'$//")
+          FAILED=0
+          while IFS= read -r msg; do
+            [ -z "$msg" ] && continue
+            case "$msg" in Merge*|Revert*) continue ;; esac
+            if ! echo "$msg" | grep -qE "$PATTERN"; then
+              echo "INVALID: $msg"
+              FAILED=1
+            fi
+          done < <(git log "origin/${{ github.base_ref }}..HEAD" --format=%s)
+          exit $FAILED
         shell: bash
 
   lint:

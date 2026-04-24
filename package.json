@@ -13,7 +13,7 @@
     "format:check": "prettier --check .",
     "prepare": "husky",
     "test": "bun run --cwd=backend test && bun run --cwd=frontend test",
-    "test:commit-msg": "sh scripts/test-commit-msg.sh",
+    "test:commit-msg": "bash scripts/test-commit-msg.sh",
     "test:coverage": "bun run --cwd=backend test:coverage && bun run --cwd=frontend test:coverage",
     "test:frontend": "bun run --cwd=frontend test",
     "test:backend": "bun run --cwd=backend test"
