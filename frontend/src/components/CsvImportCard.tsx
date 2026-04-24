@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,6 +51,7 @@ const TEXT = {
 } as const;
 
 export function CsvImportCard() {
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [format, setFormat] = useState<ImportFormat>("neon");
@@ -86,6 +87,9 @@ export function CsvImportCard() {
     },
     onSuccess: (data) => {
       setResult(data);
+      // Importing transactions affects budgets and dashboard widgets.
+      void queryClient.invalidateQueries({ queryKey: ["budgets"] });
+      void queryClient.invalidateQueries({ queryKey: ["dashboard", "budgets"] });
     },
   });
 
