@@ -20,12 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
-
-interface RuleEditorState {
-  pattern: string;
-  matchType: "exact" | "contains";
-  priority: number;
-}
+import { RuleRow } from "@/components/RuleRow";
+import { NewRuleForm } from "@/components/NewRuleForm";
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof ApiError) {
@@ -42,10 +38,6 @@ export function CategoriesPage() {
   const [createCategoryError, setCreateCategoryError] = useState<string | null>(null);
   const [errorByCategory, setErrorByCategory] = useState<Record<string, string>>({});
   const [previewByCategory, setPreviewByCategory] = useState<Record<string, string>>({});
-  const [ruleDraftByCategory, setRuleDraftByCategory] = useState<Record<string, RuleEditorState>>(
-    {},
-  );
-  const [ruleEditorById, setRuleEditorById] = useState<Record<string, RuleEditorState>>({});
 
   const {
     data: categories = [],
@@ -156,33 +148,13 @@ export function CategoriesPage() {
     }
   }
 
-  function getRuleDraft(categoryId: string): RuleEditorState {
-    return ruleDraftByCategory[categoryId] ?? { pattern: "", matchType: "contains", priority: 0 };
-  }
-
-  function setRuleDraft(categoryId: string, draft: RuleEditorState) {
-    setRuleDraftByCategory((prev) => ({ ...prev, [categoryId]: draft }));
-  }
-
-  function getRuleEditor(rule: CategoryRule): RuleEditorState {
-    return (
-      ruleEditorById[rule.id] ?? {
-        pattern: rule.pattern,
-        matchType: rule.matchType,
-        priority: rule.priority,
-      }
-    );
-  }
-
-  function setRuleEditor(ruleId: string, editor: RuleEditorState) {
-    setRuleEditorById((prev) => ({ ...prev, [ruleId]: editor }));
-  }
-
-  async function handleCreateRule(categoryId: string) {
-    const draft = getRuleDraft(categoryId);
+  async function handleCreateRule(
+    categoryId: string,
+    draft: { pattern: string; matchType: "exact" | "contains"; priority: number },
+  ): Promise<boolean> {
     if (!draft.pattern.trim()) {
       setCategoryError(categoryId, "Rule pattern is required.");
-      return;
+      return false;
     }
 
     setCategoryError(categoryId, null);
@@ -195,18 +167,18 @@ export function CategoriesPage() {
 
     try {
       await createRule.mutateAsync(payload);
-      setRuleDraftByCategory((prev) => ({
-        ...prev,
-        [categoryId]: { pattern: "", matchType: "contains", priority: 0 },
-      }));
       setPreviewByCategory((prev) => ({ ...prev, [categoryId]: "" }));
+      return true;
     } catch (error) {
       setCategoryError(categoryId, getErrorMessage(error, "Failed to create rule."));
+      return false;
     }
   }
 
-  async function handlePreviewRule(categoryId: string) {
-    const draft = getRuleDraft(categoryId);
+  async function handlePreviewRule(
+    categoryId: string,
+    draft: { pattern: string; matchType: "exact" | "contains"; priority: number },
+  ) {
     if (!draft.pattern.trim()) {
       setCategoryError(categoryId, "Rule pattern is required for preview.");
       return;
@@ -239,9 +211,11 @@ export function CategoriesPage() {
     }
   }
 
-  async function handleSaveRule(rule: CategoryRule) {
-    const editor = getRuleEditor(rule);
-    if (!editor.pattern.trim()) {
+  async function handleSaveRule(
+    rule: CategoryRule,
+    draft: { pattern: string; matchType: "exact" | "contains"; priority: number },
+  ) {
+    if (!draft.pattern.trim()) {
       setCategoryError(rule.categoryId, "Rule pattern is required.");
       return;
     }
@@ -251,16 +225,11 @@ export function CategoriesPage() {
       await updateRule.mutateAsync({
         id: rule.id,
         draft: {
-          pattern: editor.pattern.trim(),
-          matchType: editor.matchType,
-          priority: editor.priority,
+          pattern: draft.pattern.trim(),
+          matchType: draft.matchType,
+          priority: draft.priority,
           categoryId: rule.categoryId,
         },
-      });
-      setRuleEditorById((prev) => {
-        const next = { ...prev };
-        delete next[rule.id];
-        return next;
       });
     } catch (error) {
       setCategoryError(rule.categoryId, getErrorMessage(error, "Failed to update rule."));
@@ -347,7 +316,6 @@ export function CategoriesPage() {
                 <div className="space-y-6">
                   {section.categories.map((category) => {
                     const categoryRules = rulesByCategory[category.id] ?? [];
-                    const draft = getRuleDraft(category.id);
                     const isGlobal = category.userId === null;
 
                     return (
@@ -419,142 +387,33 @@ export function CategoriesPage() {
                               {errorByCategory[category.id]}
                             </p>
                           )}
+
+                          <NewRuleForm
+                            categoryName={category.categoryName}
+                            preview={previewByCategory[category.id] ?? ""}
+                            onSubmit={(draft) => handleCreateRule(category.id, draft)}
+                            onPreview={(draft) => handlePreviewRule(category.id, draft)}
+                            isSubmitting={createRule.isPending}
+                            isPreviewing={previewRule.isPending}
+                          />
+
                           <div className="space-y-2">
-                            <h3 className="text-sm font-semibold">Rules</h3>
+                            <h3 className="text-sm font-semibold">Existing Rules</h3>
                             {categoryRules.length === 0 ? (
                               <p className="text-sm text-muted-foreground">No rules yet.</p>
                             ) : (
                               <ul className="space-y-2">
-                                {categoryRules.map((rule) => {
-                                  const editor = getRuleEditor(rule);
-
-                                  return (
-                                    <li key={rule.id} className="rounded border p-3">
-                                      <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-                                        <Input
-                                          aria-label={`Rule pattern ${rule.id}`}
-                                          value={editor.pattern}
-                                          onChange={(event) => {
-                                            setRuleEditor(rule.id, {
-                                              ...editor,
-                                              pattern: event.target.value,
-                                            });
-                                          }}
-                                        />
-                                        <select
-                                          aria-label={`Rule match type ${rule.id}`}
-                                          className="rounded border border-input bg-background px-3 py-2 text-sm"
-                                          value={editor.matchType}
-                                          onChange={(event) => {
-                                            setRuleEditor(rule.id, {
-                                              ...editor,
-                                              matchType: event.target.value as "exact" | "contains",
-                                            });
-                                          }}
-                                        >
-                                          <option value="contains">contains</option>
-                                          <option value="exact">exact</option>
-                                        </select>
-                                        <Input
-                                          aria-label={`Rule priority ${rule.id}`}
-                                          type="number"
-                                          value={editor.priority}
-                                          onChange={(event) => {
-                                            setRuleEditor(rule.id, {
-                                              ...editor,
-                                              priority: Number(event.target.value || 0),
-                                            });
-                                          }}
-                                        />
-                                        <div className="flex gap-2">
-                                          <Button
-                                            aria-label={`Save rule ${rule.id}`}
-                                            size="sm"
-                                            onClick={() => handleSaveRule(rule)}
-                                            disabled={updateRule.isPending}
-                                          >
-                                            Save
-                                          </Button>
-                                          <Button
-                                            aria-label={`Delete rule ${rule.id}`}
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => handleDeleteRule(rule.id, category.id)}
-                                            disabled={deleteRule.isPending}
-                                          >
-                                            Delete
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    </li>
-                                  );
-                                })}
+                                {categoryRules.map((rule) => (
+                                  <RuleRow
+                                    key={rule.id}
+                                    rule={rule}
+                                    onSave={(draft) => handleSaveRule(rule, draft)}
+                                    onDelete={() => handleDeleteRule(rule.id, category.id)}
+                                    isSaving={updateRule.isPending}
+                                    isDeleting={deleteRule.isPending}
+                                  />
+                                ))}
                               </ul>
-                            )}
-                          </div>
-
-                          <div className="rounded border p-3">
-                            <h4 className="mb-2 text-sm font-semibold">New Rule</h4>
-                            <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-                              <Input
-                                aria-label={`New rule pattern for ${category.categoryName}`}
-                                placeholder="Pattern"
-                                value={draft.pattern}
-                                onChange={(event) =>
-                                  setRuleDraft(category.id, {
-                                    ...draft,
-                                    pattern: event.target.value,
-                                  })
-                                }
-                              />
-                              <select
-                                aria-label={`New rule match type for ${category.categoryName}`}
-                                className="rounded border border-input bg-background px-3 py-2 text-sm"
-                                value={draft.matchType}
-                                onChange={(event) =>
-                                  setRuleDraft(category.id, {
-                                    ...draft,
-                                    matchType: event.target.value as "exact" | "contains",
-                                  })
-                                }
-                              >
-                                <option value="contains">contains</option>
-                                <option value="exact">exact</option>
-                              </select>
-                              <Input
-                                aria-label={`New rule priority for ${category.categoryName}`}
-                                type="number"
-                                placeholder="Priority"
-                                value={draft.priority}
-                                onChange={(event) =>
-                                  setRuleDraft(category.id, {
-                                    ...draft,
-                                    priority: Number(event.target.value || 0),
-                                  })
-                                }
-                              />
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleCreateRule(category.id)}
-                                  disabled={createRule.isPending}
-                                >
-                                  Add Rule
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handlePreviewRule(category.id)}
-                                  disabled={previewRule.isPending}
-                                >
-                                  Match Preview
-                                </Button>
-                              </div>
-                            </div>
-                            {previewByCategory[category.id] && (
-                              <p className="mt-2 text-xs text-muted-foreground">
-                                {previewByCategory[category.id]}
-                              </p>
                             )}
                           </div>
                         </CardContent>
