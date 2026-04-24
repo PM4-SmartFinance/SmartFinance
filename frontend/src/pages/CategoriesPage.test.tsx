@@ -222,7 +222,7 @@ describe("CategoriesPage", () => {
       expect(screen.getByText("Groceries")).toBeInTheDocument();
       expect(screen.getByText("Rent")).toBeInTheDocument();
       expect(screen.getByText("Global category (read-only)")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("coop")).toBeInTheDocument();
+      expect(screen.getByText("coop")).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "Back to Dashboard" })).toBeInTheDocument();
     });
   });
@@ -258,8 +258,10 @@ describe("CategoriesPage", () => {
     fireEvent.change(input, { target: { value: "co" } });
 
     await waitFor(() => {
-      expect(screen.getByText("Matching transactions:")).toBeInTheDocument();
-      const matchingSection = screen.getByText("Matching transactions:").closest("div");
+      expect(screen.getByText("7 existing transactions would match.")).toBeInTheDocument();
+      const matchingSection = screen
+        .getByText("7 existing transactions would match.")
+        .closest("div");
       expect(matchingSection).toBeTruthy();
       const transactionItems = within(matchingSection!).getAllByRole("listitem");
       expect(transactionItems).toHaveLength(3);
@@ -427,7 +429,7 @@ describe("CategoriesPage", () => {
     renderWithProviders();
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue("coop")).toBeInTheDocument();
+      expect(screen.getByText("coop")).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Delete rule rule-1" }));
@@ -530,8 +532,10 @@ describe("CategoriesPage", () => {
     renderWithProviders();
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue("coop")).toBeInTheDocument();
+      expect(screen.getByText("coop")).toBeInTheDocument();
     });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit rule rule-1" }));
 
     fireEvent.change(screen.getByLabelText("Rule pattern rule-1"), {
       target: { value: "migros" },
@@ -552,8 +556,10 @@ describe("CategoriesPage", () => {
     renderWithProviders();
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue("coop")).toBeInTheDocument();
+      expect(screen.getByText("coop")).toBeInTheDocument();
     });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit rule rule-1" }));
 
     fireEvent.change(screen.getByLabelText("Rule pattern rule-1"), {
       target: { value: "" },

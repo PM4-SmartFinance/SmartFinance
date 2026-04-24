@@ -68,7 +68,7 @@ beforeAll(async () => {
 
   // Create category and merchant mapping for user 1
   const category = await prisma.dimCategory.create({
-    data: { categoryName: "Groceries", userId: testUserId },
+    data: { categoryName: "Test_Groceries", userId: testUserId },
   });
   testCategoryId = category.id;
 
@@ -305,7 +305,7 @@ describe("GET /transactions", () => {
     expect(body.meta.totalCount).toBe(2);
     for (const tx of body.data) {
       expect(tx.categoryId).toBe(testCategoryId);
-      expect(tx.categoryName).toBe("Groceries");
+      expect(tx.categoryName).toBe("Test_Groceries");
     }
   });
 

@@ -4,13 +4,10 @@ import { ServiceError } from "../errors.js";
 
 /**
  * Finds all categories available to a specific user.
- * Includes global categories (userId is null) AND the user's custom ones.
  */
 export async function findAllForUser(userId: string) {
   return prisma.dimCategory.findMany({
-    where: {
-      OR: [{ userId: null }, { userId: userId }],
-    },
+    where: { userId: userId },
     orderBy: { categoryName: "asc" },
   });
 }
@@ -32,30 +29,25 @@ export async function create(data: { categoryName: string; userId: string }) {
   }
 }
 
-export async function update(id: string, data: { categoryName: string }) {
-  return prisma.$transaction(async (tx) => {
-    return tx.dimCategory.update({ where: { id }, data });
-  });
+export async function update(id: string, userId: string, data: { categoryName: string }) {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const existing = await tx.dimCategory.findFirst({ where: { id, userId } });
+      if (!existing) return null;
+      return tx.dimCategory.update({ where: { id }, data });
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      throw new ServiceError(409, "A category with this name already exists");
+    }
+    throw err;
+  }
 }
 
-/**
- * Checks if a category is actively referenced by transactions or merchant mappings,
- * then deletes it — all within a single transaction to prevent TOCTOU races.
- * Returns the usage count if deletion is blocked, or null on success.
- */
-export async function removeIfUnused(id: string): Promise<number> {
+export async function deleteById(id: string, userId: string) {
   return prisma.$transaction(async (tx) => {
-    const [transactionCount, mappingCount] = await Promise.all([
-      tx.factTransactions.count({ where: { categoryId: id } }),
-      tx.userMerchantMapping.count({ where: { categoryId: id } }),
-    ]);
-
-    const usageCount = transactionCount + mappingCount;
-    if (usageCount > 0) {
-      return usageCount;
-    }
-
-    await tx.dimCategory.delete({ where: { id } });
-    return 0;
+    const existing = await tx.dimCategory.findFirst({ where: { id, userId } });
+    if (!existing) return null;
+    return tx.dimCategory.delete({ where: { id } });
   });
 }

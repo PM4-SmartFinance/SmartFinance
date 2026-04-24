@@ -65,7 +65,7 @@ beforeAll(async () => {
 
   // Create a category for user 1
   const category = await prisma.dimCategory.create({
-    data: { categoryName: "Groceries", userId: testUserId },
+    data: { categoryName: "Test_Category", userId: testUserId },
   });
   testCategoryId = category.id;
 });

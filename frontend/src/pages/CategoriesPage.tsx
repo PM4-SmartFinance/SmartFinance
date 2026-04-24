@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { api, ApiError } from "../lib/api";
 import {
   useCategories,
@@ -19,21 +19,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
-
-interface RuleEditorState {
-  pattern: string;
-  matchType: "exact" | "contains";
-  priority: number;
-}
-
-interface PreviewState {
-  message: string;
-  matches: Array<{
-    id: string;
-    display: string;
-  }>;
-  error: string | null;
-}
+import { RuleRow } from "@/components/RuleRow";
+import { NewRuleForm } from "@/components/NewRuleForm";
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof ApiError) {
@@ -56,13 +43,9 @@ export function CategoriesPage() {
   const [editingCategoryName, setEditingCategoryName] = useState("");
   const [createCategoryError, setCreateCategoryError] = useState<string | null>(null);
   const [errorByCategory, setErrorByCategory] = useState<Record<string, string>>({});
-  const [previewByCategory, setPreviewByCategory] = useState<Record<string, PreviewState>>({});
-  const [ruleDraftByCategory, setRuleDraftByCategory] = useState<Record<string, RuleEditorState>>(
-    {},
-  );
-  const [ruleEditorById, setRuleEditorById] = useState<Record<string, RuleEditorState>>({});
-  const previewTimerByCategoryRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const previewRequestVersionRef = useRef<Record<string, number>>({});
+  const [previewByCategory, setPreviewByCategory] = useState<
+    Record<string, { summary: string; lines: string[] }>
+  >({});
 
   const {
     data: categories = [],
@@ -166,88 +149,23 @@ export function CategoriesPage() {
     setCategoryError(categoryId, null);
     try {
       await deleteCategory.mutateAsync(categoryId);
-      const pendingTimer = previewTimerByCategoryRef.current[categoryId];
-      if (pendingTimer) {
-        clearTimeout(pendingTimer);
-        delete previewTimerByCategoryRef.current[categoryId];
-      }
-      setPreviewState(categoryId, null);
-      delete previewRequestVersionRef.current[categoryId];
-    } catch (error) {
-      setCategoryError(categoryId, getErrorMessage(error, "Failed to delete category."));
-    }
-  }
-
-  function getRuleDraft(categoryId: string): RuleEditorState {
-    return ruleDraftByCategory[categoryId] ?? { pattern: "", matchType: "contains", priority: 0 };
-  }
-
-  function setRuleDraft(categoryId: string, draft: RuleEditorState) {
-    setRuleDraftByCategory((prev) => ({ ...prev, [categoryId]: draft }));
-    scheduleLivePreview(categoryId, draft);
-  }
-
-  useEffect(() => {
-    const timerIds = previewTimerByCategoryRef.current;
-    return () => {
-      Object.values(timerIds).forEach((timerId) => {
-        clearTimeout(timerId);
-      });
-    };
-  }, []);
-
-  function setPreviewState(categoryId: string, update: Partial<PreviewState> | null) {
-    if (update === null) {
-      // Clear preview state
       setPreviewByCategory((prev) => {
         const next = { ...prev };
         delete next[categoryId];
         return next;
       });
-    } else {
-      // Update or merge preview state
-      setPreviewByCategory((prev) => ({
-        ...prev,
-        [categoryId]: {
-          message: prev[categoryId]?.message ?? "",
-          matches: prev[categoryId]?.matches ?? [],
-          error: prev[categoryId]?.error ?? null,
-          ...update,
-        },
-      }));
+    } catch (error) {
+      setCategoryError(categoryId, getErrorMessage(error, "Failed to delete category."));
     }
   }
 
-  function scheduleLivePreview(categoryId: string, draft: RuleEditorState) {
-    const existingTimer = previewTimerByCategoryRef.current[categoryId];
-    if (existingTimer) {
-      clearTimeout(existingTimer);
-    }
-
-    previewTimerByCategoryRef.current[categoryId] = setTimeout(() => {
-      void handleLivePreviewRule(categoryId, draft);
-    }, 300);
-  }
-
-  function getRuleEditor(rule: CategoryRule): RuleEditorState {
-    return (
-      ruleEditorById[rule.id] ?? {
-        pattern: rule.pattern,
-        matchType: rule.matchType,
-        priority: rule.priority,
-      }
-    );
-  }
-
-  function setRuleEditor(ruleId: string, editor: RuleEditorState) {
-    setRuleEditorById((prev) => ({ ...prev, [ruleId]: editor }));
-  }
-
-  async function handleCreateRule(categoryId: string) {
-    const draft = getRuleDraft(categoryId);
+  async function handleCreateRule(
+    categoryId: string,
+    draft: { pattern: string; matchType: "exact" | "contains"; priority: number },
+  ): Promise<boolean> {
     if (!draft.pattern.trim()) {
       setCategoryError(categoryId, "Rule pattern is required.");
-      return;
+      return false;
     }
 
     setCategoryError(categoryId, null);
@@ -260,31 +178,37 @@ export function CategoriesPage() {
 
     try {
       await createRule.mutateAsync(payload);
-      setRuleDraftByCategory((prev) => ({
-        ...prev,
-        [categoryId]: { pattern: "", matchType: "contains", priority: 0 },
-      }));
-      setPreviewState(categoryId, null);
+      setPreviewByCategory((prev) => {
+        const next = { ...prev };
+        delete next[categoryId];
+        return next;
+      });
+      return true;
     } catch (error) {
       setCategoryError(categoryId, getErrorMessage(error, "Failed to create rule."));
+      return false;
     }
   }
 
-  async function handleLivePreviewRule(categoryId: string, draft: RuleEditorState) {
+  async function handlePreviewRule(
+    categoryId: string,
+    draft: { pattern: string; matchType: "exact" | "contains"; priority: number },
+  ) {
     if (!draft.pattern.trim()) {
-      setPreviewState(categoryId, null);
+      setPreviewByCategory((prev) => {
+        const next = { ...prev };
+        delete next[categoryId];
+        return next;
+      });
       return;
     }
 
-    setPreviewState(categoryId, { error: null });
     const payload: RuleDraft = {
       categoryId,
       pattern: draft.pattern.trim(),
       matchType: draft.matchType,
       priority: Number.isNaN(draft.priority) ? 0 : draft.priority,
     };
-    const requestVersion = (previewRequestVersionRef.current[categoryId] ?? 0) + 1;
-    previewRequestVersionRef.current[categoryId] = requestVersion;
 
     try {
       const response = await api.post<{
@@ -296,38 +220,35 @@ export function CategoriesPage() {
           dateId: number;
         }>;
       }>("/category-rules/preview", payload);
-      if (previewRequestVersionRef.current[categoryId] !== requestVersion) return;
-      setPreviewState(categoryId, {
-        message: `${response.matchCount} existing transactions would match.`,
-        matches: (response.matchedTransactions ?? []).map((transaction) => {
-          const amount = `${transaction.amount < 0 ? "−" : ""}CHF ${Math.abs(
-            transaction.amount,
-          ).toFixed(2)}`;
-          return {
-            id: transaction.id,
-            display: `${transaction.merchantName} · ${formatDateId(transaction.dateId)} · ${amount}`,
-          };
-        }),
-        error: null,
-      });
-    } catch (error) {
-      if (previewRequestVersionRef.current[categoryId] !== requestVersion) {
-        return;
-      }
 
-      let errorMessage: string;
-      if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
-        errorMessage = error.message;
-      } else {
-        errorMessage = "Failed to preview rule matches.";
-      }
-      setPreviewState(categoryId, { message: "", matches: [], error: errorMessage });
+      const lines = (response.matchedTransactions ?? []).map((tx) => {
+        const amount = `${tx.amount < 0 ? "−" : ""}CHF ${Math.abs(tx.amount).toFixed(2)}`;
+        return `${tx.merchantName} · ${formatDateId(tx.dateId)} · ${amount}`;
+      });
+      setPreviewByCategory((prev) => ({
+        ...prev,
+        [categoryId]: {
+          summary: `${response.matchCount} existing transaction${response.matchCount === 1 ? "" : "s"} would match.`,
+          lines,
+        },
+      }));
+    } catch (error) {
+      const msg =
+        error instanceof ApiError && error.status >= 400 && error.status < 500
+          ? error.message
+          : "Failed to preview rule matches.";
+      setPreviewByCategory((prev) => ({
+        ...prev,
+        [categoryId]: { summary: msg, lines: [] },
+      }));
     }
   }
 
-  async function handleSaveRule(rule: CategoryRule) {
-    const editor = getRuleEditor(rule);
-    if (!editor.pattern.trim()) {
+  async function handleSaveRule(
+    rule: CategoryRule,
+    draft: { pattern: string; matchType: "exact" | "contains"; priority: number },
+  ) {
+    if (!draft.pattern.trim()) {
       setCategoryError(rule.categoryId, "Rule pattern is required.");
       return;
     }
@@ -337,16 +258,11 @@ export function CategoriesPage() {
       await updateRule.mutateAsync({
         id: rule.id,
         draft: {
-          pattern: editor.pattern.trim(),
-          matchType: editor.matchType,
-          priority: editor.priority,
+          pattern: draft.pattern.trim(),
+          matchType: draft.matchType,
+          priority: draft.priority,
           categoryId: rule.categoryId,
         },
-      });
-      setRuleEditorById((prev) => {
-        const next = { ...prev };
-        delete next[rule.id];
-        return next;
       });
     } catch (error) {
       setCategoryError(rule.categoryId, getErrorMessage(error, "Failed to update rule."));
@@ -433,7 +349,6 @@ export function CategoriesPage() {
                 <div className="space-y-6">
                   {section.categories.map((category) => {
                     const categoryRules = rulesByCategory[category.id] ?? [];
-                    const draft = getRuleDraft(category.id);
                     const isGlobal = category.userId === null;
 
                     return (
@@ -505,151 +420,32 @@ export function CategoriesPage() {
                               {errorByCategory[category.id]}
                             </p>
                           )}
+
+                          <NewRuleForm
+                            categoryName={category.categoryName}
+                            preview={previewByCategory[category.id] ?? null}
+                            onSubmit={(draft) => handleCreateRule(category.id, draft)}
+                            onPreview={(draft) => handlePreviewRule(category.id, draft)}
+                            isSubmitting={createRule.isPending}
+                          />
+
                           <div className="space-y-2">
-                            <h3 className="text-sm font-semibold">Rules</h3>
+                            <h3 className="text-sm font-semibold">Existing Rules</h3>
                             {categoryRules.length === 0 ? (
                               <p className="text-sm text-muted-foreground">No rules yet.</p>
                             ) : (
                               <ul className="space-y-2">
-                                {categoryRules.map((rule) => {
-                                  const editor = getRuleEditor(rule);
-
-                                  return (
-                                    <li key={rule.id} className="rounded border p-3">
-                                      <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-                                        <Input
-                                          aria-label={`Rule pattern ${rule.id}`}
-                                          value={editor.pattern}
-                                          onChange={(event) => {
-                                            setRuleEditor(rule.id, {
-                                              ...editor,
-                                              pattern: event.target.value,
-                                            });
-                                          }}
-                                        />
-                                        <select
-                                          aria-label={`Rule match type ${rule.id}`}
-                                          className="rounded border border-input bg-background px-3 py-2 text-sm"
-                                          value={editor.matchType}
-                                          onChange={(event) => {
-                                            setRuleEditor(rule.id, {
-                                              ...editor,
-                                              matchType: event.target.value as "exact" | "contains",
-                                            });
-                                          }}
-                                        >
-                                          <option value="contains">contains</option>
-                                          <option value="exact">exact</option>
-                                        </select>
-                                        <Input
-                                          aria-label={`Rule priority ${rule.id}`}
-                                          type="number"
-                                          value={editor.priority}
-                                          onChange={(event) => {
-                                            setRuleEditor(rule.id, {
-                                              ...editor,
-                                              priority: Number(event.target.value || 0),
-                                            });
-                                          }}
-                                        />
-                                        <div className="flex gap-2">
-                                          <Button
-                                            aria-label={`Save rule ${rule.id}`}
-                                            size="sm"
-                                            onClick={() => handleSaveRule(rule)}
-                                            disabled={updateRule.isPending}
-                                          >
-                                            Save
-                                          </Button>
-                                          <Button
-                                            aria-label={`Delete rule ${rule.id}`}
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => handleDeleteRule(rule.id, category.id)}
-                                            disabled={deleteRule.isPending}
-                                          >
-                                            Delete
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    </li>
-                                  );
-                                })}
+                                {categoryRules.map((rule) => (
+                                  <RuleRow
+                                    key={rule.id}
+                                    rule={rule}
+                                    onSave={(draft) => handleSaveRule(rule, draft)}
+                                    onDelete={() => handleDeleteRule(rule.id, category.id)}
+                                    isSaving={updateRule.isPending}
+                                    isDeleting={deleteRule.isPending}
+                                  />
+                                ))}
                               </ul>
-                            )}
-                          </div>
-
-                          <div className="rounded border p-3">
-                            <h4 className="mb-2 text-sm font-semibold">New Rule</h4>
-                            <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
-                              <Input
-                                aria-label={`New rule pattern for ${category.categoryName}`}
-                                placeholder="Pattern"
-                                value={draft.pattern}
-                                onChange={(event) =>
-                                  setRuleDraft(category.id, {
-                                    ...draft,
-                                    pattern: event.target.value,
-                                  })
-                                }
-                              />
-                              <select
-                                aria-label={`New rule match type for ${category.categoryName}`}
-                                className="rounded border border-input bg-background px-3 py-2 text-sm"
-                                value={draft.matchType}
-                                onChange={(event) =>
-                                  setRuleDraft(category.id, {
-                                    ...draft,
-                                    matchType: event.target.value as "exact" | "contains",
-                                  })
-                                }
-                              >
-                                <option value="contains">contains</option>
-                                <option value="exact">exact</option>
-                              </select>
-                              <Input
-                                aria-label={`New rule priority for ${category.categoryName}`}
-                                type="number"
-                                placeholder="Priority"
-                                value={draft.priority}
-                                onChange={(event) =>
-                                  setRuleDraft(category.id, {
-                                    ...draft,
-                                    priority: Number(event.target.value || 0),
-                                  })
-                                }
-                              />
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleCreateRule(category.id)}
-                                  disabled={createRule.isPending}
-                                >
-                                  Add Rule
-                                </Button>
-                              </div>
-                            </div>
-                            {previewByCategory[category.id]?.message && (
-                              <p className="mt-2 text-xs text-muted-foreground">
-                                {previewByCategory[category.id]?.message}
-                              </p>
-                            )}
-                            {(previewByCategory[category.id]?.matches?.length ?? 0) > 0 && (
-                              <div className="mt-2">
-                                <p className="text-xs font-medium text-muted-foreground">
-                                  Matching transactions:
-                                </p>
-                                <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
-                                  {(previewByCategory[category.id]?.matches ?? []).map((match) => (
-                                    <li key={match.id}>{match.display}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                            {previewByCategory[category.id]?.error && (
-                              <p className="mt-2 text-xs text-destructive">
-                                {previewByCategory[category.id]?.error}
-                              </p>
                             )}
                           </div>
                         </CardContent>

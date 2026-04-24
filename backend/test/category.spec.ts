@@ -16,7 +16,6 @@ const TEST_USERS = {
 let userACookie: string;
 let userBCookie: string;
 let userAId: string;
-let globalCatId: string;
 let testMerchantId: string;
 
 beforeAll(async () => {
@@ -38,7 +37,7 @@ beforeAll(async () => {
   await app.ready();
 
   // 2. Helper to register and login a test user
-  const setupUser = async (email: string) => {
+  const setupUser = async (email: string, role?: string) => {
     const hashedPassword = await argon2.hash("Password123!");
     const currency = await prisma.dimCurrency.findUnique({ where: { code: "CHF" } });
     await prisma.dimUser.create({
@@ -46,6 +45,7 @@ beforeAll(async () => {
         email,
         password: hashedPassword,
         defaultCurrencyId: currency!.id,
+        ...(role && { role }),
       },
     });
     const res = await app.inject({
@@ -62,7 +62,7 @@ beforeAll(async () => {
   };
 
   // 3. Setup Users, Cookies, and IDs
-  userACookie = await setupUser(TEST_USERS.userA);
+  userACookie = await setupUser(TEST_USERS.userA, "ADMIN");
   userBCookie = await setupUser(TEST_USERS.userB);
 
   const userA = await prisma.dimUser.findUnique({ where: { email: TEST_USERS.userA } });
@@ -71,26 +71,28 @@ beforeAll(async () => {
   }
   userAId = userA.id;
 
-  // 4. Create a Global Category directly in DB for testing
-  const globalCat = await prisma.dimCategory.create({
-    data: { categoryName: "Test_Global_Cat", userId: null },
-  });
-  globalCatId = globalCat.id;
-
-  // 5. Create a test merchant for the 409 Conflict test
+  // 4. Create a test merchant for the 409 Conflict test
   const merchant = await prisma.dimMerchant.create({
     data: { name: "Test_Merchant" },
   });
   testMerchantId = merchant.id;
 });
 
+const ONBOARD_EMAIL = "cat.onboard@example.com";
+
 afterAll(async () => {
   // Cleanup everything we created
   await prisma.userMerchantMapping.deleteMany({
-    where: { user: { email: { in: Object.values(TEST_USERS) } } },
+    where: { user: { email: { in: [...Object.values(TEST_USERS), ONBOARD_EMAIL] } } },
   });
-  await prisma.dimCategory.deleteMany({ where: { categoryName: { startsWith: "Test_" } } });
-  await prisma.dimUser.deleteMany({ where: { email: { in: Object.values(TEST_USERS) } } });
+  await prisma.dimCategory.deleteMany({
+    where: {
+      OR: [{ categoryName: { startsWith: "Test_" } }, { user: { email: ONBOARD_EMAIL } }],
+    },
+  });
+  await prisma.dimUser.deleteMany({
+    where: { email: { in: [...Object.values(TEST_USERS), ONBOARD_EMAIL] } },
+  });
   await prisma.dimMerchant.deleteMany({ where: { name: "Test_Merchant" } });
   await app.close();
 });
@@ -125,7 +127,7 @@ describe("Category CRUD and Authorization Tests", () => {
     expect(res.statusCode).toBe(400);
   });
 
-  it("GET: returns user's custom categories AND global categories", async () => {
+  it("GET: returns user's custom categories", async () => {
     const res = await app.inject({
       method: "GET",
       url: "/api/v1/categories",
@@ -135,16 +137,12 @@ describe("Category CRUD and Authorization Tests", () => {
     expect(res.statusCode).toBe(200);
     const { categories } = res.json();
 
-    type CategoryResponse = { categoryName: string; userId: string | null };
+    type CategoryResponse = { categoryName: string; userId: string };
 
-    const hasGlobal = categories.some(
-      (c: CategoryResponse) => c.categoryName === "Test_Global_Cat" && c.userId === null,
-    );
     const hasCustom = categories.some(
       (c: CategoryResponse) => c.categoryName === "Test_Tennis" && c.userId === userAId,
     );
 
-    expect(hasGlobal).toBe(true);
     expect(hasCustom).toBe(true);
   });
 
@@ -160,8 +158,8 @@ describe("Category CRUD and Authorization Tests", () => {
     expect(res.json().category.categoryName).toBe("Test_Squash");
   });
 
-  it("PATCH: prevents user from editing another user's category (403)", async () => {
-    // User B trying to edit User A's category
+  it("PATCH: returns 404 when editing another user's category", async () => {
+    // User B trying to edit User A's category — returns 404 to avoid leaking existence
     const res = await app.inject({
       method: "PATCH",
       url: `/api/v1/categories/${customCatId}`,
@@ -169,18 +167,18 @@ describe("Category CRUD and Authorization Tests", () => {
       payload: { categoryName: "Test_Hacked" },
     });
 
-    expect(res.statusCode).toBe(403);
+    expect(res.statusCode).toBe(404);
   });
 
-  it("PATCH: prevents user from editing a global category (403)", async () => {
+  it("DELETE: returns 404 for another user's category", async () => {
+    // User B trying to delete User A's category — returns 404 to avoid leaking existence
     const res = await app.inject({
-      method: "PATCH",
-      url: `/api/v1/categories/${globalCatId}`,
-      cookies: { session: userACookie },
-      payload: { categoryName: "Test_Hacked_Global" },
+      method: "DELETE",
+      url: `/api/v1/categories/${customCatId}`,
+      cookies: { session: userBCookie },
     });
 
-    expect(res.statusCode).toBe(403);
+    expect(res.statusCode).toBe(404);
   });
 
   it("DELETE: prevents deletion if category is in use (409 Conflict)", async () => {
@@ -221,14 +219,32 @@ describe("Category CRUD and Authorization Tests", () => {
     const check = await prisma.dimCategory.findUnique({ where: { id: customCatId } });
     expect(check).toBeNull();
   });
+});
 
-  it("DELETE: prevents deletion of a global category (403)", async () => {
+describe("Default category onboarding", () => {
+  it("creates default categories when a new user is onboarded", async () => {
     const res = await app.inject({
-      method: "DELETE",
-      url: `/api/v1/categories/${globalCatId}`,
+      method: "POST",
+      url: "/api/v1/users",
       cookies: { session: userACookie },
+      payload: { email: ONBOARD_EMAIL, password: "Password123!" },
     });
 
-    expect(res.statusCode).toBe(403);
+    expect(res.statusCode).toBe(201);
+    const userId = res.json().id;
+
+    const categories = await prisma.dimCategory.findMany({
+      where: { userId },
+      orderBy: { categoryName: "asc" },
+    });
+
+    expect(categories).toHaveLength(5);
+    expect(categories.map((c) => c.categoryName)).toEqual([
+      "Entertainment",
+      "Groceries",
+      "Housing",
+      "Income",
+      "Transport",
+    ]);
   });
 });
