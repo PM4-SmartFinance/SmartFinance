@@ -105,8 +105,8 @@ describe("DashboardPage", () => {
 
   it("renders date range picker", () => {
     renderWithProviders();
-    expect(screen.getByLabelText("Start Date")).toBeInTheDocument();
-    expect(screen.getByLabelText("End Date")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Last 30 days" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Custom" })).toBeInTheDocument();
   });
 
   it("renders the sign out button", () => {
@@ -117,13 +117,12 @@ describe("DashboardPage", () => {
   it("triggers loading states when date range is changed", async () => {
     renderWithProviders();
 
-    // Get date inputs
+    // Enter custom mode to reveal date inputs
+    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
     const startInput = screen.getByLabelText("Start Date") as HTMLInputElement;
 
-    // Change the start date
     fireEvent.change(startInput, { target: { value: "2026-01-15" } });
 
-    // Verify the date input updated
     await waitFor(() => {
       expect(startInput.value).toBe("2026-01-15");
     });
@@ -132,26 +131,23 @@ describe("DashboardPage", () => {
   it("refetches chart data when date range changes", async () => {
     renderWithProviders();
 
-    // Wait for initial data to load
     await waitFor(() => {
       expect(screen.getByText("CHF 3'659.50")).toBeInTheDocument();
     });
 
-    // Change the start date
+    // Enter custom mode to reveal date inputs
+    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
     const startInput = screen.getByLabelText("Start Date") as HTMLInputElement;
     fireEvent.change(startInput, { target: { value: "2026-01-15" } });
 
-    // Verify the date changed
     await waitFor(() => {
       expect(startInput.value).toBe("2026-01-15");
     });
 
-    // Verify api.get was called with updated date parameters
     await waitFor(() => {
       expect(mockGet).toHaveBeenCalledWith(expect.stringContaining("startDate=2026-01-15"));
     });
 
-    // Verify widgets are still present
     expect(screen.getAllByText("Net Balance").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Monthly Spending Trend").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Spending by Category").length).toBeGreaterThanOrEqual(1);
