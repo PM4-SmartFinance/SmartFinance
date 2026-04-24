@@ -34,26 +34,33 @@ vi.mock("../services/import.service.js", async () => {
 
 import * as transactionService from "../services/transaction.service.js";
 
+const mockListTransactions = vi.mocked(transactionService.listTransactions);
 const mockAutoCategorize = vi.mocked(transactionService.autoCategorizeTransactions);
 const mockGetTransaction = vi.mocked(transactionService.getTransaction);
 const mockUpdateTransaction = vi.mocked(transactionService.updateTransaction);
 const mockDeleteTransaction = vi.mocked(transactionService.deleteTransaction);
 
+// Valid UUID used across all single-resource route tests.
+const VALID_TX_ID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
+
+function buildTestApp() {
+  const testApp = Fastify({ logger: false });
+  testApp.setErrorHandler(errorHandler);
+  testApp.decorateRequest("session", null);
+  testApp.addHook("onRequest", async (request) => {
+    Object.defineProperty(request, "session", {
+      configurable: true,
+      value: { get: () => sessionUser, set: vi.fn() },
+    });
+  });
+  return testApp;
+}
+
 describe("POST /api/v1/transactions/auto-categorize", () => {
   let app: FastifyInstance;
 
   beforeAll(async () => {
-    app = Fastify({ logger: false });
-
-    // Minimal session shim — same pattern as account.controller.test.ts.
-    app.decorateRequest("session", null);
-    app.addHook("onRequest", async (request) => {
-      Object.defineProperty(request, "session", {
-        configurable: true,
-        value: { get: () => sessionUser, set: vi.fn() },
-      });
-    });
-
+    app = buildTestApp();
     await app.register(transactionRoutes, { prefix: "/api/v1" });
     await app.ready();
   });
@@ -127,6 +134,17 @@ describe("POST /api/v1/transactions/auto-categorize", () => {
     expect(mockAutoCategorize).toHaveBeenCalledExactlyOnceWith("admin-1");
   });
 
+  it("returns 400 when body contains unexpected properties", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/transactions/auto-categorize",
+      payload: { foo: "bar" },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(mockAutoCategorize).not.toHaveBeenCalled();
+  });
+
   it("returns a response that conforms to the declared schema (categorized: integer)", async () => {
     mockAutoCategorize.mockResolvedValue({ categorized: 0 });
 
@@ -141,22 +159,6 @@ describe("POST /api/v1/transactions/auto-categorize", () => {
     expect(Number.isInteger(body.categorized)).toBe(true);
   });
 });
-
-// Valid UUID used across all single-resource route tests.
-const VALID_TX_ID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
-
-function buildTestApp() {
-  const testApp = Fastify({ logger: false });
-  testApp.setErrorHandler(errorHandler);
-  testApp.decorateRequest("session", null);
-  testApp.addHook("onRequest", async (request) => {
-    Object.defineProperty(request, "session", {
-      configurable: true,
-      value: { get: () => sessionUser, set: vi.fn() },
-    });
-  });
-  return testApp;
-}
 
 describe("GET /api/v1/transactions/:id", () => {
   let app: FastifyInstance;
@@ -429,5 +431,183 @@ describe("DELETE /api/v1/transactions/:id", () => {
     });
     expect(response.statusCode).toBe(400);
     expect(mockDeleteTransaction).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/v1/transactions", () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    app = buildTestApp();
+    await app.register(transactionRoutes, { prefix: "/api/v1" });
+    await app.ready();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sessionUser = { id: "user-1", role: "USER", email: "test@example.com" };
+    mockListTransactions.mockResolvedValue({
+      data: [],
+      meta: { totalCount: 0, totalPages: 0, page: 1, limit: 20 },
+    } as never);
+  });
+
+  it("returns 200 with the list result from the service", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/transactions",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      data: [],
+      meta: { totalCount: 0, totalPages: 0, page: 1, limit: 20 },
+    });
+  });
+
+  it("forwards the session user id (not a request param) to the service", async () => {
+    sessionUser = { id: "user-42", role: "USER", email: "x@example.com" };
+
+    await app.inject({ method: "GET", url: "/api/v1/transactions" });
+
+    expect(mockListTransactions).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "user-42" }),
+    );
+  });
+
+  it("returns 401 when there is no authenticated session", async () => {
+    sessionUser = undefined;
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/transactions",
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(mockListTransactions).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 when the session user has an insufficient role", async () => {
+    sessionUser = { id: "user-1", role: "GUEST", email: "g@example.com" };
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/transactions",
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(mockListTransactions).not.toHaveBeenCalled();
+  });
+
+  it("allows ADMIN to call the endpoint (role hierarchy)", async () => {
+    sessionUser = { id: "admin-1", role: "ADMIN", email: "a@example.com" };
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/transactions",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(mockListTransactions).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "admin-1" }),
+    );
+  });
+
+  it("passes query parameters to the service", async () => {
+    await app.inject({
+      method: "GET",
+      url: "/api/v1/transactions?page=2&limit=10&sortBy=amount&sortOrder=asc",
+    });
+
+    expect(mockListTransactions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-1",
+        page: 2,
+        limit: 10,
+        sortBy: "amount",
+        sortOrder: "asc",
+      }),
+    );
+  });
+
+  it("returns 400 for invalid sortBy value", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/transactions?sortBy=invalid",
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(mockListTransactions).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/v1/transactions/import", () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    app = buildTestApp();
+    await app.register(transactionRoutes, { prefix: "/api/v1" });
+    await app.ready();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sessionUser = { id: "user-1", role: "USER", email: "test@example.com" };
+  });
+
+  it("returns 401 when there is no authenticated session", async () => {
+    sessionUser = undefined;
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/transactions/import?accountId=acc-1&format=neon",
+      headers: { "content-type": "multipart/form-data; boundary=---test" },
+      payload: "-----test--",
+    });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("returns 403 when the session user has an insufficient role", async () => {
+    sessionUser = { id: "user-1", role: "GUEST", email: "g@example.com" };
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/transactions/import?accountId=acc-1&format=neon",
+      headers: { "content-type": "multipart/form-data; boundary=---test" },
+      payload: "-----test--",
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  it("returns 400 when format is not a supported value", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/transactions/import?accountId=acc-1&format=unknownbank",
+      headers: { "content-type": "multipart/form-data; boundary=---test" },
+      payload: "-----test--",
+    });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("returns 400 when accountId is missing", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/transactions/import?format=neon",
+      headers: { "content-type": "multipart/form-data; boundary=---test" },
+      payload: "-----test--",
+    });
+
+    expect(response.statusCode).toBe(400);
   });
 });
