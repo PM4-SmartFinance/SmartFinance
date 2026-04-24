@@ -192,15 +192,22 @@ model CategoryRule {
   @@index([categoryId])
 }
 
+enum BudgetType {
+  DAILY
+  MONTHLY
+  YEARLY
+  SPECIFIC_MONTH
+  SPECIFIC_YEAR
+  SPECIFIC_MONTH_YEAR
+}
+
 model DimBudget {
-  id               String   @id @default(uuid())
-  month            Int // 1–12
-  year             Int
-  limitAmount      Decimal  @db.Decimal(12, 2)
-  budgetLimitDay   Decimal? @db.Decimal(12, 2)
-  budgetLimitMonth Decimal? @db.Decimal(12, 2)
-  budgetLimitYear  Decimal? @db.Decimal(12, 2)
-  active           Boolean  @default(true)
+  id          String     @id @default(uuid())
+  type        BudgetType @default(MONTHLY)
+  month       Int        @default(0)
+  year        Int        @default(0)
+  limitAmount Decimal    @db.Decimal(12, 2)
+  active      Boolean    @default(true)
 
   categoryId String
   category   DimCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
@@ -211,7 +218,7 @@ model DimBudget {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([userId, categoryId, month, year])
+  @@unique([userId, categoryId, type, month, year])
   @@index([userId])
   @@index([categoryId])
 }

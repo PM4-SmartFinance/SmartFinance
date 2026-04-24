@@ -75,7 +75,7 @@ const TRANSACTIONS = [
   },
 ];
 
-export default function TransactionsWireframe() {
+export function TransactionsWireframe() {
   return (
     <div className="wf-page">
       <nav className="wf-topnav">
