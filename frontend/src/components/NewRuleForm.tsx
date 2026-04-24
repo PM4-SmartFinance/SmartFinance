@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -8,26 +8,44 @@ interface RuleEditorState {
   priority: number;
 }
 
+interface PreviewData {
+  summary: string;
+  lines: string[];
+}
+
 export function NewRuleForm({
   categoryName,
   preview,
   onSubmit,
   onPreview,
   isSubmitting,
-  isPreviewing,
 }: {
   categoryName: string;
-  preview: string;
+  preview: PreviewData | null;
   onSubmit: (draft: RuleEditorState) => Promise<boolean>;
   onPreview: (draft: RuleEditorState) => void;
   isSubmitting: boolean;
-  isPreviewing: boolean;
 }) {
   const [draft, setDraft] = useState<RuleEditorState>({
     pattern: "",
     matchType: "contains",
     priority: 0,
   });
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const onPreviewRef = useRef(onPreview);
+
+  useEffect(() => {
+    onPreviewRef.current = onPreview;
+  });
+
+  useEffect(() => {
+    clearTimeout(timerRef.current);
+    const currentDraft = draft;
+    timerRef.current = setTimeout(() => {
+      onPreviewRef.current(currentDraft);
+    }, 300);
+    return () => clearTimeout(timerRef.current);
+  }, [draft]);
 
   async function handleSubmit() {
     const success = await onSubmit(draft);
@@ -69,21 +87,22 @@ export function NewRuleForm({
           value={draft.priority}
           onChange={(event) => setDraft({ ...draft, priority: Number(event.target.value || 0) })}
         />
-        <div className="flex gap-2">
-          <Button size="sm" onClick={handleSubmit} disabled={isSubmitting}>
-            Add Rule
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => onPreview(draft)}
-            disabled={isPreviewing}
-          >
-            Match Preview
-          </Button>
-        </div>
+        <Button size="sm" onClick={handleSubmit} disabled={isSubmitting}>
+          Add Rule
+        </Button>
       </div>
-      {preview && <p className="mt-2 text-xs text-muted-foreground">{preview}</p>}
+      {preview && (
+        <div className="mt-2">
+          <p className="text-xs text-muted-foreground">{preview.summary}</p>
+          {preview.lines.length > 0 && (
+            <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
+              {preview.lines.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }

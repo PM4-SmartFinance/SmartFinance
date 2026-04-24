@@ -43,8 +43,9 @@ export function CategoriesPage() {
   const [editingCategoryName, setEditingCategoryName] = useState("");
   const [createCategoryError, setCreateCategoryError] = useState<string | null>(null);
   const [errorByCategory, setErrorByCategory] = useState<Record<string, string>>({});
-  const [previewByCategory, setPreviewByCategory] = useState<Record<string, string>>({});
-  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [previewByCategory, setPreviewByCategory] = useState<
+    Record<string, { summary: string; lines: string[] }>
+  >({});
 
   const {
     data: categories = [],
@@ -177,7 +178,11 @@ export function CategoriesPage() {
 
     try {
       await createRule.mutateAsync(payload);
-      setPreviewByCategory((prev) => ({ ...prev, [categoryId]: "" }));
+      setPreviewByCategory((prev) => {
+        const next = { ...prev };
+        delete next[categoryId];
+        return next;
+      });
       return true;
     } catch (error) {
       setCategoryError(categoryId, getErrorMessage(error, "Failed to create rule."));
@@ -205,7 +210,6 @@ export function CategoriesPage() {
       priority: Number.isNaN(draft.priority) ? 0 : draft.priority,
     };
 
-    setIsPreviewing(true);
     try {
       const response = await api.post<{
         matchCount: number;
@@ -217,20 +221,26 @@ export function CategoriesPage() {
         }>;
       }>("/category-rules/preview", payload);
 
-      const lines = [`${response.matchCount} existing transactions would match.`];
-      for (const tx of response.matchedTransactions ?? []) {
+      const lines = (response.matchedTransactions ?? []).map((tx) => {
         const amount = `${tx.amount < 0 ? "−" : ""}CHF ${Math.abs(tx.amount).toFixed(2)}`;
-        lines.push(`  • ${tx.merchantName} · ${formatDateId(tx.dateId)} · ${amount}`);
-      }
-      setPreviewByCategory((prev) => ({ ...prev, [categoryId]: lines.join("\n") }));
+        return `${tx.merchantName} · ${formatDateId(tx.dateId)} · ${amount}`;
+      });
+      setPreviewByCategory((prev) => ({
+        ...prev,
+        [categoryId]: {
+          summary: `${response.matchCount} existing transaction${response.matchCount === 1 ? "" : "s"} would match.`,
+          lines,
+        },
+      }));
     } catch (error) {
       const msg =
         error instanceof ApiError && error.status >= 400 && error.status < 500
           ? error.message
           : "Failed to preview rule matches.";
-      setPreviewByCategory((prev) => ({ ...prev, [categoryId]: msg }));
-    } finally {
-      setIsPreviewing(false);
+      setPreviewByCategory((prev) => ({
+        ...prev,
+        [categoryId]: { summary: msg, lines: [] },
+      }));
     }
   }
 
@@ -413,11 +423,10 @@ export function CategoriesPage() {
 
                           <NewRuleForm
                             categoryName={category.categoryName}
-                            preview={previewByCategory[category.id] ?? ""}
+                            preview={previewByCategory[category.id] ?? null}
                             onSubmit={(draft) => handleCreateRule(category.id, draft)}
                             onPreview={(draft) => handlePreviewRule(category.id, draft)}
                             isSubmitting={createRule.isPending}
-                            isPreviewing={isPreviewing}
                           />
 
                           <div className="space-y-2">
