@@ -354,9 +354,16 @@ describe("findPreviewMatchesForUser", () => {
 
     await findPreviewMatchesForUser("user-1", "Migros", "exact", 3);
 
-    // The where clause should be passed to the mocked $transaction function.
-    // We verify that the function was called (it will use the exact match logic in SQL).
-    expect(prisma.$transaction).toHaveBeenCalled();
+    const expectedWhere = {
+      userId: "user-1",
+      categoryId: null,
+      manualOverride: false,
+      merchant: { name: { equals: "Migros", mode: "insensitive" } },
+    };
+    expect(prisma.factTransactions.count).toHaveBeenCalledWith({ where: expectedWhere });
+    expect(prisma.factTransactions.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expectedWhere }),
+    );
   });
 
   it("applies contains match filter when matchType is 'contains'", async () => {
@@ -364,7 +371,16 @@ describe("findPreviewMatchesForUser", () => {
 
     await findPreviewMatchesForUser("user-1", "migr", "contains", 3);
 
-    expect(prisma.$transaction).toHaveBeenCalled();
+    const expectedWhere = {
+      userId: "user-1",
+      categoryId: null,
+      manualOverride: false,
+      merchant: { name: { contains: "migr", mode: "insensitive" } },
+    };
+    expect(prisma.factTransactions.count).toHaveBeenCalledWith({ where: expectedWhere });
+    expect(prisma.factTransactions.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expectedWhere }),
+    );
   });
 
   it("limits results to sampleLimit parameter", async () => {
