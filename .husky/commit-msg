@@ -7,7 +7,7 @@ case "$commit_msg" in
   Merge*|Revert*) exit 0 ;;
 esac
 
-pattern='^(feat|fix|docs|style|refactor|test|chore|ci|build|perf)(\(([a-z]([a-z-]*[a-z])?)\))?: \[KAN-[0-9]+\] .+'
+pattern='^(feat|fix|docs|style|refactor|test|chore|ci|build|perf)(\(([a-z]+(-[a-z]+)*)\))?: \[KAN-[1-9][0-9]*\] .+'
 
 if ! echo "$commit_msg" | grep -qE "$pattern"; then
   echo ""
@@ -20,7 +20,7 @@ if ! echo "$commit_msg" | grep -qE "$pattern"; then
   echo "  Types:  feat | fix | docs | style | refactor | test | chore | ci | build | perf"
   echo "  Scope:  optional, lowercase letters and hyphens (for example: frontend, back-end, ci-cd)"
   echo ""
-  echo "  Your message: $commit_msg"
+  printf '  Your message: %s\n' "$commit_msg"
   echo ""
   exit 1
 fi
