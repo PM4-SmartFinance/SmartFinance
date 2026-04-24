@@ -258,8 +258,10 @@ describe("CategoriesPage", () => {
     fireEvent.change(input, { target: { value: "co" } });
 
     await waitFor(() => {
-      expect(screen.getByText("Matching transactions:")).toBeInTheDocument();
-      const matchingSection = screen.getByText("Matching transactions:").closest("div");
+      expect(screen.getByText("7 existing transactions would match.")).toBeInTheDocument();
+      const matchingSection = screen
+        .getByText("7 existing transactions would match.")
+        .closest("div");
       expect(matchingSection).toBeTruthy();
       const transactionItems = within(matchingSection!).getAllByRole("listitem");
       expect(transactionItems).toHaveLength(3);
