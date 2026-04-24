@@ -143,7 +143,7 @@ jobs:
         working-directory: backend
 
       - name: Run backend tests with coverage
-        run: bun run --filter @smartfinance/backend test
+        run: bun run --filter @smartfinance/backend test:coverage
 
       - name: Upload coverage report
         if: always()
