@@ -26,7 +26,7 @@ vi.mock("../lib/api", () => {
   };
 });
 
-import { CategoriesPage } from "./CategoriesPage";
+import { CategoriesPage, formatDateId } from "./CategoriesPage";
 
 let categories: Category[] = [
   {
@@ -76,6 +76,24 @@ function renderWithProviders() {
     </QueryClientProvider>,
   );
 }
+
+describe("formatDateId", () => {
+  it("formats a standard date in de-CH locale", () => {
+    expect(formatDateId(20260412)).toMatch(/12.*4.*2026/);
+  });
+
+  it("formats January 1st correctly", () => {
+    expect(formatDateId(20250101)).toMatch(/1.*1.*2025/);
+  });
+
+  it("formats December 31st correctly", () => {
+    expect(formatDateId(20251231)).toMatch(/31.*12.*2025/);
+  });
+
+  it("handles single-digit month and day", () => {
+    expect(formatDateId(20250307)).toMatch(/7.*3.*2025/);
+  });
+});
 
 describe("CategoriesPage", () => {
   beforeEach(() => {
@@ -156,7 +174,29 @@ describe("CategoriesPage", () => {
       }
 
       if (path === "/category-rules/preview") {
-        return Promise.resolve({ matchCount: 7 });
+        return Promise.resolve({
+          matchCount: 7,
+          matchedTransactions: [
+            {
+              id: "tx-1",
+              merchantName: "Coop",
+              amount: -12.5,
+              dateId: 20260412,
+            },
+            {
+              id: "tx-2",
+              merchantName: "Coop City",
+              amount: -8.75,
+              dateId: 20260413,
+            },
+            {
+              id: "tx-3",
+              merchantName: "Coop Extra",
+              amount: -5.25,
+              dateId: 20260414,
+            },
+          ],
+        });
       }
 
       return Promise.resolve({});
@@ -207,6 +247,28 @@ describe("CategoriesPage", () => {
     });
   });
 
+  it("shows matching transactions from live preview", async () => {
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+    });
+
+    const input = screen.getByLabelText("New rule pattern for Groceries");
+    fireEvent.change(input, { target: { value: "co" } });
+
+    await waitFor(() => {
+      expect(screen.getByText("Matching transactions:")).toBeInTheDocument();
+      const matchingSection = screen.getByText("Matching transactions:").closest("div");
+      expect(matchingSection).toBeTruthy();
+      const transactionItems = within(matchingSection!).getAllByRole("listitem");
+      expect(transactionItems).toHaveLength(3);
+      expect(transactionItems[0]).toHaveTextContent("Coop");
+      expect(transactionItems[1]).toHaveTextContent("Coop City");
+      expect(transactionItems[2]).toHaveTextContent("Coop Extra");
+    });
+  });
+
   it("creates a rule and triggers refetch via invalidation", async () => {
     renderWithProviders();
 
@@ -236,7 +298,7 @@ describe("CategoriesPage", () => {
     });
   });
 
-  it("calls match preview endpoint and shows result", async () => {
+  it("calls preview endpoint live and updates the preview chip", async () => {
     renderWithProviders();
 
     await waitFor(() => {
@@ -246,9 +308,6 @@ describe("CategoriesPage", () => {
     fireEvent.change(screen.getByLabelText("New rule pattern for Groceries"), {
       target: { value: "coop" },
     });
-    const previewButtons = screen.getAllByRole("button", { name: "Match Preview" });
-    expect(previewButtons.length).toBeGreaterThan(0);
-    fireEvent.click(previewButtons[0]!);
 
     await waitFor(() => {
       expect(mockPost).toHaveBeenCalledWith("/category-rules/preview", {
@@ -258,6 +317,84 @@ describe("CategoriesPage", () => {
         priority: 0,
       });
       expect(screen.getByText("7 existing transactions would match.")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("New rule match type for Groceries"), {
+      target: { value: "exact" },
+    });
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith("/category-rules/preview", {
+        categoryId: "cat-1",
+        pattern: "coop",
+        matchType: "exact",
+        priority: 0,
+      });
+    });
+  });
+
+  it("shows inline preview error for invalid live preview requests", async () => {
+    const { ApiError: MockApiError } = await import("../lib/api");
+    mockPost.mockImplementation((path: string, body: unknown) => {
+      if (path === "/categories") {
+        const payload = body as { categoryName: string };
+        categories = [
+          ...categories,
+          {
+            id: `cat-${categories.length + 1}`,
+            categoryName: payload.categoryName,
+            userId: "user-1",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ];
+        return Promise.resolve(categories[categories.length - 1]);
+      }
+
+      if (path === "/category-rules") {
+        const payload = body as {
+          categoryId: string;
+          pattern: string;
+          matchType: "exact" | "contains";
+          priority: number;
+        };
+        rules = [
+          ...rules,
+          {
+            id: `rule-${rules.length + 1}`,
+            userId: "user-1",
+            ...payload,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ];
+        return Promise.resolve({ rule: rules[rules.length - 1] });
+      }
+
+      if (path === "/category-rules/preview") {
+        return Promise.reject(new MockApiError(422, "Pattern must be at least 2 characters."));
+      }
+
+      return Promise.resolve({});
+    });
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("New rule pattern for Groceries"), {
+      target: { value: "x" },
+    });
+
+    const groceriesCard = screen.getByText("Groceries").closest('[data-slot="card"]');
+    expect(groceriesCard).toBeTruthy();
+
+    await waitFor(() => {
+      expect(
+        within(groceriesCard!).getByText("Pattern must be at least 2 characters."),
+      ).toBeInTheDocument();
     });
   });
 
