@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ApiError } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import {
   useCategories,
   useCategoryRules,
@@ -9,7 +9,6 @@ import {
   useCreateCategoryRule,
   useUpdateCategoryRule,
   useDeleteCategoryRule,
-  useRuleMatchPreview,
   type Category,
   type CategoryRule,
   type RuleDraft,
@@ -44,7 +43,7 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-function formatDateId(dateId: number): string {
+export function formatDateId(dateId: number): string {
   const year = Math.trunc(dateId / 10000);
   const month = Math.trunc((dateId % 10000) / 100) - 1;
   const day = dateId % 100;
@@ -79,8 +78,6 @@ export function CategoriesPage() {
   const createRule = useCreateCategoryRule();
   const updateRule = useUpdateCategoryRule();
   const deleteRule = useDeleteCategoryRule();
-  const previewRule = useRuleMatchPreview();
-
   const rulesByCategory = useMemo(() => {
     return rules.reduce<Record<string, CategoryRule[]>>((acc, rule) => {
       const list = acc[rule.categoryId] ?? [];
@@ -169,6 +166,13 @@ export function CategoriesPage() {
     setCategoryError(categoryId, null);
     try {
       await deleteCategory.mutateAsync(categoryId);
+      const pendingTimer = previewTimerByCategoryRef.current[categoryId];
+      if (pendingTimer) {
+        clearTimeout(pendingTimer);
+        delete previewTimerByCategoryRef.current[categoryId];
+      }
+      setPreviewState(categoryId, null);
+      delete previewRequestVersionRef.current[categoryId];
     } catch (error) {
       setCategoryError(categoryId, getErrorMessage(error, "Failed to delete category."));
     }
@@ -283,7 +287,15 @@ export function CategoriesPage() {
     previewRequestVersionRef.current[categoryId] = requestVersion;
 
     try {
-      const response = await previewRule.mutateAsync(payload);
+      const response = await api.post<{
+        matchCount: number;
+        matchedTransactions: Array<{
+          id: string;
+          merchantName: string;
+          amount: number;
+          dateId: number;
+        }>;
+      }>("/category-rules/preview", payload);
       if (previewRequestVersionRef.current[categoryId] !== requestVersion) return;
       setPreviewState(categoryId, {
         message: `${response.matchCount} existing transactions would match.`,
@@ -307,8 +319,6 @@ export function CategoriesPage() {
       if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
         errorMessage = error.message;
       } else {
-        // Log non-4xx errors (server errors, network issues, etc.) for debugging
-        console.error("Failed to preview rule matches:", error);
         errorMessage = "Failed to preview rule matches.";
       }
       setPreviewState(categoryId, { message: "", matches: [], error: errorMessage });
