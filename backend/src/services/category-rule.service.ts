@@ -86,5 +86,9 @@ export async function previewRule(
     dateId: number;
   }>;
 }> {
+  const category = await categoryRuleRepository.findCategoryForUser(rule.categoryId, userId);
+  if (!category) {
+    throw new ServiceError(404, "Category not found");
+  }
   return transactionRepository.findPreviewMatchesForUser(userId, rule.pattern, rule.matchType, 3);
 }

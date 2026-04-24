@@ -164,6 +164,7 @@ describe("category-rule.service", () => {
 
   describe("previewRule", () => {
     it("returns match count and latest samples from repository", async () => {
+      mockRepo.findCategoryForUser.mockResolvedValue({ id: "cat-1" } as never);
       mockTransactionRepo.findPreviewMatchesForUser.mockResolvedValue({
         matchCount: 2,
         matchedTransactions: [
@@ -214,7 +215,23 @@ describe("category-rule.service", () => {
       );
     });
 
+    it("throws 404 when category does not belong to user", async () => {
+      mockRepo.findCategoryForUser.mockResolvedValue(null);
+
+      await expect(
+        service.previewRule("user-1", {
+          categoryId: "stolen-cat",
+          pattern: "co",
+          matchType: "contains",
+          priority: 0,
+        }),
+      ).rejects.toThrow(ServiceError);
+
+      expect(mockTransactionRepo.findPreviewMatchesForUser).not.toHaveBeenCalled();
+    });
+
     it("returns zero matches when repository finds no match", async () => {
+      mockRepo.findCategoryForUser.mockResolvedValue({ id: "cat-1" } as never);
       mockTransactionRepo.findPreviewMatchesForUser.mockResolvedValue({
         matchCount: 0,
         matchedTransactions: [],
