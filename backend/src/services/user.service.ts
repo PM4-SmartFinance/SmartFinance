@@ -2,7 +2,6 @@ import argon2 from "argon2";
 import { ServiceError } from "../errors.js";
 import { Prisma } from "@prisma/client";
 import * as userRepository from "../repositories/user.repository.js";
-import * as categoryService from "./category.service.js";
 import {
   BootstrapForbiddenError,
   BootstrapUnauthorizedError,
@@ -10,7 +9,6 @@ import {
 } from "../repositories/user.repository.js";
 import * as auditService from "./audit.service.js";
 import { logEvent } from "./audit.service.js";
-import { getLogger } from "../logger.js";
 
 const DEFAULT_CURRENCY_CODE = "CHF";
 
@@ -83,21 +81,8 @@ export async function onboardUser(
       defaultCurrencyId: currency.id,
       ...(payload.displayName !== undefined && { name: payload.displayName }),
       ...(payload.role !== undefined && { role: payload.role }),
+      defaultCategories: DEFAULT_CATEGORIES,
     });
-
-    try {
-      await Promise.all(
-        DEFAULT_CATEGORIES.map((categoryName) =>
-          categoryService.createCategory(categoryName, user.id),
-        ),
-      );
-    } catch (categoryErr) {
-      getLogger().error(
-        { err: categoryErr, userId: user.id },
-        "Failed to create default categories during onboarding",
-      );
-      throw categoryErr;
-    }
   } catch (err) {
     if (err instanceof BootstrapUnauthorizedError) throw new ServiceError(401, "Unauthorized");
     if (err instanceof BootstrapForbiddenError) throw new ServiceError(403, "Forbidden");

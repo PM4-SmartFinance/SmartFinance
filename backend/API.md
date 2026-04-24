@@ -773,8 +773,7 @@ Updates the name of a user's own custom category.
 
 **Response 400:** Missing or invalid `categoryName`, or invalid UUID
 **Response 401:** Not authenticated
-**Response 403:** Cannot modify another user's category
-**Response 404:** Category not found
+**Response 404:** Category not found or not owned by authenticated user
 
 ### DELETE /categories/:id
 
@@ -784,8 +783,7 @@ Deletes a user's own custom category. Deletion is blocked if the category is cur
 
 **Response 400:** Invalid UUID
 **Response 401:** Not authenticated
-**Response 403:** Cannot delete another user's category
-**Response 404:** Category not found
+**Response 404:** Category not found or not owned by authenticated user
 **Response 409:** Category is in use by transactions, budgets, rules, or merchant mappings and cannot be deleted
 
 ---

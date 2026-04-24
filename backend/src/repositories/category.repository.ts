@@ -30,17 +30,24 @@ export async function create(data: { categoryName: string; userId: string }) {
 }
 
 export async function update(id: string, userId: string, data: { categoryName: string }) {
-  return prisma.$transaction(async (tx) => {
-    const existing = await tx.dimCategory.findFirst({ where: { id, userId } });
-    if (!existing) throw new ServiceError(404, "Category not found");
-    return tx.dimCategory.update({ where: { id }, data });
-  });
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const existing = await tx.dimCategory.findFirst({ where: { id, userId } });
+      if (!existing) return null;
+      return tx.dimCategory.update({ where: { id }, data });
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      throw new ServiceError(409, "A category with this name already exists");
+    }
+    throw err;
+  }
 }
 
 export async function deleteById(id: string, userId: string) {
   return prisma.$transaction(async (tx) => {
     const existing = await tx.dimCategory.findFirst({ where: { id, userId } });
-    if (!existing) throw new ServiceError(404, "Category not found");
+    if (!existing) return null;
     return tx.dimCategory.delete({ where: { id } });
   });
 }
