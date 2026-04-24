@@ -13,6 +13,7 @@
     "format:check": "prettier --check .",
     "prepare": "husky",
     "test": "bun run --cwd=backend test && bun run --cwd=frontend test",
+    "test:commit-msg": "bash scripts/test-commit-msg.sh",
     "test:coverage": "bun run --cwd=backend test:coverage && bun run --cwd=frontend test:coverage",
     "test:frontend": "bun run --cwd=frontend test",
     "test:backend": "bun run --cwd=backend test"
@@ -45,9 +46,5 @@
       "prettier --write"
     ]
   },
-  "dependencies": {
-    "@fontsource-variable/inter": "^5.2.8",
-    "@prisma/client-runtime-utils": "^7.6.0",
-    "@radix-ui/react-slot": "^1.2.4"
-  }
+  "dependencies": {}
 }
