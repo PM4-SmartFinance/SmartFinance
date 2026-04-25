@@ -7,9 +7,21 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { Link } from "react-router";
 import { useDashboardTrends } from "../lib/queries/dashboard";
 import { formatCurrency } from "../lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+
+/** Title-only link for charts with interactive elements (tooltip, hover) */
+const ChartHeader = (
+  <CardHeader>
+    <Link to="/transactions" className="inline-flex hover:text-primary transition-colors">
+      <CardTitle className="text-xs font-semibold uppercase tracking-wider">
+        Monthly Spending Trend
+      </CardTitle>
+    </Link>
+  </CardHeader>
+);
 
 export function SpendingTrendChart() {
   const { data, isLoading, error } = useDashboardTrends();
@@ -17,12 +29,8 @@ export function SpendingTrendChart() {
 
   if (error) {
     return (
-      <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
-        <CardHeader>
-          <CardTitle className="text-xs font-semibold uppercase tracking-wider">
-            Monthly Spending Trend
-          </CardTitle>
-        </CardHeader>
+      <Card className="col-span-1 sm:col-span-2 lg:col-span-3 transition-all duration-200">
+        {ChartHeader}
         <CardContent>
           <div className="rounded border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
             Failed to load spending trend data. Please try again.
@@ -34,12 +42,8 @@ export function SpendingTrendChart() {
 
   if (isLoading || !data) {
     return (
-      <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
-        <CardHeader>
-          <CardTitle className="text-xs font-semibold uppercase tracking-wider">
-            Monthly Spending Trend
-          </CardTitle>
-        </CardHeader>
+      <Card className="col-span-1 sm:col-span-2 lg:col-span-3 transition-all duration-200">
+        {ChartHeader}
         <CardContent>
           <div className="flex min-h-64 items-center justify-center rounded bg-muted/30">
             <div className="text-sm text-muted-foreground">Loading chart…</div>
@@ -50,12 +54,8 @@ export function SpendingTrendChart() {
   }
 
   return (
-    <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
-      <CardHeader>
-        <CardTitle className="text-xs font-semibold uppercase tracking-wider">
-          Monthly Spending Trend
-        </CardTitle>
-      </CardHeader>
+    <Card className="col-span-1 sm:col-span-2 lg:col-span-3 transition-all duration-200">
+      {ChartHeader}
       <CardContent>
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">

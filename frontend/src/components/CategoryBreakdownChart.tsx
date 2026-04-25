@@ -5,13 +5,13 @@ import { useDashboardCategories } from "../lib/queries/dashboard";
 import { formatCurrency } from "../lib/utils";
 import { Card, CardContent, CardHeader } from "./ui/card";
 
-const categoryHeader = (
+/** Title-only link for charts with interactive elements (tooltip, hover) */
+const CategoryHeader = (
   <CardHeader>
-    <Link
-      to="/categories"
-      className="text-xs font-semibold uppercase tracking-wider text-foreground hover:text-primary transition-colors"
-    >
-      Spending by Category
+    <Link to="/categories" className="inline-flex hover:text-primary transition-colors">
+      <div className="text-xs font-semibold uppercase tracking-wider text-foreground">
+        Spending by Category
+      </div>
     </Link>
   </CardHeader>
 );
@@ -23,8 +23,8 @@ export function CategoryBreakdownChart() {
 
   if (error && !isNotFoundError) {
     return (
-      <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
-        {categoryHeader}
+      <Card className="col-span-1 sm:col-span-2 lg:col-span-3 transition-all duration-200">
+        {CategoryHeader}
         <CardContent>
           <div className="rounded border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
             Failed to load category breakdown data. Please try again.
@@ -36,8 +36,8 @@ export function CategoryBreakdownChart() {
 
   if (isLoading) {
     return (
-      <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
-        {categoryHeader}
+      <Card className="col-span-1 sm:col-span-2 lg:col-span-3 transition-all duration-200">
+        {CategoryHeader}
         <CardContent>
           <div className="flex min-h-64 items-center justify-center rounded bg-muted/30">
             <div className="text-sm text-muted-foreground">Loading chart…</div>
@@ -49,8 +49,8 @@ export function CategoryBreakdownChart() {
 
   if (isNotFoundError || chartData.length === 0) {
     return (
-      <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
-        {categoryHeader}
+      <Card className="col-span-1 sm:col-span-2 lg:col-span-3 transition-all duration-200">
+        {CategoryHeader}
         <CardContent>
           <div className="flex min-h-64 items-center justify-center rounded bg-muted/30 p-4 text-center">
             <div className="max-w-sm text-sm text-muted-foreground">
@@ -63,8 +63,8 @@ export function CategoryBreakdownChart() {
   }
 
   return (
-    <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
-      {categoryHeader}
+    <Card className="col-span-1 sm:col-span-2 lg:col-span-3 transition-all duration-200">
+      {CategoryHeader}
       <CardContent>
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">

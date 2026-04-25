@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import { userEvent } from "@testing-library/user-event";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router";
 import { BudgetWidget } from "./BudgetWidget";
@@ -152,6 +153,37 @@ describe("BudgetWidget", () => {
       const statusText = screen.getByText(/1 on track, 1 approaching limit, 1 exceeded/);
       expect(statusText).toBeInTheDocument();
     });
+  });
+
+  it("supports keyboard navigation to /budgets link", async () => {
+    const user = userEvent.setup();
+    renderWithRouter(<BudgetWidget />);
+
+    const link = screen.getByRole("link", { name: /budget status/i });
+
+    // Initially not focused
+    expect(link).not.toHaveFocus();
+
+    // Tab to focus the link
+    await user.tab();
+    expect(link).toHaveFocus();
+
+    // Verify link has correct href
+    expect(link).toHaveAttribute("href", "/budgets");
+  });
+
+  it("does not render link in error state", async () => {
+    const apiMock = await vi.importMock("../lib/api");
+    apiMock.api.get.mockRejectedValueOnce(new Error("Failed to fetch"));
+
+    renderWithRouter(<BudgetWidget />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Failed to load budget data. Please try again.")).toBeInTheDocument();
+    });
+
+    // Verify no link in error state
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 });
 
