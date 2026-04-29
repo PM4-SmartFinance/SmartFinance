@@ -55,7 +55,7 @@ export async function updateById(
 
     if (data.categoryId !== undefined) {
       const category = await tx.dimCategory.findFirst({
-        where: { id: data.categoryId, OR: [{ userId }, { userId: null }] },
+        where: { id: data.categoryId, userId },
         select: { id: true },
       });
       if (!category) {

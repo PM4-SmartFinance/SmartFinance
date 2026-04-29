@@ -1,5 +1,6 @@
 import argon2 from "argon2";
 import { ServiceError } from "../errors.js";
+import { Prisma } from "@prisma/client";
 import * as userRepository from "../repositories/user.repository.js";
 import {
   BootstrapForbiddenError,
@@ -10,6 +11,8 @@ import * as auditService from "./audit.service.js";
 import { logEvent } from "./audit.service.js";
 
 const DEFAULT_CURRENCY_CODE = "CHF";
+
+export const DEFAULT_CATEGORIES = ["Groceries", "Housing", "Transport", "Entertainment", "Income"];
 
 // --- Profile functions (from develop) ---
 
@@ -70,7 +73,7 @@ export async function onboardUser(
     throw new ServiceError(500, `Default currency ${DEFAULT_CURRENCY_CODE} not configured`);
   }
 
-  let user;
+  let user: Awaited<ReturnType<typeof userRepository.createUserAtomic>>;
   try {
     user = await userRepository.createUserAtomic(requestingUser, {
       email: payload.email,
@@ -78,11 +81,14 @@ export async function onboardUser(
       defaultCurrencyId: currency.id,
       ...(payload.displayName !== undefined && { name: payload.displayName }),
       ...(payload.role !== undefined && { role: payload.role }),
+      defaultCategories: DEFAULT_CATEGORIES,
     });
   } catch (err) {
     if (err instanceof BootstrapUnauthorizedError) throw new ServiceError(401, "Unauthorized");
     if (err instanceof BootstrapForbiddenError) throw new ServiceError(403, "Forbidden");
     if (err instanceof EmailConflictError) throw new ServiceError(409, "Email already in use");
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034")
+      throw new ServiceError(503, "Transaction failed due to a write conflict");
     throw err;
   }
 

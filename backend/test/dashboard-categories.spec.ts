@@ -83,13 +83,13 @@ beforeAll(async () => {
   const merchant = await prisma.dimMerchant.create({ data: { name: "Cat Test Merchant" } });
 
   const cat1 = await prisma.dimCategory.create({
-    data: { categoryName: "Groceries", userId: testUserId },
+    data: { categoryName: "Test_Groceries", userId: testUserId },
   });
   const cat2 = await prisma.dimCategory.create({
-    data: { categoryName: "Transport", userId: testUserId },
+    data: { categoryName: "Test_Transport", userId: testUserId },
   });
   const otherCat = await prisma.dimCategory.create({
-    data: { categoryName: "Groceries", userId: otherUserId },
+    data: { categoryName: "Test_Groceries", userId: otherUserId },
   });
 
   // Ensure our date dimension exists
@@ -214,11 +214,11 @@ describe("GET /api/v1/dashboard/categories", () => {
     expect(data).toHaveLength(2);
 
     // Groceries should be first (|-50| + |-100| = 150) -> Note: the +500 is ignored!
-    expect(data[0].categoryName).toBe("Groceries");
+    expect(data[0].categoryName).toBe("Test_Groceries");
     expect(data[0].total).toBe(150);
 
     // Transport should be second (|-30| = 30)
-    expect(data[1].categoryName).toBe("Transport");
+    expect(data[1].categoryName).toBe("Test_Transport");
     expect(data[1].total).toBe(30);
   });
 
@@ -235,7 +235,7 @@ describe("GET /api/v1/dashboard/categories", () => {
 
     // Should only see the one June transaction
     expect(data).toHaveLength(1);
-    expect(data[0].categoryName).toBe("Groceries");
+    expect(data[0].categoryName).toBe("Test_Groceries");
     expect(data[0].total).toBe(80);
   });
 

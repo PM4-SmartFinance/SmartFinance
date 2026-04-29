@@ -265,14 +265,14 @@ describe("category-rule.repository", () => {
   });
 
   describe("findCategoryForUser", () => {
-    it("returns category belonging to user or global", async () => {
+    it("returns category belonging to user", async () => {
       mockDimCategory.findFirst.mockResolvedValue({ id: "cat-1" } as never);
 
       const result = await findCategoryForUser("cat-1", "user-1");
 
       expect(result).toEqual({ id: "cat-1" });
       expect(mockDimCategory.findFirst).toHaveBeenCalledWith({
-        where: { id: "cat-1", OR: [{ userId: "user-1" }, { userId: null }] },
+        where: { id: "cat-1", userId: "user-1" },
         select: { id: true },
       });
     });
