@@ -1,9 +1,18 @@
 import type { FastifyRequest } from "fastify";
 import { ServiceError } from "../errors.js";
 
-/** Extract the authenticated user from the session or throw 401.
- *  Use in route handlers guarded by `requireRole` — provides a typed,
- *  non-null user without a `!` assertion. */
+/**
+ * Extract the authenticated user from the session.
+ *
+ * **Precondition:** must only be called inside a route guarded by
+ * `requireRole` (or `requireOwnerOrAdmin`). Those preHandlers already throw
+ * 401 when no session exists, so the throw below is a defensive backstop —
+ * it should never fire in correctly-wired routes. Calling this from an
+ * unguarded route is a bug: the helper alone does not constitute auth.
+ *
+ * @returns the typed, non-null session user — no `!` assertion needed.
+ * @throws {ServiceError} 401 if no session exists (defensive).
+ */
 export function getSessionUser(request: FastifyRequest) {
   const user = request.session.get("user");
   if (!user) throw new ServiceError(401, "Unauthorized");
