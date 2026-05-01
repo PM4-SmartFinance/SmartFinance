@@ -94,6 +94,9 @@ export function useCreateBudget() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BUDGETS_KEY_PREFIX });
     },
+    onError: () => {
+      // TODO: replace with toast/notification once a notification system is in place
+    },
   });
 }
 
@@ -106,6 +109,9 @@ export function useUpdateBudget() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BUDGETS_KEY_PREFIX });
     },
+    onError: () => {
+      // TODO: replace with toast/notification once a notification system is in place
+    },
   });
 }
 
@@ -116,6 +122,9 @@ export function useDeleteBudget() {
     mutationFn: (id: string) => api.delete(`/budgets/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BUDGETS_KEY_PREFIX });
+    },
+    onError: () => {
+      // TODO: replace with toast/notification once a notification system is in place
     },
   });
 }
