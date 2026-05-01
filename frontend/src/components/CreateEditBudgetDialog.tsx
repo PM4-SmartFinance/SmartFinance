@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useCreateBudget, useUpdateBudget } from "../lib/queries/budgets";
 import type { Budget, BudgetType } from "../lib/queries/budgets";
 import { useCategories } from "../lib/queries/categories";
@@ -39,38 +39,42 @@ interface FormState {
 }
 
 export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBudgetDialogProps) {
-  const [formState, setFormState] = useState<FormState>(emptyFormState);
+  const initialFormState = useMemo((): FormState => {
+    if (!isOpen || !budget) return emptyFormState;
+    return {
+      entryMode: isGeneralType(budget.type) ? "general" : "specific",
+      limitAmount: budget.limitAmount,
+      categoryId: budget.categoryId,
+      generalType: isGeneralType(budget.type)
+        ? (budget.type as "DAILY" | "MONTHLY" | "YEARLY")
+        : "MONTHLY",
+      specificMonth: budget.month > 0 ? budget.month.toString() : "",
+      specificYear: budget.year > 0 ? budget.year.toString() : "",
+      active: budget.active,
+      error: "",
+    };
+  }, [
+    isOpen,
+    budget?.id,
+    budget?.limitAmount,
+    budget?.categoryId,
+    budget?.type,
+    budget?.month,
+    budget?.year,
+    budget?.active,
+  ]);
+
+  const [formState, setFormState] = useState<FormState>(initialFormState);
+  const [prevInitialFormState, setPrevInitialFormState] = useState(initialFormState);
+
+  if (prevInitialFormState !== initialFormState) {
+    setPrevInitialFormState(initialFormState);
+    setFormState(initialFormState);
+  }
 
   const createMutation = useCreateBudget();
   const updateMutation = useUpdateBudget();
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
-
-  // Reset form when dialog opens/closes or budget changes
-  useEffect(() => {
-    if (!isOpen) {
-      // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect
-      setFormState(emptyFormState);
-      return;
-    }
-    if (budget) {
-      // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect
-      setFormState({
-        entryMode: isGeneralType(budget.type) ? "general" : "specific",
-        limitAmount: budget.limitAmount,
-        categoryId: budget.categoryId,
-        generalType: isGeneralType(budget.type)
-          ? (budget.type as "DAILY" | "MONTHLY" | "YEARLY")
-          : "MONTHLY",
-        specificMonth: budget.month > 0 ? budget.month.toString() : "",
-        specificYear: budget.year > 0 ? budget.year.toString() : "",
-        active: budget.active,
-        error: "",
-      });
-    } else {
-      // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect
-      setFormState(emptyFormState);
-    }
-  }, [isOpen, budget]);
 
   const handleDialogClose = () => {
     onClose();
