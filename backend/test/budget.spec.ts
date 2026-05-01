@@ -663,3 +663,163 @@ describe("Budget CRUD", () => {
     await prisma.dimCategory.delete({ where: { id: category.id } });
   });
 });
+
+describe("Budget full-edit contract", () => {
+  let cat2Id: string;
+  let budgetAId: string; // MONTHLY on testCategoryId — serves as the "editable" budget
+  let budgetBId: string; // SPECIFIC_MONTH_YEAR on cat2Id (month=5, year=2026) — the conflict target
+  let budgetACategoryId: string; // tracks categoryId after each PATCH so the next test can guard
+
+  beforeAll(async () => {
+    cat2Id = (
+      await prisma.dimCategory.create({
+        data: { categoryName: "Test_FullEdit_Cat", userId: testUserId },
+      })
+    ).id;
+
+    // Create a fresh MONTHLY budget on testCategoryId (the MONTHLY one was deleted in Budget CRUD)
+    const r1 = await app.inject({
+      method: "POST",
+      url: "/api/v1/budgets",
+      cookies: { session: sessionCookie },
+      payload: { categoryId: testCategoryId, type: "MONTHLY", limitAmount: 300 },
+    });
+    expect(r1.statusCode).toBe(201);
+    budgetAId = r1.json().budget.id;
+    budgetACategoryId = testCategoryId;
+
+    // Create a SPECIFIC_MONTH_YEAR budget on cat2Id to use as conflict target
+    const r2 = await app.inject({
+      method: "POST",
+      url: "/api/v1/budgets",
+      cookies: { session: sessionCookie },
+      payload: {
+        categoryId: cat2Id,
+        type: "SPECIFIC_MONTH_YEAR",
+        month: 5,
+        year: 2026,
+        limitAmount: 200,
+      },
+    });
+    expect(r2.statusCode).toBe(201);
+    budgetBId = r2.json().budget.id;
+  });
+
+  afterAll(async () => {
+    await prisma.dimBudget.deleteMany({
+      where: { id: { in: [budgetAId, budgetBId].filter(Boolean) } },
+    });
+    await prisma.dimCategory.deleteMany({ where: { id: cat2Id } });
+  });
+
+  it("POST /budgets response includes full contract shape", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/budgets",
+      cookies: { session: sessionCookie },
+      payload: { categoryId: cat2Id, type: "SPECIFIC_MONTH", month: 9, limitAmount: 150 },
+    });
+    expect(res.statusCode).toBe(201);
+    const { budget } = res.json();
+    expect(budget).toMatchObject({ categoryId: cat2Id, type: "SPECIFIC_MONTH", month: 9, year: 0 });
+    expect(budget).toHaveProperty("id");
+    expect(budget).toHaveProperty("limitAmount");
+    expect(budget).toHaveProperty("currentSpending");
+    expect(budget).toHaveProperty("percentageUsed");
+    expect(budget).toHaveProperty("remainingAmount");
+    expect(budget).toHaveProperty("isOverBudget");
+    expect(budget).toHaveProperty("isActive");
+    expect(budget).toHaveProperty("priority");
+    await prisma.dimBudget.delete({ where: { id: budget.id } });
+  });
+
+  it("PATCH /budgets/:id returns 400 when limitAmount is negative", async () => {
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/budgets/${budgetAId}`,
+      cookies: { session: sessionCookie },
+      payload: { limitAmount: -10 },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("PATCH /budgets/:id updates categoryId and returns 200 with new categoryId", async () => {
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/budgets/${budgetAId}`,
+      cookies: { session: sessionCookie },
+      payload: { categoryId: cat2Id },
+    });
+    expect(res.statusCode).toBe(200);
+    const { budget } = res.json();
+    expect(budget.categoryId).toBe(cat2Id);
+    expect(budget.type).toBe("MONTHLY"); // type unchanged
+    budgetACategoryId = budget.categoryId;
+  });
+
+  it("PATCH /budgets/:id updates type, month, and year in one request (200)", async () => {
+    // Guard: verify the state left by the previous test before mutating further
+    expect(budgetACategoryId).toBe(cat2Id);
+    // budgetA is now MONTHLY for cat2Id; change to SPECIFIC_MONTH_YEAR month=8, year=2025
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/budgets/${budgetAId}`,
+      cookies: { session: sessionCookie },
+      payload: { type: "SPECIFIC_MONTH_YEAR", month: 8, year: 2025 },
+    });
+    expect(res.statusCode).toBe(200);
+    const { budget } = res.json();
+    expect(budget.type).toBe("SPECIFIC_MONTH_YEAR");
+    expect(budget.month).toBe(8);
+    expect(budget.year).toBe(2025);
+  });
+
+  it("PATCH /budgets/:id returns 409 when the update creates a duplicate budget", async () => {
+    // budgetA: SPECIFIC_MONTH_YEAR for cat2Id, month=8, year=2025
+    // budgetB: SPECIFIC_MONTH_YEAR for cat2Id, month=5, year=2026
+    // Changing budgetA to month=5, year=2026 would duplicate budgetB
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/budgets/${budgetAId}`,
+      cookies: { session: sessionCookie },
+      payload: { month: 5, year: 2026 },
+    });
+    expect(res.statusCode).toBe(409);
+  });
+
+  it("PATCH /budgets/:id updates limitAmount and response has full contract shape", async () => {
+    // budgetA is still SPECIFIC_MONTH_YEAR for cat2Id, month=8, year=2025 (409 left it unchanged)
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/budgets/${budgetAId}`,
+      cookies: { session: sessionCookie },
+      payload: { limitAmount: 999 },
+    });
+    expect(res.statusCode).toBe(200);
+    const { budget } = res.json();
+    expect(Number(budget.limitAmount)).toBe(999);
+    expect(budget).toHaveProperty("id");
+    expect(budget).toHaveProperty("categoryId");
+    expect(budget).toHaveProperty("type");
+    expect(budget).toHaveProperty("month");
+    expect(budget).toHaveProperty("year");
+    expect(budget).toHaveProperty("limitAmount");
+    expect(budget).toHaveProperty("currentSpending");
+    expect(budget).toHaveProperty("percentageUsed");
+    expect(budget).toHaveProperty("remainingAmount");
+    expect(budget).toHaveProperty("isOverBudget");
+    expect(budget).toHaveProperty("isActive");
+    expect(budget).toHaveProperty("priority");
+  });
+
+  it("PATCH /budgets/:id returns 404 when categoryId does not belong to the user", async () => {
+    const nonExistentCategoryId = "00000000-0000-0000-0000-000000000000";
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/budgets/${budgetAId}`,
+      cookies: { session: sessionCookie },
+      payload: { categoryId: nonExistentCategoryId },
+    });
+    expect(res.statusCode).toBe(404);
+  });
+});
