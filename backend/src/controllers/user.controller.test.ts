@@ -26,6 +26,7 @@ const mockGetProfile = vi.mocked(userService.getProfile);
 const mockUpdateProfile = vi.mocked(userService.updateProfile);
 const mockChangePassword = vi.mocked(userService.changePassword);
 const mockDeleteUser = vi.mocked(userService.deleteUser);
+const mockUpdateUser = vi.mocked(userService.updateUser);
 
 const profileFixture = {
   id: "user-1",
@@ -367,5 +368,86 @@ describe("DELETE /api/v1/users/:id", () => {
 
     expect(response.statusCode).toBe(401);
     expect(mockDeleteUser).not.toHaveBeenCalled();
+  });
+});
+
+describe("PATCH /api/v1/users/:id", () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    app = buildTestApp();
+    await app.register(userRoutes, { prefix: "/api/v1" });
+    await app.ready();
+  });
+
+  afterAll(() => app.close());
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sessionUser = { id: "admin-1", role: "ADMIN", email: "admin@example.com" };
+  });
+
+  it("returns 200 when an admin deactivates a regular user", async () => {
+    const updated = {
+      id: "user-2",
+      role: "USER",
+      active: false,
+      email: "user@example.com",
+      name: "User",
+      createdAt: new Date(),
+    };
+    mockUpdateUser.mockResolvedValue(updated);
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/users/user-2",
+      payload: { active: false },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(mockUpdateUser).toHaveBeenCalledExactlyOnceWith(
+      { id: "admin-1", role: "ADMIN", email: "admin@example.com" },
+      "user-2",
+      { active: false },
+    );
+  });
+
+  it("returns 403 when the service blocks admin deactivation of an admin", async () => {
+    const { ServiceError } = await import("../errors.js");
+    mockUpdateUser.mockRejectedValue(new ServiceError(403, "Cannot deactivate an admin account"));
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/users/admin-2",
+      payload: { active: false },
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  it("returns 403 when a non-admin attempts to patch a different user", async () => {
+    sessionUser = { id: "user-1", role: "USER", email: "user@example.com" };
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/users/user-99",
+      payload: { name: "Hacked" },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(mockUpdateUser).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 when there is no session", async () => {
+    sessionUser = undefined;
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/users/user-2",
+      payload: { active: false },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(mockUpdateUser).not.toHaveBeenCalled();
   });
 });

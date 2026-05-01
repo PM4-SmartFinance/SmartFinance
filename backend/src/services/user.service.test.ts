@@ -340,4 +340,14 @@ describe("updateUser — deactivation guard", () => {
 
     expect(userRepository.updateUserById).toHaveBeenCalledWith(regularUser.id, { active: false });
   });
+
+  it("allows an admin to reactivate another admin", async () => {
+    const targetAdmin = { id: "admin-2", role: "ADMIN", email: "admin2@example.com" };
+    vi.mocked(userRepository.findById).mockResolvedValue(targetAdmin);
+    vi.mocked(userRepository.updateUserById).mockResolvedValue({ ...targetAdmin, active: true });
+
+    await updateUser(adminUser, targetAdmin.id, { active: true });
+
+    expect(userRepository.updateUserById).toHaveBeenCalledWith(targetAdmin.id, { active: true });
+  });
 });
