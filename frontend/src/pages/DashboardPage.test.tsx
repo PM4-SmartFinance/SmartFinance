@@ -3,6 +3,7 @@ import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { vi } from "vitest";
 import { DashboardPage } from "./DashboardPage";
+import { useAuth } from "../hooks/useAuth";
 
 const mockSummaryData = {
   totalIncome: 6500.0,
@@ -49,11 +50,18 @@ vi.mock("../lib/api", () => {
   };
 });
 
-// Mock auth hook
+// Mock auth hook — using vi.fn so individual tests can override the role
 vi.mock("../hooks/useAuth", () => ({
-  useAuth: () => ({
-    user: { id: "123", email: "test@example.com", role: "USER" },
-  }),
+  useAuth: vi.fn(() => ({
+    user: {
+      id: "123",
+      email: "test@example.com",
+      role: "USER",
+      name: null,
+      active: true,
+      createdAt: "2024-01-01T00:00:00.000Z",
+    },
+  })),
 }));
 
 function renderWithProviders() {
@@ -155,5 +163,132 @@ describe("DashboardPage", () => {
     expect(screen.getAllByText("Net Balance").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Monthly Spending Trend").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Spending by Category").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("nav links route to correct pages", async () => {
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("link", { name: "Transactions" })).toHaveAttribute(
+      "href",
+      "/transactions",
+    );
+    expect(screen.getByRole("link", { name: "Budgets" })).toHaveAttribute("href", "/budgets");
+    expect(screen.getByRole("link", { name: "Categories" })).toHaveAttribute("href", "/categories");
+    expect(screen.getByRole("link", { name: "Profile" })).toHaveAttribute("href", "/profile");
+  });
+
+  it("full-card 'Recent Transactions' widget links to /transactions", async () => {
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("CHF 3'659.50")).toBeInTheDocument();
+    });
+
+    const recentTransactionsLink = screen.getByRole("link", { name: /recent transactions/i });
+    expect(recentTransactionsLink).toHaveAttribute("href", "/transactions");
+  });
+
+  it("full-card 'Budget Progress' widget links to /budgets", async () => {
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("CHF 3'659.50")).toBeInTheDocument();
+    });
+
+    const budgetProgressLink = screen.getByRole("link", { name: /budget progress/i });
+    expect(budgetProgressLink).toHaveAttribute("href", "/budgets");
+  });
+});
+
+describe("DashboardPage — admin navigation", () => {
+  beforeEach(() => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: {
+        id: "admin-1",
+        email: "admin@example.com",
+        role: "ADMIN",
+        name: null,
+        active: true,
+        createdAt: "2024-01-01T00:00:00.000Z",
+      },
+      isAuthenticated: true,
+      isLoading: false,
+    });
+
+    mockGet.mockImplementation((path: string) => {
+      if (path.includes("/dashboard/summary")) return Promise.resolve(mockSummaryData);
+      if (path.includes("/dashboard/trends")) return Promise.resolve(mockTrendData);
+      if (path.includes("/dashboard/categories")) return Promise.resolve(mockCategoryData);
+      if (path.includes("/budgets")) return Promise.resolve({ budgets: [] });
+      return Promise.resolve({});
+    });
+  });
+
+  afterEach(() => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: {
+        id: "123",
+        email: "test@example.com",
+        role: "USER",
+        name: null,
+        active: true,
+        createdAt: "2024-01-01T00:00:00.000Z",
+      },
+      isAuthenticated: true,
+      isLoading: false,
+    });
+  });
+
+  it("shows 'Users' nav link for ADMIN role linking to /admin/users", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: 0 } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <DashboardPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("link", { name: "Users" })).toBeInTheDocument();
+    });
+    expect(screen.getByRole("link", { name: "Users" })).toHaveAttribute("href", "/admin/users");
+  });
+
+  it("does not show 'Users' nav link for USER role", async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: {
+        id: "123",
+        email: "user@example.com",
+        role: "USER",
+        name: null,
+        active: true,
+        createdAt: "2024-01-01T00:00:00.000Z",
+      },
+      isAuthenticated: true,
+      isLoading: false,
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: 0 } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <DashboardPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("link", { name: "Users" })).not.toBeInTheDocument();
   });
 });
