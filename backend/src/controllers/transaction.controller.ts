@@ -21,12 +21,39 @@ interface ListTransactionsQuery {
   search?: string;
 }
 
+interface TransactionParams {
+  id: string;
+}
+
+interface PatchTransactionBody {
+  categoryId?: string;
+  notes?: string;
+}
+
 const FORMAT_ENCODING: Record<ImportFormat, string> = {
   neon: "utf-8",
   zkb: "utf-8",
   wise: "utf-8",
   ubs: "iso-8859-1",
 };
+
+const transactionParamsSchema = {
+  type: "object",
+  required: ["id"],
+  properties: {
+    id: { type: "string", format: "uuid" },
+  },
+} as const;
+
+const patchTransactionBodySchema = {
+  type: "object",
+  properties: {
+    categoryId: { type: "string", format: "uuid" },
+    notes: { type: "string", maxLength: 10000 },
+  },
+  minProperties: 1,
+  additionalProperties: false,
+} as const;
 
 const listTransactionsSchema = {
   querystring: {
@@ -85,6 +112,52 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       if (!user) throw new ServiceError(401, "Unauthorized");
       const result = await transactionService.autoCategorizeTransactions(user.id);
       return reply.send(result);
+    },
+  );
+
+  app.get<{ Params: TransactionParams }>(
+    "/transactions/:id",
+    {
+      preHandler: requireRole("USER"),
+      schema: { params: transactionParamsSchema },
+    },
+    async (request, reply) => {
+      const user = request.session.get("user");
+      if (!user) throw new ServiceError(401, "Unauthorized");
+      const transaction = await transactionService.getTransaction(request.params.id, user.id);
+      return reply.send({ transaction });
+    },
+  );
+
+  app.patch<{ Params: TransactionParams; Body: PatchTransactionBody }>(
+    "/transactions/:id",
+    {
+      preHandler: requireRole("USER"),
+      schema: { params: transactionParamsSchema, body: patchTransactionBodySchema },
+    },
+    async (request, reply) => {
+      const user = request.session.get("user");
+      if (!user) throw new ServiceError(401, "Unauthorized");
+      const transaction = await transactionService.updateTransaction(
+        request.params.id,
+        user.id,
+        request.body,
+      );
+      return reply.send({ transaction });
+    },
+  );
+
+  app.delete<{ Params: TransactionParams }>(
+    "/transactions/:id",
+    {
+      preHandler: requireRole("USER"),
+      schema: { params: transactionParamsSchema },
+    },
+    async (request, reply) => {
+      const user = request.session.get("user");
+      if (!user) throw new ServiceError(401, "Unauthorized");
+      await transactionService.deleteTransaction(request.params.id, user.id);
+      return reply.status(204).send();
     },
   );
 

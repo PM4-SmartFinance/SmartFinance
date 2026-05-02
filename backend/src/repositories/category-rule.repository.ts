@@ -89,7 +89,7 @@ export async function remove(id: string, userId: string) {
 
 export async function findCategoryForUser(categoryId: string, userId: string) {
   return prisma.dimCategory.findFirst({
-    where: { id: categoryId, OR: [{ userId }, { userId: null }] },
+    where: { id: categoryId, userId },
     select: { id: true },
   });
 }
