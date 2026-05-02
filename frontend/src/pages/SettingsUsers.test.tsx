@@ -102,7 +102,7 @@ describe("SettingsUsers", () => {
     it("displays page title and description", async () => {
       renderWithProviders();
 
-      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Users");
+      expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Users");
       expect(screen.getByText("Manage platform users and access")).toBeInTheDocument();
     });
 
@@ -380,7 +380,7 @@ describe("SettingsUsers", () => {
     it("renders page for authenticated admin users", () => {
       renderWithProviders();
 
-      expect(screen.getByRole("heading", { level: 1, name: /Users/ })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 2, name: /Users/ })).toBeInTheDocument();
     });
   });
 
