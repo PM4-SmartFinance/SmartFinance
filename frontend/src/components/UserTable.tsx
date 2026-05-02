@@ -8,6 +8,7 @@ interface UserTableProps {
   onEdit: (user: User) => void;
   onDeactivate: (user: User) => void;
   onDelete: (user: User) => void;
+  onResetPassword: (user: User) => void;
   sortBy?: "email" | "role" | "createdAt";
   sortOrder?: "asc" | "desc";
   onSort?: (column: "email" | "role" | "createdAt") => void;
@@ -20,6 +21,7 @@ export function UserTable({
   onEdit,
   onDeactivate,
   onDelete,
+  onResetPassword,
   sortBy = "email",
   sortOrder = "asc",
   onSort,
@@ -112,9 +114,12 @@ export function UserTable({
                 {user.role === "ADMIN" && user.id !== currentUserId ? (
                   <span className="text-xs text-muted-foreground">No actions available</span>
                 ) : (
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button onClick={() => onEdit(user)} variant="outline" size="sm">
                       Edit
+                    </Button>
+                    <Button onClick={() => onResetPassword(user)} variant="outline" size="sm">
+                      Reset Password
                     </Button>
                     {user.active && (
                       <Button onClick={() => onDeactivate(user)} variant="destructive" size="sm">

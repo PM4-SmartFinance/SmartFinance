@@ -224,6 +224,28 @@ describe("SettingsUsers", () => {
         expect(mockPatch).toHaveBeenCalledWith("/users/2", { active: false });
       });
     });
+
+    it("calls logout API when deactivating self", async () => {
+      const user = userEvent.setup();
+      mockPatch.mockResolvedValue({ user: { ...mockUsers[0], active: false } });
+      mockPost.mockResolvedValue({ ok: true });
+      renderWithProviders();
+
+      await waitFor(() => {
+        expect(screen.getByText("admin@example.com")).toBeInTheDocument();
+      });
+
+      const deactivateButtons = screen.getAllByRole("button", { name: "Deactivate" });
+      await user.click(deactivateButtons[0]); // Click deactivate for self (admin)
+
+      await waitFor(() => {
+        expect(mockPatch).toHaveBeenCalledWith("/users/1", { active: false });
+      });
+
+      await waitFor(() => {
+        expect(mockPost).toHaveBeenCalledWith("/auth/logout", {});
+      });
+    });
   });
 
   describe("sorting", () => {

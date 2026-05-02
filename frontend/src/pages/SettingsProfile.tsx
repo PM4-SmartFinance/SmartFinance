@@ -60,9 +60,9 @@ export function SettingsProfile() {
   } = useMutation({
     mutationFn: (input: { currentPassword: string; newPassword: string }) =>
       api.post<{ ok: boolean }>("/users/me/change-password", input),
-    onSuccess: async () => {
+    onSuccess: () => {
       setPasswordSuccess(true);
-      await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
+      void queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
       setTimeout(() => navigate("/login"), 1500);
     },
     onError: () => setPasswordSuccess(false),
@@ -115,14 +115,14 @@ export function SettingsProfile() {
             </div>
           </>
         ) : isProfileError ? (
-          <h1 className="text-4xl font-bold text-foreground">Profile</h1>
+          <h2 className="text-4xl font-bold text-foreground">Profile</h2>
         ) : (
           <>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-4xl font-bold text-foreground">
+                <h2 className="text-4xl font-bold text-foreground">
                   {profile?.name ?? profile?.email ?? "Profile"}
-                </h1>
+                </h2>
                 {profile?.role && (
                   <Badge variant="secondary" className="capitalize">
                     {profile.role.toLowerCase()}
