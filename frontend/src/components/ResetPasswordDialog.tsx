@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { api, ApiError } from "../lib/api";
 import type { User } from "../lib/queries/users";
@@ -6,14 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 
 interface ResetPasswordDialogProps {
@@ -27,6 +19,7 @@ export function ResetPasswordDialog({ isOpen, user, onClose }: ResetPasswordDial
   const [confirmPassword, setConfirmPassword] = useState("");
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   const {
     mutate: resetPassword,
@@ -45,6 +38,14 @@ export function ResetPasswordDialog({ isOpen, user, onClose }: ResetPasswordDial
       }, 1500);
     },
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      dialogRef.current?.showModal();
+    } else {
+      dialogRef.current?.close();
+    }
+  }, [isOpen]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -74,16 +75,19 @@ export function ResetPasswordDialog({ isOpen, user, onClose }: ResetPasswordDial
     error instanceof ApiError ? error.message : error ? "Failed to reset password." : null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Reset Password</DialogTitle>
-          <DialogDescription>
-            Enter a new password for {user?.email}. This will immediately invalidate their current
-            sessions.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 py-4">
+    <dialog
+      ref={dialogRef}
+      className="w-full max-w-md rounded-lg shadow-lg backdrop:bg-black/50 open:flex open:items-center open:justify-center"
+      onClose={handleClose}
+    >
+      <div className="rounded-lg bg-background p-6 shadow-lg w-full">
+        <h2 className="mb-2 text-xl font-semibold text-foreground">Reset Password</h2>
+        <p className="mb-6 text-sm text-muted-foreground">
+          Enter a new password for {user?.email}. This will immediately invalidate their current
+          sessions.
+        </p>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="reset-new-password">New password</Label>
             <Input
@@ -94,6 +98,7 @@ export function ResetPasswordDialog({ isOpen, user, onClose }: ResetPasswordDial
               minLength={8}
               autoComplete="new-password"
               onChange={(e) => setNewPassword(e.target.value)}
+              disabled={isPending || success}
             />
           </div>
 
@@ -109,6 +114,7 @@ export function ResetPasswordDialog({ isOpen, user, onClose }: ResetPasswordDial
                 setConfirmPassword(e.target.value);
                 setConfirmError(null);
               }}
+              disabled={isPending || success}
             />
           </div>
 
@@ -129,16 +135,22 @@ export function ResetPasswordDialog({ isOpen, user, onClose }: ResetPasswordDial
             </Alert>
           )}
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleClose}>
+          <div className="flex gap-2 mt-2">
+            <Button type="submit" disabled={isPending || success} className="flex-1">
+              {isPending ? "Resetting…" : "Reset Password"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
+              disabled={isPending || success}
+              className="flex-1"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending || success}>
-              {isPending ? "Resetting\u2026" : "Reset Password"}
-            </Button>
-          </DialogFooter>
+          </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </dialog>
   );
 }
