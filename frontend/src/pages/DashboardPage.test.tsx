@@ -101,7 +101,7 @@ describe("DashboardPage", () => {
     expect(screen.getAllByText("Net Balance").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Total Expenses").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Total Income").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Monthly Spending Trend").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Monthly Income vs. Expenses").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Spending by Category").length).toBeGreaterThanOrEqual(1);
   });
 
@@ -155,7 +155,7 @@ describe("DashboardPage", () => {
 
     // Verify widgets are still present
     expect(screen.getAllByText("Net Balance").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Monthly Spending Trend").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Monthly Income vs. Expenses").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Spending by Category").length).toBeGreaterThanOrEqual(1);
   });
 });
