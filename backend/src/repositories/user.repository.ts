@@ -90,6 +90,7 @@ export async function createUserAtomic(
     password: string;
     role?: string;
     defaultCurrencyId: string;
+    defaultCategories?: string[];
   },
 ): Promise<{ id: string; email: string; name: string | null; role: string; createdAt: Date }> {
   // A serializable transaction guarantees that two concurrent callers cannot
@@ -115,10 +116,22 @@ export async function createUserAtomic(
           // Bootstrap: first user is always ADMIN regardless of caller input.
           const role = count === 0 ? "ADMIN" : (data.role ?? "USER");
 
-          return tx.dimUser.create({
-            data: { ...data, role, name: data.name ?? null },
+          const { defaultCategories, ...userData } = data;
+          const user = await tx.dimUser.create({
+            data: { ...userData, role, name: data.name ?? null },
             select: { id: true, email: true, name: true, role: true, createdAt: true },
           });
+
+          if (defaultCategories?.length) {
+            await tx.dimCategory.createMany({
+              data: defaultCategories.map((categoryName) => ({
+                categoryName,
+                userId: user.id,
+              })),
+            });
+          }
+
+          return user;
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );

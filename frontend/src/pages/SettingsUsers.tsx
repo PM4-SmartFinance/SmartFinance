@@ -8,17 +8,22 @@ import { UserTable } from "../components/UserTable";
 import { CreateUserDialog } from "../components/CreateUserDialog";
 import { EditUserDialog } from "../components/EditUserDialog";
 import { DeleteUserDialog } from "../components/DeleteUserDialog";
+import { ResetPasswordDialog } from "../components/ResetPasswordDialog";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 type SortColumn = "email" | "role" | "createdAt";
 
-export function AdminUsersPage() {
+export function SettingsUsers() {
   const [sortBy, setSortBy] = useState<SortColumn>("email");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [deactivateError, setDeactivateError] = useState<string | null>(null);
 
   const { data: response, isLoading, error } = useUsers(50, 0, sortBy, sortOrder);
   const { user: currentUser } = useAuth();
@@ -28,9 +33,16 @@ export function AdminUsersPage() {
 
   const { mutate: logout } = useMutation({
     mutationFn: () => api.post<{ ok: boolean }>("/auth/logout", {}),
-    onSettled: () => {
+    onSuccess: () => {
       queryClient.clear();
       navigate("/login");
+    },
+    onError: () => {
+      // Server-side logout failed — session may still be valid. Clear client
+      // state and surface the failure via a query param so the login page can
+      // hint the user to retry.
+      queryClient.clear();
+      navigate("/login?logout_error=1");
     },
   });
 
@@ -39,7 +51,13 @@ export function AdminUsersPage() {
     setIsEditDialogOpen(true);
   };
 
+  const handleResetPassword = (user: User) => {
+    setSelectedUser(user);
+    setIsResetPasswordDialogOpen(true);
+  };
+
   const handleDeactivate = async (user: User) => {
+    setDeactivateError(null);
     try {
       await updateMutation.mutateAsync({ id: user.id, input: { active: false } });
       if (user.id === currentUser?.id) {
@@ -47,7 +65,7 @@ export function AdminUsersPage() {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to deactivate user";
-      alert(message);
+      setDeactivateError(message);
     }
   };
 
@@ -68,12 +86,12 @@ export function AdminUsersPage() {
   };
 
   return (
-    <main className="min-h-screen bg-background">
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-6">
         {/* Page Header */}
-        <header className="mb-8 flex items-center justify-between">
+        <header className="flex items-center justify-between">
           <div className="flex flex-col gap-2">
-            <h1 className="text-4xl font-bold text-foreground">Users</h1>
+            <h2 className="text-4xl font-bold text-foreground">Users</h2>
             <p className="text-sm text-muted-foreground">Manage platform users and access</p>
           </div>
           <Button onClick={() => setIsCreateDialogOpen(true)} size="sm">
@@ -88,18 +106,28 @@ export function AdminUsersPage() {
           </div>
         )}
 
+        {deactivateError && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="size-4" />
+            <AlertDescription>{deactivateError}</AlertDescription>
+          </Alert>
+        )}
+
         {/* Users Table */}
-        <UserTable
-          users={users}
-          currentUserId={currentUser?.id}
-          isLoading={isLoading}
-          onEdit={handleEdit}
-          onDeactivate={handleDeactivate}
-          onDelete={handleDelete}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          onSort={handleSort}
-        />
+        {!error && (
+          <UserTable
+            users={users}
+            currentUserId={currentUser?.id}
+            isLoading={isLoading}
+            onEdit={handleEdit}
+            onDeactivate={handleDeactivate}
+            onDelete={handleDelete}
+            onResetPassword={handleResetPassword}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSort={handleSort}
+          />
+        )}
       </div>
 
       {/* Create User Dialog */}
@@ -125,6 +153,16 @@ export function AdminUsersPage() {
         }}
         onDeleteSuccess={selectedUser?.id === currentUser?.id ? () => logout() : undefined}
       />
-    </main>
+
+      {/* Reset Password Dialog */}
+      <ResetPasswordDialog
+        isOpen={isResetPasswordDialogOpen}
+        user={selectedUser}
+        onClose={() => {
+          setIsResetPasswordDialogOpen(false);
+          setSelectedUser(null);
+        }}
+      />
+    </div>
   );
 }

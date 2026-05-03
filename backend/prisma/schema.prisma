@@ -26,7 +26,7 @@ model FactTransactions {
   date   DimDate @relation(fields: [dateId], references: [id])
 
   categoryId     String?
-  category       DimCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  category       DimCategory? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   notes          String?
   manualOverride Boolean      @default(false)
 
@@ -51,7 +51,7 @@ model UserMerchantMapping {
   merchant   DimMerchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
 
   categoryId String
-  category   DimCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category   DimCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -76,8 +76,8 @@ model DimMerchant {
 model DimCategory {
   id           String   @id @default(uuid())
   categoryName String
-  userId       String?
-  user         DimUser? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  user         DimUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -179,7 +179,7 @@ model CategoryRule {
   priority  Int    @default(0)
 
   categoryId String
-  category   DimCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category   DimCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
   userId String
   user   DimUser @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -210,7 +210,7 @@ model DimBudget {
   active      Boolean    @default(true)
 
   categoryId String
-  category   DimCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category   DimCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
   userId String
   user   DimUser @relation(fields: [userId], references: [id], onDelete: Cascade)

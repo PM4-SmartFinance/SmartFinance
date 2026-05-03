@@ -73,6 +73,21 @@ const changePasswordSchema = {
   additionalProperties: false,
 } as const;
 
+interface ResetPasswordBody {
+  newPassword: string;
+}
+
+const resetPasswordSchema = {
+  body: {
+    type: "object",
+    required: ["newPassword"],
+    properties: {
+      newPassword: { type: "string", minLength: 8 },
+    },
+    additionalProperties: false,
+  },
+} as const;
+
 interface CreateUserBody {
   email: string;
   password: string;
@@ -231,6 +246,17 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
       const sessionUser = request.session.get("user") ?? null;
       await userService.deleteUser(sessionUser, id);
       return reply.status(204).send();
+    },
+  );
+
+  app.post<{ Params: UserParams; Body: ResetPasswordBody }>(
+    "/users/:id/reset-password",
+    { preHandler: requireRole("ADMIN"), schema: resetPasswordSchema },
+    async (request, reply) => {
+      const { id } = request.params;
+      const sessionUser = request.session.get("user") ?? null;
+      await userService.resetUserPassword(sessionUser, id, request.body.newPassword);
+      return reply.send({ ok: true });
     },
   );
 }
