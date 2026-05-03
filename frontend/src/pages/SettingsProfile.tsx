@@ -165,7 +165,11 @@ export function SettingsProfile() {
                 </AlertDescription>
               </Alert>
             ) : (
-              <form onSubmit={handleProfileSubmit} className="flex flex-col gap-4">
+              <form
+                key={`${profile?.id ?? "new"}:${profile?.email ?? ""}:${profile?.name ?? ""}`}
+                onSubmit={handleProfileSubmit}
+                className="flex flex-col gap-4"
+              >
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="display-name">Display name</Label>
                   <Input

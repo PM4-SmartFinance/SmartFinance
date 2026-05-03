@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog } from "@/components/ui/dialog";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 
 interface ResetPasswordDialogProps {
@@ -19,7 +20,7 @@ export function ResetPasswordDialog({ isOpen, user, onClose }: ResetPasswordDial
   const [confirmPassword, setConfirmPassword] = useState("");
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     mutate: resetPassword,
@@ -33,19 +34,21 @@ export function ResetPasswordDialog({ isOpen, user, onClose }: ResetPasswordDial
       }),
     onSuccess: () => {
       setSuccess(true);
-      setTimeout(() => {
+      closeTimerRef.current = setTimeout(() => {
+        closeTimerRef.current = null;
         handleClose();
       }, 1500);
     },
   });
 
   useEffect(() => {
-    if (isOpen) {
-      dialogRef.current?.showModal();
-    } else {
-      dialogRef.current?.close();
-    }
-  }, [isOpen]);
+    return () => {
+      if (closeTimerRef.current !== null) {
+        clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -63,6 +66,10 @@ export function ResetPasswordDialog({ isOpen, user, onClose }: ResetPasswordDial
   };
 
   const handleClose = () => {
+    if (closeTimerRef.current !== null) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
     setNewPassword("");
     setConfirmPassword("");
     setConfirmError(null);
@@ -75,82 +82,76 @@ export function ResetPasswordDialog({ isOpen, user, onClose }: ResetPasswordDial
     error instanceof ApiError ? error.message : error ? "Failed to reset password." : null;
 
   return (
-    <dialog
-      ref={dialogRef}
-      className="w-full max-w-md rounded-lg shadow-lg backdrop:bg-black/50 open:flex open:items-center open:justify-center"
-      onClose={handleClose}
-    >
-      <div className="rounded-lg bg-background p-6 shadow-lg w-full">
-        <h2 className="mb-2 text-xl font-semibold text-foreground">Reset Password</h2>
-        <p className="mb-6 text-sm text-muted-foreground">
-          Enter a new password for {user?.email}. This will immediately invalidate their current
-          sessions.
-        </p>
+    <Dialog isOpen={isOpen} onClose={handleClose}>
+      <h2 className="mb-2 text-xl font-semibold text-foreground">Reset Password</h2>
+      <p className="mb-6 text-sm text-muted-foreground">
+        Enter a new password for {user?.email}. They will need to use the new password the next time
+        they sign in.
+      </p>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="reset-new-password">New password</Label>
-            <Input
-              id="reset-new-password"
-              type="password"
-              value={newPassword}
-              required
-              minLength={8}
-              autoComplete="new-password"
-              onChange={(e) => setNewPassword(e.target.value)}
-              disabled={isPending || success}
-            />
-          </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="reset-new-password">New password</Label>
+          <Input
+            id="reset-new-password"
+            type="password"
+            value={newPassword}
+            required
+            minLength={8}
+            autoComplete="new-password"
+            onChange={(e) => setNewPassword(e.target.value)}
+            disabled={isPending || success}
+          />
+        </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="reset-confirm-password">Confirm new password</Label>
-            <Input
-              id="reset-confirm-password"
-              type="password"
-              value={confirmPassword}
-              required
-              autoComplete="new-password"
-              onChange={(e) => {
-                setConfirmPassword(e.target.value);
-                setConfirmError(null);
-              }}
-              disabled={isPending || success}
-            />
-          </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="reset-confirm-password">Confirm new password</Label>
+          <Input
+            id="reset-confirm-password"
+            type="password"
+            value={confirmPassword}
+            required
+            autoComplete="new-password"
+            onChange={(e) => {
+              setConfirmPassword(e.target.value);
+              setConfirmError(null);
+            }}
+            disabled={isPending || success}
+          />
+        </div>
 
-          {(confirmError ?? errorMessage) && (
-            <Alert variant="destructive">
-              <AlertCircle className="size-4" />
-              <AlertDescription>{confirmError ?? errorMessage}</AlertDescription>
-            </Alert>
-          )}
+        {(confirmError ?? errorMessage) && (
+          <Alert variant="destructive">
+            <AlertCircle className="size-4" />
+            <AlertDescription>{confirmError ?? errorMessage}</AlertDescription>
+          </Alert>
+        )}
 
-          {success && (
-            <Alert
-              role="status"
-              className="border-green-500/50 text-green-700 dark:text-green-400 [&>svg]:text-green-600"
-            >
-              <CheckCircle2 className="size-4" />
-              <AlertDescription>Password reset successfully.</AlertDescription>
-            </Alert>
-          )}
+        {success && (
+          <Alert
+            role="status"
+            className="border-green-500/50 text-green-700 dark:text-green-400 [&>svg]:text-green-600"
+          >
+            <CheckCircle2 className="size-4" />
+            <AlertDescription>Password reset successfully.</AlertDescription>
+          </Alert>
+        )}
 
-          <div className="flex gap-2 mt-2">
-            <Button type="submit" disabled={isPending || success} className="flex-1">
-              {isPending ? "Resetting…" : "Reset Password"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={isPending || success}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </div>
-    </dialog>
+        <div className="flex gap-2 mt-2">
+          <Button type="submit" disabled={isPending || success} className="flex-1">
+            {isPending ? "Resetting…" : "Reset Password"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleClose}
+            disabled={isPending || success}
+            className="flex-1"
+          >
+            Cancel
+          </Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }

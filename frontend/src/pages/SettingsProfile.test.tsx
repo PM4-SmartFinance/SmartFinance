@@ -132,3 +132,74 @@ describe("SettingsProfile - Password Change Flow", () => {
     });
   });
 });
+
+describe("SettingsProfile - Profile Update Flow", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGet.mockResolvedValue({
+      user: { id: "1", email: "test@example.com", name: "Test User", role: "USER" },
+    });
+  });
+
+  it("sends displayName and email to PATCH /users/me", async () => {
+    const user = userEvent.setup();
+    mockPatch.mockResolvedValue({
+      user: { id: "1", email: "new@example.com", name: "New Name", role: "USER" },
+    });
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Test User")).toBeInTheDocument();
+    });
+
+    const nameInput = screen.getByLabelText(/Display name/i);
+    const emailInput = screen.getByLabelText(/Email address/i);
+
+    await user.clear(nameInput);
+    await user.type(nameInput, "New Name");
+    await user.clear(emailInput);
+    await user.type(emailInput, "new@example.com");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => {
+      expect(mockPatch).toHaveBeenCalledWith("/users/me", {
+        displayName: "New Name",
+        email: "new@example.com",
+      });
+    });
+    expect(await screen.findByText("Profile updated successfully.")).toBeInTheDocument();
+  });
+
+  it("shows ApiError message when update fails", async () => {
+    const user = userEvent.setup();
+    const { ApiError } = await import("../lib/api");
+    mockPatch.mockRejectedValue(new ApiError(409, null, "Email already in use"));
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Test User")).toBeInTheDocument();
+    });
+
+    await user.clear(screen.getByLabelText(/Email address/i));
+    await user.type(screen.getByLabelText(/Email address/i), "taken@example.com");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(await screen.findByText("Email already in use")).toBeInTheDocument();
+  });
+
+  it("shows generic fallback for non-ApiError failures", async () => {
+    const user = userEvent.setup();
+    mockPatch.mockRejectedValue(new Error("network down"));
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Test User")).toBeInTheDocument();
+    });
+
+    await user.clear(screen.getByLabelText(/Display name/i));
+    await user.type(screen.getByLabelText(/Display name/i), "Anything");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(await screen.findByText("Something went wrong. Please try again.")).toBeInTheDocument();
+  });
+});

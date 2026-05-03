@@ -115,19 +115,39 @@ export function UserTable({
                   <span className="text-xs text-muted-foreground">No actions available</span>
                 ) : (
                   <div className="flex flex-wrap gap-2">
-                    <Button onClick={() => onEdit(user)} variant="outline" size="sm">
+                    <Button
+                      onClick={() => {
+                        onEdit(user);
+                      }}
+                      variant="outline"
+                      size="sm"
+                    >
                       Edit
                     </Button>
-                    <Button onClick={() => onResetPassword(user)} variant="outline" size="sm">
+                    <Button
+                      onClick={() => {
+                        onResetPassword(user);
+                      }}
+                      variant="outline"
+                      size="sm"
+                    >
                       Reset Password
                     </Button>
                     {user.active && (
-                      <Button onClick={() => onDeactivate(user)} variant="destructive" size="sm">
+                      <Button
+                        onClick={() => {
+                          void onDeactivate(user);
+                        }}
+                        variant="destructive"
+                        size="sm"
+                      >
                         Deactivate
                       </Button>
                     )}
                     <Button
-                      onClick={() => onDelete(user)}
+                      onClick={() => {
+                        onDelete(user);
+                      }}
                       variant="ghost"
                       size="sm"
                       className="text-red-600 hover:text-red-700 hover:bg-red-50"

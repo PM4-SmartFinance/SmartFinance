@@ -376,6 +376,62 @@ describe("SettingsUsers", () => {
     });
   });
 
+  describe("reset password", () => {
+    beforeAll(() => {
+      if (!HTMLDialogElement.prototype.showModal) {
+        HTMLDialogElement.prototype.showModal = function () {
+          this.setAttribute("open", "");
+        };
+      }
+      if (!HTMLDialogElement.prototype.close) {
+        HTMLDialogElement.prototype.close = function () {
+          this.removeAttribute("open");
+        };
+      }
+    });
+
+    it("opens the reset password dialog with the selected user", async () => {
+      const user = userEvent.setup();
+      renderWithProviders();
+
+      await waitFor(() => {
+        expect(screen.getByText("user1@example.com")).toBeInTheDocument();
+      });
+
+      const resetButtons = screen.getAllByRole("button", { name: "Reset Password" });
+      // currentUser is the admin row (self), which still shows actions; user1 is the next row.
+      await user.click(resetButtons[1]);
+
+      expect(
+        await screen.findByText(/Enter a new password for user1@example.com/i),
+      ).toBeInTheDocument();
+    });
+
+    it("submits the new password to /users/:id/reset-password", async () => {
+      const user = userEvent.setup();
+      mockPost.mockResolvedValue({ ok: true });
+      renderWithProviders();
+
+      await waitFor(() => {
+        expect(screen.getByText("user1@example.com")).toBeInTheDocument();
+      });
+
+      await user.click(screen.getAllByRole("button", { name: "Reset Password" })[1]);
+
+      await user.type(screen.getByLabelText(/^New password/i), "Password1!");
+      await user.type(screen.getByLabelText(/Confirm new password/i), "Password1!");
+      const submitButtons = screen.getAllByRole("button", { name: /^Reset Password$/ });
+      // Dialog's submit button is the last "Reset Password" rendered
+      await user.click(submitButtons[submitButtons.length - 1]);
+
+      await waitFor(() => {
+        expect(mockPost).toHaveBeenCalledWith("/users/2/reset-password", {
+          newPassword: "Password1!",
+        });
+      });
+    });
+  });
+
   describe("route protection", () => {
     it("renders page for authenticated admin users", () => {
       renderWithProviders();

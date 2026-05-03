@@ -33,9 +33,16 @@ export function SettingsUsers() {
 
   const { mutate: logout } = useMutation({
     mutationFn: () => api.post<{ ok: boolean }>("/auth/logout", {}),
-    onSettled: () => {
+    onSuccess: () => {
       queryClient.clear();
       navigate("/login");
+    },
+    onError: () => {
+      // Server-side logout failed — session may still be valid. Clear client
+      // state and surface the failure via a query param so the login page can
+      // hint the user to retry.
+      queryClient.clear();
+      navigate("/login?logout_error=1");
     },
   });
 
