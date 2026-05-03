@@ -182,7 +182,7 @@ Returns the profile of a specific user. Users can read their own profile; admins
 
 ### PATCH /users/:id
 
-Updates a user's profile. Users can update their own `name`. Admins can update `name`, `role`, and `active` status.
+Updates a user's profile. Users can update their own `name`. Admins can update `name`, `role`, and `active` status. Admins cannot deactivate or change the role of another admin account.
 
 **Path Parameters:**
 
@@ -215,14 +215,14 @@ Updates a user's profile. Users can update their own `name`. Admins can update `
 
 **Response 400:** Invalid role or no updatable fields
 **Response 401:** Not authenticated
-**Response 403:** Forbidden
+**Response 403:** Forbidden — including when attempting to deactivate or change the role of another admin account
 **Response 404:** User not found
 
 ---
 
 ### DELETE /users/:id
 
-Soft-deletes a user (sets `active` to false). Users can delete themselves; admins can delete any user.
+Soft-deletes a user (sets `active` to false). Users can delete themselves; admins can delete any non-admin user. Admin accounts cannot be deleted.
 
 **Path Parameters:**
 
@@ -233,7 +233,7 @@ Soft-deletes a user (sets `active` to false). Users can delete themselves; admin
 **Response 204:** No content
 
 **Response 401:** Not authenticated
-**Response 403:** Forbidden
+**Response 403:** Forbidden — including when target is an admin account
 **Response 404:** User not found
 
 ---
