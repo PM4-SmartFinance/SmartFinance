@@ -43,7 +43,11 @@ export function SummaryMetricsWidget() {
   }
 
   return (
-    <Link to="/transactions" aria-label="View transactions" className="group block transition-all">
+    <Link
+      to="/transactions"
+      aria-label="View transactions"
+      className="group block rounded-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+    >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <MetricCard
           title="Net Balance"
