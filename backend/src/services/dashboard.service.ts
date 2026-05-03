@@ -2,7 +2,7 @@ import { ServiceError } from "../errors.js";
 import * as dashboardRepository from "../repositories/dashboard.repository.js";
 import type {
   CategoryTotalAggregate,
-  MonthlyTrendAggregate,
+  DailyTrendAggregate,
 } from "../repositories/dashboard.repository.js";
 
 function isValidCalendarDate(dateStr: string): boolean {
@@ -45,46 +45,44 @@ export async function getDashboardSummary(userId: string, startDate: string, end
   };
 }
 
+function dateStringToDateId(dateStr: string): number {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return y! * 10000 + m! * 100 + d!;
+}
+
 export async function getDashboardTrends(
   userId: string,
   startDateStr: string,
   endDateStr: string,
-): Promise<MonthlyTrendAggregate[]> {
+): Promise<DailyTrendAggregate[]> {
   validateDateRange(startDateStr, endDateStr);
 
-  const start = new Date(startDateStr + "T00:00:00Z");
-  const end = new Date(endDateStr + "T00:00:00Z");
+  const startDateId = dateStringToDateId(startDateStr);
+  const endDateId = dateStringToDateId(endDateStr);
 
-  const startYear = start.getUTCFullYear();
-  const startMonth = start.getUTCMonth() + 1;
-  const endYear = end.getUTCFullYear();
-  const endMonth = end.getUTCMonth() + 1;
-
-  const aggregates = await dashboardRepository.listMonthlyTrends({
+  const aggregates = await dashboardRepository.listDailyTrends({
     userId,
-    startYear,
-    startMonth,
-    endYear,
-    endMonth,
+    startDateId,
+    endDateId,
   });
 
-  const aggregateByMonth = new Map(
-    aggregates.map((item) => [`${item.year}-${item.month}`, item] as const),
-  );
+  const aggregateByDate = new Map(aggregates.map((a) => [a.date, a] as const));
 
-  // Build a complete month sequence from start to end so gaps show as zero.
-  const totalMonths = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
+  // Build a complete day sequence from start to end so gaps show as zero.
+  const start = new Date(startDateStr + "T00:00:00Z");
+  const end = new Date(endDateStr + "T00:00:00Z");
+  const totalDays = Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
 
-  const data: MonthlyTrendAggregate[] = [];
-  for (let i = 0; i < totalMonths; i++) {
-    const monthDate = new Date(Date.UTC(startYear, startMonth - 1 + i, 1));
-    const year = monthDate.getUTCFullYear();
-    const month = monthDate.getUTCMonth() + 1;
-    const aggregate = aggregateByMonth.get(`${year}-${month}`);
-
+  const data: DailyTrendAggregate[] = [];
+  for (let i = 0; i < totalDays; i++) {
+    const day = new Date(start.getTime() + i * 86_400_000);
+    const y = day.getUTCFullYear();
+    const m = day.getUTCMonth() + 1;
+    const d = day.getUTCDate();
+    const date = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const aggregate = aggregateByDate.get(date);
     data.push({
-      year,
-      month,
+      date,
       income: aggregate?.income ?? 0,
       expenses: aggregate?.expenses ?? 0,
     });

@@ -296,8 +296,8 @@ describe("GET /api/v1/dashboard/trends", () => {
   describe("success", () => {
     it("returns 200 with trend data wrapped in { data }", async () => {
       const mockData = [
-        { year: 2025, month: 1, income: 5000, expenses: 2500 },
-        { year: 2025, month: 2, income: 4500, expenses: 2200 },
+        { date: "2025-01-15", income: 5000, expenses: 2500 },
+        { date: "2025-02-15", income: 4500, expenses: 2200 },
       ];
       mockService.getDashboardTrends.mockResolvedValue(mockData);
 
