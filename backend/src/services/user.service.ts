@@ -73,6 +73,12 @@ export async function resetUserPassword(
   const target = await userRepository.findById(targetUserId);
   if (!target) throw new ServiceError(404, "Not found");
 
+  // Peer-admin guard — mirror the protection used in updateUser/deleteUser.
+  // Admins cannot reset another admin's password; they may reset their own.
+  if (target.role === "ADMIN" && requestingUser.id !== targetUserId) {
+    throw new ServiceError(403, "Cannot reset another admin's password");
+  }
+
   const hashed = await argon2.hash(newPassword);
   await userRepository.updatePassword(targetUserId, hashed);
 

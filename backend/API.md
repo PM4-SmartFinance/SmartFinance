@@ -238,6 +238,37 @@ Soft-deletes a user (sets `active` to false). Users can delete themselves; admin
 
 ---
 
+### POST /users/:id/reset-password
+
+Sets a new password for the target user. Requires an authenticated session with the `ADMIN` role. An admin cannot reset another admin's password — they may reset only their own and any non-admin user's. The action is recorded as a `PASSWORD_RESET` audit event with the acting admin and the target user id.
+
+Note: existing sessions of the target user are not invalidated by this endpoint; cookie-based sessions remain valid until they expire. Server-side session invalidation on admin reset is tracked as a follow-up.
+
+**Path Parameters:**
+
+| Parameter | Type   | Validation |
+| --------- | ------ | ---------- |
+| `id`      | string | UUID       |
+
+**Request Body:**
+
+| Field         | Type   | Required | Validation           |
+| ------------- | ------ | -------- | -------------------- |
+| `newPassword` | string | yes      | Minimum 8 characters |
+
+**Response 200:**
+
+```json
+{ "ok": true }
+```
+
+**Response 400:** Validation failure (`newPassword` missing or shorter than 8 characters)
+**Response 401:** Not authenticated
+**Response 403:** Forbidden — caller is not an admin, or attempting to reset another admin's password
+**Response 404:** User not found
+
+---
+
 ## Transactions
 
 ### GET /transactions
