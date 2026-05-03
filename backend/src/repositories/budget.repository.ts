@@ -9,6 +9,10 @@ export async function findCategoryForUser(categoryId: string, userId: string) {
   });
 }
 
+export async function findByIdForUser(id: string, userId: string) {
+  return prisma.dimBudget.findFirst({ where: { id, userId } });
+}
+
 export async function findAllByUser(userId: string) {
   const budgets = await prisma.dimBudget.findMany({
     where: { userId },
@@ -103,8 +107,13 @@ export async function update(id: string, userId: string, data: UpdateBudgetData)
         data: updateData,
       });
     } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-        throw new ServiceError(409, "Budget already exists for this category and type");
+      if (err instanceof Prisma.PrismaClientKnownRequestError) {
+        if (err.code === "P2002") {
+          throw new ServiceError(409, "Budget already exists for this category and type");
+        }
+        if (err.code === "P2025") {
+          throw new ServiceError(404, "Budget not found");
+        }
       }
       throw err;
     }

@@ -116,7 +116,32 @@ export async function updateBudget(id: string, userId: string, data: UpdateBudge
     }
   }
 
-  const budget = await budgetRepository.update(id, userId, data);
+  const existing = await budgetRepository.findByIdForUser(id, userId);
+  if (!existing) {
+    throw new ServiceError(404, "Budget not found");
+  }
+
+  const effectiveType = data.type ?? existing.type;
+  const candidateMonth = data.month ?? existing.month;
+  const candidateYear = data.year ?? existing.year;
+
+  if (
+    TYPES_REQUIRING_MONTH.includes(effectiveType) &&
+    (candidateMonth < 1 || candidateMonth > 12)
+  ) {
+    throw new ServiceError(400, "month is required for this budget type (1-12)");
+  }
+  if (TYPES_REQUIRING_YEAR.includes(effectiveType) && candidateYear < 2000) {
+    throw new ServiceError(400, "year is required for this budget type (>= 2000)");
+  }
+
+  const normalized: UpdateBudgetData = { ...data };
+  if (data.type !== undefined) {
+    normalized.month = TYPES_REQUIRING_MONTH.includes(effectiveType) ? candidateMonth : 0;
+    normalized.year = TYPES_REQUIRING_YEAR.includes(effectiveType) ? candidateYear : 0;
+  }
+
+  const budget = await budgetRepository.update(id, userId, normalized);
   return {
     ...budget,
     ...calculateBudgetStatus(budget.currentSpending, budget.limitAmount),
