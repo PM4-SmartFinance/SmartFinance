@@ -8,6 +8,7 @@ services:
       - --entrypoints.web.address=:80
       - --entrypoints.web.http.redirections.entrypoint.to=websecure
       - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.web.http.redirections.entrypoint.permanent=true
       - --entrypoints.websecure.address=:443
       - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
       - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
@@ -53,22 +54,25 @@ services:
         condition: service_healthy
     labels:
       - traefik.enable=true
+      - traefik.docker.network=smartfinance_proxy
       - traefik.http.routers.backend.rule=Host(`${DOMAIN:?DOMAIN is required}`) && PathPrefix(`/api`)
       - traefik.http.routers.backend.entrypoints=websecure
       - traefik.http.routers.backend.tls.certresolver=letsencrypt
+      - traefik.http.routers.backend.service=backend
       - traefik.http.services.backend.loadbalancer.server.port=3000
     networks:
       - internal
       - proxy
 
   frontend:
-    image: ghcr.io/${GITHUB_REPOSITORY}/frontend:${IMAGE_TAG:-latest}
+    image: ghcr.io/${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}/frontend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     labels:
       - traefik.enable=true
-      - traefik.http.routers.frontend.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.frontend.rule=Host(`${DOMAIN:?DOMAIN is required}`)
       - traefik.http.routers.frontend.entrypoints=websecure
       - traefik.http.routers.frontend.tls.certresolver=letsencrypt
+      - traefik.http.routers.frontend.service=frontend
       - traefik.http.services.frontend.loadbalancer.server.port=80
     networks:
       - proxy
