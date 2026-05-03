@@ -112,8 +112,12 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
 
     const type = resolveBudgetType();
 
+    const isSpecific = formState.entryMode === "specific";
+    const month = isSpecific && formState.specificMonth ? parseInt(formState.specificMonth) : 0;
+    const year = isSpecific && formState.specificYear ? parseInt(formState.specificYear) : 0;
+
     if (budget) {
-      // Edit mode — send all fields
+      // Edit mode — send all fields, including explicit month/year reset for general types
       try {
         await updateMutation.mutateAsync({
           id: budget.id,
@@ -121,12 +125,8 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
             limitAmount: parseFloat(formState.limitAmount),
             categoryId: formState.categoryId,
             type,
-            ...(formState.specificMonth && formState.entryMode === "specific"
-              ? { month: parseInt(formState.specificMonth) }
-              : {}),
-            ...(formState.specificYear && formState.entryMode === "specific"
-              ? { year: parseInt(formState.specificYear) }
-              : {}),
+            month,
+            year,
             active: formState.active,
           },
         });
@@ -135,7 +135,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
         if (err instanceof ApiError) {
           setFormState((prev) => ({ ...prev, error: err.message || "Failed to update budget" }));
         } else {
-          throw err;
+          setFormState((prev) => ({ ...prev, error: "An unexpected error occurred" }));
         }
       }
     } else {
@@ -145,19 +145,15 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
           categoryId: formState.categoryId,
           type,
           limitAmount: parseFloat(formState.limitAmount),
-          ...(formState.specificMonth && formState.entryMode === "specific"
-            ? { month: parseInt(formState.specificMonth) }
-            : {}),
-          ...(formState.specificYear && formState.entryMode === "specific"
-            ? { year: parseInt(formState.specificYear) }
-            : {}),
+          ...(isSpecific && formState.specificMonth ? { month } : {}),
+          ...(isSpecific && formState.specificYear ? { year } : {}),
         });
         onClose();
       } catch (err) {
         if (err instanceof ApiError) {
           setFormState((prev) => ({ ...prev, error: err.message || "Failed to create budget" }));
         } else {
-          throw err;
+          setFormState((prev) => ({ ...prev, error: "An unexpected error occurred" }));
         }
       }
     }

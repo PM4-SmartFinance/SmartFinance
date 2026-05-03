@@ -251,6 +251,8 @@ describe("CreateEditBudgetDialog", () => {
         limitAmount: 750,
         categoryId: "cat-1",
         type: "MONTHLY",
+        month: 0,
+        year: 0,
         active: true,
       });
     });
