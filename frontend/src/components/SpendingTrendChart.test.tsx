@@ -79,35 +79,36 @@ describe("SpendingTrendChart", () => {
 
   it("renders as a clickable link to /transactions", () => {
     renderWithQuery(<SpendingTrendChart />);
-    const link = screen.getByRole("link", { name: /monthly spending trend/i });
+    const link = screen.getByRole("link", { name: /view transactions/i });
     expect(link).toHaveAttribute("href", "/transactions");
   });
 
-  it("renders link in loading state", () => {
+  it("wraps the card content inside the link", () => {
     renderWithQuery(<SpendingTrendChart />);
-    const link = screen.getByRole("link", { name: /monthly spending trend/i });
-    expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute("href", "/transactions");
+    const link = screen.getByRole("link", { name: /view transactions/i });
+    expect(link).toContainElement(screen.getByText("Monthly Spending Trend"));
   });
 
-  it("renders link in error state", async () => {
+  it("does not render link in error state", async () => {
     const apiMock = await vi.importMock("../lib/api");
     apiMock.api.get.mockRejectedValueOnce(new Error("Failed to fetch"));
 
     renderWithQuery(<SpendingTrendChart />);
 
     await waitFor(() => {
-      const link = screen.getByRole("link", { name: /monthly spending trend/i });
-      expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute("href", "/transactions");
+      expect(
+        screen.getByText("Failed to load spending trend data. Please try again."),
+      ).toBeInTheDocument();
     });
+
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
   it("supports keyboard navigation to /transactions link", async () => {
     const user = userEvent.setup();
     renderWithQuery(<SpendingTrendChart />);
 
-    const link = screen.getByRole("link", { name: /monthly spending trend/i });
+    const link = screen.getByRole("link", { name: /view transactions/i });
 
     // Initially not focused
     expect(link).not.toHaveFocus();

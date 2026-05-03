@@ -122,28 +122,29 @@ describe("CategoryBreakdownChart", () => {
 
   it("renders as a clickable link to /categories", () => {
     renderWithQuery(<CategoryBreakdownChart />);
-    const link = screen.getByRole("link", { name: /spending by category/i });
+    const link = screen.getByRole("link", { name: /view categories/i });
     expect(link).toHaveAttribute("href", "/categories");
   });
 
-  it("renders link in loading state", () => {
+  it("wraps the card content inside the link", () => {
     renderWithQuery(<CategoryBreakdownChart />);
-    const link = screen.getByRole("link", { name: /spending by category/i });
-    expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute("href", "/categories");
+    const link = screen.getByRole("link", { name: /view categories/i });
+    expect(link).toContainElement(screen.getByText("Spending by Category"));
   });
 
-  it("renders link in error state", async () => {
+  it("does not render link in error state", async () => {
     const apiMock = await vi.importMock("../lib/api");
     apiMock.api.get.mockRejectedValueOnce(new Error("Failed to fetch"));
 
     renderWithQuery(<CategoryBreakdownChart />);
 
     await waitFor(() => {
-      const link = screen.getByRole("link", { name: /spending by category/i });
-      expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute("href", "/categories");
+      expect(
+        screen.getByText("Failed to load category breakdown data. Please try again."),
+      ).toBeInTheDocument();
     });
+
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
   it("renders link in empty state", async () => {
@@ -153,7 +154,7 @@ describe("CategoryBreakdownChart", () => {
     renderWithQuery(<CategoryBreakdownChart />);
 
     await waitFor(() => {
-      const link = screen.getByRole("link", { name: /spending by category/i });
+      const link = screen.getByRole("link", { name: /view categories/i });
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute("href", "/categories");
     });
@@ -163,7 +164,7 @@ describe("CategoryBreakdownChart", () => {
     const user = userEvent.setup();
     renderWithQuery(<CategoryBreakdownChart />);
 
-    const link = screen.getByRole("link", { name: /spending by category/i });
+    const link = screen.getByRole("link", { name: /view categories/i });
 
     // Initially not focused
     expect(link).not.toHaveFocus();

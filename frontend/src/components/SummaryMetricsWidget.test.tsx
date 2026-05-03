@@ -88,7 +88,15 @@ describe("SummaryMetricsWidget", () => {
     expect(link).toHaveAttribute("aria-label", "View transactions");
   });
 
-  it("renders link even in error state", async () => {
+  it("wraps all metric cards inside the link", () => {
+    renderWithQuery(<SummaryMetricsWidget />);
+    const link = screen.getByRole("link", { name: /view transactions/i });
+    expect(link).toContainElement(screen.getByText("Net Balance"));
+    expect(link).toContainElement(screen.getByText("Total Expenses"));
+    expect(link).toContainElement(screen.getByText("Total Income"));
+  });
+
+  it("does not render link in error state", async () => {
     const apiMock = await vi.importMock("../lib/api");
     apiMock.api.get.mockRejectedValueOnce(new Error("Failed to fetch"));
 

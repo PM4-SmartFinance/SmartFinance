@@ -140,8 +140,14 @@ describe("BudgetWidget", () => {
 
   it("renders as a clickable link to /budgets", () => {
     renderWithRouter(<BudgetWidget />);
-    const link = screen.getByRole("link");
+    const link = screen.getByRole("link", { name: /view budgets/i });
     expect(link).toHaveAttribute("href", "/budgets");
+  });
+
+  it("wraps the card content inside the link", () => {
+    renderWithRouter(<BudgetWidget />);
+    const link = screen.getByRole("link", { name: /view budgets/i });
+    expect(link).toContainElement(screen.getByText("Budget Status"));
   });
 
   it("correctly categorizes budgets by status", async () => {
@@ -159,7 +165,7 @@ describe("BudgetWidget", () => {
     const user = userEvent.setup();
     renderWithRouter(<BudgetWidget />);
 
-    const link = screen.getByRole("link", { name: /budget status/i });
+    const link = screen.getByRole("link", { name: /view budgets/i });
 
     // Initially not focused
     expect(link).not.toHaveFocus();
