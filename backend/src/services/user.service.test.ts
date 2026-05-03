@@ -5,6 +5,7 @@ import {
   changePassword,
   deleteUser,
   updateUser,
+  resetUserPassword,
 } from "./user.service.js";
 import * as userRepository from "../repositories/user.repository.js";
 import { EmailConflictError } from "../repositories/user.repository.js";
@@ -349,5 +350,90 @@ describe("updateUser — deactivation guard", () => {
     await updateUser(adminUser, targetAdmin.id, { active: true });
 
     expect(userRepository.updateUserById).toHaveBeenCalledWith(targetAdmin.id, { active: true });
+  });
+});
+
+describe("resetUserPassword", () => {
+  const adminUser = { id: "admin-1", role: "ADMIN" };
+  const targetUser = {
+    id: "user-2",
+    email: "target@example.com",
+    name: "Target",
+    role: "USER",
+    active: true,
+    createdAt: new Date("2026-01-01"),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("hashes the new password and updates the target", async () => {
+    vi.mocked(userRepository.findById).mockResolvedValue(targetUser);
+    vi.mocked(userRepository.updatePassword).mockResolvedValue({ id: targetUser.id });
+
+    await resetUserPassword(adminUser, targetUser.id, "NewPass1!");
+
+    expect(mockArgon2.hash).toHaveBeenCalledWith("NewPass1!");
+    expect(userRepository.updatePassword).toHaveBeenCalledWith(
+      targetUser.id,
+      "new-hashed-password",
+    );
+  });
+
+  it("emits a PASSWORD_RESET audit event with the target id", async () => {
+    vi.mocked(userRepository.findById).mockResolvedValue(targetUser);
+    vi.mocked(userRepository.updatePassword).mockResolvedValue({ id: targetUser.id });
+
+    await resetUserPassword(adminUser, targetUser.id, "NewPass1!");
+    await vi.waitFor(() => {
+      expect(auditService.logEvent).toHaveBeenCalledWith("PASSWORD_RESET", adminUser.id, {
+        targetUserId: targetUser.id,
+      });
+    });
+  });
+
+  it("throws 401 when the requester is null", async () => {
+    await expect(resetUserPassword(null, targetUser.id, "NewPass1!")).rejects.toMatchObject({
+      statusCode: 401,
+    });
+    expect(userRepository.updatePassword).not.toHaveBeenCalled();
+  });
+
+  it("throws 403 when the requester is not an admin", async () => {
+    await expect(
+      resetUserPassword({ id: "user-1", role: "USER" }, targetUser.id, "NewPass1!"),
+    ).rejects.toMatchObject({ statusCode: 403 });
+    expect(userRepository.updatePassword).not.toHaveBeenCalled();
+  });
+
+  it("throws 404 when the target user does not exist", async () => {
+    vi.mocked(userRepository.findById).mockResolvedValue(null);
+
+    await expect(resetUserPassword(adminUser, "ghost", "NewPass1!")).rejects.toMatchObject({
+      statusCode: 404,
+    });
+    expect(userRepository.updatePassword).not.toHaveBeenCalled();
+  });
+
+  it("throws 403 when an admin tries to reset another admin's password", async () => {
+    const peerAdmin = { ...targetUser, id: "admin-2", role: "ADMIN" };
+    vi.mocked(userRepository.findById).mockResolvedValue(peerAdmin);
+
+    await expect(resetUserPassword(adminUser, peerAdmin.id, "NewPass1!")).rejects.toMatchObject({
+      statusCode: 403,
+      message: "Cannot reset another admin's password",
+    });
+    expect(userRepository.updatePassword).not.toHaveBeenCalled();
+  });
+
+  it("allows an admin to reset their own password", async () => {
+    const selfAdmin = { ...targetUser, id: adminUser.id, role: "ADMIN" };
+    vi.mocked(userRepository.findById).mockResolvedValue(selfAdmin);
+    vi.mocked(userRepository.updatePassword).mockResolvedValue({ id: selfAdmin.id });
+
+    await resetUserPassword(adminUser, selfAdmin.id, "NewPass1!");
+
+    expect(userRepository.updatePassword).toHaveBeenCalledWith(selfAdmin.id, "new-hashed-password");
   });
 });

@@ -62,6 +62,33 @@ export async function changePassword(userId: string, currentPassword: string, ne
   void auditService.logEvent("PASSWORD_CHANGED", userId).catch(() => {});
 }
 
+export async function resetUserPassword(
+  requestingUser: { id: string; role: string } | null,
+  targetUserId: string,
+  newPassword: string,
+) {
+  if (!requestingUser) throw new ServiceError(401, "Unauthorized");
+  if (requestingUser.role !== "ADMIN") throw new ServiceError(403, "Forbidden");
+
+  const target = await userRepository.findById(targetUserId);
+  if (!target) throw new ServiceError(404, "Not found");
+
+  // Peer-admin guard — mirror the protection used in updateUser/deleteUser.
+  // Admins cannot reset another admin's password; they may reset their own.
+  if (target.role === "ADMIN" && requestingUser.id !== targetUserId) {
+    throw new ServiceError(403, "Cannot reset another admin's password");
+  }
+
+  const hashed = await argon2.hash(newPassword);
+  await userRepository.updatePassword(targetUserId, hashed);
+
+  void auditService
+    .logEvent("PASSWORD_RESET", requestingUser.id, {
+      targetUserId,
+    })
+    .catch(() => {});
+}
+
 export async function onboardUser(
   requestingUser: { id: string; role: string } | null,
   payload: { email: string; displayName?: string; password: string; role?: "ADMIN" | "USER" },

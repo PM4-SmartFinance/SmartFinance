@@ -18,6 +18,7 @@ vi.mock("../services/user.service.js", () => ({
   listUsers: vi.fn(),
   getUserById: vi.fn(),
   updateUser: vi.fn(),
+  resetUserPassword: vi.fn(),
 }));
 
 import * as userService from "../services/user.service.js";
@@ -27,6 +28,7 @@ const mockUpdateProfile = vi.mocked(userService.updateProfile);
 const mockChangePassword = vi.mocked(userService.changePassword);
 const mockDeleteUser = vi.mocked(userService.deleteUser);
 const mockUpdateUser = vi.mocked(userService.updateUser);
+const mockResetUserPassword = vi.mocked(userService.resetUserPassword);
 
 const profileFixture = {
   id: "user-1",
@@ -449,5 +451,116 @@ describe("PATCH /api/v1/users/:id", () => {
 
     expect(response.statusCode).toBe(401);
     expect(mockUpdateUser).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/v1/users/:id/reset-password", () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    app = buildTestApp();
+    await app.register(userRoutes, { prefix: "/api/v1" });
+    await app.ready();
+  });
+
+  afterAll(() => app.close());
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sessionUser = { id: "admin-1", role: "ADMIN", email: "admin@example.com" };
+  });
+
+  it("returns 200 and forwards the session user to the service", async () => {
+    mockResetUserPassword.mockResolvedValue(undefined);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/users/user-2/reset-password",
+      payload: { newPassword: "NewPass1!" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ ok: true });
+    expect(mockResetUserPassword).toHaveBeenCalledExactlyOnceWith(
+      { id: "admin-1", role: "ADMIN", email: "admin@example.com" },
+      "user-2",
+      "NewPass1!",
+    );
+  });
+
+  it("returns 400 when newPassword is missing", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/users/user-2/reset-password",
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(mockResetUserPassword).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when newPassword is shorter than 8 characters", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/users/user-2/reset-password",
+      payload: { newPassword: "short" },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(mockResetUserPassword).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 when there is no session", async () => {
+    sessionUser = undefined;
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/users/user-2/reset-password",
+      payload: { newPassword: "NewPass1!" },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(mockResetUserPassword).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 when a non-admin attempts to reset a password", async () => {
+    sessionUser = { id: "user-1", role: "USER", email: "user@example.com" };
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/users/user-2/reset-password",
+      payload: { newPassword: "NewPass1!" },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(mockResetUserPassword).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 when the service rejects a peer-admin reset", async () => {
+    const { ServiceError } = await import("../errors.js");
+    mockResetUserPassword.mockRejectedValue(
+      new ServiceError(403, "Cannot reset another admin's password"),
+    );
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/users/admin-2/reset-password",
+      payload: { newPassword: "NewPass1!" },
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  it("returns 404 when the target user does not exist", async () => {
+    const { ServiceError } = await import("../errors.js");
+    mockResetUserPassword.mockRejectedValue(new ServiceError(404, "Not found"));
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/users/ghost/reset-password",
+      payload: { newPassword: "NewPass1!" },
+    });
+
+    expect(response.statusCode).toBe(404);
   });
 });
