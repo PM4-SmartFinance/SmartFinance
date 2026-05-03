@@ -11,15 +11,17 @@ const mockSummaryData = {
   transactionCount: 42,
 };
 
-const mockTrendData = [
-  { date: "2025-12-01", amount: 2150.25 },
-  { date: "2026-01-01", amount: 2500.75 },
-  { date: "2026-02-01", amount: 2400.25 },
-];
+const mockTrendData = {
+  data: [
+    { year: 2025, month: 12, income: 5000, expenses: 2150.25 },
+    { year: 2026, month: 1, income: 6000, expenses: 2500.75 },
+    { year: 2026, month: 2, income: 5500, expenses: 2400.25 },
+  ],
+};
 
 const mockCategoryData = [
-  { category: "Groceries", amount: 450.75 },
-  { category: "Transport", amount: 280.0 },
+  { categoryId: "cat-1", categoryName: "Groceries", total: 450.75 },
+  { categoryId: "cat-2", categoryName: "Transport", total: 280.0 },
 ];
 
 // Mock the api module

@@ -9,11 +9,17 @@ vi.mock("../repositories/category-rule.repository.js", () => ({
   findCategoryForUser: vi.fn(),
 }));
 
+vi.mock("../repositories/transaction.repository.js", () => ({
+  findPreviewMatchesForUser: vi.fn(),
+}));
+
 import * as service from "./category-rule.service.js";
 import * as repo from "../repositories/category-rule.repository.js";
+import * as transactionRepo from "../repositories/transaction.repository.js";
 import { DuplicateRuleError, ServiceError } from "../errors.js";
 
 const mockRepo = vi.mocked(repo);
+const mockTransactionRepo = vi.mocked(transactionRepo);
 
 const sampleRule = {
   id: "rule-1",
@@ -153,6 +159,92 @@ describe("category-rule.service", () => {
       mockRepo.remove.mockResolvedValue(false);
 
       await expect(service.deleteRule("nonexistent", "user-1")).rejects.toThrow(ServiceError);
+    });
+  });
+
+  describe("previewRule", () => {
+    it("returns match count and latest samples from repository", async () => {
+      mockRepo.findCategoryForUser.mockResolvedValue({ id: "cat-1" } as never);
+      mockTransactionRepo.findPreviewMatchesForUser.mockResolvedValue({
+        matchCount: 2,
+        matchedTransactions: [
+          {
+            id: "tx-2",
+            merchantName: "Coop City",
+            amount: -8.75,
+            dateId: 20260413,
+          },
+          {
+            id: "tx-1",
+            merchantName: "Coop",
+            amount: -12.5,
+            dateId: 20260412,
+          },
+        ],
+      });
+
+      const result = await service.previewRule("user-1", {
+        categoryId: "cat-1",
+        pattern: "co",
+        matchType: "contains",
+        priority: 0,
+      });
+
+      expect(result).toEqual({
+        matchCount: 2,
+        matchedTransactions: [
+          {
+            id: "tx-2",
+            merchantName: "Coop City",
+            amount: -8.75,
+            dateId: 20260413,
+          },
+          {
+            id: "tx-1",
+            merchantName: "Coop",
+            amount: -12.5,
+            dateId: 20260412,
+          },
+        ],
+      });
+      expect(mockTransactionRepo.findPreviewMatchesForUser).toHaveBeenCalledWith(
+        "user-1",
+        "co",
+        "contains",
+        3,
+      );
+    });
+
+    it("throws 404 when category does not belong to user", async () => {
+      mockRepo.findCategoryForUser.mockResolvedValue(null);
+
+      await expect(
+        service.previewRule("user-1", {
+          categoryId: "stolen-cat",
+          pattern: "co",
+          matchType: "contains",
+          priority: 0,
+        }),
+      ).rejects.toThrow(ServiceError);
+
+      expect(mockTransactionRepo.findPreviewMatchesForUser).not.toHaveBeenCalled();
+    });
+
+    it("returns zero matches when repository finds no match", async () => {
+      mockRepo.findCategoryForUser.mockResolvedValue({ id: "cat-1" } as never);
+      mockTransactionRepo.findPreviewMatchesForUser.mockResolvedValue({
+        matchCount: 0,
+        matchedTransactions: [],
+      });
+
+      const result = await service.previewRule("user-1", {
+        categoryId: "cat-1",
+        pattern: "co",
+        matchType: "contains",
+        priority: 0,
+      });
+
+      expect(result).toEqual({ matchCount: 0, matchedTransactions: [] });
     });
   });
 });

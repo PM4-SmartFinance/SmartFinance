@@ -54,8 +54,7 @@ export function DashboardPage() {
               { to: "/transactions", label: "Transactions" },
               { to: "/budgets", label: "Budgets" },
               { to: "/categories", label: "Categories" },
-              { to: "/profile", label: "Profile" },
-              ...(user?.role === "ADMIN" ? [{ to: "/admin/users", label: "Users" }] : []),
+              { to: "/settings", label: "Settings" },
             ].map(({ to, label }) => (
               <Link
                 key={to}
@@ -90,8 +89,12 @@ export function DashboardPage() {
           <CategoryBreakdownChart />
 
           {/* ── Recent Transactions (Full Width) ── */}
-          <Link to="/transactions" className="col-span-1 sm:col-span-2 lg:col-span-3">
-            <Card className="transition-colors hover:border-foreground/20">
+          <Link
+            to="/transactions"
+            aria-label="View transactions"
+            className="group col-span-1 sm:col-span-2 lg:col-span-3 block rounded-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <Card className="cursor-pointer transition-all duration-200 group-hover:border-primary/50 group-hover:bg-accent/5 group-hover:shadow-md">
               <CardHeader>
                 <CardTitle className="text-xs font-semibold uppercase tracking-wider">
                   Recent Transactions
@@ -108,8 +111,12 @@ export function DashboardPage() {
           </Link>
 
           {/* ── Budget Progress (Full Width) ── */}
-          <Link to="/budgets" className="col-span-1 sm:col-span-2 lg:col-span-3">
-            <Card className="transition-colors hover:border-foreground/20">
+          <Link
+            to="/budgets"
+            aria-label="View budgets"
+            className="group col-span-1 sm:col-span-2 lg:col-span-3 block rounded-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <Card className="cursor-pointer transition-all duration-200 group-hover:border-primary/50 group-hover:bg-accent/5 group-hover:shadow-md">
               <CardHeader>
                 <CardTitle className="text-xs font-semibold uppercase tracking-wider">
                   Budget Progress

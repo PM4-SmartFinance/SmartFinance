@@ -1,7 +1,7 @@
-import { useRef, useEffect } from "react";
 import { useDeleteUser, type User } from "../lib/queries/users";
 import { ApiError } from "../lib/api";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 
 interface DeleteUserDialogProps {
   isOpen: boolean;
@@ -16,16 +16,7 @@ export function DeleteUserDialog({
   onClose,
   onDeleteSuccess,
 }: DeleteUserDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const deleteMutation = useDeleteUser();
-
-  useEffect(() => {
-    if (isOpen) {
-      dialogRef.current?.showModal();
-    } else {
-      dialogRef.current?.close();
-    }
-  }, [isOpen]);
 
   const handleDelete = async () => {
     if (!user) return;
@@ -51,43 +42,36 @@ export function DeleteUserDialog({
         : null;
 
   return (
-    <dialog
-      ref={dialogRef}
-      className="w-full max-w-md rounded-lg shadow-lg backdrop:bg-black/50 open:flex open:items-center open:justify-center"
-      onClose={onClose}
-      key={user?.id}
-    >
-      <div className="rounded-lg bg-background p-6 shadow-lg">
-        <h2 className="mb-2 text-xl font-semibold text-foreground">Delete User?</h2>
-        <p className="mb-6 text-sm text-muted-foreground">
-          Permanently delete <span className="font-medium">{user.email}</span>? This action cannot
-          be undone.
-        </p>
+    <Dialog key={user.id} isOpen={isOpen} onClose={onClose}>
+      <h2 className="mb-2 text-xl font-semibold text-foreground">Delete User?</h2>
+      <p className="mb-6 text-sm text-muted-foreground">
+        Permanently delete <span className="font-medium">{user.email}</span>? This action cannot be
+        undone.
+      </p>
 
-        {errorMessage && (
-          <div className="mb-4 rounded bg-red-50 p-2 text-sm text-red-600">{errorMessage}</div>
-        )}
+      {errorMessage && (
+        <div className="mb-4 rounded bg-red-50 p-2 text-sm text-red-600">{errorMessage}</div>
+      )}
 
-        <div className="flex gap-2">
-          <Button
-            onClick={handleDelete}
-            disabled={isDeleting}
-            variant="destructive"
-            className="flex-1"
-          >
-            {isDeleting ? "Deleting…" : "Delete"}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            disabled={isDeleting}
-            className="flex-1"
-          >
-            Cancel
-          </Button>
-        </div>
+      <div className="flex gap-2">
+        <Button
+          onClick={handleDelete}
+          disabled={isDeleting}
+          variant="destructive"
+          className="flex-1"
+        >
+          {isDeleting ? "Deleting…" : "Delete"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onClose}
+          disabled={isDeleting}
+          className="flex-1"
+        >
+          Cancel
+        </Button>
       </div>
-    </dialog>
+    </Dialog>
   );
 }

@@ -205,6 +205,69 @@ describe("Category Rule Controller", () => {
     });
   });
 
+  describe("POST /api/v1/category-rules/preview", () => {
+    it("returns 200 with match count and sample transactions", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/category-rules/preview",
+        headers: { cookie: sessionCookie },
+        payload: {
+          pattern: "Test",
+          matchType: "contains",
+          categoryId,
+          priority: 1,
+        },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(typeof body.matchCount).toBe("number");
+      expect(body.matchedTransactions).toBeInstanceOf(Array);
+    });
+
+    it("returns 400 for invalid body", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/category-rules/preview",
+        headers: { cookie: sessionCookie },
+        payload: { pattern: "", matchType: "invalid" },
+      });
+
+      expect(res.statusCode).toBe(400);
+    });
+
+    it("returns 404 for non-existent category", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/category-rules/preview",
+        headers: { cookie: sessionCookie },
+        payload: {
+          pattern: "Test",
+          matchType: "exact",
+          categoryId: "00000000-0000-0000-0000-000000000000",
+          priority: 1,
+        },
+      });
+
+      expect(res.statusCode).toBe(404);
+    });
+
+    it("returns 401 without session", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/v1/category-rules/preview",
+        payload: {
+          pattern: "Test",
+          matchType: "exact",
+          categoryId,
+          priority: 1,
+        },
+      });
+
+      expect(res.statusCode).toBe(401);
+    });
+  });
+
   describe("GET /api/v1/category-rules", () => {
     it("returns all rules for the user", async () => {
       const res = await app.inject({

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import { userEvent } from "@testing-library/user-event";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { CategoryBreakdownChart } from "./CategoryBreakdownChart";
@@ -117,5 +118,62 @@ describe("CategoryBreakdownChart", () => {
         screen.getByText("Failed to load category breakdown data. Please try again."),
       ).toBeInTheDocument();
     });
+  });
+
+  it("renders as a clickable link to /categories", () => {
+    renderWithQuery(<CategoryBreakdownChart />);
+    const link = screen.getByRole("link", { name: /view categories/i });
+    expect(link).toHaveAttribute("href", "/categories");
+  });
+
+  it("wraps the card content inside the link", () => {
+    renderWithQuery(<CategoryBreakdownChart />);
+    const link = screen.getByRole("link", { name: /view categories/i });
+    expect(link).toContainElement(screen.getByText("Spending by Category"));
+  });
+
+  it("does not render link in error state", async () => {
+    const apiMock = await vi.importMock("../lib/api");
+    apiMock.api.get.mockRejectedValueOnce(new Error("Failed to fetch"));
+
+    renderWithQuery(<CategoryBreakdownChart />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Failed to load category breakdown data. Please try again."),
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  it("renders link in empty state", async () => {
+    const apiMock = await vi.importMock("../lib/api");
+    apiMock.api.get.mockResolvedValueOnce([]);
+
+    renderWithQuery(<CategoryBreakdownChart />);
+
+    await waitFor(() => {
+      const link = screen.getByRole("link", { name: /view categories/i });
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute("href", "/categories");
+    });
+  });
+
+  it("supports keyboard navigation to /categories link", async () => {
+    const user = userEvent.setup();
+    renderWithQuery(<CategoryBreakdownChart />);
+
+    const link = screen.getByRole("link", { name: /view categories/i });
+
+    // Initially not focused
+    expect(link).not.toHaveFocus();
+
+    // Tab to focus the link
+    await user.tab();
+    expect(link).toHaveFocus();
+
+    // Verify link has correct href
+    expect(link).toHaveAttribute("href", "/categories");
   });
 });

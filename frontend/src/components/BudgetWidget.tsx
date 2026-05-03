@@ -37,8 +37,12 @@ export function BudgetWidget() {
 
   if (isLoading) {
     return (
-      <Link to="/budgets" className="block hover:opacity-90 transition-opacity">
-        <Card className="cursor-pointer">
+      <Link
+        to="/budgets"
+        aria-label="View budgets"
+        className="group block rounded-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        <Card className="cursor-pointer transition-all duration-200 group-hover:border-primary/50 group-hover:bg-accent/5 group-hover:shadow-md">
           <CardHeader>
             <CardTitle className="text-xs font-semibold uppercase tracking-wider">
               Budget Status
@@ -68,8 +72,8 @@ export function BudgetWidget() {
   );
 
   return (
-    <Link to="/budgets" className="block hover:opacity-90 transition-opacity">
-      <Card className="cursor-pointer">
+    <Link to="/budgets" className="group block transition-all">
+      <Card className="cursor-pointer transition-all duration-200 hover:border-primary/50 hover:shadow-md group-hover:bg-accent/5">
         <CardHeader>
           <CardTitle className="text-xs font-semibold uppercase tracking-wider">
             Budget Status
