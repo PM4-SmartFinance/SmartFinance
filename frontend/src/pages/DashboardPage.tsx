@@ -54,8 +54,7 @@ export function DashboardPage() {
               { to: "/transactions", label: "Transactions" },
               { to: "/budgets", label: "Budgets" },
               { to: "/categories", label: "Categories" },
-              { to: "/profile", label: "Profile" },
-              ...(user?.role === "ADMIN" ? [{ to: "/admin/users", label: "Users" }] : []),
+              { to: "/settings", label: "Settings" },
             ].map(({ to, label }) => (
               <Link
                 key={to}
