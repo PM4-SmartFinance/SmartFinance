@@ -179,6 +179,21 @@ describe("buildChartAriaLabel", () => {
     expect(label).toContain("income");
     expect(label).toContain("expenses");
   });
+
+  it("caps the description with a head + tail summary for long ranges", () => {
+    // 30 daily points → exceeds the 12-bucket cap.
+    const longRange = Array.from({ length: 30 }, (_, i) => ({
+      date: `2026-01-${String(i + 1).padStart(2, "0")}`,
+      income: i,
+      expenses: i,
+    }));
+    const label = buildChartAriaLabel(longRange);
+    expect(label).toContain("30 periods");
+    expect(label).toContain("periods omitted");
+    // Head and tail should be present.
+    expect(label).toMatch(/2026-01-01|Jan 2026/);
+    expect(label).toMatch(/2026-01-30|Jan 2026/);
+  });
 });
 
 // ── pickGranularity ───────────────────────────────────────────────────────────
@@ -201,9 +216,11 @@ describe("pickGranularity", () => {
 
   it("picks quarter for ranges 6 to 20 years", () => {
     expect(pickGranularity(365 * 6 + 1)).toBe("quarter");
+    expect(pickGranularity(365 * 20)).toBe("quarter"); // exact upper boundary
   });
 
   it("picks year for ranges over 20 years", () => {
+    expect(pickGranularity(365 * 20 + 1)).toBe("year"); // exact upper-bound + 1
     expect(pickGranularity(365 * 25)).toBe("year");
   });
 });
@@ -254,6 +271,32 @@ describe("bucketize", () => {
 
   it("returns empty array for empty input", () => {
     expect(bucketize([], "week")).toEqual([]);
+  });
+
+  it("groups a week spanning a year boundary into a single bucket anchored on the Monday", () => {
+    // Mon Dec 28 2026 — Sun Jan 3 2027 is one ISO week, Monday-anchored at 2026-12-28.
+    const yearBoundary = [
+      { date: "2026-12-28", income: 10, expenses: 5 }, // Mon
+      { date: "2026-12-30", income: 20, expenses: 10 }, // Wed
+      { date: "2027-01-01", income: 30, expenses: 15 }, // Fri
+      { date: "2027-01-03", income: 40, expenses: 20 }, // Sun
+    ];
+    const result = bucketize(yearBoundary, "week");
+    expect(result).toEqual([{ date: "2026-12-28", income: 100, expenses: 50 }]);
+  });
+
+  it("skips points with unparseable dates and warns in dev", () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const result = bucketize(
+      [
+        { date: "2026-01-05", income: 10, expenses: 5 },
+        { date: "not-a-date", income: 99, expenses: 99 },
+      ],
+      "week",
+    );
+    expect(result).toEqual([{ date: "2026-01-05", income: 10, expenses: 5 }]);
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("not-a-date"));
+    errorSpy.mockRestore();
   });
 });
 
@@ -464,8 +507,8 @@ describe("SpendingTrendChart", () => {
 
     const lineOption = await screen.findByRole("radio", { name: "Line" });
     const barOption = await screen.findByRole("radio", { name: "Bar" });
-    expect(lineOption).toHaveAttribute("aria-checked", "true");
-    expect(barOption).toHaveAttribute("aria-checked", "false");
+    expect(lineOption).toBeChecked();
+    expect(barOption).not.toBeChecked();
   });
 
   it("clicking Bar style flips selection", async () => {
@@ -476,12 +519,32 @@ describe("SpendingTrendChart", () => {
     const barOption = await screen.findByRole("radio", { name: "Bar" });
 
     await user.click(barOption);
-    expect(barOption).toHaveAttribute("aria-checked", "true");
-    expect(lineOption).toHaveAttribute("aria-checked", "false");
+    expect(barOption).toBeChecked();
+    expect(lineOption).not.toBeChecked();
 
     await user.click(lineOption);
-    expect(lineOption).toHaveAttribute("aria-checked", "true");
-    expect(barOption).toHaveAttribute("aria-checked", "false");
+    expect(lineOption).toBeChecked();
+    expect(barOption).not.toBeChecked();
+  });
+
+  it("supports keyboard arrow-key navigation across the chart-style radio group", async () => {
+    const user = userEvent.setup();
+    renderWithQuery(<SpendingTrendChart />);
+
+    const lineOption = await screen.findByRole("radio", { name: "Line" });
+    const barOption = await screen.findByRole("radio", { name: "Bar" });
+
+    lineOption.focus();
+    expect(lineOption).toHaveFocus();
+
+    // Native radios respond to ArrowRight by moving selection (and focus) forward.
+    await user.keyboard("{ArrowRight}");
+    expect(barOption).toBeChecked();
+    expect(lineOption).not.toBeChecked();
+
+    await user.keyboard("{ArrowLeft}");
+    expect(lineOption).toBeChecked();
+    expect(barOption).not.toBeChecked();
   });
 
   it("prevents hiding both series — clicking the last visible toggle is a no-op", async () => {

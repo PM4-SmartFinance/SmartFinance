@@ -1,5 +1,6 @@
 import { ServiceError } from "../errors.js";
 import * as dashboardRepository from "../repositories/dashboard.repository.js";
+import { dateStringToId } from "../repositories/dashboard.repository.js";
 import type {
   CategoryTotalAggregate,
   DailyTrendAggregate,
@@ -45,11 +46,6 @@ export async function getDashboardSummary(userId: string, startDate: string, end
   };
 }
 
-function dateStringToDateId(dateStr: string): number {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  return y! * 10000 + m! * 100 + d!;
-}
-
 export async function getDashboardTrends(
   userId: string,
   startDateStr: string,
@@ -57,8 +53,8 @@ export async function getDashboardTrends(
 ): Promise<DailyTrendAggregate[]> {
   validateDateRange(startDateStr, endDateStr);
 
-  const startDateId = dateStringToDateId(startDateStr);
-  const endDateId = dateStringToDateId(endDateStr);
+  const startDateId = dateStringToId(startDateStr);
+  const endDateId = dateStringToId(endDateStr);
 
   const aggregates = await dashboardRepository.listDailyTrends({
     userId,

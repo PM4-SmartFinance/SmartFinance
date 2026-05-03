@@ -1,6 +1,6 @@
 import { prisma } from "../prisma.js";
 
-function dateStringToId(dateStr: string): number {
+export function dateStringToId(dateStr: string): number {
   // Defence-in-depth: callers are expected to pre-validate, but a loose regex
   // (e.g. `^\d{4}-\d{2}-\d{2}$`) would still let through values like
   // "2026-13-99". Reject anything that is not a plausible Gregorian date so
@@ -78,6 +78,10 @@ function dateIdToIsoString(id: number): string {
 export async function listDailyTrends(args: ListDailyTrendsArgs): Promise<DailyTrendAggregate[]> {
   const { userId, startDateId, endDateId } = args;
 
+  // INNER JOIN (not LEFT JOIN) intentional: we only return days that have at
+  // least one transaction. Days with zero transactions are added by the
+  // service-layer gap-fill, which decouples chart completeness from how
+  // densely DimDate is populated.
   const rows = await prisma.$queryRaw<RawDailyTrendRow[]>`
     SELECT
       d.id::int AS "dateId",

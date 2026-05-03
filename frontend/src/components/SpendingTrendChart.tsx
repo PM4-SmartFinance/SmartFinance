@@ -56,11 +56,20 @@ export function bucketize(
 
   for (const p of points) {
     const d = new Date(`${p.date}T00:00:00Z`);
-    if (isNaN(d.getTime())) continue;
+    if (isNaN(d.getTime())) {
+      if (import.meta.env.DEV) {
+        console.error(`bucketize: skipping point with unparseable date "${p.date}"`);
+      }
+      continue;
+    }
 
     let bucketDate: string;
     if (granularity === "week") {
       // Week starts Monday (ISO). Shift to Monday of this week.
+      // Note: when the user's range starts on a non-Monday, the first bucket
+      // label will be the Monday at-or-before that date (which precedes the
+      // selected range). Sums are still correct — only days inside the range
+      // contribute. Documented contract: bucket labels mark the ISO week start.
       const day = d.getUTCDay(); // 0 = Sun, 1 = Mon, ...
       const offset = (day + 6) % 7; // days since Monday
       const monday = new Date(d.getTime() - offset * 86_400_000);
@@ -107,7 +116,7 @@ export function formatDateLabel(dateStr: string): string {
   });
 }
 
-/** Span in days between two YYYY-MM-DD strings. Returns 0 for invalid input. */
+/** Whole-day difference (end − start). Exclusive of the start day. Returns 0 for invalid input or when end < start. */
 export function daysBetween(startDate: string, endDate: string): number {
   const start = new Date(`${startDate}T00:00:00Z`);
   const end = new Date(`${endDate}T00:00:00Z`);
@@ -135,17 +144,29 @@ export function computeTickInterval(pointCount: number, maxLabels: number): numb
   return Math.ceil(pointCount / maxLabels) - 1;
 }
 
+/** Maximum number of buckets included verbatim in the aria-label. Beyond this
+ * the description summarizes head + tail and reports the total count, so
+ * screen readers don't have to read multi-KB strings on long ranges. */
+export const ARIA_LABEL_BUCKET_CAP = 12;
+
 /** Build a screen-reader description summarizing the displayed trend data. */
 export function buildChartAriaLabel(
   points: TrendDataPoint[],
   formatter: (date: string) => string = formatMonthLabel,
 ): string {
   if (points.length === 0) return "Income and expenses chart, no data.";
-  const segments = points.map(
-    (p) =>
-      `${formatter(p.date)}: income ${formatCurrency(p.income)}, expenses ${formatCurrency(p.expenses)}`,
-  );
-  return `Income and expenses chart. ${segments.join(". ")}.`;
+
+  const describe = (p: TrendDataPoint) =>
+    `${formatter(p.date)}: income ${formatCurrency(p.income)}, expenses ${formatCurrency(p.expenses)}`;
+
+  if (points.length <= ARIA_LABEL_BUCKET_CAP) {
+    return `Income and expenses chart. ${points.map(describe).join(". ")}.`;
+  }
+
+  const head = points.slice(0, ARIA_LABEL_BUCKET_CAP / 2).map(describe);
+  const tail = points.slice(-ARIA_LABEL_BUCKET_CAP / 2).map(describe);
+  const skipped = points.length - head.length - tail.length;
+  return `Income and expenses chart with ${points.length} periods. ${head.join(". ")}. … ${skipped} periods omitted. ${tail.join(". ")}.`;
 }
 
 const TITLE = "Monthly Income vs. Expenses";
@@ -168,25 +189,40 @@ function ViewTransactionsLink({ href }: { href: string }) {
 
 function StyleOption({
   label,
+  name,
+  value,
   active,
-  onClick,
+  onChange,
 }: {
   label: string;
+  name: string;
+  value: string;
   active: boolean;
-  onClick: () => void;
+  onChange: (value: string) => void;
 }) {
+  // Native <input type="radio"> gives us free keyboard semantics for the
+  // surrounding radiogroup: arrow keys cycle, Home/End jump, focus follows
+  // selection. The label wrapper is the visible button-like surface; the
+  // actual input is visually hidden but reachable.
+  const id = `${name}-${value}`;
   return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={active}
-      onClick={onClick}
-      className={`rounded px-2 py-0.5 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+    <label
+      htmlFor={id}
+      className={`cursor-pointer rounded px-2 py-0.5 text-xs transition-colors focus-within:ring-2 focus-within:ring-primary ${
         active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent/30"
       }`}
     >
+      <input
+        id={id}
+        type="radio"
+        name={name}
+        value={value}
+        checked={active}
+        onChange={() => onChange(value)}
+        className="sr-only"
+      />
       {label}
-    </button>
+    </label>
   );
 }
 
@@ -236,7 +272,9 @@ export function SpendingTrendChart() {
   const transactionsHref = `/transactions?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
 
   if (error) {
-    console.error("SpendingTrendChart: failed to load trends", error);
+    if (import.meta.env.DEV) {
+      console.error("SpendingTrendChart: failed to load trends", error);
+    }
     return (
       <div
         role="alert"
@@ -369,22 +407,25 @@ export function SpendingTrendChart() {
                 ))}
               </select>
             </label>
-            <div
-              role="radiogroup"
+            <fieldset
               aria-label="Chart style"
               className="inline-flex items-center gap-0.5 rounded border border-border p-0.5"
             >
               <StyleOption
                 label="Line"
+                name="chart-style"
+                value="line"
                 active={chartStyle === "line"}
-                onClick={() => setChartStyle("line")}
+                onChange={(v) => setChartStyle(v as ChartStyle)}
               />
               <StyleOption
                 label="Bar"
+                name="chart-style"
+                value="bar"
                 active={chartStyle === "bar"}
-                onClick={() => setChartStyle("bar")}
+                onChange={(v) => setChartStyle(v as ChartStyle)}
               />
-            </div>
+            </fieldset>
             <div role="group" aria-label="Toggle chart series" className="flex items-center gap-1">
               <SeriesToggle
                 label="Income"
@@ -543,9 +584,6 @@ export function SpendingTrendChart() {
               </BarChart>
             )}
           </ResponsiveContainer>
-          <figcaption className="sr-only">
-            {buildChartAriaLabel(buckets, xAxisFormatter)}
-          </figcaption>
         </figure>
         <div className="mt-4 flex items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground">
