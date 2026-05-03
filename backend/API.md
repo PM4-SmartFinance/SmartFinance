@@ -182,7 +182,7 @@ Returns the profile of a specific user. Users can read their own profile; admins
 
 ### PATCH /users/:id
 
-Updates a user's profile. Users can update their own `name`. Admins can update `name`, `role`, and `active` status.
+Updates a user's profile. Users can update their own `name`. Admins can update `name`, `role`, and `active` status. Admins cannot deactivate or change the role of another admin account.
 
 **Path Parameters:**
 
@@ -215,14 +215,14 @@ Updates a user's profile. Users can update their own `name`. Admins can update `
 
 **Response 400:** Invalid role or no updatable fields
 **Response 401:** Not authenticated
-**Response 403:** Forbidden
+**Response 403:** Forbidden — including when attempting to deactivate or change the role of another admin account
 **Response 404:** User not found
 
 ---
 
 ### DELETE /users/:id
 
-Soft-deletes a user (sets `active` to false). Users can delete themselves; admins can delete any user.
+Soft-deletes a user (sets `active` to false). Users can delete themselves; admins can delete any non-admin user. Admin accounts cannot be deleted.
 
 **Path Parameters:**
 
@@ -233,7 +233,38 @@ Soft-deletes a user (sets `active` to false). Users can delete themselves; admin
 **Response 204:** No content
 
 **Response 401:** Not authenticated
-**Response 403:** Forbidden
+**Response 403:** Forbidden — including when target is an admin account
+**Response 404:** User not found
+
+---
+
+### POST /users/:id/reset-password
+
+Sets a new password for the target user. Requires an authenticated session with the `ADMIN` role. An admin cannot reset another admin's password — they may reset only their own and any non-admin user's. The action is recorded as a `PASSWORD_RESET` audit event with the acting admin and the target user id.
+
+Note: existing sessions of the target user are not invalidated by this endpoint; cookie-based sessions remain valid until they expire. Server-side session invalidation on admin reset is tracked as a follow-up.
+
+**Path Parameters:**
+
+| Parameter | Type   | Validation |
+| --------- | ------ | ---------- |
+| `id`      | string | UUID       |
+
+**Request Body:**
+
+| Field         | Type   | Required | Validation           |
+| ------------- | ------ | -------- | -------------------- |
+| `newPassword` | string | yes      | Minimum 8 characters |
+
+**Response 200:**
+
+```json
+{ "ok": true }
+```
+
+**Response 400:** Validation failure (`newPassword` missing or shorter than 8 characters)
+**Response 401:** Not authenticated
+**Response 403:** Forbidden — caller is not an admin, or attempting to reset another admin's password
 **Response 404:** User not found
 
 ---
@@ -472,7 +503,7 @@ All budget endpoints require an authenticated session with the `USER` role.
 
 ### GET /budgets
 
-Returns all budgets for the authenticated user, ordered by year and month descending. Each budget includes dynamically calculated status fields: `currentSpending`, `percentageUsed`, `remainingAmount`, and `isOverBudget`.
+Returns all budgets for the authenticated user, ordered by type, then year and month descending. Each budget includes dynamically calculated status fields: `currentSpending`, `percentageUsed`, `remainingAmount`, and `isOverBudget`.
 
 **Response 200:**
 
@@ -482,12 +513,10 @@ Returns all budgets for the authenticated user, ordered by year and month descen
     {
       "id": "uuid",
       "categoryId": "uuid",
-      "month": 3,
-      "year": 2026,
+      "type": "MONTHLY",
+      "month": 0,
+      "year": 0,
       "limitAmount": "500.00",
-      "budgetLimitDay": null,
-      "budgetLimitMonth": null,
-      "budgetLimitYear": null,
       "active": true,
       "currentSpending": "142.50",
       "percentageUsed": 28.5,
@@ -506,16 +535,17 @@ Returns all budgets for the authenticated user, ordered by year and month descen
 
 ### POST /budgets
 
-Creates a new budget for a category and calendar month.
+Creates a new budget for a category. Supports six budget types: general recurring (`DAILY`, `MONTHLY`, `YEARLY`) and specific period (`SPECIFIC_MONTH`, `SPECIFIC_YEAR`, `SPECIFIC_MONTH_YEAR`).
 
 **Request Body:**
 
-| Field         | Type    | Required | Validation                                      |
-| ------------- | ------- | -------- | ----------------------------------------------- |
-| `categoryId`  | string  | yes      | Must be a valid category (user-owned or global) |
-| `month`       | integer | yes      | 1–12                                            |
-| `year`        | integer | yes      | >= 2000                                         |
-| `limitAmount` | number  | yes      | Must be > 0                                     |
+| Field         | Type    | Required    | Validation                                                                                     |
+| ------------- | ------- | ----------- | ---------------------------------------------------------------------------------------------- |
+| `categoryId`  | string  | yes         | Must be a valid category (user-owned or global)                                                |
+| `type`        | string  | yes         | One of: `DAILY`, `MONTHLY`, `YEARLY`, `SPECIFIC_MONTH`, `SPECIFIC_YEAR`, `SPECIFIC_MONTH_YEAR` |
+| `limitAmount` | number  | yes         | Must be > 0                                                                                    |
+| `month`       | integer | conditional | Required for `SPECIFIC_MONTH` and `SPECIFIC_MONTH_YEAR` (1–12)                                 |
+| `year`        | integer | conditional | Required for `SPECIFIC_YEAR` and `SPECIFIC_MONTH_YEAR` (>= 2000)                               |
 
 **Response 201:**
 
@@ -524,12 +554,10 @@ Creates a new budget for a category and calendar month.
   "budget": {
     "id": "uuid",
     "categoryId": "uuid",
-    "month": 3,
-    "year": 2026,
+    "type": "MONTHLY",
+    "month": 0,
+    "year": 0,
     "limitAmount": "500.00",
-    "budgetLimitDay": null,
-    "budgetLimitMonth": null,
-    "budgetLimitYear": null,
     "active": true,
     "currentSpending": "0",
     "percentageUsed": 0,
@@ -541,10 +569,10 @@ Creates a new budget for a category and calendar month.
 }
 ```
 
-**Response 400:** Invalid input (month out of range, limitAmount <= 0, missing fields)
+**Response 400:** Invalid input (invalid type, missing required month/year for type, limitAmount <= 0)
 **Response 401:** Not authenticated
 **Response 404:** Category not found or does not belong to the authenticated user
-**Response 409:** Budget already exists for this category and month
+**Response 409:** Budget already exists for this category and type
 
 ---
 
@@ -571,12 +599,10 @@ Updates the spending limit of an existing budget. Only budgets owned by the auth
   "budget": {
     "id": "uuid",
     "categoryId": "uuid",
-    "month": 3,
-    "year": 2026,
+    "type": "MONTHLY",
+    "month": 0,
+    "year": 0,
     "limitAmount": "750.00",
-    "budgetLimitDay": null,
-    "budgetLimitMonth": null,
-    "budgetLimitYear": null,
     "active": true,
     "currentSpending": "142.50",
     "percentageUsed": 19,
@@ -698,7 +724,7 @@ All category endpoints require an authenticated session with the `USER` role.
 
 ### GET /categories
 
-Returns all categories available to the authenticated user — both global system categories (`userId: null`) and the user's custom categories.
+Returns all categories available to the authenticated user — this includes their generated default examples and any custom categories they have created.
 
 **Response 200:**
 
@@ -707,7 +733,7 @@ Returns all categories available to the authenticated user — both global syste
   {
     "id": "uuid",
     "categoryName": "Groceries",
-    "userId": null,
+    "userId": "uuid",
     "createdAt": "2026-03-29T10:00:00.000Z",
     "updatedAt": "2026-03-29T10:00:00.000Z"
   },
@@ -751,7 +777,7 @@ Creates a new custom category for the authenticated user.
 
 ### PATCH /categories/:id
 
-Updates the name of a user's own custom category. Global categories cannot be modified.
+Updates the name of a user's own custom category.
 
 **Request Body:**
 
@@ -773,20 +799,18 @@ Updates the name of a user's own custom category. Global categories cannot be mo
 
 **Response 400:** Missing or invalid `categoryName`, or invalid UUID
 **Response 401:** Not authenticated
-**Response 403:** Cannot modify global categories or another user's category
-**Response 404:** Category not found
+**Response 404:** Category not found or not owned by authenticated user
 
 ### DELETE /categories/:id
 
-Deletes a user's own custom category. Global categories cannot be deleted. Deletion is blocked if the category is referenced by transactions or merchant mappings.
+Deletes a user's own custom category. Deletion is blocked if the category is currently referenced by transactions, budgets, rules, or merchant mappings.
 
 **Response 204:** Category deleted (no body)
 
 **Response 400:** Invalid UUID
 **Response 401:** Not authenticated
-**Response 403:** Cannot delete global categories or another user's category
-**Response 404:** Category not found
-**Response 409:** Category is in use by transactions or merchant mappings
+**Response 404:** Category not found or not owned by authenticated user
+**Response 409:** Category is in use by transactions, budgets, rules, or merchant mappings and cannot be deleted
 
 ---
 
@@ -926,6 +950,49 @@ Creates a new category rule.
 **Response 401:** Not authenticated
 **Response 404:** Category not found or does not belong to the authenticated user
 **Response 409:** A rule with this pattern and match type already exists
+
+---
+
+### POST /category-rules/preview
+
+Previews matching transactions for a proposed rule without creating it. Returns the count of uncategorized transactions that would match the pattern, along with up to 3 sample transactions. Useful for live preview as the user edits the rule pattern.
+
+**Request Body:**
+
+| Field        | Type    | Required | Validation                                            |
+| ------------ | ------- | -------- | ----------------------------------------------------- |
+| `pattern`    | string  | yes      | Non-empty string                                      |
+| `matchType`  | string  | yes      | `"exact"` or `"contains"`                             |
+| `categoryId` | string  | yes      | UUID, must be a valid category (user-owned or global) |
+| `priority`   | integer | yes      | >= 0                                                  |
+
+**Response 200:**
+
+```json
+{
+  "matchCount": 7,
+  "matchedTransactions": [
+    {
+      "id": "uuid",
+      "merchantName": "Migros",
+      "amount": -42.5,
+      "dateId": 20260401
+    },
+    {
+      "id": "uuid",
+      "merchantName": "Migros City",
+      "amount": -18.75,
+      "dateId": 20260325
+    }
+  ]
+}
+```
+
+`matchCount` is the total number of uncategorized transactions that match the pattern. `matchedTransactions` is an array of up to 3 recent matching transactions, ordered by date descending then by ID ascending. If no transactions match, `matchedTransactions` is an empty array.
+
+**Response 400:** Invalid input (missing fields, invalid matchType, invalid UUID)
+**Response 401:** Not authenticated
+**Response 404:** Category not found or does not belong to the authenticated user
 
 ---
 

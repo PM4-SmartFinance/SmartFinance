@@ -1,5 +1,6 @@
 import argon2 from "argon2";
 import { ServiceError } from "../errors.js";
+import { Prisma } from "@prisma/client";
 import * as userRepository from "../repositories/user.repository.js";
 import {
   BootstrapForbiddenError,
@@ -10,6 +11,8 @@ import * as auditService from "./audit.service.js";
 import { logEvent } from "./audit.service.js";
 
 const DEFAULT_CURRENCY_CODE = "CHF";
+
+export const DEFAULT_CATEGORIES = ["Groceries", "Housing", "Transport", "Entertainment", "Income"];
 
 // --- Profile functions (from develop) ---
 
@@ -59,6 +62,33 @@ export async function changePassword(userId: string, currentPassword: string, ne
   void auditService.logEvent("PASSWORD_CHANGED", userId).catch(() => {});
 }
 
+export async function resetUserPassword(
+  requestingUser: { id: string; role: string } | null,
+  targetUserId: string,
+  newPassword: string,
+) {
+  if (!requestingUser) throw new ServiceError(401, "Unauthorized");
+  if (requestingUser.role !== "ADMIN") throw new ServiceError(403, "Forbidden");
+
+  const target = await userRepository.findById(targetUserId);
+  if (!target) throw new ServiceError(404, "Not found");
+
+  // Peer-admin guard — mirror the protection used in updateUser/deleteUser.
+  // Admins cannot reset another admin's password; they may reset their own.
+  if (target.role === "ADMIN" && requestingUser.id !== targetUserId) {
+    throw new ServiceError(403, "Cannot reset another admin's password");
+  }
+
+  const hashed = await argon2.hash(newPassword);
+  await userRepository.updatePassword(targetUserId, hashed);
+
+  void auditService
+    .logEvent("PASSWORD_RESET", requestingUser.id, {
+      targetUserId,
+    })
+    .catch(() => {});
+}
+
 export async function onboardUser(
   requestingUser: { id: string; role: string } | null,
   payload: { email: string; displayName?: string; password: string; role?: "ADMIN" | "USER" },
@@ -70,7 +100,7 @@ export async function onboardUser(
     throw new ServiceError(500, `Default currency ${DEFAULT_CURRENCY_CODE} not configured`);
   }
 
-  let user;
+  let user: Awaited<ReturnType<typeof userRepository.createUserAtomic>>;
   try {
     user = await userRepository.createUserAtomic(requestingUser, {
       email: payload.email,
@@ -78,11 +108,14 @@ export async function onboardUser(
       defaultCurrencyId: currency.id,
       ...(payload.displayName !== undefined && { name: payload.displayName }),
       ...(payload.role !== undefined && { role: payload.role }),
+      defaultCategories: DEFAULT_CATEGORIES,
     });
   } catch (err) {
     if (err instanceof BootstrapUnauthorizedError) throw new ServiceError(401, "Unauthorized");
     if (err instanceof BootstrapForbiddenError) throw new ServiceError(403, "Forbidden");
     if (err instanceof EmailConflictError) throw new ServiceError(409, "Email already in use");
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034")
+      throw new ServiceError(503, "Transaction failed due to a write conflict");
     throw err;
   }
 
@@ -141,16 +174,19 @@ export async function updateUser(
     throw new ServiceError(400, "Invalid role");
   }
 
-  // Admins cannot change the role of other admins
+  // Admins cannot change the role of or deactivate other admins
   const target = await userRepository.findById(id);
   if (!target) throw new ServiceError(404, "Not found");
+  if (target.role === "ADMIN" && payload.active === false) {
+    throw new ServiceError(403, "Cannot deactivate an admin account");
+  }
   if (
     isAdmin &&
     requestingUser.id !== id &&
     target.role === "ADMIN" &&
     payload.role !== undefined
   ) {
-    throw new ServiceError(403, "Cannot change the role of another admin");
+    throw new ServiceError(403, "Cannot modify another admin account");
   }
 
   // Build update data only with allowed fields
@@ -185,8 +221,9 @@ export async function deleteUser(requestingUser: { id: string; role: string } | 
   const existing = await userRepository.findById(id);
   if (!existing) throw new ServiceError(404, "Not found");
 
-  if (isAdmin && requestingUser.id !== id && existing.role === "ADMIN") {
-    throw new ServiceError(403, "Cannot delete another admin");
+  // Admin accounts cannot be deleted — demote to USER first to remove the guard
+  if (existing.role === "ADMIN") {
+    throw new ServiceError(403, "Cannot delete an admin account");
   }
 
   await userRepository.updateUserById(id, { active: false });

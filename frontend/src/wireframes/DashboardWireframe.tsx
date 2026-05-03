@@ -78,7 +78,7 @@ const BUDGETS = [
 
 const NAV_LINKS = ["Dashboard", "Transactions", "Reports", "Budgets"];
 
-export default function DashboardWireframe() {
+export function DashboardWireframe() {
   return (
     <div className="wf-page">
       {/* ── Primary top nav ── */}
