@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router";
 import { vi } from "vitest";
-import { AdminUsersPage } from "./AdminUsersPage";
+import { SettingsUsers } from "./SettingsUsers";
 
 const mockUsers = [
   {
@@ -81,13 +81,13 @@ function renderWithProviders() {
   return render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <AdminUsersPage />
+        <SettingsUsers />
       </BrowserRouter>
     </QueryClientProvider>,
   );
 }
 
-describe("AdminUsersPage", () => {
+describe("SettingsUsers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGet.mockResolvedValue({
@@ -102,7 +102,7 @@ describe("AdminUsersPage", () => {
     it("displays page title and description", async () => {
       renderWithProviders();
 
-      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Users");
+      expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Users");
       expect(screen.getByText("Manage platform users and access")).toBeInTheDocument();
     });
 
@@ -222,6 +222,28 @@ describe("AdminUsersPage", () => {
 
       await waitFor(() => {
         expect(mockPatch).toHaveBeenCalledWith("/users/2", { active: false });
+      });
+    });
+
+    it("calls logout API when deactivating self", async () => {
+      const user = userEvent.setup();
+      mockPatch.mockResolvedValue({ user: { ...mockUsers[0], active: false } });
+      mockPost.mockResolvedValue({ ok: true });
+      renderWithProviders();
+
+      await waitFor(() => {
+        expect(screen.getByText("admin@example.com")).toBeInTheDocument();
+      });
+
+      const deactivateButtons = screen.getAllByRole("button", { name: "Deactivate" });
+      await user.click(deactivateButtons[0]); // Click deactivate for self (admin)
+
+      await waitFor(() => {
+        expect(mockPatch).toHaveBeenCalledWith("/users/1", { active: false });
+      });
+
+      await waitFor(() => {
+        expect(mockPost).toHaveBeenCalledWith("/auth/logout", {});
       });
     });
   });
@@ -354,11 +376,67 @@ describe("AdminUsersPage", () => {
     });
   });
 
+  describe("reset password", () => {
+    beforeAll(() => {
+      if (!HTMLDialogElement.prototype.showModal) {
+        HTMLDialogElement.prototype.showModal = function () {
+          this.setAttribute("open", "");
+        };
+      }
+      if (!HTMLDialogElement.prototype.close) {
+        HTMLDialogElement.prototype.close = function () {
+          this.removeAttribute("open");
+        };
+      }
+    });
+
+    it("opens the reset password dialog with the selected user", async () => {
+      const user = userEvent.setup();
+      renderWithProviders();
+
+      await waitFor(() => {
+        expect(screen.getByText("user1@example.com")).toBeInTheDocument();
+      });
+
+      const resetButtons = screen.getAllByRole("button", { name: "Reset Password" });
+      // currentUser is the admin row (self), which still shows actions; user1 is the next row.
+      await user.click(resetButtons[1]);
+
+      expect(
+        await screen.findByText(/Enter a new password for user1@example.com/i),
+      ).toBeInTheDocument();
+    });
+
+    it("submits the new password to /users/:id/reset-password", async () => {
+      const user = userEvent.setup();
+      mockPost.mockResolvedValue({ ok: true });
+      renderWithProviders();
+
+      await waitFor(() => {
+        expect(screen.getByText("user1@example.com")).toBeInTheDocument();
+      });
+
+      await user.click(screen.getAllByRole("button", { name: "Reset Password" })[1]);
+
+      await user.type(screen.getByLabelText(/^New password/i), "Password1!");
+      await user.type(screen.getByLabelText(/Confirm new password/i), "Password1!");
+      const submitButtons = screen.getAllByRole("button", { name: /^Reset Password$/ });
+      // Dialog's submit button is the last "Reset Password" rendered
+      await user.click(submitButtons[submitButtons.length - 1]);
+
+      await waitFor(() => {
+        expect(mockPost).toHaveBeenCalledWith("/users/2/reset-password", {
+          newPassword: "Password1!",
+        });
+      });
+    });
+  });
+
   describe("route protection", () => {
     it("renders page for authenticated admin users", () => {
       renderWithProviders();
 
-      expect(screen.getByRole("heading", { level: 1, name: /Users/ })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 2, name: /Users/ })).toBeInTheDocument();
     });
   });
 

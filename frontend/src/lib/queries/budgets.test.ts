@@ -76,12 +76,12 @@ describe("useBudgets", () => {
     mockApi.get.mockResolvedValue({ budgets: [baseBudget, secondBudget] });
 
     const { wrapper } = createTestWrapper();
-    const { result } = renderHook(() => useBudgets(), { wrapper });
+    const { result } = renderHook(() => useBudgets({ period: "MONTHLY" }), { wrapper });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data).toEqual([baseBudget, secondBudget]);
-    expect(mockApi.get).toHaveBeenCalledWith("/budgets");
+    expect(result.current.data).toEqual({ budgets: [baseBudget, secondBudget] });
+    expect(mockApi.get).toHaveBeenCalledWith("/budgets?period=MONTHLY");
   });
 });
 
@@ -90,12 +90,12 @@ describe("useCreateBudget", () => {
     vi.clearAllMocks();
   });
 
-  it("prepends new budget to cache on success", async () => {
+  it("invalidates budgets cache on success", async () => {
     const newBudget: Budget = { ...baseBudget, id: "b-new", categoryId: "cat-3" };
     mockApi.post.mockResolvedValue({ budget: newBudget });
 
     const { queryClient, wrapper } = createTestWrapper();
-    queryClient.setQueryData(["budgets"], [baseBudget]);
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
 
     const { result } = renderHook(() => useCreateBudget(), { wrapper });
 
@@ -105,33 +105,27 @@ describe("useCreateBudget", () => {
       limitAmount: 500,
     });
 
-    const cached = queryClient.getQueryData<Budget[]>(["budgets"]);
-    expect(cached).toHaveLength(2);
-    expect(cached![0].id).toBe("b-new");
-    expect(cached![1].id).toBe("b-1");
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["budgets"] });
   });
 
-  it("invalidates cache on error", async () => {
-    mockApi.post.mockRejectedValue(new Error("Server error"));
-    mockApi.get.mockResolvedValue({ budgets: [baseBudget] });
+  it("calls api.post with correct input", async () => {
+    const newBudget: Budget = { ...baseBudget, id: "b-new", categoryId: "cat-3" };
+    mockApi.post.mockResolvedValue({ budget: newBudget });
 
-    const { queryClient, wrapper } = createTestWrapper();
-    queryClient.setQueryData(["budgets"], [baseBudget]);
-    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
-
+    const { wrapper } = createTestWrapper();
     const { result } = renderHook(() => useCreateBudget(), { wrapper });
 
-    try {
-      await result.current.mutateAsync({
-        categoryId: "cat-3",
-        type: "MONTHLY",
-        limitAmount: 500,
-      });
-    } catch {
-      // expected
-    }
+    await result.current.mutateAsync({
+      categoryId: "cat-3",
+      type: "MONTHLY",
+      limitAmount: 500,
+    });
 
-    await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["budgets"] }));
+    expect(mockApi.post).toHaveBeenCalledWith("/budgets", {
+      categoryId: "cat-3",
+      type: "MONTHLY",
+      limitAmount: 500,
+    });
   });
 });
 
@@ -140,21 +134,18 @@ describe("useUpdateBudget", () => {
     vi.clearAllMocks();
   });
 
-  it("replaces matching budget in cache on success", async () => {
+  it("invalidates budgets cache on success", async () => {
     const updatedBudget: Budget = { ...baseBudget, limitAmount: "750.00" };
     mockApi.patch.mockResolvedValue({ budget: updatedBudget });
 
     const { queryClient, wrapper } = createTestWrapper();
-    queryClient.setQueryData(["budgets"], [baseBudget, secondBudget]);
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
 
     const { result } = renderHook(() => useUpdateBudget(), { wrapper });
 
     await result.current.mutateAsync({ id: "b-1", input: { limitAmount: 750 } });
 
-    const cached = queryClient.getQueryData<Budget[]>(["budgets"]);
-    expect(cached).toHaveLength(2);
-    expect(cached![0].limitAmount).toBe("750.00");
-    expect(cached![1].id).toBe("b-2");
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["budgets"] });
   });
 });
 
@@ -163,38 +154,17 @@ describe("useDeleteBudget", () => {
     vi.clearAllMocks();
   });
 
-  it("removes budget from cache on success", async () => {
+  it("invalidates budgets cache on success", async () => {
     mockApi.delete.mockResolvedValue(undefined);
 
     const { queryClient, wrapper } = createTestWrapper();
-    queryClient.setQueryData(["budgets"], [baseBudget, secondBudget]);
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
 
     const { result } = renderHook(() => useDeleteBudget(), { wrapper });
 
     await result.current.mutateAsync("b-1");
 
-    const cached = queryClient.getQueryData<Budget[]>(["budgets"]);
-    expect(cached).toHaveLength(1);
-    expect(cached![0].id).toBe("b-2");
-  });
-
-  it("invalidates cache on error", async () => {
-    mockApi.delete.mockRejectedValue(new Error("Server error"));
-    mockApi.get.mockResolvedValue({ budgets: [baseBudget] });
-
-    const { queryClient, wrapper } = createTestWrapper();
-    queryClient.setQueryData(["budgets"], [baseBudget]);
-    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
-
-    const { result } = renderHook(() => useDeleteBudget(), { wrapper });
-
-    try {
-      await result.current.mutateAsync("b-1");
-    } catch {
-      // expected
-    }
-
-    await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["budgets"] }));
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["budgets"] });
   });
 });
 

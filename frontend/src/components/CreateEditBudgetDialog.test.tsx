@@ -248,11 +248,10 @@ describe("CreateEditBudgetDialog", () => {
 
       await waitFor(() => expect(onClose).toHaveBeenCalled());
       expect(mockPatch).toHaveBeenCalledWith("/budgets/budget-1", {
+        limitAmount: 750,
         categoryId: "cat-1",
         type: "MONTHLY",
-        month: 0,
-        year: 0,
-        limitAmount: 750,
+        active: true,
       });
     });
 
