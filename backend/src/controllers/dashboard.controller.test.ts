@@ -296,8 +296,8 @@ describe("GET /api/v1/dashboard/trends", () => {
   describe("success", () => {
     it("returns 200 with trend data wrapped in { data }", async () => {
       const mockData = [
-        { year: 2025, month: 1, income: 5000, expenses: 2500 },
-        { year: 2025, month: 2, income: 4500, expenses: 2200 },
+        { date: "2025-01-15", income: 5000, expenses: 2500 },
+        { date: "2025-02-15", income: 4500, expenses: 2200 },
       ];
       mockService.getDashboardTrends.mockResolvedValue(mockData);
 
@@ -323,6 +323,19 @@ describe("GET /api/v1/dashboard/trends", () => {
         "2025-03-01",
         "2025-08-31",
       );
+    });
+
+    it("returns 400 when the service throws a ServiceError (e.g. inverted range)", async () => {
+      mockService.getDashboardTrends.mockRejectedValue(
+        new ServiceError(400, "startDate must not be after endDate"),
+      );
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/dashboard/trends?startDate=2025-08-31&endDate=2025-03-01",
+      });
+
+      expect(response.statusCode).toBe(400);
     });
   });
 });

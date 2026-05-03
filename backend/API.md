@@ -459,17 +459,18 @@ All dashboard endpoints require an authenticated session with the `USER` role.
 
 ### GET /dashboard/trends
 
-Returns monthly aggregated income and expenses for a lookback window ending in the current calendar month.
+Returns daily aggregated income and expenses for the requested date range. Frontends downsample client-side for week/month/quarter/year views.
 
 **Query Parameters:**
 
-| Parameter | Type    | Required | Default | Validation | Description                                   |
-| --------- | ------- | -------- | ------- | ---------- | --------------------------------------------- |
-| `months`  | integer | no       | `6`     | 6-12       | Number of months to include in the time range |
+| Parameter   | Type   | Required | Validation            | Description                 |
+| ----------- | ------ | -------- | --------------------- | --------------------------- |
+| `startDate` | string | yes      | `^\d{4}-\d{2}-\d{2}$` | Inclusive range start (UTC) |
+| `endDate`   | string | yes      | `^\d{4}-\d{2}-\d{2}$` | Inclusive range end (UTC)   |
 
-The response is ordered from oldest month to newest month. Months without transactions are included with `income = 0` and `expenses = 0`.
+The response is ordered from oldest day to newest day. Days without transactions are included with `income = 0` and `expenses = 0` (gap-filled).
 
-`income` is the sum of positive transaction amounts. `expenses` is the sum of absolute values of negative transaction amounts.
+`income` is the sum of positive transaction amounts on that day. `expenses` is the sum of absolute values of negative transaction amounts on that day.
 
 **Response 200:**
 
@@ -477,14 +478,12 @@ The response is ordered from oldest month to newest month. Months without transa
 {
   "data": [
     {
-      "year": 2025,
-      "month": 11,
+      "date": "2025-12-01",
       "income": 0,
       "expenses": 0
     },
     {
-      "year": 2025,
-      "month": 12,
+      "date": "2025-12-15",
       "income": 2450.75,
       "expenses": 980.2
     }
@@ -492,7 +491,7 @@ The response is ordered from oldest month to newest month. Months without transa
 }
 ```
 
-**Response 400:** Invalid `months` query parameter
+**Response 400:** Missing or malformed `startDate` / `endDate`, or `startDate` > `endDate`
 **Response 401:** Not authenticated
 
 ---
