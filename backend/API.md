@@ -587,15 +587,16 @@ Updates an existing budget. Supports full budget mutation including category, mo
 
 **Request Body:**
 
-| Field         | Type   | Required | Validation                                                                         |
-| ------------- | ------ | -------- | ---------------------------------------------------------------------------------- |
-| `categoryId`  | string | no       | Must belong to authenticated user                                                  |
-| `type`        | string | no       | One of: DAILY, MONTHLY, YEARLY, SPECIFIC_MONTH, SPECIFIC_YEAR, SPECIFIC_MONTH_YEAR |
-| `month`       | number | no       | Between 1 and 12                                                                   |
-| `year`        | number | no       | 2000 or later                                                                      |
-| `limitAmount` | number | no       | Must be > 0                                                                        |
+| Field         | Type    | Required | Validation                                                                         |
+| ------------- | ------- | -------- | ---------------------------------------------------------------------------------- |
+| `categoryId`  | string  | no       | Must belong to authenticated user                                                  |
+| `type`        | string  | no       | One of: DAILY, MONTHLY, YEARLY, SPECIFIC_MONTH, SPECIFIC_YEAR, SPECIFIC_MONTH_YEAR |
+| `month`       | number  | no       | Between 1 and 12                                                                   |
+| `year`        | number  | no       | 2000 or later                                                                      |
+| `limitAmount` | number  | no       | Must be > 0                                                                        |
+| `active`      | boolean | no       | Enables or disables the budget (soft-delete flag)                                  |
 
-At least one field must be provided.
+At least one field must be provided. When `type` is changed to a general type (DAILY, MONTHLY, YEARLY), `month` and `year` are normalized to 0; when changed to a specific type, the resulting `(type, month, year)` combination must satisfy the same requirements as POST.
 
 **Response 200:**
 
