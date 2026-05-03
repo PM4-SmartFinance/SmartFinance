@@ -41,10 +41,13 @@ const mockGet = vi.mocked(api.get);
 const baseBudget: Budget = {
   id: "b-1",
   categoryId: "cat-1",
+  type: "MONTHLY",
   month: 3,
   year: 2026,
   limitAmount: "500.00",
   active: true,
+  isActive: true,
+  priority: 1,
   currentSpending: "142.50",
   percentageUsed: 28.5,
   remainingAmount: "357.50",
@@ -89,7 +92,7 @@ function mockApiRoutes(overrides?: {
   const categories = overrides?.categories ?? mockCategories;
 
   mockGet.mockImplementation(((path: string) => {
-    if (path === "/budgets") {
+    if (path.startsWith("/budgets")) {
       return budgets instanceof Error ? Promise.reject(budgets) : Promise.resolve({ budgets });
     }
     if (path === "/categories") {
@@ -110,7 +113,7 @@ describe("BudgetsPage", () => {
     // Never resolve the budgets request
     mockGet.mockImplementation((path: string) => {
       if (path === "/categories") return Promise.resolve({ categories: mockCategories });
-      return new Promise(() => {});
+      return new Promise(() => {}); // never resolve budgets
     });
 
     renderPage();
@@ -145,7 +148,7 @@ describe("BudgetsPage", () => {
     });
 
     // Two budget cards rendered (each has Edit + Delete buttons)
-    expect(screen.getAllByRole("button", { name: "Edit" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: /^Edit / })).toHaveLength(2);
   });
 
   it("falls back to categoryId when category is not found", async () => {
@@ -166,7 +169,7 @@ describe("BudgetsPage", () => {
 
     renderPage();
 
-    await waitFor(() => expect(screen.getAllByRole("button", { name: "Edit" })).toHaveLength(2));
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /^Edit / })).toHaveLength(2));
     expect(screen.getByRole("link", { name: "Back to Dashboard" })).toBeInTheDocument();
 
     const showModalMock = vi.mocked(window.HTMLDialogElement.prototype.showModal);

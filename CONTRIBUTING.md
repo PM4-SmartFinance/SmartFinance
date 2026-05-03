@@ -32,7 +32,7 @@ Format: `<type>/<JIRA-ID>-<description>`
 
 We follow Conventional Commits to make our history readable. You must include the Jira ticket ID in your commit message. This ensures every individual code change is logged in the history of the Jira ticket.
 
-Format: `<type>(<scope>): [<JIRA-ID>] <subject>`
+Format: `<type>(<scope>)?: [<JIRA-ID>] <subject>`
 
 - **Types:**
   - `feat`: A new feature
@@ -42,8 +42,11 @@ Format: `<type>(<scope>): [<JIRA-ID>] <subject>`
   - `refactor`: A code change that neither fixes a bug nor adds a feature
   - `test`: Adding missing tests or correcting existing tests
   - `chore`: Changes to the build process or auxiliary tools
+  - `ci`: Changes to CI/CD configuration
+  - `build`: Changes that affect the build system or dependencies
+  - `perf`: Changes that improve performance
 
-- **Scopes (Optional):** Indicate the part of the monorepo affected (e.g., `frontend`, `backend`, `docker`, `db`, `root`).
+- **Scope (Optional):** Use lowercase scope text (letters and optional hyphens) to indicate the affected part of the monorepo (for example, `frontend`, `back-end`, `ci-cd`, `docker`, `db`, `root`, `infra`).
 
 - **Examples:**
   - `feat(backend): [KAN-10] implement RBAC middleware for protected routes`
@@ -59,6 +62,8 @@ Format: `<type>(<scope>): [<JIRA-ID>] <subject>`
 5. Address any feedback and update the branch.
 6. Once approved, use **Squash and Merge** to integrate your code into `develop`.
 7. Delete the feature branch after merging.
+
+**Code Ownership:** Critical security and authentication paths are protected by [`.github/CODEOWNERS`](.github/CODEOWNERS). PRs that modify these files will automatically request a review from the designated code owner. The CODEOWNERS approval is required before merge (enforced via branch protection on `develop`).
 
 **PR Deadline:** All PRs must be submitted by **Thursday 20:00** to allow sufficient review time before sprint closure. PRs submitted after this deadline will be deferred to the next sprint.
 

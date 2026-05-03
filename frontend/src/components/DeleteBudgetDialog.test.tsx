@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { DeleteBudgetDialog } from "./DeleteBudgetDialog";
 
 window.HTMLDialogElement.prototype.showModal = vi.fn(function (this: HTMLDialogElement) {
@@ -14,7 +15,7 @@ describe("DeleteBudgetDialog", () => {
     isOpen: true,
     budgetId: "budget-1",
     categoryName: "Groceries",
-    monthYear: "March 2026",
+    budgetLabel: "March 2026",
     onConfirm: vi.fn(),
     onCancel: vi.fn(),
   };
@@ -30,18 +31,20 @@ describe("DeleteBudgetDialog", () => {
     expect(screen.getByText("March 2026")).toBeInTheDocument();
   });
 
-  it("calls onConfirm with budgetId when Delete button is clicked", () => {
+  it("calls onConfirm with budgetId when Delete button is clicked", async () => {
+    const user = userEvent.setup();
     render(<DeleteBudgetDialog {...defaultProps} />);
 
-    screen.getByRole("button", { name: "Delete" }).click();
+    await user.click(screen.getByRole("button", { name: "Delete" }));
 
     expect(defaultProps.onConfirm).toHaveBeenCalledWith("budget-1");
   });
 
-  it("calls onCancel when Cancel button is clicked", () => {
+  it("calls onCancel when Cancel button is clicked", async () => {
+    const user = userEvent.setup();
     render(<DeleteBudgetDialog {...defaultProps} />);
 
-    screen.getByRole("button", { name: "Cancel" }).click();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(defaultProps.onCancel).toHaveBeenCalledOnce();
   });

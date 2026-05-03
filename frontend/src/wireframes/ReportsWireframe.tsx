@@ -23,7 +23,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 const INCOME_BARS = [3200, 3200, 3350, 3200, 3200, 3200, 3400, 3200, 3200, 3200, 3350, 3200];
 const EXPENSE_BARS = [1640, 1810, 1520, 1970, 1430, 1890, 1750, 1600, 1820, 1680, 1940, 1580];
 
-export default function ReportsWireframe() {
+export function ReportsWireframe() {
   const maxVal = Math.max(...INCOME_BARS, ...EXPENSE_BARS);
 
   return (

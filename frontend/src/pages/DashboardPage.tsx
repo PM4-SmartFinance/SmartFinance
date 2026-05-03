@@ -99,9 +99,9 @@ export function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex min-h-48 items-center justify-center rounded bg-muted/30 px-4 text-center">
-                  <div className="text-sm italic text-muted-foreground">
-                    Transaction list table (Date, Description, Category, Amount, Status)
-                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    View and manage all your transactions
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -117,9 +117,9 @@ export function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex min-h-48 items-center justify-center rounded bg-muted/30 px-4 text-center">
-                  <div className="text-sm italic text-muted-foreground">
-                    Budget progress bars (Category name, progress % bar, spent vs. limit)
-                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Track spending against your budget limits
+                  </p>
                 </div>
               </CardContent>
             </Card>

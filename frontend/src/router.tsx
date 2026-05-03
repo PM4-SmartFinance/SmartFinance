@@ -10,11 +10,11 @@ import { AdminUsersPage } from "./pages/AdminUsersPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
-import LoginWireframe from "./wireframes/LoginWireframe";
-import DashboardWireframe from "./wireframes/DashboardWireframe";
-import TransactionsWireframe from "./wireframes/TransactionsWireframe";
-import ReportsWireframe from "./wireframes/ReportsWireframe";
-import BudgetsWireframe from "./wireframes/BudgetsWireframe";
+import { LoginWireframe } from "./wireframes/LoginWireframe";
+import { DashboardWireframe } from "./wireframes/DashboardWireframe";
+import { TransactionsWireframe } from "./wireframes/TransactionsWireframe";
+import { ReportsWireframe } from "./wireframes/ReportsWireframe";
+import { BudgetsWireframe } from "./wireframes/BudgetsWireframe";
 
 export const router = createBrowserRouter([
   {
