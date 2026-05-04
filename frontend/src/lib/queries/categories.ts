@@ -66,6 +66,7 @@ export function useCreateCategory() {
       api.post<{ category: Category }>("/categories", { categoryName }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
+      await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }
@@ -79,6 +80,7 @@ export function useUpdateCategory() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
       await queryClient.invalidateQueries({ queryKey: CATEGORY_RULES_QUERY_KEY });
+      await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }
@@ -91,6 +93,7 @@ export function useDeleteCategory() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
       await queryClient.invalidateQueries({ queryKey: CATEGORY_RULES_QUERY_KEY });
+      await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }
