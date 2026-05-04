@@ -1,6 +1,11 @@
+import { Link } from "react-router";
 import { useDashboardSummary } from "../lib/queries/dashboard";
 import { formatCurrency } from "../lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+
+// SummaryMetricsWidget is a Link wrapping a 3-up grid of MetricCards.
+// Unlike other dashboard tiles (Card-shaped), this one is a grid layout, so
+// it does not use DashboardTileLink — but it shares the focus ring styling.
 
 function MetricCard({
   title,
@@ -12,7 +17,7 @@ function MetricCard({
   isLoading: boolean;
 }) {
   return (
-    <Card className="flex-1">
+    <Card className="flex-1 transition-all duration-200 group-hover:border-primary/50 group-hover:shadow-md group-hover:bg-accent/5">
       <CardHeader>
         <CardTitle className="text-xs font-semibold uppercase tracking-wider">{title}</CardTitle>
       </CardHeader>
@@ -42,22 +47,28 @@ export function SummaryMetricsWidget() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      <MetricCard
-        title="Net Balance"
-        value={data ? formatCurrency(data.netBalance) : "—"}
-        isLoading={isLoading}
-      />
-      <MetricCard
-        title="Total Expenses"
-        value={data ? formatCurrency(Math.abs(data.totalExpenses)) : "—"}
-        isLoading={isLoading}
-      />
-      <MetricCard
-        title="Total Income"
-        value={data ? formatCurrency(data.totalIncome) : "—"}
-        isLoading={isLoading}
-      />
-    </div>
+    <Link
+      to="/transactions"
+      aria-label="View transactions"
+      className="group block rounded-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+    >
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <MetricCard
+          title="Net Balance"
+          value={data ? formatCurrency(data.netBalance) : "—"}
+          isLoading={isLoading}
+        />
+        <MetricCard
+          title="Total Expenses"
+          value={data ? formatCurrency(Math.abs(data.totalExpenses)) : "—"}
+          isLoading={isLoading}
+        />
+        <MetricCard
+          title="Total Income"
+          value={data ? formatCurrency(data.totalIncome) : "—"}
+          isLoading={isLoading}
+        />
+      </div>
+    </Link>
   );
 }

@@ -94,6 +94,9 @@ export function useCreateBudget() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BUDGETS_KEY_PREFIX });
     },
+    onError: () => {
+      // TODO: replace with toast/notification once a notification system is in place
+    },
   });
 }
 
@@ -106,6 +109,9 @@ export function useUpdateBudget() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BUDGETS_KEY_PREFIX });
     },
+    onError: () => {
+      // TODO: replace with toast/notification once a notification system is in place
+    },
   });
 }
 
@@ -116,6 +122,9 @@ export function useDeleteBudget() {
     mutationFn: (id: string) => api.delete(`/budgets/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BUDGETS_KEY_PREFIX });
+    },
+    onError: () => {
+      // TODO: replace with toast/notification once a notification system is in place
     },
   });
 }
@@ -131,6 +140,27 @@ export function getMostSpecificActiveBudget(budgets: Budget[]): Budget | null {
     }
   }
   return best;
+}
+
+/** Group budgets by `categoryId`. Iteration order matches first-encounter order. */
+export function groupBudgetsByCategory(budgets: Budget[]): [string, Budget[]][] {
+  const groups = new Map<string, Budget[]>();
+  for (const b of budgets) {
+    const list = groups.get(b.categoryId) ?? [];
+    list.push(b);
+    groups.set(b.categoryId, list);
+  }
+  return [...groups.entries()];
+}
+
+/** For each category, return the most specific active budget (skips categories with none). */
+export function getMostSpecificBudgetsPerCategory(budgets: Budget[]): Budget[] {
+  const result: Budget[] = [];
+  for (const [, group] of groupBudgetsByCategory(budgets)) {
+    const best = getMostSpecificActiveBudget(group);
+    if (best) result.push(best);
+  }
+  return result;
 }
 
 /** Human-readable label for a budget type + month/year combo */

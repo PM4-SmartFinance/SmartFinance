@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Prisma } from "@prisma/client";
-import { getSummary, getCategoryTotals } from "./dashboard.repository.js";
+import { getSummary, getCategoryTotals, listDailyTrends } from "./dashboard.repository.js";
 
 vi.mock("../prisma.js", () => ({
   prisma: {
@@ -153,5 +153,99 @@ describe("getCategoryTotals", () => {
       /Invalid date string/,
     );
     expect(vi.mocked(prisma.$queryRaw)).not.toHaveBeenCalled();
+  });
+});
+
+describe("listDailyTrends", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("maps raw SQL rows to the DailyTrendAggregate interface (formatting dateId as YYYY-MM-DD)", async () => {
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([
+      { dateId: 20250101, income: "100.50", expenses: "40.25" },
+      { dateId: 20251231, income: "0", expenses: "9.99" },
+    ] as never);
+
+    const result = await listDailyTrends({
+      userId: "user-1",
+      startDateId: 20250101,
+      endDateId: 20251231,
+    });
+
+    expect(result).toEqual([
+      { date: "2025-01-01", income: 100.5, expenses: 40.25 },
+      { date: "2025-12-31", income: 0, expenses: 9.99 },
+    ]);
+  });
+
+  it("zero-pads single-digit months and days when formatting the date string", async () => {
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([
+      { dateId: 20250203, income: "1", expenses: "2" },
+    ] as never);
+
+    const result = await listDailyTrends({
+      userId: "user-1",
+      startDateId: 20250203,
+      endDateId: 20250203,
+    });
+
+    expect(result[0]!.date).toBe("2025-02-03");
+  });
+
+  it("passes userId, startDateId, and endDateId as interpolated parameters to $queryRaw", async () => {
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([] as never);
+
+    await listDailyTrends({ userId: "user-42", startDateId: 20250101, endDateId: 20250131 });
+
+    const mockFn = vi.mocked(prisma.$queryRaw);
+    expect(mockFn).toHaveBeenCalledTimes(1);
+    const values = mockFn.mock.calls[0]!.slice(1);
+    expect(values).toEqual(["user-42", 20250101, 20250131]);
+  });
+
+  it("returns an empty array when the query yields no rows", async () => {
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([] as never);
+
+    const result = await listDailyTrends({
+      userId: "user-1",
+      startDateId: 20250101,
+      endDateId: 20250131,
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  it("preserves the order returned by the database (chronological — contract lives in SQL)", async () => {
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([
+      { dateId: 20250101, income: "1", expenses: "0" },
+      { dateId: 20250102, income: "2", expenses: "0" },
+      { dateId: 20250103, income: "3", expenses: "0" },
+    ] as never);
+
+    const result = await listDailyTrends({
+      userId: "user-1",
+      startDateId: 20250101,
+      endDateId: 20250103,
+    });
+
+    expect(result.map((r) => r.date)).toEqual(["2025-01-01", "2025-01-02", "2025-01-03"]);
+  });
+
+  it("coerces stringified numeric DB values (income/expenses) to numbers", async () => {
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([
+      { dateId: 20250115, income: "1234.56", expenses: "78.9" },
+    ] as never);
+
+    const result = await listDailyTrends({
+      userId: "user-1",
+      startDateId: 20250115,
+      endDateId: 20250115,
+    });
+
+    expect(typeof result[0]!.income).toBe("number");
+    expect(typeof result[0]!.expenses).toBe("number");
+    expect(result[0]!.income).toBe(1234.56);
+    expect(result[0]!.expenses).toBe(78.9);
   });
 });

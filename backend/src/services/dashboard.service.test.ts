@@ -1,11 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { getDashboardSummary, getDashboardCategories } from "./dashboard.service.js";
+import {
+  getDashboardSummary,
+  getDashboardCategories,
+  getDashboardTrends,
+} from "./dashboard.service.js";
 import { ServiceError } from "../errors.js";
 import { Prisma } from "@prisma/client";
 
 vi.mock("../repositories/dashboard.repository.js", () => ({
   getSummary: vi.fn(),
   getCategoryTotals: vi.fn(),
+  listDailyTrends: vi.fn(),
+  // The service imports the real `dateStringToId`. Provide a real
+  // implementation in the mock module so call paths that use it still work.
+  dateStringToId: (dateStr: string) => {
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) throw new Error(`bad date: ${dateStr}`);
+    const [y, m, d] = parts.map(Number);
+    return (y as number) * 10000 + (m as number) * 100 + (d as number);
+  },
 }));
 
 import * as repo from "../repositories/dashboard.repository.js";
@@ -226,5 +239,91 @@ describe("getDashboardCategories", () => {
     expect(wrapped.message).toContain("2025-01-01");
     expect(wrapped.message).toContain("2025-01-31");
     expect(wrapped.cause).toBe(dbErr);
+  });
+});
+
+describe("getDashboardTrends", () => {
+  it("returns one entry per day in the range, gap-filling missing days with zeros", async () => {
+    // Repo returns only the days that actually have transactions.
+    mockRepo.listDailyTrends.mockResolvedValue([
+      { date: "2025-01-02", income: 100, expenses: 40 },
+      { date: "2025-01-04", income: 0, expenses: 25 },
+    ]);
+
+    const result = await getDashboardTrends("user-1", "2025-01-01", "2025-01-05");
+
+    expect(result).toHaveLength(5);
+    expect(result.map((r) => r.date)).toEqual([
+      "2025-01-01",
+      "2025-01-02",
+      "2025-01-03",
+      "2025-01-04",
+      "2025-01-05",
+    ]);
+    expect(result[0]).toEqual({ date: "2025-01-01", income: 0, expenses: 0 });
+    expect(result[1]).toEqual({ date: "2025-01-02", income: 100, expenses: 40 });
+    expect(result[2]).toEqual({ date: "2025-01-03", income: 0, expenses: 0 });
+    expect(result[3]).toEqual({ date: "2025-01-04", income: 0, expenses: 25 });
+    expect(result[4]).toEqual({ date: "2025-01-05", income: 0, expenses: 0 });
+  });
+
+  it("returns a single zero-filled day for a same-day range with no transactions", async () => {
+    mockRepo.listDailyTrends.mockResolvedValue([]);
+
+    const result = await getDashboardTrends("user-1", "2025-06-15", "2025-06-15");
+
+    expect(result).toEqual([{ date: "2025-06-15", income: 0, expenses: 0 }]);
+  });
+
+  it("handles a year-boundary range correctly", async () => {
+    mockRepo.listDailyTrends.mockResolvedValue([
+      { date: "2024-12-31", income: 50, expenses: 10 },
+      { date: "2025-01-01", income: 60, expenses: 20 },
+    ]);
+
+    const result = await getDashboardTrends("user-1", "2024-12-31", "2025-01-01");
+
+    expect(result).toEqual([
+      { date: "2024-12-31", income: 50, expenses: 10 },
+      { date: "2025-01-01", income: 60, expenses: 20 },
+    ]);
+  });
+
+  it("returns all-zero days when the user has no transactions in the range", async () => {
+    mockRepo.listDailyTrends.mockResolvedValue([]);
+
+    const result = await getDashboardTrends("user-1", "2025-03-01", "2025-03-03");
+
+    expect(result).toEqual([
+      { date: "2025-03-01", income: 0, expenses: 0 },
+      { date: "2025-03-02", income: 0, expenses: 0 },
+      { date: "2025-03-03", income: 0, expenses: 0 },
+    ]);
+  });
+
+  it("passes userId and computed dateIds to the repository", async () => {
+    mockRepo.listDailyTrends.mockResolvedValue([]);
+
+    await getDashboardTrends("user-42", "2025-06-15", "2025-06-17");
+
+    expect(mockRepo.listDailyTrends).toHaveBeenCalledWith({
+      userId: "user-42",
+      startDateId: 20250615,
+      endDateId: 20250617,
+    });
+  });
+
+  it("throws 400 when startDate is after endDate (does not call the repository)", async () => {
+    await expect(getDashboardTrends("user-1", "2025-02-01", "2025-01-01")).rejects.toThrow(
+      new ServiceError(400, "startDate must not be after endDate"),
+    );
+    expect(mockRepo.listDailyTrends).not.toHaveBeenCalled();
+  });
+
+  it("throws 400 for an invalid calendar date (does not call the repository)", async () => {
+    await expect(getDashboardTrends("user-1", "2025-02-30", "2025-03-01")).rejects.toThrow(
+      new ServiceError(400, "startDate and endDate must be valid calendar dates"),
+    );
+    expect(mockRepo.listDailyTrends).not.toHaveBeenCalled();
   });
 });
