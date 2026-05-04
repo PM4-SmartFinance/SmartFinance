@@ -4,7 +4,6 @@ vi.mock("../prisma.js", () => ({
   prisma: {
     dimUser: {
       findUnique: vi.fn(),
-      findFirst: vi.fn(),
       update: vi.fn(),
     },
   },
@@ -13,14 +12,13 @@ vi.mock("../prisma.js", () => ({
 import {
   findById,
   findByIdWithPassword,
-  findByEmailExcluding,
-  updateProfile,
+  findByEmail,
+  findByEmailWithPassword,
   updatePassword,
 } from "./user.repository.js";
 import { prisma } from "../prisma.js";
 
 const mockFindUnique = vi.mocked(prisma.dimUser.findUnique);
-const mockFindFirst = vi.mocked(prisma.dimUser.findFirst);
 const mockUpdate = vi.mocked(prisma.dimUser.update);
 
 const profileRow = {
@@ -82,54 +80,41 @@ describe("findByIdWithPassword", () => {
   });
 });
 
-// ── findByEmailExcluding ──────────────────────────────────────────────────────
+// ── findByEmail ───────────────────────────────────────────────────────────────
 
-describe("findByEmailExcluding", () => {
-  it("queries by email excluding the given user id", async () => {
-    mockFindFirst.mockResolvedValue(null);
+describe("findByEmail", () => {
+  it("excludes the password column from the select", async () => {
+    mockFindUnique.mockResolvedValue(profileRow as never);
 
-    await findByEmailExcluding("other@example.com", "user-1");
+    await findByEmail("test@example.com");
 
-    expect(mockFindFirst).toHaveBeenCalledWith({
-      where: { email: "other@example.com", NOT: { id: "user-1" } },
+    expect(mockFindUnique).toHaveBeenCalledWith({
+      where: { email: "test@example.com" },
+      select: { id: true, email: true, name: true, role: true, active: true, createdAt: true },
     });
-  });
-
-  it("returns the conflicting user when found", async () => {
-    mockFindFirst.mockResolvedValue({ ...profileRow, email: "other@example.com" } as never);
-
-    const result = await findByEmailExcluding("other@example.com", "user-2");
-
-    expect(result).not.toBeNull();
   });
 });
 
-// ── updateProfile ─────────────────────────────────────────────────────────────
+// ── findByEmailWithPassword ───────────────────────────────────────────────────
 
-describe("updateProfile", () => {
-  it("updates name and email", async () => {
-    mockUpdate.mockResolvedValue({ ...profileRow, name: "New", email: "new@example.com" } as never);
+describe("findByEmailWithPassword", () => {
+  it("includes the password column in the select", async () => {
+    mockFindUnique.mockResolvedValue({ ...profileRow, password: "hash" } as never);
 
-    await updateProfile("user-1", { name: "New", email: "new@example.com" });
+    await findByEmailWithPassword("test@example.com");
 
-    expect(mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: "user-1" },
-        data: { name: "New", email: "new@example.com" },
-      }),
-    );
-  });
-
-  it("selects only safe fields in the result", async () => {
-    mockUpdate.mockResolvedValue(profileRow as never);
-
-    await updateProfile("user-1", { name: "New" });
-
-    expect(mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        select: { id: true, email: true, name: true, role: true },
-      }),
-    );
+    expect(mockFindUnique).toHaveBeenCalledWith({
+      where: { email: "test@example.com" },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        active: true,
+        password: true,
+        createdAt: true,
+      },
+    });
   });
 });
 

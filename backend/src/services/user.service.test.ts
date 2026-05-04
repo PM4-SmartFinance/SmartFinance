@@ -8,9 +8,8 @@ import {
   resetUserPassword,
 } from "./user.service.js";
 import * as userRepository from "../repositories/user.repository.js";
-import { EmailConflictError } from "../repositories/user.repository.js";
 import * as auditService from "./audit.service.js";
-import { ServiceError } from "../errors.js";
+import { EmailConflictError, ServiceError } from "../errors.js";
 
 const mockArgon2 = vi.hoisted(() => ({
   verify: vi.fn().mockResolvedValue(true),
@@ -25,12 +24,6 @@ vi.mock("../repositories/user.repository.js", () => ({
   updateProfileAtomic: vi.fn(),
   updatePassword: vi.fn(),
   updateUserById: vi.fn(),
-  EmailConflictError: class EmailConflictError extends Error {
-    constructor() {
-      super("Email already in use");
-      this.name = "EmailConflictError";
-    }
-  },
 }));
 
 vi.mock("./audit.service.js", () => ({

@@ -1,22 +1,30 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
+import { EmailConflictError } from "../errors.js";
+import { getLogger } from "../logger.js";
 
-export class BootstrapUnauthorizedError extends Error {
-  constructor() {
-    super("Unauthorized");
-    this.name = "BootstrapUnauthorizedError";
-  }
-}
-
-export class BootstrapForbiddenError extends Error {
-  constructor() {
-    super("Forbidden");
-    this.name = "BootstrapForbiddenError";
-  }
-}
+export { EmailConflictError };
 
 export async function findByEmail(email: string) {
-  return prisma.dimUser.findUnique({ where: { email } });
+  return prisma.dimUser.findUnique({
+    where: { email },
+    select: { id: true, email: true, name: true, role: true, active: true, createdAt: true },
+  });
+}
+
+export async function findByEmailWithPassword(email: string) {
+  return prisma.dimUser.findUnique({
+    where: { email },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      active: true,
+      password: true,
+      createdAt: true,
+    },
+  });
 }
 
 export async function findCurrencyByCode(code: string) {
@@ -47,43 +55,24 @@ export async function listUsers(opts: { limit?: number; offset?: number; active?
   return { items, total, limit, offset };
 }
 
-export async function countTotalUsers() {
-  return prisma.dimUser.count();
-}
-
-export async function createUser(data: {
-  email: string;
-  name?: string;
-  password: string;
-  role?: string;
-  defaultCurrencyId: string;
-}): Promise<{ id: string; email: string; name: string | null; role: string; createdAt: Date }> {
-  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    const count = await tx.dimUser.count();
-    const role = count === 0 ? "ADMIN" : (data.role ?? "USER");
-    return tx.dimUser.create({
-      data: { ...data, role, name: data.name ?? null },
-      select: { id: true, email: true, name: true, role: true, createdAt: true },
-    });
-  });
-}
-
 /**
- * Atomic bootstrap-aware user creation.
+ * Atomic user creation.
  *
- * Runs the count check, authorization gate, email-uniqueness check and insert
- * inside a single serializable transaction so two concurrent unauthenticated
- * bootstrap requests cannot both succeed, and so concurrent duplicate-email
- * inserts are always reported as a 409 instead of a generic 500.
+ * Runs the count check, caller-supplied authorization gate, email-uniqueness
+ * check, user insert, and default-category insert inside a single serializable
+ * transaction so two concurrent unauthenticated bootstrap requests cannot both
+ * succeed, and so concurrent duplicate-email inserts are always reported as a
+ * conflict instead of a generic 500.
  *
- * Throws:
- * - BootstrapUnauthorizedError — post-bootstrap call without a session
- * - BootstrapForbiddenError    — post-bootstrap call from a non-admin
- * - EmailConflictError         — duplicate email (either the in-tx check or
- *                                the DB unique constraint via Prisma P2002)
+ * The `authorize` callback is invoked inside the transaction once the row
+ * count is known. The service supplies it so policy (RBAC, bootstrap rules)
+ * lives in the service layer; the repository only orchestrates the atomic
+ * write. Anything `authorize` throws propagates unchanged to the caller.
+ *
+ * Throws (in addition to whatever `authorize` may throw):
+ * - EmailConflictError — duplicate email (in-tx check or DB unique constraint)
  */
 export async function createUserAtomic(
-  requestingUser: { id: string; role: string } | null,
   data: {
     email: string;
     name?: string;
@@ -92,6 +81,7 @@ export async function createUserAtomic(
     defaultCurrencyId: string;
     defaultCategories?: string[];
   },
+  authorize: (count: number) => void,
 ): Promise<{ id: string; email: string; name: string | null; role: string; createdAt: Date }> {
   // A serializable transaction guarantees that two concurrent callers cannot
   // both observe `count === 0` and both succeed; the second committer will
@@ -107,10 +97,7 @@ export async function createUserAtomic(
         async (tx: Prisma.TransactionClient) => {
           const count = await tx.dimUser.count();
 
-          if (count > 0) {
-            if (!requestingUser) throw new BootstrapUnauthorizedError();
-            if (requestingUser.role !== "ADMIN") throw new BootstrapForbiddenError();
-          }
+          authorize(count);
 
           const existing = await tx.dimUser.findUnique({ where: { email: data.email } });
           if (existing) throw new EmailConflictError();
@@ -153,8 +140,12 @@ export async function createUserAtomic(
         /could not serialize access|deadlock detected|40001/i.test(message);
       if (isSerializationFailure && attempt < MAX_ATTEMPTS) {
         const backoffMs = 10 * 2 ** (attempt - 1) + Math.floor(Math.random() * 10);
+        logRetry(attempt, MAX_ATTEMPTS, backoffMs, message);
         await new Promise((resolve) => setTimeout(resolve, backoffMs));
         continue;
+      }
+      if (isSerializationFailure) {
+        logRetryExhausted(MAX_ATTEMPTS, message);
       }
       throw err;
     }
@@ -163,8 +154,26 @@ export async function createUserAtomic(
   throw new Error("createUserAtomic: exhausted retries without resolving");
 }
 
-export async function updateUserRole(email: string, role: string) {
-  return prisma.dimUser.update({ where: { email }, data: { role } });
+function logRetry(attempt: number, maxAttempts: number, backoffMs: number, message: string) {
+  try {
+    getLogger().warn(
+      { attempt, maxAttempts, backoffMs, err: message },
+      "createUserAtomic: serialization failure, retrying",
+    );
+  } catch {
+    // Logger not initialized (e.g. during isolated tests). Silent.
+  }
+}
+
+function logRetryExhausted(maxAttempts: number, message: string) {
+  try {
+    getLogger().error(
+      { maxAttempts, err: message },
+      "createUserAtomic: serialization retries exhausted",
+    );
+  } catch {
+    // Logger not initialized (e.g. during isolated tests). Silent.
+  }
 }
 
 export async function updateUserById(
@@ -185,49 +194,35 @@ export async function updateUserById(
   });
 }
 
-export async function deleteUserById(id: string) {
-  return prisma.dimUser.delete({ where: { id } });
-}
-
-export async function deleteUsersByEmails(emails: string[]) {
-  return prisma.dimUser.deleteMany({ where: { email: { in: emails } } });
-}
-
 export async function findByIdWithPassword(id: string) {
   return prisma.dimUser.findUnique({ where: { id }, select: { id: true, password: true } });
 }
 
-export async function findByEmailExcluding(email: string, excludeId: string) {
-  return prisma.dimUser.findFirst({ where: { email, NOT: { id: excludeId } } });
-}
-
-export class EmailConflictError extends Error {
-  constructor() {
-    super("Email already in use");
-    this.name = "EmailConflictError";
-  }
-}
-
 export async function updateProfileAtomic(id: string, data: { name?: string; email?: string }) {
-  return prisma.$transaction(async (tx) => {
-    if (data.email !== undefined) {
-      const conflict = await tx.dimUser.findFirst({ where: { email: data.email, NOT: { id } } });
-      if (conflict) throw new EmailConflictError();
-    }
-    return tx.dimUser.update({
-      where: { id },
-      data,
-      select: { id: true, email: true, name: true, role: true },
+  try {
+    return await prisma.$transaction(async (tx) => {
+      if (data.email !== undefined) {
+        const conflict = await tx.dimUser.findFirst({
+          where: { email: data.email, NOT: { id } },
+          select: { id: true },
+        });
+        if (conflict) throw new EmailConflictError();
+      }
+      return tx.dimUser.update({
+        where: { id },
+        data,
+        select: { id: true, email: true, name: true, role: true },
+      });
     });
-  });
-}
-
-export async function updateProfile(id: string, data: { name?: string; email?: string }) {
-  return prisma.dimUser.update({
-    where: { id },
-    data,
-    select: { id: true, email: true, name: true, role: true },
-  });
+  } catch (err) {
+    // Map Prisma unique-constraint violation to a domain conflict so the
+    // service layer can return a clean 409 even when the in-tx pre-check
+    // races with another concurrent update.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      throw new EmailConflictError();
+    }
+    throw err;
+  }
 }
 
 export async function updatePassword(id: string, hashedPassword: string) {
