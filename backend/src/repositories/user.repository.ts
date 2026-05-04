@@ -98,7 +98,9 @@ export async function createUserAtomic(
   // receive a serialization failure (Prisma P2034 / Postgres 40001), which we
   // retry so the loser re-reads the now-populated table and hits the normal
   // post-bootstrap auth gate.
-  const MAX_ATTEMPTS = 3;
+  // Retries use jittered backoff so the loser does not re-collide with an
+  // in-flight winner before its commit lands (observed flake in slow CI).
+  const MAX_ATTEMPTS = 5;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       return await prisma.$transaction(
@@ -150,6 +152,8 @@ export async function createUserAtomic(
         (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034") ||
         /could not serialize access|deadlock detected|40001/i.test(message);
       if (isSerializationFailure && attempt < MAX_ATTEMPTS) {
+        const backoffMs = 10 * 2 ** (attempt - 1) + Math.floor(Math.random() * 10);
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
         continue;
       }
       throw err;
