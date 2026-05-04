@@ -14,12 +14,121 @@ on:
     types: [published]
 
 jobs:
-  docker:
+  sync-release:
+    name: Sync develop into main
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'release'
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Verify release source and healthy develop
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const release = context.payload.release;
+            const releaseTag = release.tag_name;
+            const targetCommitish = release.target_commitish || "";
+
+            if (targetCommitish && targetCommitish !== "develop") {
+              core.setFailed(
+                `Release ${releaseTag} targets ${targetCommitish}, but this workflow only syncs releases created from develop.`,
+              );
+              return;
+            }
+
+            const { data: developRef } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "heads/develop",
+            });
+
+            const { data: mainRef } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "heads/main",
+            });
+
+            const { data: releaseTagRef } = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `tags/${releaseTag}`,
+            });
+
+            let releaseTagSha = releaseTagRef.object.sha;
+
+            if (releaseTagRef.object.type === "tag") {
+              const { data: tagObject } = await github.rest.git.getTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_sha: releaseTagSha,
+              });
+              releaseTagSha = tagObject.object.sha;
+            }
+
+            const { data: workflowRuns } = await github.rest.actions.listWorkflowRunsForWorkflow({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "ci.yml",
+              branch: "develop",
+              status: "completed",
+              per_page: 1,
+            });
+
+            const latestRun = workflowRuns.workflow_runs[0];
+
+            if (!latestRun) {
+              core.setFailed("No completed CI run was found for develop.");
+              return;
+            }
+
+            if (latestRun.conclusion !== "success") {
+              core.setFailed(
+                `Latest CI run on develop is not green (run #${latestRun.run_number}, conclusion: ${latestRun.conclusion}).`,
+              );
+              return;
+            }
+
+            if (latestRun.head_sha !== developRef.object.sha) {
+              core.setFailed(
+                `Develop is not healthy at the release boundary. CI passed for ${latestRun.head_sha}, but develop is currently at ${developRef.object.sha}.`,
+              );
+              return;
+            }
+
+            if (releaseTagSha !== developRef.object.sha) {
+              core.setFailed(
+                `Release tag ${releaseTag} points to ${releaseTagSha}, but the healthy develop tip is ${developRef.object.sha}.`,
+              );
+              return;
+            }
+
+            if (mainRef.object.sha === developRef.object.sha) {
+              core.info("main already matches develop — no sync required.");
+              return;
+            }
+
+            try {
+              await github.rest.repos.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                base: "main",
+                head: "develop",
+                commit_message: `Sync develop into main for release ${releaseTag}`,
+                merge_method: "merge",
+              });
+
+              core.info(`Synced develop into main for release ${releaseTag}.`);
+            } catch (error) {
+              core.setFailed(
+                `Failed to sync develop into main for release ${releaseTag}: ${error.message}`,
+              );
+            }
+
+  docker-ci:
     name: Build & Push Docker Images
     runs-on: ubuntu-24.04
-    if: |
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
-      github.event_name == 'release'
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
     permissions:
       contents: read
       packages: write
@@ -82,10 +191,79 @@ jobs:
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 
-  deploy:
+  docker-release:
+    name: Build & Push Docker Images (release)
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'release'
+    needs:
+      - sync-release
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/backend
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix=,format=short
+            type=raw,value=latest
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Extract metadata for frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/frontend
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix=,format=short
+            type=raw,value=latest
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+  deploy-release:
     name: Deploy to Production
     runs-on: ubuntu-24.04
-    needs: docker
+    needs:
+      - docker-release
     if: github.event_name == 'release'
     environment: production
     steps:
