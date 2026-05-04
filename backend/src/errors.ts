@@ -14,3 +14,10 @@ export class DuplicateRuleError extends Error {
     this.name = "DuplicateRuleError";
   }
 }
+
+export class EmailConflictError extends Error {
+  constructor() {
+    super("Email already in use");
+    this.name = "EmailConflictError";
+  }
+}
