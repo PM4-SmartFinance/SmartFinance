@@ -951,12 +951,14 @@ Creates a new category rule.
 
 **Request Body:**
 
-| Field        | Type    | Required | Validation                                            |
-| ------------ | ------- | -------- | ----------------------------------------------------- |
-| `pattern`    | string  | yes      | Non-empty string                                      |
-| `matchType`  | string  | yes      | `"exact"` or `"contains"`                             |
-| `categoryId` | string  | yes      | UUID, must be a valid category (user-owned or global) |
-| `priority`   | integer | yes      | >= 0                                                  |
+| Field        | Type    | Required | Validation                                                              |
+| ------------ | ------- | -------- | ----------------------------------------------------------------------- |
+| `pattern`    | string  | yes      | Non-empty string. For `"regex"` type, must be a valid JavaScript regex. |
+| `matchType`  | string  | yes      | `"exact"`, `"contains"`, or `"regex"`                                   |
+| `categoryId` | string  | yes      | UUID, must be a valid category (user-owned or global)                   |
+| `priority`   | integer | yes      | >= 0                                                                    |
+
+**Regex matching:** When `matchType` is `"regex"`, the `pattern` is evaluated as a case-insensitive regular expression against the full merchant name. For example, `Migros.*Online` matches `"Migros Online"` and `"Migros Bahnhof Online"`, while `^Migros$` matches only the exact string `"Migros"`.
 
 **Response 201:**
 
@@ -979,7 +981,7 @@ Creates a new category rule.
 }
 ```
 
-**Response 400:** Invalid input (missing fields, invalid matchType, non-UUID categoryId, extra properties)
+**Response 400:** Invalid input (missing fields, invalid matchType, non-UUID categoryId, extra properties, invalid regex pattern)
 **Response 401:** Not authenticated
 **Response 404:** Category not found or does not belong to the authenticated user
 **Response 409:** A rule with this pattern and match type already exists
@@ -992,12 +994,12 @@ Previews matching transactions for a proposed rule without creating it. Returns 
 
 **Request Body:**
 
-| Field        | Type    | Required | Validation                                            |
-| ------------ | ------- | -------- | ----------------------------------------------------- |
-| `pattern`    | string  | yes      | Non-empty string                                      |
-| `matchType`  | string  | yes      | `"exact"` or `"contains"`                             |
-| `categoryId` | string  | yes      | UUID, must be a valid category (user-owned or global) |
-| `priority`   | integer | yes      | >= 0                                                  |
+| Field        | Type    | Required | Validation                                                              |
+| ------------ | ------- | -------- | ----------------------------------------------------------------------- |
+| `pattern`    | string  | yes      | Non-empty string. For `"regex"` type, must be a valid JavaScript regex. |
+| `matchType`  | string  | yes      | `"exact"`, `"contains"`, or `"regex"`                                   |
+| `categoryId` | string  | yes      | UUID, must be a valid category (user-owned or global)                   |
+| `priority`   | integer | yes      | >= 0                                                                    |
 
 **Response 200:**
 
@@ -1023,7 +1025,7 @@ Previews matching transactions for a proposed rule without creating it. Returns 
 
 `matchCount` is the total number of uncategorized transactions that match the pattern. `matchedTransactions` is an array of up to 3 recent matching transactions, ordered by date descending then by ID ascending. If no transactions match, `matchedTransactions` is an empty array.
 
-**Response 400:** Invalid input (missing fields, invalid matchType, invalid UUID)
+**Response 400:** Invalid input (missing fields, invalid matchType, invalid UUID, invalid regex pattern)
 **Response 401:** Not authenticated
 **Response 404:** Category not found or does not belong to the authenticated user
 
@@ -1085,12 +1087,12 @@ Updates an existing category rule. Only rules owned by the authenticated user ca
 
 **Request Body:**
 
-| Field        | Type    | Required | Validation                                            |
-| ------------ | ------- | -------- | ----------------------------------------------------- |
-| `pattern`    | string  | no       | Non-empty string                                      |
-| `matchType`  | string  | no       | `"exact"` or `"contains"`                             |
-| `categoryId` | string  | no       | UUID, must be a valid category (user-owned or global) |
-| `priority`   | integer | no       | >= 0                                                  |
+| Field        | Type    | Required | Validation                                                              |
+| ------------ | ------- | -------- | ----------------------------------------------------------------------- |
+| `pattern`    | string  | no       | Non-empty string. For `"regex"` type, must be a valid JavaScript regex. |
+| `matchType`  | string  | no       | `"exact"`, `"contains"`, or `"regex"`                                   |
+| `categoryId` | string  | no       | UUID, must be a valid category (user-owned or global)                   |
+| `priority`   | integer | no       | >= 0                                                                    |
 
 **Response 200:**
 
@@ -1113,7 +1115,7 @@ Updates an existing category rule. Only rules owned by the authenticated user ca
 }
 ```
 
-**Response 400:** Invalid input (empty body, invalid matchType, non-UUID categoryId, extra properties)
+**Response 400:** Invalid input (empty body, invalid matchType, non-UUID categoryId, extra properties, invalid regex pattern)
 **Response 401:** Not authenticated
 **Response 404:** Rule or category not found, or does not belong to the authenticated user
 **Response 409:** A rule with this pattern and match type already exists
