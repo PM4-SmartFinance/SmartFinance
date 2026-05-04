@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,6 +52,7 @@ const TEXT = {
 
 export function CsvImportCard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const [format, setFormat] = useState<ImportFormat>("neon");
   const [accountId, setAccountId] = useState<string>("");
@@ -85,6 +86,7 @@ export function CsvImportCard() {
       );
     },
     onSuccess: (data) => {
+      void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       setResult(data);
     },
   });

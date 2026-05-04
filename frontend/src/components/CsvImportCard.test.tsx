@@ -21,18 +21,19 @@ vi.mock("../lib/api", () => {
   };
 });
 
-const mockGet = vi.mocked(api.get);
-const mockUpload = vi.mocked(api.upload);
+const mockGet = api.get as unknown as ReturnType<typeof vi.fn>;
+const mockUpload = api.upload as unknown as ReturnType<typeof vi.fn>;
 
 const ACCOUNTS = [
   { id: "acc-1", name: "Main Account", iban: "CH93 0076 2011 6238 5295 7" },
   { id: "acc-2", name: "Savings", iban: "CH56 0483 5012 3456 7800 9" },
 ];
 
-function renderCard() {
-  const queryClient = new QueryClient({
+function renderCard(
+  queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
+  }),
+) {
   return render(
     <QueryClientProvider client={queryClient}>
       <CsvImportCard />
@@ -346,6 +347,27 @@ describe("upload", () => {
     await userEvent.upload(input, makeCsvFile());
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Network error"));
+  });
+
+  it("invalidates dashboard queries after a successful upload", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    mockUpload.mockResolvedValue({ imported: 2 });
+
+    renderCard(queryClient);
+    await waitFor(() =>
+      expect(
+        screen.queryByText("No accounts found. Create an account first."),
+      ).not.toBeInTheDocument(),
+    );
+
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    await userEvent.upload(input, makeCsvFile());
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+
+    await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["dashboard"] }));
   });
 });
 
