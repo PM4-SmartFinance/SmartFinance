@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog } from "@/components/ui/dialog";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 interface CreateUserDialogProps {
   isOpen: boolean;
@@ -91,7 +94,10 @@ export function CreateUserDialog({ isOpen, onClose }: CreateUserDialogProps) {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {formState.error && (
-          <div className="rounded bg-red-50 p-2 text-sm text-red-600">{formState.error}</div>
+          <Alert variant="destructive">
+            <AlertCircle className="size-4" />
+            <AlertDescription>{formState.error}</AlertDescription>
+          </Alert>
         )}
 
         <div className="space-y-2">
@@ -132,18 +138,17 @@ export function CreateUserDialog({ isOpen, onClose }: CreateUserDialogProps) {
 
         <div className="space-y-2">
           <Label htmlFor="role">Role</Label>
-          <select
+          <NativeSelect
             id="role"
             value={formState.role}
             onChange={(e) =>
               setFormState((prev) => ({ ...prev, role: e.target.value as "USER" | "ADMIN" }))
             }
             disabled={isSubmitting}
-            className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <option value="USER">User</option>
             <option value="ADMIN">Admin</option>
-          </select>
+          </NativeSelect>
         </div>
 
         <div className="flex gap-2">

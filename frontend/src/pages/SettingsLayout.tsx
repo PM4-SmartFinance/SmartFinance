@@ -1,6 +1,7 @@
-import { NavLink, Outlet, Link } from "react-router";
+import { NavLink, Outlet } from "react-router";
 import { useAuth } from "../hooks/useAuth";
-import { User, Users, ArrowLeft } from "lucide-react";
+import { BackToDashboardLink } from "../components/BackToDashboardLink";
+import { User, Users } from "lucide-react";
 
 export function SettingsLayout() {
   const { user } = useAuth();
@@ -18,13 +19,7 @@ export function SettingsLayout() {
           <p className="text-sm text-muted-foreground">
             Manage your account and platform settings.
           </p>
-          <Link
-            to="/"
-            className="mt-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="size-4" />
-            Back to Dashboard
-          </Link>
+          <BackToDashboardLink className="mt-4" />
         </header>
 
         <div className="flex flex-col gap-6 md:flex-row md:gap-8">

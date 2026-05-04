@@ -128,10 +128,7 @@ export function ResetPasswordDialog({ isOpen, user, onClose }: ResetPasswordDial
         )}
 
         {success && (
-          <Alert
-            role="status"
-            className="border-green-500/50 text-green-700 dark:text-green-400 [&>svg]:text-green-600"
-          >
+          <Alert variant="success" role="status">
             <CheckCircle2 className="size-4" />
             <AlertDescription>Password reset successfully.</AlertDescription>
           </Alert>

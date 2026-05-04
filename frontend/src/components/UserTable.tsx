@@ -1,5 +1,6 @@
 import type { User } from "../lib/queries/users";
 import { Button } from "@/components/ui/button";
+import { SortableColumnHeader } from "./SortableColumnHeader";
 
 interface UserTableProps {
   users: User[];
@@ -50,39 +51,33 @@ export function UserTable({
       <table className="w-full">
         <thead className="border-b border-border bg-muted">
           <tr>
-            <th scope="col" className="px-6 py-3 text-left">
-              <button
-                onClick={() => onSort?.("email")}
-                className="flex items-center gap-2 font-semibold text-foreground hover:text-foreground/80"
-              >
-                Email
-                {sortBy === "email" && <span>{sortOrder === "asc" ? "↑" : "↓"}</span>}
-              </button>
-            </th>
+            <SortableColumnHeader
+              column="email"
+              label="Email"
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSort={(col) => onSort?.(col)}
+            />
             <th scope="col" className="px-6 py-3 text-left font-semibold text-foreground">
               Name
             </th>
-            <th scope="col" className="px-6 py-3 text-left">
-              <button
-                onClick={() => onSort?.("role")}
-                className="flex items-center gap-2 font-semibold text-foreground hover:text-foreground/80"
-              >
-                Role
-                {sortBy === "role" && <span>{sortOrder === "asc" ? "↑" : "↓"}</span>}
-              </button>
-            </th>
+            <SortableColumnHeader
+              column="role"
+              label="Role"
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSort={(col) => onSort?.(col)}
+            />
             <th scope="col" className="px-6 py-3 text-left font-semibold text-foreground">
               Status
             </th>
-            <th scope="col" className="px-6 py-3 text-left">
-              <button
-                onClick={() => onSort?.("createdAt")}
-                className="flex items-center gap-2 font-semibold text-foreground hover:text-foreground/80"
-              >
-                Created
-                {sortBy === "createdAt" && <span>{sortOrder === "asc" ? "↑" : "↓"}</span>}
-              </button>
-            </th>
+            <SortableColumnHeader
+              column="createdAt"
+              label="Created"
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSort={(col) => onSort?.(col)}
+            />
             <th scope="col" className="px-6 py-3 text-left font-semibold text-foreground">
               Actions
             </th>
