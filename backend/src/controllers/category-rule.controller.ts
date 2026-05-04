@@ -37,7 +37,7 @@ const createRuleSchema = {
   additionalProperties: false,
   properties: {
     pattern: { type: "string", minLength: 1 },
-    matchType: { type: "string", enum: ["exact", "contains"] },
+    matchType: { type: "string", enum: ["exact", "contains", "regex"] },
     categoryId: { type: "string", pattern: uuidPattern },
     priority: { type: "integer", minimum: 0 },
   },
@@ -48,7 +48,7 @@ const updateRuleSchema = {
   additionalProperties: false,
   properties: {
     pattern: { type: "string", minLength: 1 },
-    matchType: { type: "string", enum: ["exact", "contains"] },
+    matchType: { type: "string", enum: ["exact", "contains", "regex"] },
     categoryId: { type: "string", pattern: uuidPattern },
     priority: { type: "integer", minimum: 0 },
   },

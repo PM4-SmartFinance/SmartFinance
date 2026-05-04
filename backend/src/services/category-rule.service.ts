@@ -3,6 +3,14 @@ import * as categoryRuleRepository from "../repositories/category-rule.repositor
 import type { MatchType } from "../repositories/category-rule.repository.js";
 import * as transactionRepository from "../repositories/transaction.repository.js";
 
+function assertValidRegex(pattern: string) {
+  try {
+    new RegExp(pattern);
+  } catch {
+    throw new ServiceError(400, `Invalid regex pattern: ${pattern}`);
+  }
+}
+
 export async function listRules(userId: string) {
   return categoryRuleRepository.findAllByUser(userId);
 }
@@ -22,6 +30,8 @@ export async function createRule(
   matchType: MatchType,
   priority: number,
 ) {
+  if (matchType === "regex") assertValidRegex(pattern);
+
   const category = await categoryRuleRepository.findCategoryForUser(categoryId, userId);
   if (!category) {
     throw new ServiceError(404, "Category not found");
@@ -47,6 +57,8 @@ export async function updateRule(
   userId: string,
   data: { pattern?: string; matchType?: MatchType; categoryId?: string; priority?: number },
 ) {
+  if (data.matchType === "regex" && data.pattern != null) assertValidRegex(data.pattern);
+
   if (data.categoryId != null) {
     const category = await categoryRuleRepository.findCategoryForUser(data.categoryId, userId);
     if (!category) {
@@ -86,6 +98,8 @@ export async function previewRule(
     dateId: number;
   }>;
 }> {
+  if (rule.matchType === "regex") assertValidRegex(rule.pattern);
+
   const category = await categoryRuleRepository.findCategoryForUser(rule.categoryId, userId);
   if (!category) {
     throw new ServiceError(404, "Category not found");

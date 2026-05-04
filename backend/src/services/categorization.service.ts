@@ -2,6 +2,7 @@ import * as categoryRuleRepository from "../repositories/category-rule.repositor
 import * as transactionRepository from "../repositories/transaction.repository.js";
 import { dateStringToId } from "../repositories/dashboard.repository.js";
 import { validateDateRange } from "./date-range.js";
+import { getLogger } from "../logger.js";
 
 export type RuleForMatching = {
   pattern: string;
@@ -16,12 +17,16 @@ export type RuleForMatching = {
 export function matchTransaction(merchantName: string, rules: RuleForMatching[]): string | null {
   const name = merchantName.toLowerCase();
   for (const rule of rules) {
-    const pattern = rule.pattern.toLowerCase();
-    if (rule.matchType === "exact" && name === pattern) {
-      return rule.categoryId;
-    }
-    if (rule.matchType === "contains" && name.includes(pattern)) {
-      return rule.categoryId;
+    if (rule.matchType === "exact") {
+      if (name === rule.pattern.toLowerCase()) return rule.categoryId;
+    } else if (rule.matchType === "contains") {
+      if (name.includes(rule.pattern.toLowerCase())) return rule.categoryId;
+    } else if (rule.matchType === "regex") {
+      try {
+        if (new RegExp(rule.pattern, "i").test(merchantName)) return rule.categoryId;
+      } catch {
+        return null;
+      }
     }
   }
   return null;
@@ -32,8 +37,22 @@ export function matchTransaction(merchantName: string, rules: RuleForMatching[])
  * for the given user. Returns the number of transactions that were categorized.
  */
 export async function autoCategorize(userId: string): Promise<{ categorized: number }> {
-  const rules = await categoryRuleRepository.findAllByUser(userId);
-  if (rules.length === 0) return { categorized: 0 };
+  const rawRules = await categoryRuleRepository.findAllByUser(userId);
+  if (rawRules.length === 0) return { categorized: 0 };
+
+  const rules = rawRules.filter((rule) => {
+    if (rule.matchType !== "regex") return true;
+    try {
+      new RegExp(rule.pattern, "i");
+      return true;
+    } catch {
+      getLogger().warn(
+        { ruleId: rule.id, pattern: rule.pattern },
+        "Category rule has invalid regex pattern — skipping",
+      );
+      return false;
+    }
+  });
 
   const transactions = await transactionRepository.findUncategorizedForUser(userId);
   if (transactions.length === 0) return { categorized: 0 };

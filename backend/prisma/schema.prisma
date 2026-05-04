@@ -175,7 +175,7 @@ model AuditLog {
 model CategoryRule {
   id        String @id @default(uuid())
   pattern   String
-  matchType String // "exact" or "contains"
+  matchType String // "exact", "contains", or "regex"
   priority  Int    @default(0)
 
   categoryId String

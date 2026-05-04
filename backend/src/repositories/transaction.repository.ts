@@ -217,6 +217,45 @@ export async function findPreviewMatchesForUser(
     dateId: number;
   }>;
 }> {
+  if (matchType === "regex") {
+    type RegexCountRow = { count: bigint };
+    type RegexTxRow = { id: string; amount: number; dateId: number; merchantName: string };
+    const [countRows, sampleRows] = await prisma.$transaction([
+      prisma.$queryRaw<RegexCountRow[]>`
+        SELECT COUNT(*)::bigint AS count
+        FROM "FactTransactions" ft
+        JOIN "DimMerchant" dm ON ft."merchantId" = dm.id
+        WHERE ft."userId" = ${userId}
+          AND ft."categoryId" IS NULL
+          AND ft."manualOverride" = false
+          AND dm.name ~* ${pattern}
+      `,
+      prisma.$queryRaw<RegexTxRow[]>`
+        SELECT ft.id,
+               ft.amount::double precision AS amount,
+               ft."dateId",
+               dm.name AS "merchantName"
+        FROM "FactTransactions" ft
+        JOIN "DimMerchant" dm ON ft."merchantId" = dm.id
+        WHERE ft."userId" = ${userId}
+          AND ft."categoryId" IS NULL
+          AND ft."manualOverride" = false
+          AND dm.name ~* ${pattern}
+        ORDER BY ft."dateId" DESC, ft.id ASC
+        LIMIT ${sampleLimit}
+      `,
+    ]);
+    return {
+      matchCount: Number(countRows[0]?.count ?? 0),
+      matchedTransactions: sampleRows.map((tx) => ({
+        id: tx.id,
+        merchantName: tx.merchantName,
+        amount: Number(tx.amount),
+        dateId: tx.dateId,
+      })),
+    };
+  }
+
   const nameFilter: Prisma.DimMerchantWhereInput =
     matchType === "exact"
       ? { name: { equals: pattern, mode: "insensitive" } }

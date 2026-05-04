@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { DuplicateRuleError } from "../errors.js";
 
-export type MatchType = "exact" | "contains";
+export type MatchType = "exact" | "contains" | "regex";
 
 export async function findAllByUser(userId: string) {
   return prisma.categoryRule.findMany({
