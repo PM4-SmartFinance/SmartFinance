@@ -15,7 +15,7 @@ export interface CategoryRule {
   userId: string;
   categoryId: string;
   pattern: string;
-  matchType: "exact" | "contains";
+  matchType: "exact" | "contains" | "regex";
   priority: number;
   createdAt: string;
   updatedAt: string;
@@ -23,7 +23,7 @@ export interface CategoryRule {
 
 export interface RuleDraft {
   pattern: string;
-  matchType: "exact" | "contains";
+  matchType: "exact" | "contains" | "regex";
   categoryId: string;
   priority: number;
 }

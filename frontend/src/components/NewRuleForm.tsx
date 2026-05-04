@@ -6,7 +6,7 @@ import { useRuleOverlap } from "../lib/queries/categories";
 
 interface RuleEditorState {
   pattern: string;
-  matchType: "exact" | "contains";
+  matchType: "exact" | "contains" | "regex";
   priority: number;
 }
 
@@ -82,11 +82,12 @@ export function NewRuleForm({
           className="w-auto"
           value={draft.matchType}
           onChange={(event) =>
-            setDraft({ ...draft, matchType: event.target.value as "exact" | "contains" })
+            setDraft({ ...draft, matchType: event.target.value as "exact" | "contains" | "regex" })
           }
         >
           <option value="contains">contains</option>
           <option value="exact">exact</option>
+          <option value="regex">regex</option>
         </NativeSelect>
         <Input
           aria-label={`New rule priority for ${categoryName}`}

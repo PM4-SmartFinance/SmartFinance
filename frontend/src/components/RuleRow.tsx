@@ -6,7 +6,7 @@ import { useRuleOverlap, type CategoryRule } from "../lib/queries/categories";
 
 interface RuleEditorState {
   pattern: string;
-  matchType: "exact" | "contains";
+  matchType: "exact" | "contains" | "regex";
   priority: number;
 }
 
@@ -54,11 +54,15 @@ export function RuleRow({
             className="w-auto"
             value={editor.matchType}
             onChange={(event) =>
-              setEditor({ ...editor, matchType: event.target.value as "exact" | "contains" })
+              setEditor({
+                ...editor,
+                matchType: event.target.value as "exact" | "contains" | "regex",
+              })
             }
           >
             <option value="contains">contains</option>
             <option value="exact">exact</option>
+            <option value="regex">regex</option>
           </NativeSelect>
           <Input
             aria-label={`Rule priority ${rule.id}`}
