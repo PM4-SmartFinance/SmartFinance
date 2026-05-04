@@ -1,5 +1,5 @@
 import { useAppStore } from "../store/appStore";
-import { formatLocalDate, subDays, subMonths } from "../lib/dates";
+import { formatLocalDate, subDays, subMonths } from "../lib/date";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 

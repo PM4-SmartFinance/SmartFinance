@@ -1,9 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { listTransactions } from "./transaction.service.js";
+import {
+  listTransactions,
+  getTransaction,
+  updateTransaction,
+  deleteTransaction,
+} from "./transaction.service.js";
 import { ServiceError } from "../errors.js";
 
 vi.mock("../repositories/transaction.repository.js", () => ({
   listTransactions: vi.fn(),
+  findByIdForUser: vi.fn(),
+  updateById: vi.fn(),
+  deleteById: vi.fn(),
 }));
 
 import * as repo from "../repositories/transaction.repository.js";
@@ -191,6 +199,23 @@ describe("listTransactions", () => {
       const { where } = mockRepo.listTransactions.mock.calls[0]![0];
       expect(where.amount).toBeUndefined();
     });
+
+    it("search builds case-insensitive merchant name contains filter", async () => {
+      await listTransactions({ ...DEFAULT_PARAMS, search: "Migros" });
+      const { where } = mockRepo.listTransactions.mock.calls[0]![0];
+      expect(where.merchant).toEqual({
+        name: { contains: "Migros", mode: "insensitive" },
+      });
+    });
+
+    it("search combined with categoryId builds both merchant filters", async () => {
+      await listTransactions({ ...DEFAULT_PARAMS, search: "Coop", categoryId: "cat-1" });
+      const { where } = mockRepo.listTransactions.mock.calls[0]![0];
+      expect(where.merchant).toEqual({
+        name: { contains: "Coop", mode: "insensitive" },
+        mappings: { some: { userId: "user-1", categoryId: "cat-1" } },
+      });
+    });
   });
 
   describe("response shape", () => {
@@ -241,5 +266,94 @@ describe("listTransactions", () => {
       expect(result.data).toHaveLength(0);
       expect(result.meta.totalCount).toBe(0);
     });
+  });
+});
+
+function makeTxRow() {
+  return { id: "tx-1", userId: "user-1", amount: "42.00", notes: null, manualOverride: false };
+}
+
+describe("getTransaction", () => {
+  beforeEach(() => {
+    mockRepo.findByIdForUser.mockResolvedValue(makeTxRow());
+  });
+
+  it("delegates to findByIdForUser with the given id and userId", async () => {
+    await getTransaction("tx-1", "user-1");
+    expect(mockRepo.findByIdForUser).toHaveBeenCalledExactlyOnceWith("tx-1", "user-1");
+  });
+
+  it("returns the repository result unchanged", async () => {
+    const row = makeTxRow();
+    mockRepo.findByIdForUser.mockResolvedValue(row);
+    expect(await getTransaction("tx-1", "user-1")).toBe(row);
+  });
+
+  it("propagates ServiceError from the repository", async () => {
+    mockRepo.findByIdForUser.mockRejectedValue(new ServiceError(404, "Transaction not found"));
+    await expect(getTransaction("missing", "user-1")).rejects.toThrow(
+      new ServiceError(404, "Transaction not found"),
+    );
+  });
+});
+
+describe("updateTransaction", () => {
+  beforeEach(() => {
+    mockRepo.updateById.mockResolvedValue(makeTxRow());
+  });
+
+  it("does not add manualOverride when only notes is provided", async () => {
+    await updateTransaction("tx-1", "user-1", { notes: "hello" });
+    expect(mockRepo.updateById).toHaveBeenCalledExactlyOnceWith("tx-1", "user-1", {
+      notes: "hello",
+    });
+  });
+
+  it("adds manualOverride: true when categoryId is provided", async () => {
+    await updateTransaction("tx-1", "user-1", { categoryId: "cat-1" });
+    expect(mockRepo.updateById).toHaveBeenCalledExactlyOnceWith("tx-1", "user-1", {
+      categoryId: "cat-1",
+      manualOverride: true,
+    });
+  });
+
+  it("adds manualOverride: true when both categoryId and notes are provided", async () => {
+    await updateTransaction("tx-1", "user-1", { categoryId: "cat-1", notes: "memo" });
+    expect(mockRepo.updateById).toHaveBeenCalledExactlyOnceWith("tx-1", "user-1", {
+      categoryId: "cat-1",
+      notes: "memo",
+      manualOverride: true,
+    });
+  });
+
+  it("returns the repository result unchanged", async () => {
+    const row = makeTxRow();
+    mockRepo.updateById.mockResolvedValue(row);
+    expect(await updateTransaction("tx-1", "user-1", { notes: "x" })).toBe(row);
+  });
+
+  it("propagates ServiceError from the repository", async () => {
+    mockRepo.updateById.mockRejectedValue(new ServiceError(404, "Transaction not found"));
+    await expect(updateTransaction("missing", "user-1", { notes: "x" })).rejects.toThrow(
+      new ServiceError(404, "Transaction not found"),
+    );
+  });
+});
+
+describe("deleteTransaction", () => {
+  beforeEach(() => {
+    mockRepo.deleteById.mockResolvedValue(undefined);
+  });
+
+  it("delegates to deleteById with the given id and userId", async () => {
+    await deleteTransaction("tx-1", "user-1");
+    expect(mockRepo.deleteById).toHaveBeenCalledExactlyOnceWith("tx-1", "user-1");
+  });
+
+  it("propagates ServiceError from the repository", async () => {
+    mockRepo.deleteById.mockRejectedValue(new ServiceError(404, "Transaction not found"));
+    await expect(deleteTransaction("missing", "user-1")).rejects.toThrow(
+      new ServiceError(404, "Transaction not found"),
+    );
   });
 });

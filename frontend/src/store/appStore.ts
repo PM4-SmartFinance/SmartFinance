@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { formatLocalDate, subDays } from "../lib/dates";
+import { formatLocalDate, subDays } from "../lib/date";
 
 export interface DateRange {
   startDate: string; // YYYY-MM-DD date string

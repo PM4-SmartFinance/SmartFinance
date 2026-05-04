@@ -15,14 +15,13 @@ export interface DashboardSummary {
   transactionCount: number;
 }
 
+/**
+ * One day of aggregated income/expenses. Backend `/dashboard/trends` returns these
+ * gap-filled across the entire selected range (a row per day, zero-filled where
+ * no transactions occurred).
+ */
 export interface TrendDataPoint {
   date: string; // YYYY-MM-DD
-  amount: number;
-}
-
-interface MonthlyTrendPoint {
-  year: number;
-  month: number;
   income: number;
   expenses: number;
 }
@@ -31,16 +30,6 @@ export interface CategoryBreakdown {
   categoryId: string;
   categoryName: string;
   total: number;
-}
-
-export function toTrendDataPoints(data: MonthlyTrendPoint[]): TrendDataPoint[] {
-  return data.map((point) => {
-    const month = String(point.month).padStart(2, "0");
-    return {
-      date: `${point.year}-${month}-01`,
-      amount: point.expenses,
-    };
-  });
 }
 
 // Re-export for consumers that import Budget from dashboard queries
@@ -61,7 +50,7 @@ export function useDashboardSummary() {
   });
 }
 
-// Monthly Trends Hook
+// Daily Trends Hook — backend already gap-fills across the requested range.
 export function useDashboardTrends() {
   const startDate = useAppStore((s) => s.startDate);
   const endDate = useAppStore((s) => s.endDate);
@@ -70,8 +59,8 @@ export function useDashboardTrends() {
     queryKey: ["dashboard", "trends", { startDate, endDate }] as const,
     queryFn: async () => {
       const params = new URLSearchParams({ startDate, endDate });
-      const { data } = await api.get<{ data: MonthlyTrendPoint[] }>(`/dashboard/trends?${params}`);
-      return toTrendDataPoints(data);
+      const { data } = await api.get<{ data: TrendDataPoint[] }>(`/dashboard/trends?${params}`);
+      return data;
     },
     staleTime: DASHBOARD_STALE_TIME,
   });

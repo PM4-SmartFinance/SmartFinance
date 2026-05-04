@@ -233,7 +233,7 @@ describe("GET /api/v1/dashboard/trends", () => {
     expect(res.statusCode).toBe(400);
   });
 
-  it("returns 6 months of data, bucketed by month/year and zero-padded", async () => {
+  it("returns daily buckets across the full range, gap-filled with zeros", async () => {
     const res = await app.inject({
       method: "GET",
       url: `/api/v1/dashboard/trends?startDate=${sixMonthStart}&endDate=${sixMonthEnd}`,
@@ -242,48 +242,51 @@ describe("GET /api/v1/dashboard/trends", () => {
 
     expect(res.statusCode).toBe(200);
     const body = res.json() as {
-      data: Array<{ year: number; month: number; income: number; expenses: number }>;
+      data: Array<{ date: string; income: number; expenses: number }>;
     };
 
-    expect(body.data).toHaveLength(6);
+    // Length = number of days in [start, end] inclusive
+    const start = new Date(`${sixMonthStart}T00:00:00Z`);
+    const end = new Date(`${sixMonthEnd}T00:00:00Z`);
+    const expectedDays = Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+    expect(body.data).toHaveLength(expectedDays);
 
-    const now = new Date();
-    now.setUTCHours(0, 0, 0, 0);
-    now.setUTCDate(1);
+    // Days that should carry seeded transactions (day = 15 of each anchored month)
+    const oldest = getMonthAnchor(-5); // 300 income, -100 expense
+    const mid = getMonthAnchor(-2); //   -50 expense
+    const current = getMonthAnchor(0); // 1000 income, -200 expense
 
-    const expectedByKey = new Map<string, { income: number; expenses: number }>();
+    const byDate = new Map(body.data.map((r) => [r.date, r] as const));
 
-    for (let i = -5; i <= 0; i++) {
-      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + i, 1));
-      expectedByKey.set(`${d.getUTCFullYear()}-${d.getUTCMonth() + 1}`, { income: 0, expenses: 0 });
-    }
+    const oldestRow = byDate.get(
+      `${oldest.year}-${String(oldest.month).padStart(2, "0")}-${String(oldest.day).padStart(2, "0")}`,
+    );
+    expect(oldestRow).toBeDefined();
+    expect(oldestRow!.income).toBeCloseTo(300, 8);
+    expect(oldestRow!.expenses).toBeCloseTo(100, 8);
 
-    const oldest = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1));
-    expectedByKey.set(`${oldest.getUTCFullYear()}-${oldest.getUTCMonth() + 1}`, {
-      income: 300,
-      expenses: 100,
-    });
+    const midRow = byDate.get(
+      `${mid.year}-${String(mid.month).padStart(2, "0")}-${String(mid.day).padStart(2, "0")}`,
+    );
+    expect(midRow).toBeDefined();
+    expect(midRow!.income).toBeCloseTo(0, 8);
+    expect(midRow!.expenses).toBeCloseTo(50, 8);
 
-    const mid = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 2, 1));
-    expectedByKey.set(`${mid.getUTCFullYear()}-${mid.getUTCMonth() + 1}`, {
-      income: 0,
-      expenses: 50,
-    });
+    const currentRow = byDate.get(
+      `${current.year}-${String(current.month).padStart(2, "0")}-${String(current.day).padStart(2, "0")}`,
+    );
+    expect(currentRow).toBeDefined();
+    expect(currentRow!.income).toBeCloseTo(1000, 8);
+    expect(currentRow!.expenses).toBeCloseTo(200, 8);
 
-    expectedByKey.set(`${now.getUTCFullYear()}-${now.getUTCMonth() + 1}`, {
-      income: 1000,
-      expenses: 200,
-    });
-
-    for (const row of body.data) {
-      const expected = expectedByKey.get(`${row.year}-${row.month}`);
-      expect(expected).toBeDefined();
-      expect(row.income).toBeCloseTo(expected!.income, 8);
-      expect(row.expenses).toBeCloseTo(expected!.expenses, 8);
-    }
+    // Aggregated totals across the response match the sum of seeded data
+    const totalIncome = body.data.reduce((acc, r) => acc + r.income, 0);
+    const totalExpenses = body.data.reduce((acc, r) => acc + r.expenses, 0);
+    expect(totalIncome).toBeCloseTo(1300, 8);
+    expect(totalExpenses).toBeCloseTo(350, 8);
   });
 
-  it("returns 12 months when requested and includes older in-range data", async () => {
+  it("includes older in-range data in the 12-month window", async () => {
     const res = await app.inject({
       method: "GET",
       url: `/api/v1/dashboard/trends?startDate=${twelveMonthStart}&endDate=${twelveMonthEnd}`,
@@ -292,20 +295,13 @@ describe("GET /api/v1/dashboard/trends", () => {
 
     expect(res.statusCode).toBe(200);
     const body = res.json() as {
-      data: Array<{ year: number; month: number; income: number; expenses: number }>;
+      data: Array<{ date: string; income: number; expenses: number }>;
     };
 
-    expect(body.data).toHaveLength(12);
-
-    const target = new Date();
-    target.setUTCHours(0, 0, 0, 0);
-    target.setUTCDate(1);
-    target.setUTCMonth(target.getUTCMonth() - 7);
-
-    const row = body.data.find(
-      (item) => item.year === target.getUTCFullYear() && item.month === target.getUTCMonth() + 1,
-    );
-
+    // The -7 month seed (75 expense) should show up on its anchor day.
+    const target = getMonthAnchor(-7);
+    const targetDate = `${target.year}-${String(target.month).padStart(2, "0")}-${String(target.day).padStart(2, "0")}`;
+    const row = body.data.find((r) => r.date === targetDate);
     expect(row).toBeDefined();
     expect(row!.income).toBeCloseTo(0, 8);
     expect(row!.expenses).toBeCloseTo(75, 8);
@@ -325,17 +321,16 @@ describe("GET /api/v1/dashboard/trends", () => {
 
     expect(res.statusCode).toBe(200);
     const body = res.json() as {
-      data: Array<{ year: number; month: number; income: number; expenses: number }>;
+      data: Array<{ date: string; income: number; expenses: number }>;
     };
 
-    expect(body.data).toHaveLength(6);
     for (const row of body.data) {
       expect(row.income).toBe(0);
       expect(row.expenses).toBe(0);
     }
   });
 
-  it("returns months in chronological order (oldest first)", async () => {
+  it("returns days in chronological order (oldest first)", async () => {
     const res = await app.inject({
       method: "GET",
       url: `/api/v1/dashboard/trends?startDate=${sixMonthStart}&endDate=${sixMonthEnd}`,
@@ -344,15 +339,13 @@ describe("GET /api/v1/dashboard/trends", () => {
 
     expect(res.statusCode).toBe(200);
     const body = res.json() as {
-      data: Array<{ year: number; month: number; income: number; expenses: number }>;
+      data: Array<{ date: string; income: number; expenses: number }>;
     };
 
     for (let i = 1; i < body.data.length; i++) {
       const prev = body.data[i - 1];
       const curr = body.data[i];
-      const prevKey = prev.year * 100 + prev.month;
-      const currKey = curr.year * 100 + curr.month;
-      expect(currKey).toBeGreaterThan(prevKey);
+      expect(curr!.date.localeCompare(prev!.date)).toBeGreaterThan(0);
     }
   });
 });

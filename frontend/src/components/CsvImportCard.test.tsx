@@ -33,11 +33,12 @@ function renderCard() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  return render(
+  const result = render(
     <QueryClientProvider client={queryClient}>
       <CsvImportCard />
     </QueryClientProvider>,
   );
+  return { ...result, queryClient };
 }
 
 function makeCsvFile(name = "export.csv") {
@@ -346,6 +347,37 @@ describe("upload", () => {
     await userEvent.upload(input, makeCsvFile());
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Network error"));
+  });
+
+  it("invalidates the transactions query cache on successful upload", async () => {
+    mockUpload.mockResolvedValue({ imported: 3 });
+    const { queryClient } = renderCard();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    await waitFor(() =>
+      expect(
+        screen.queryByText("No accounts found. Create an account first."),
+      ).not.toBeInTheDocument(),
+    );
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    await userEvent.upload(input, makeCsvFile());
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+    await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["transactions"] }));
+  });
+
+  it("does not invalidate the transactions cache when upload fails", async () => {
+    mockUpload.mockRejectedValue(new Error("Network error"));
+    const { queryClient } = renderCard();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    await waitFor(() =>
+      expect(
+        screen.queryByText("No accounts found. Create an account first."),
+      ).not.toBeInTheDocument(),
+    );
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    await userEvent.upload(input, makeCsvFile());
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Network error"));
+    expect(invalidateSpy).not.toHaveBeenCalledWith({ queryKey: ["transactions"] });
   });
 });
 
