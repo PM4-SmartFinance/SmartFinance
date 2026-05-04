@@ -345,15 +345,19 @@ describe("TransactionsPage", () => {
     });
   });
 
-  it("formats dates correctly in table", async () => {
+  it("formats dates without leaking the raw ISO string", async () => {
     vi.mocked(apiModule.api.get).mockResolvedValueOnce(mockTransactionsResponse);
 
     renderTransactionsPage();
 
+    // formatDate uses the browser locale via Intl; assert the raw ISO string and
+    // "Invalid Date" sentinel are absent rather than pinning a specific locale.
     await waitFor(() => {
-      expect(screen.getByText("1.4.2026")).toBeInTheDocument(); // April 1, 2026 (de-CH)
-      expect(screen.getByText("31.3.2026")).toBeInTheDocument(); // March 31, 2026 (de-CH)
+      expect(screen.getByText("Migros")).toBeInTheDocument();
     });
+    expect(screen.queryByText(/^2026-04-01$/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^2026-03-31$/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Invalid Date/)).not.toBeInTheDocument();
   });
 
   it("shows error state when API fails", async () => {

@@ -1,7 +1,6 @@
-import { useNavigate, Link } from "react-router";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router";
 import { useAuth } from "../hooks/useAuth";
-import { api } from "../lib/api";
+import { useLogout } from "../hooks/useLogout";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "../components/DateRangePicker";
 import { SummaryMetricsWidget } from "../components/SummaryMetricsWidget";
@@ -22,22 +21,7 @@ const TEXT = {
 
 export function DashboardPage() {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-
-  const { mutate: logout, isPending } = useMutation({
-    mutationFn: () => api.post<{ ok: boolean }>("/auth/logout", {}),
-    onSuccess: () => {
-      queryClient.clear();
-      navigate("/login");
-    },
-    onError: () => {
-      // Clear client state and navigate to login even if server call fails
-      // This ensures the user gets back to login screen with feedback
-      queryClient.clear();
-      navigate("/login");
-    },
-  });
+  const { mutate: logout, isPending } = useLogout();
 
   return (
     <main className="min-h-screen bg-background">

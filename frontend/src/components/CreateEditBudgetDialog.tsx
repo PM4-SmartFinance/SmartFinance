@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog } from "@/components/ui/dialog";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 interface CreateEditBudgetDialogProps {
   isOpen: boolean;
@@ -177,18 +180,20 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {formState.error && (
-          <div className="rounded bg-red-50 p-2 text-sm text-red-600">{formState.error}</div>
+          <Alert variant="destructive">
+            <AlertCircle className="size-4" />
+            <AlertDescription>{formState.error}</AlertDescription>
+          </Alert>
         )}
 
         {/* Category Select — shown for both create and edit */}
         <div className="space-y-2">
           <Label htmlFor="category">Category</Label>
-          <select
+          <NativeSelect
             id="category"
             value={formState.categoryId}
             onChange={(e) => setFormState((prev) => ({ ...prev, categoryId: e.target.value }))}
             disabled={isSubmitting || categoriesLoading}
-            className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <option value="">Select a category…</option>
             {categories.map((cat) => (
@@ -196,7 +201,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
                 {cat.categoryName}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </div>
 
         {/* Entry Mode Toggle */}
@@ -234,7 +239,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
         {formState.entryMode === "general" && (
           <div className="space-y-2">
             <Label htmlFor="period">Period</Label>
-            <select
+            <NativeSelect
               id="period"
               value={formState.generalType}
               onChange={(e) =>
@@ -244,12 +249,11 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
                 }))
               }
               disabled={isSubmitting}
-              className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <option value="DAILY">Daily</option>
               <option value="MONTHLY">Monthly</option>
               <option value="YEARLY">Yearly</option>
-            </select>
+            </NativeSelect>
           </div>
         )}
 
@@ -258,14 +262,13 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
           <>
             <div className="space-y-2">
               <Label htmlFor="specific-month">Month (optional)</Label>
-              <select
+              <NativeSelect
                 id="specific-month"
                 value={formState.specificMonth}
                 onChange={(e) =>
                   setFormState((prev) => ({ ...prev, specificMonth: e.target.value }))
                 }
                 disabled={isSubmitting}
-                className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="">Any month</option>
                 {months.map((m) => {
@@ -278,18 +281,17 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
                     </option>
                   );
                 })}
-              </select>
+              </NativeSelect>
             </div>
             <div className="space-y-2">
               <Label htmlFor="specific-year">Year (optional)</Label>
-              <select
+              <NativeSelect
                 id="specific-year"
                 value={formState.specificYear}
                 onChange={(e) =>
                   setFormState((prev) => ({ ...prev, specificYear: e.target.value }))
                 }
                 disabled={isSubmitting}
-                className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="">Any year</option>
                 {years.map((y) => (
@@ -297,7 +299,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
                     {y}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
           </>
         )}

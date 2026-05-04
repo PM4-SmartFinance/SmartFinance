@@ -1,13 +1,12 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useUsers, useUpdateUser, type User } from "../lib/queries/users";
+import { useUsers, useUpdateUser, useDeleteUser, type User } from "../lib/queries/users";
 import { useAuth } from "../hooks/useAuth";
-import { api } from "../lib/api";
+import { useLogout } from "../hooks/useLogout";
+import { ApiError } from "../lib/api";
 import { UserTable } from "../components/UserTable";
 import { CreateUserDialog } from "../components/CreateUserDialog";
 import { EditUserDialog } from "../components/EditUserDialog";
-import { DeleteUserDialog } from "../components/DeleteUserDialog";
+import { ConfirmDeleteDialog } from "../components/ConfirmDeleteDialog";
 import { ResetPasswordDialog } from "../components/ResetPasswordDialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -28,23 +27,8 @@ export function SettingsUsers() {
   const { data: response, isLoading, error } = useUsers(50, 0, sortBy, sortOrder);
   const { user: currentUser } = useAuth();
   const updateMutation = useUpdateUser();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-
-  const { mutate: logout } = useMutation({
-    mutationFn: () => api.post<{ ok: boolean }>("/auth/logout", {}),
-    onSuccess: () => {
-      queryClient.clear();
-      navigate("/login");
-    },
-    onError: () => {
-      // Server-side logout failed — session may still be valid. Clear client
-      // state and surface the failure via a query param so the login page can
-      // hint the user to retry.
-      queryClient.clear();
-      navigate("/login?logout_error=1");
-    },
-  });
+  const deleteMutation = useDeleteUser();
+  const { mutate: logout } = useLogout({ errorRedirectTo: "/login?logout_error=1" });
 
   const handleEdit = (user: User) => {
     setSelectedUser(user);
@@ -74,6 +58,31 @@ export function SettingsUsers() {
     setIsDeleteDialogOpen(true);
   };
 
+  const handleCloseDeleteDialog = () => {
+    setIsDeleteDialogOpen(false);
+    setSelectedUser(null);
+    deleteMutation.reset();
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedUser) return;
+    try {
+      await deleteMutation.mutateAsync(selectedUser.id);
+      const wasSelf = selectedUser.id === currentUser?.id;
+      handleCloseDeleteDialog();
+      if (wasSelf) logout();
+    } catch {
+      // Error surfaced via deleteMutation.error
+    }
+  };
+
+  const deleteErrorMessage =
+    deleteMutation.error instanceof ApiError
+      ? deleteMutation.error.message
+      : deleteMutation.error
+        ? "Failed to delete user"
+        : null;
+
   const users = response?.items ?? [];
 
   const handleSort = (column: SortColumn) => {
@@ -101,9 +110,10 @@ export function SettingsUsers() {
 
         {/* Error State */}
         {error && (
-          <div className="mb-6 rounded bg-red-50 p-4 text-sm text-red-600">
-            Failed to load users. Please try again.
-          </div>
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="size-4" />
+            <AlertDescription>Failed to load users. Please try again.</AlertDescription>
+          </Alert>
         )}
 
         {deactivateError && (
@@ -144,15 +154,22 @@ export function SettingsUsers() {
       />
 
       {/* Delete User Dialog */}
-      <DeleteUserDialog
-        isOpen={isDeleteDialogOpen}
-        user={selectedUser}
-        onClose={() => {
-          setIsDeleteDialogOpen(false);
-          setSelectedUser(null);
-        }}
-        onDeleteSuccess={selectedUser?.id === currentUser?.id ? () => logout() : undefined}
-      />
+      {selectedUser && (
+        <ConfirmDeleteDialog
+          isOpen={isDeleteDialogOpen}
+          title="Delete User?"
+          description={
+            <>
+              Permanently delete <span className="font-medium">{selectedUser.email}</span>? This
+              action cannot be undone.
+            </>
+          }
+          error={deleteErrorMessage}
+          isDeleting={deleteMutation.isPending}
+          onConfirm={() => void handleConfirmDelete()}
+          onCancel={handleCloseDeleteDialog}
+        />
+      )}
 
       {/* Reset Password Dialog */}
       <ResetPasswordDialog
