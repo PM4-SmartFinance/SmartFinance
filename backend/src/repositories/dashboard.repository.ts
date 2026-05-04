@@ -1,6 +1,6 @@
 import { prisma } from "../prisma.js";
 
-function dateStringToId(dateStr: string): number {
+export function dateStringToId(dateStr: string): number {
   // Defence-in-depth: callers are expected to pre-validate, but a loose regex
   // (e.g. `^\d{4}-\d{2}-\d{2}$`) would still let through values like
   // "2026-13-99". Reject anything that is not a plausible Gregorian date so
@@ -49,44 +49,55 @@ export async function getSummary(userId: string, startDate: string, endDate: str
   return { incomeAgg, expenseAgg, transactionCount };
 }
 
-interface ListMonthlyTrendsArgs {
+interface ListDailyTrendsArgs {
   userId: string;
-  startYear: number;
-  startMonth: number;
-  endYear: number;
-  endMonth: number;
+  startDateId: number;
+  endDateId: number;
 }
 
-export interface MonthlyTrendAggregate {
-  year: number;
-  month: number;
+export interface DailyTrendAggregate {
+  /** ISO date string YYYY-MM-DD */
+  date: string;
   income: number;
   expenses: number;
 }
 
-export async function listMonthlyTrends(
-  args: ListMonthlyTrendsArgs,
-): Promise<MonthlyTrendAggregate[]> {
-  const { userId, startYear, startMonth, endYear, endMonth } = args;
+interface RawDailyTrendRow {
+  dateId: number;
+  income: number | string;
+  expenses: number | string;
+}
 
-  const rows = await prisma.$queryRaw<MonthlyTrendAggregate[]>`
+function dateIdToIsoString(id: number): string {
+  const y = Math.floor(id / 10000);
+  const m = Math.floor((id % 10000) / 100);
+  const d = id % 100;
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+export async function listDailyTrends(args: ListDailyTrendsArgs): Promise<DailyTrendAggregate[]> {
+  const { userId, startDateId, endDateId } = args;
+
+  // INNER JOIN (not LEFT JOIN) intentional: we only return days that have at
+  // least one transaction. Days with zero transactions are added by the
+  // service-layer gap-fill, which decouples chart completeness from how
+  // densely DimDate is populated.
+  const rows = await prisma.$queryRaw<RawDailyTrendRow[]>`
     SELECT
-      d.year::int AS year,
-      d.month::int AS month,
+      d.id::int AS "dateId",
       ROUND(COALESCE(SUM(CASE WHEN t.amount > 0 THEN t.amount ELSE 0 END), 0), 2)::double precision AS income,
       ROUND(COALESCE(SUM(CASE WHEN t.amount < 0 THEN ABS(t.amount) ELSE 0 END), 0), 2)::double precision AS expenses
     FROM "FactTransactions" t
     INNER JOIN "DimDate" d ON d.id = t."dateId"
     WHERE t."userId" = ${userId}
-      AND (d.year > ${startYear} OR (d.year = ${startYear} AND d.month >= ${startMonth}))
-      AND (d.year < ${endYear} OR (d.year = ${endYear} AND d.month <= ${endMonth}))
-    GROUP BY d.year, d.month
-    ORDER BY d.year ASC, d.month ASC
+      AND d.id >= ${startDateId}
+      AND d.id <= ${endDateId}
+    GROUP BY d.id
+    ORDER BY d.id ASC
   `;
 
   return rows.map((r) => ({
-    year: Number(r.year),
-    month: Number(r.month),
+    date: dateIdToIsoString(Number(r.dateId)),
     income: Number(r.income),
     expenses: Number(r.expenses),
   }));

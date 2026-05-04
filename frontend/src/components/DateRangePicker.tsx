@@ -1,4 +1,5 @@
 import { useAppStore } from "../store/appStore";
+import { formatLocalDate } from "../lib/date";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 
@@ -19,11 +20,7 @@ export function DateRangePicker() {
     const today = new Date();
     const defaultStart = new Date();
     defaultStart.setDate(today.getDate() - 30);
-
-    const formatLocal = (d: Date) =>
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-
-    setDateRange(formatLocal(defaultStart), formatLocal(today));
+    setDateRange(formatLocalDate(defaultStart), formatLocalDate(today));
   };
 
   return (

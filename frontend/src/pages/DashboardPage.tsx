@@ -1,7 +1,6 @@
-import { useNavigate, Link } from "react-router";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router";
 import { useAuth } from "../hooks/useAuth";
-import { api } from "../lib/api";
+import { useLogout } from "../hooks/useLogout";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "../components/DateRangePicker";
 import { SummaryMetricsWidget } from "../components/SummaryMetricsWidget";
@@ -9,8 +8,8 @@ import { BudgetWidget } from "../components/BudgetWidget";
 import { BudgetProgressWidget } from "../components/BudgetProgressWidget";
 import { SpendingTrendChart } from "../components/SpendingTrendChart";
 import { CategoryBreakdownChart } from "../components/CategoryBreakdownChart";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CsvImportCard } from "../components/CsvImportCard";
+import { RecentTransactionsWidget } from "../components/RecentTransactionsWidget";
 
 const TEXT = {
   heading: "Dashboard",
@@ -22,22 +21,7 @@ const TEXT = {
 
 export function DashboardPage() {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-
-  const { mutate: logout, isPending } = useMutation({
-    mutationFn: () => api.post<{ ok: boolean }>("/auth/logout", {}),
-    onSuccess: () => {
-      queryClient.clear();
-      navigate("/login");
-    },
-    onError: () => {
-      // Clear client state and navigate to login even if server call fails
-      // This ensures the user gets back to login screen with feedback
-      queryClient.clear();
-      navigate("/login");
-    },
-  });
+  const { mutate: logout, isPending } = useLogout();
 
   return (
     <main className="min-h-screen bg-background">
@@ -55,8 +39,7 @@ export function DashboardPage() {
               { to: "/transactions", label: "Transactions" },
               { to: "/budgets", label: "Budgets" },
               { to: "/categories", label: "Categories" },
-              { to: "/profile", label: "Profile" },
-              ...(user?.role === "ADMIN" ? [{ to: "/admin/users", label: "Users" }] : []),
+              { to: "/settings", label: "Settings" },
             ].map(({ to, label }) => (
               <Link
                 key={to}
@@ -96,22 +79,7 @@ export function DashboardPage() {
           <CategoryBreakdownChart />
 
           {/* ── Recent Transactions (Full Width) ── */}
-          <Link to="/transactions" className="col-span-1 sm:col-span-2 lg:col-span-3">
-            <Card className="transition-colors hover:border-foreground/20">
-              <CardHeader>
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider">
-                  Recent Transactions
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex min-h-48 items-center justify-center rounded bg-muted/30 px-4 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    View and manage all your transactions
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+          <RecentTransactionsWidget />
 
           {/* ── CSV Import ── */}
           <CsvImportCard />

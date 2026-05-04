@@ -2,26 +2,17 @@ import { useState } from "react";
 import { useCategories } from "../lib/queries/categories";
 import { useTransactions } from "../lib/queries/transactions";
 import { useTransactionsStore } from "../store/transactionsStore";
+import { formatAmount, formatDate as formatTransactionDate } from "../lib/format";
+import { getDefaultStartDate, getDefaultEndDate } from "../lib/date";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Link } from "react-router";
-import { ArrowLeft } from "lucide-react";
-
-function formatDate(date: Date): string {
-  return date.toISOString().split("T")[0]!;
-}
-
-function getDefaultStartDate(): string {
-  const d = new Date();
-  d.setMonth(d.getMonth() - 1);
-  return formatDate(d);
-}
-
-function getDefaultEndDate(): string {
-  return formatDate(new Date());
-}
+import { NativeSelect } from "@/components/ui/native-select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { BackToDashboardLink } from "@/components/BackToDashboardLink";
+import { SortableColumnHeader } from "@/components/SortableColumnHeader";
+import { AlertCircle } from "lucide-react";
 
 export function TransactionsPage() {
   const page = useTransactionsStore((s) => s.page);
@@ -90,16 +81,13 @@ export function TransactionsPage() {
       <main className="min-h-screen bg-background">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <h1 className="text-4xl font-bold text-foreground">Transactions</h1>
-          <Link
-            to="/"
-            className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="size-4" />
-            Back to Dashboard
-          </Link>
-          <div className="mt-8 rounded bg-red-50 p-4 text-sm text-red-600">
-            Failed to load transactions. Please try again later.
-          </div>
+          <BackToDashboardLink className="mt-2" />
+          <Alert variant="destructive" className="mt-8">
+            <AlertCircle className="size-4" />
+            <AlertDescription>
+              Failed to load transactions. Please try again later.
+            </AlertDescription>
+          </Alert>
         </div>
       </main>
     );
@@ -109,13 +97,7 @@ export function TransactionsPage() {
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <h1 className="text-4xl font-bold text-foreground">Transactions</h1>
-        <Link
-          to="/"
-          className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="size-4" />
-          Back to Dashboard
-        </Link>
+        <BackToDashboardLink className="mt-2" />
         {/* Filters */}
         <Card className="mt-6 p-4">
           <div className="space-y-4">
@@ -149,12 +131,11 @@ export function TransactionsPage() {
               {/* Category */}
               <div className="space-y-2">
                 <Label htmlFor="category">Category</Label>
-                <select
+                <NativeSelect
                   id="category"
                   value={tempCategoryId}
                   onChange={(e) => setTempCategoryId(e.target.value)}
                   disabled={isLoading}
-                  className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="">
                     {categoriesError ? "Failed to load categories" : "All Categories"}
@@ -164,7 +145,7 @@ export function TransactionsPage() {
                       {cat.categoryName}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               </div>
             </div>
 
@@ -212,45 +193,41 @@ export function TransactionsPage() {
                 <table className="w-full">
                   <thead className="border-b border-border bg-muted">
                     <tr>
-                      <th scope="col" className="px-6 py-3 text-left">
-                        <button
-                          onClick={() => handleColumnSort("date")}
-                          className="flex items-center gap-2 font-semibold text-foreground hover:text-foreground/80"
-                        >
-                          Date
-                          {sortBy === "date" && <span>{sortOrder === "asc" ? "↑" : "↓"}</span>}
-                        </button>
-                      </th>
+                      <SortableColumnHeader
+                        column="date"
+                        label="Date"
+                        sortBy={sortBy}
+                        sortOrder={sortOrder}
+                        onSort={handleColumnSort}
+                      />
                       <th scope="col" className="px-6 py-3 text-left font-semibold text-foreground">
                         Description
                       </th>
                       <th scope="col" className="px-6 py-3 text-left font-semibold text-foreground">
                         Category
                       </th>
-                      <th scope="col" className="px-6 py-3 text-right">
-                        <button
-                          onClick={() => handleColumnSort("amount")}
-                          className="flex items-center justify-end gap-2 font-semibold text-foreground hover:text-foreground/80"
-                        >
-                          Amount
-                          {sortBy === "amount" && <span>{sortOrder === "asc" ? "↑" : "↓"}</span>}
-                        </button>
-                      </th>
+                      <SortableColumnHeader
+                        column="amount"
+                        label="Amount"
+                        sortBy={sortBy}
+                        sortOrder={sortOrder}
+                        onSort={handleColumnSort}
+                        align="right"
+                      />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {transactions.map((tx) => (
                       <tr key={tx.id} className="hover:bg-muted/50">
                         <td className="whitespace-nowrap px-6 py-3 text-sm text-foreground">
-                          {new Date(tx.date).toLocaleDateString("de-CH")}
+                          {formatTransactionDate(tx.date)}
                         </td>
                         <td className="px-6 py-3 text-sm text-foreground">{tx.merchant}</td>
                         <td className="px-6 py-3 text-sm text-muted-foreground">
                           {tx.categoryName || "—"}
                         </td>
                         <td className="px-6 py-3 text-right text-sm font-medium text-foreground">
-                          {parseFloat(tx.amount) < 0 ? "−" : ""}
-                          CHF {Math.abs(parseFloat(tx.amount)).toFixed(2)}
+                          {formatAmount(tx.amount)}
                         </td>
                       </tr>
                     ))}

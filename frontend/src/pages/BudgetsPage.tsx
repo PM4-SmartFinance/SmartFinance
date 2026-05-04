@@ -1,14 +1,20 @@
 import { useState } from "react";
-import { useBudgets, useDeleteBudget, getBudgetTypeLabel } from "../lib/queries/budgets";
+import {
+  useBudgets,
+  useDeleteBudget,
+  getBudgetTypeLabel,
+  groupBudgetsByCategory,
+} from "../lib/queries/budgets";
 import type { Budget, BudgetsParams, PeriodFilter, CategorySpending } from "../lib/queries/budgets";
 import { ApiError } from "../lib/api";
 import { useCategories } from "../lib/queries/categories";
 import { BudgetCategoryGroup } from "../components/BudgetProgressCard";
 import { CreateEditBudgetDialog } from "../components/CreateEditBudgetDialog";
-import { DeleteBudgetDialog } from "../components/DeleteBudgetDialog";
+import { ConfirmDeleteDialog } from "../components/ConfirmDeleteDialog";
+import { getDefaultDateRange } from "../lib/date";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router";
-import { ArrowLeft } from "lucide-react";
+import { NativeSelect } from "@/components/ui/native-select";
+import { BackToDashboardLink } from "@/components/BackToDashboardLink";
 
 const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
   { value: "DAILY", label: "Daily" },
@@ -16,20 +22,6 @@ const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
   { value: "YEARLY", label: "Yearly" },
   { value: "DATE_RANGE", label: "Date Range" },
 ];
-
-function formatLocalDate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function getDefaultDateRange(): { start: string; end: string } {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(end.getDate() - 30);
-  return { start: formatLocalDate(start), end: formatLocalDate(end) };
-}
 
 export function BudgetsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -154,13 +146,7 @@ export function BudgetsPage() {
             <p className="text-sm text-muted-foreground">
               Set spending limits per category and monitor progress
             </p>
-            <Link
-              to="/"
-              className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="size-4" />
-              Back to Dashboard
-            </Link>
+            <BackToDashboardLink className="mt-2" />
           </div>
           <Button onClick={handleCreate} size="sm">
             Create Budget
@@ -173,18 +159,18 @@ export function BudgetsPage() {
             <label htmlFor="period-filter" className="text-sm font-medium">
               View Period
             </label>
-            <select
+            <NativeSelect
               id="period-filter"
               value={period}
               onChange={(e) => setPeriod(e.target.value as PeriodFilter)}
-              className="rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              className="w-auto"
             >
               {PERIOD_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </div>
 
           {period === "DATE_RANGE" && (
@@ -250,27 +236,23 @@ export function BudgetsPage() {
 
       {/* Delete Confirmation Dialog */}
       {budgetToDelete && (
-        <DeleteBudgetDialog
+        <ConfirmDeleteDialog
           isOpen={deleteDialogOpen}
-          budgetId={budgetToDelete.id}
-          categoryName={budgetToDelete.categoryName}
-          budgetLabel={budgetToDelete.budgetLabel}
+          title="Delete Budget?"
+          description={
+            <>
+              Are you sure you want to delete the <strong>{budgetToDelete.budgetLabel}</strong>{" "}
+              budget for <strong>{budgetToDelete.categoryName}</strong>? This action cannot be
+              undone.
+            </>
+          }
           isDeleting={isDeleting}
-          error={deleteError}
-          onConfirm={handleConfirmDelete}
+          error={deleteError || null}
+          size="sm"
+          onConfirm={() => void handleConfirmDelete(budgetToDelete.id)}
           onCancel={handleCancelDelete}
         />
       )}
     </main>
   );
-}
-
-function groupBudgetsByCategory(budgets: Budget[]): [string, Budget[]][] {
-  const groups = new Map<string, Budget[]>();
-  for (const b of budgets) {
-    const list = groups.get(b.categoryId) ?? [];
-    list.push(b);
-    groups.set(b.categoryId, list);
-  }
-  return [...groups.entries()];
 }

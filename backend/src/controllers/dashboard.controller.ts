@@ -41,12 +41,11 @@ const dashboardTrendsResponseSchema = {
         items: {
           type: "object",
           properties: {
-            year: { type: "number" },
-            month: { type: "number" },
+            date: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
             income: { type: "number" },
             expenses: { type: "number" },
           },
-          required: ["year", "month", "income", "expenses"],
+          required: ["date", "income", "expenses"],
         },
       },
     },

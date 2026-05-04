@@ -87,7 +87,10 @@ export function CsvImportCard() {
     },
     onSuccess: (data) => {
       setResult(data);
-      // Importing transactions affects budgets and dashboard widgets.
+      // Importing transactions affects transactions list, budgets, and dashboard widgets.
+      queryClient.invalidateQueries({ queryKey: ["transactions"] }).catch((err) => {
+        console.warn("Failed to invalidate transactions cache after import", err);
+      });
       void queryClient.invalidateQueries({ queryKey: ["budgets"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard", "budgets"] });
     },

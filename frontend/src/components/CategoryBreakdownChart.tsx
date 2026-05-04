@@ -1,20 +1,19 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { Link } from "react-router";
 import { ApiError } from "../lib/api";
 import { useDashboardCategories } from "../lib/queries/dashboard";
 import { formatCurrency } from "../lib/utils";
-import { Card, CardContent, CardHeader } from "./ui/card";
+import { CardContent, CardHeader, CardTitle } from "./ui/card";
+import { DashboardTileLink } from "./DashboardTileLink";
 
-const categoryHeader = (
-  <CardHeader>
-    <Link
-      to="/categories"
-      className="text-xs font-semibold uppercase tracking-wider text-foreground hover:text-primary transition-colors"
-    >
-      Spending by Category
-    </Link>
-  </CardHeader>
-);
+function CategoryHeader() {
+  return (
+    <CardHeader>
+      <CardTitle className="text-xs font-semibold uppercase tracking-wider">
+        Spending by Category
+      </CardTitle>
+    </CardHeader>
+  );
+}
 
 export function CategoryBreakdownChart() {
   const { data, isLoading, error } = useDashboardCategories();
@@ -23,34 +22,29 @@ export function CategoryBreakdownChart() {
 
   if (error && !isNotFoundError) {
     return (
-      <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
-        {categoryHeader}
-        <CardContent>
-          <div className="rounded border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
-            Failed to load category breakdown data. Please try again.
-          </div>
-        </CardContent>
-      </Card>
+      <div className="col-span-1 sm:col-span-2 lg:col-span-3 rounded border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
+        Failed to load category breakdown data. Please try again.
+      </div>
     );
   }
 
   if (isLoading) {
     return (
-      <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
-        {categoryHeader}
+      <DashboardTileLink to="/categories" ariaLabel="View categories">
+        <CategoryHeader />
         <CardContent>
           <div className="flex min-h-64 items-center justify-center rounded bg-muted/30">
             <div className="text-sm text-muted-foreground">Loading chart…</div>
           </div>
         </CardContent>
-      </Card>
+      </DashboardTileLink>
     );
   }
 
   if (isNotFoundError || chartData.length === 0) {
     return (
-      <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
-        {categoryHeader}
+      <DashboardTileLink to="/categories" ariaLabel="View categories">
+        <CategoryHeader />
         <CardContent>
           <div className="flex min-h-64 items-center justify-center rounded bg-muted/30 p-4 text-center">
             <div className="max-w-sm text-sm text-muted-foreground">
@@ -58,13 +52,13 @@ export function CategoryBreakdownChart() {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </DashboardTileLink>
     );
   }
 
   return (
-    <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
-      {categoryHeader}
+    <DashboardTileLink to="/categories" ariaLabel="View categories">
+      <CategoryHeader />
       <CardContent>
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
@@ -96,6 +90,6 @@ export function CategoryBreakdownChart() {
           </ResponsiveContainer>
         </div>
       </CardContent>
-    </Card>
+    </DashboardTileLink>
   );
 }

@@ -11,15 +11,17 @@ const mockSummaryData = {
   transactionCount: 42,
 };
 
-const mockTrendData = [
-  { date: "2025-12-01", amount: 2150.25 },
-  { date: "2026-01-01", amount: 2500.75 },
-  { date: "2026-02-01", amount: 2400.25 },
-];
+const mockTrendData = {
+  data: [
+    { year: 2025, month: 12, income: 5000, expenses: 2150.25 },
+    { year: 2026, month: 1, income: 6000, expenses: 2500.75 },
+    { year: 2026, month: 2, income: 5500, expenses: 2400.25 },
+  ],
+};
 
 const mockCategoryData = [
-  { category: "Groceries", amount: 450.75 },
-  { category: "Transport", amount: 280.0 },
+  { categoryId: "cat-1", categoryName: "Groceries", total: 450.75 },
+  { categoryId: "cat-2", categoryName: "Transport", total: 280.0 },
 ];
 
 // Mock the api module
@@ -88,6 +90,12 @@ describe("DashboardPage", () => {
       if (path.includes("/budgets")) {
         return Promise.resolve({ budgets: [], categorySpending: [] });
       }
+      if (path.includes("/transactions")) {
+        return Promise.resolve({
+          data: [],
+          meta: { totalCount: 0, totalPages: 0, page: 1, limit: 5 },
+        });
+      }
       return Promise.resolve({});
     });
   });
@@ -102,8 +110,9 @@ describe("DashboardPage", () => {
     expect(screen.getAllByText("Net Balance").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Total Expenses").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Total Income").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Monthly Spending Trend").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Monthly Income vs. Expenses").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Spending by Category").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Recent Transactions")).toBeInTheDocument();
   });
 
   it("renders date range picker", () => {
@@ -156,7 +165,7 @@ describe("DashboardPage", () => {
 
     // Verify widgets are still present
     expect(screen.getAllByText("Net Balance").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Monthly Spending Trend").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Monthly Income vs. Expenses").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Spending by Category").length).toBeGreaterThanOrEqual(1);
   });
 });
