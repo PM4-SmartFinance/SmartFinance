@@ -98,6 +98,36 @@ describe("category-rule.service", () => {
         service.createRule("user-1", "cat-1", "Migros", "contains", 10),
       ).rejects.toMatchObject({ statusCode: 409 });
     });
+
+    it("accepts a valid regex pattern", async () => {
+      mockRepo.findCategoryForUser.mockResolvedValue({ id: "cat-1" });
+      mockRepo.create.mockResolvedValue(sampleRule as never);
+
+      await expect(
+        service.createRule("user-1", "cat-1", "Migros.*Online", "regex", 10),
+      ).resolves.toBeDefined();
+    });
+
+    it("rejects an invalid regex pattern with a 400 error", async () => {
+      const error = await service
+        .createRule("user-1", "cat-1", "[invalid(", "regex", 10)
+        .catch((e: ServiceError) => e);
+
+      expect(error).toBeInstanceOf(ServiceError);
+      expect(error.statusCode).toBe(400);
+      expect(mockRepo.findCategoryForUser).not.toHaveBeenCalled();
+      expect(mockRepo.create).not.toHaveBeenCalled();
+    });
+
+    it("does not validate regex for exact/contains match types", async () => {
+      mockRepo.findCategoryForUser.mockResolvedValue({ id: "cat-1" });
+      mockRepo.create.mockResolvedValue(sampleRule as never);
+
+      // "[invalid(" is not a valid regex but is fine as an "exact" pattern
+      await expect(
+        service.createRule("user-1", "cat-1", "[invalid(", "exact", 10),
+      ).resolves.toBeDefined();
+    });
   });
 
   describe("updateRule", () => {
@@ -144,6 +174,28 @@ describe("category-rule.service", () => {
 
       expect(error).toBeInstanceOf(ServiceError);
       expect(error.statusCode).toBe(409);
+    });
+
+    it("rejects invalid regex pattern when updating matchType to regex with a new pattern", async () => {
+      const error = await service
+        .updateRule("rule-1", "user-1", { matchType: "regex", pattern: "[invalid(" })
+        .catch((e: ServiceError) => e);
+
+      expect(error).toBeInstanceOf(ServiceError);
+      expect(error.statusCode).toBe(400);
+      expect(mockRepo.update).not.toHaveBeenCalled();
+    });
+
+    it("accepts valid regex pattern when updating matchType to regex", async () => {
+      mockRepo.update.mockResolvedValue({
+        ...sampleRule,
+        matchType: "regex",
+        pattern: "^Migros.*",
+      } as never);
+
+      await expect(
+        service.updateRule("rule-1", "user-1", { matchType: "regex", pattern: "^Migros.*" }),
+      ).resolves.toBeDefined();
     });
   });
 
@@ -228,6 +280,44 @@ describe("category-rule.service", () => {
       ).rejects.toThrow(ServiceError);
 
       expect(mockTransactionRepo.findPreviewMatchesForUser).not.toHaveBeenCalled();
+    });
+
+    it("rejects invalid regex pattern with 400 before hitting the repository", async () => {
+      const error = await service
+        .previewRule("user-1", {
+          categoryId: "cat-1",
+          pattern: "[invalid(",
+          matchType: "regex",
+          priority: 0,
+        })
+        .catch((e: ServiceError) => e);
+
+      expect(error).toBeInstanceOf(ServiceError);
+      expect(error.statusCode).toBe(400);
+      expect(mockRepo.findCategoryForUser).not.toHaveBeenCalled();
+      expect(mockTransactionRepo.findPreviewMatchesForUser).not.toHaveBeenCalled();
+    });
+
+    it("calls repository with regex matchType for valid regex patterns", async () => {
+      mockRepo.findCategoryForUser.mockResolvedValue({ id: "cat-1" } as never);
+      mockTransactionRepo.findPreviewMatchesForUser.mockResolvedValue({
+        matchCount: 3,
+        matchedTransactions: [],
+      });
+
+      await service.previewRule("user-1", {
+        categoryId: "cat-1",
+        pattern: "Migros.*Online",
+        matchType: "regex",
+        priority: 0,
+      });
+
+      expect(mockTransactionRepo.findPreviewMatchesForUser).toHaveBeenCalledWith(
+        "user-1",
+        "Migros.*Online",
+        "regex",
+        3,
+      );
     });
 
     it("returns zero matches when repository finds no match", async () => {

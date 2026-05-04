@@ -11,6 +11,11 @@ vi.mock("../repositories/transaction.repository.js", () => ({
   bulkSetCategory: vi.fn(),
 }));
 
+const mockWarn = vi.fn();
+vi.mock("../logger.js", () => ({
+  getLogger: () => ({ warn: mockWarn }),
+}));
+
 import * as ruleRepo from "../repositories/category-rule.repository.js";
 import * as txRepo from "../repositories/transaction.repository.js";
 
@@ -20,7 +25,7 @@ const mockTxRepo = vi.mocked(txRepo);
 // Helper to build a rule stub
 function rule(
   pattern: string,
-  matchType: "exact" | "contains",
+  matchType: "exact" | "contains" | "regex",
   categoryId: string,
   priority: number,
 ) {
@@ -125,11 +130,60 @@ describe("matchTransaction", () => {
     const rules = [rule("zürich", "contains", "cat-zh", 10)];
     expect(matchTransaction("MIGROS ZÜRICH HB", rules)).toBe("cat-zh");
   });
+
+  // Regex match type tests
+  it("matches a regex rule against the merchant name", () => {
+    const rules = [rule("Migros.*Online", "regex", "cat-1", 10)];
+    expect(matchTransaction("Migros Online", rules)).toBe("cat-1");
+    expect(matchTransaction("Migros Bahnhof Online", rules)).toBe("cat-1");
+  });
+
+  it("matches regex rule case-insensitively", () => {
+    const rules = [rule("migros", "regex", "cat-1", 10)];
+    expect(matchTransaction("MIGROS", rules)).toBe("cat-1");
+    expect(matchTransaction("Migros", rules)).toBe("cat-1");
+    expect(matchTransaction("migros", rules)).toBe("cat-1");
+  });
+
+  it("returns null when regex does not match", () => {
+    const rules = [rule("^Coop$", "regex", "cat-1", 10)];
+    expect(matchTransaction("Migros", rules)).toBeNull();
+    expect(matchTransaction("Coop City", rules)).toBeNull();
+  });
+
+  it("returns null for an invalid regex pattern without throwing", () => {
+    const rules = [rule("[invalid(", "regex", "cat-1", 10)];
+    expect(() => matchTransaction("Migros", rules)).not.toThrow();
+    expect(matchTransaction("Migros", rules)).toBeNull();
+  });
+
+  it("matches regex anchors correctly", () => {
+    const rules = [rule("^Migros$", "regex", "cat-exact", 10)];
+    expect(matchTransaction("Migros", rules)).toBe("cat-exact");
+    expect(matchTransaction("Migros Online", rules)).toBeNull();
+    expect(matchTransaction("My Migros", rules)).toBeNull();
+  });
+
+  it("matches regex alternation", () => {
+    const rules = [rule("Migros|Coop", "regex", "cat-grocery", 10)];
+    expect(matchTransaction("Migros", rules)).toBe("cat-grocery");
+    expect(matchTransaction("Coop City", rules)).toBe("cat-grocery");
+    expect(matchTransaction("Aldi", rules)).toBeNull();
+  });
+
+  it("falls through invalid regex rule to a valid lower-priority rule", () => {
+    const rules = [
+      rule("[invalid(", "regex", "cat-broken", 20),
+      rule("migros", "contains", "cat-valid", 10),
+    ];
+    expect(matchTransaction("Migros", rules)).toBeNull();
+  });
 });
 
 describe("autoCategorize", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockWarn.mockReset();
     // bulkSetCategory now returns the affected-row count from the DB; the
     // default mock echoes the request size for tests that don't care about
     // partial-write semantics. Tests that need a different value override.
@@ -342,6 +396,69 @@ describe("autoCategorize", () => {
       { id: "tx-1", categoryId: "cat-1" },
       { id: "tx-2", categoryId: "cat-1" },
       { id: "tx-3", categoryId: "cat-1" },
+    ]);
+  });
+
+  it("categorizes transactions using a regex rule", async () => {
+    mockRuleRepo.findAllByUser.mockResolvedValue([
+      {
+        ...rule("Migros.*Online", "regex", "cat-1", 10),
+        id: "r1",
+        userId: "user-1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        category: { id: "cat-1", categoryName: "Groceries" },
+      },
+    ] as unknown as Awaited<ReturnType<typeof ruleRepo.findAllByUser>>);
+    mockTxRepo.findUncategorizedForUser.mockResolvedValue([
+      { id: "tx-1", merchant: { name: "Migros Online" } },
+      { id: "tx-2", merchant: { name: "Migros Bahnhof Online" } },
+      { id: "tx-3", merchant: { name: "Coop" } },
+    ] as unknown as Awaited<ReturnType<typeof txRepo.findUncategorizedForUser>>);
+
+    const result = await autoCategorize("user-1");
+
+    expect(result).toEqual({ categorized: 2 });
+    expect(mockTxRepo.bulkSetCategory).toHaveBeenCalledWith("user-1", [
+      { id: "tx-1", categoryId: "cat-1" },
+      { id: "tx-2", categoryId: "cat-1" },
+    ]);
+    expect(mockWarn).not.toHaveBeenCalled();
+  });
+
+  it("logs a warning and skips rules with invalid regex patterns", async () => {
+    mockRuleRepo.findAllByUser.mockResolvedValue([
+      {
+        ...rule("[invalid(", "regex", "cat-broken", 20),
+        id: "r-bad",
+        userId: "user-1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        category: { id: "cat-broken", categoryName: "Broken" },
+      },
+      {
+        ...rule("migros", "contains", "cat-1", 10),
+        id: "r-good",
+        userId: "user-1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        category: { id: "cat-1", categoryName: "Groceries" },
+      },
+    ] as unknown as Awaited<ReturnType<typeof ruleRepo.findAllByUser>>);
+    mockTxRepo.findUncategorizedForUser.mockResolvedValue([
+      { id: "tx-1", merchant: { name: "Migros" } },
+    ] as unknown as Awaited<ReturnType<typeof txRepo.findUncategorizedForUser>>);
+
+    const result = await autoCategorize("user-1");
+
+    expect(mockWarn).toHaveBeenCalledWith(
+      expect.objectContaining({ ruleId: "r-bad", pattern: "[invalid(" }),
+      expect.any(String),
+    );
+    // The valid contains rule still categorizes the transaction
+    expect(result).toEqual({ categorized: 1 });
+    expect(mockTxRepo.bulkSetCategory).toHaveBeenCalledWith("user-1", [
+      { id: "tx-1", categoryId: "cat-1" },
     ]);
   });
 });
