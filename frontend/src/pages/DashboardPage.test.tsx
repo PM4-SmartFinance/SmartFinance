@@ -87,6 +87,12 @@ describe("DashboardPage", () => {
       if (path.includes("/budgets")) {
         return Promise.resolve({ budgets: [] });
       }
+      if (path.includes("/transactions")) {
+        return Promise.resolve({
+          data: [],
+          meta: { totalCount: 0, totalPages: 0, page: 1, limit: 5 },
+        });
+      }
       return Promise.resolve({});
     });
   });
@@ -103,6 +109,7 @@ describe("DashboardPage", () => {
     expect(screen.getAllByText("Total Income").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Monthly Income vs. Expenses").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Spending by Category").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Recent Transactions")).toBeInTheDocument();
   });
 
   it("renders date range picker", () => {

@@ -88,7 +88,9 @@ export function CsvImportCard() {
     },
     onSuccess: (data) => {
       setResult(data);
-      void queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] }).catch((err) => {
+        console.warn("Failed to invalidate transactions cache after import", err);
+      });
     },
   });
 
