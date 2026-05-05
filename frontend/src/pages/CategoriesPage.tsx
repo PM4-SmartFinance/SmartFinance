@@ -13,14 +13,13 @@ import {
   type CategoryRule,
   type RuleDraft,
 } from "../lib/queries/categories";
-import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft } from "lucide-react";
 import { RuleRow } from "@/components/RuleRow";
 import { NewRuleForm } from "@/components/NewRuleForm";
+import { BackToDashboardLink } from "@/components/BackToDashboardLink";
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof ApiError) {
@@ -298,13 +297,7 @@ export function CategoriesPage() {
           <p className="text-sm text-muted-foreground">
             Manage your categories and auto-categorization rules in one place.
           </p>
-          <Link
-            to="/"
-            className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="size-4" />
-            Back to Dashboard
-          </Link>
+          <BackToDashboardLink className="mt-2" />
         </header>
 
         <Card className="mb-6">

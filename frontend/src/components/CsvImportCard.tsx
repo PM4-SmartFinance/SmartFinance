@@ -60,6 +60,8 @@ export function CsvImportCard() {
   const [result, setResult] = useState<UploadResult | null>(null);
   const queryClient = useQueryClient();
 
+  const queryClient = useQueryClient();
+
   const { data: accountsData, isError: isAccountsError } = useQuery({
     queryKey: ["accounts"],
     queryFn: () => api.get<{ accounts: Account[] }>("/accounts"),
@@ -88,6 +90,9 @@ export function CsvImportCard() {
     onSuccess: async (data) => {
       await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       setResult(data);
+      queryClient.invalidateQueries({ queryKey: ["transactions"] }).catch((err) => {
+        console.warn("Failed to invalidate transactions cache after import", err);
+      });
     },
   });
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
 import type { CategoryRule } from "../lib/queries/categories";
 
 interface RuleEditorState {
@@ -34,9 +35,9 @@ export function RuleRow({
             value={editor.pattern}
             onChange={(event) => setEditor({ ...editor, pattern: event.target.value })}
           />
-          <select
+          <NativeSelect
             aria-label={`Rule match type ${rule.id}`}
-            className="rounded border border-input bg-background px-3 py-2 text-sm"
+            className="w-auto"
             value={editor.matchType}
             onChange={(event) =>
               setEditor({ ...editor, matchType: event.target.value as "exact" | "contains" })
@@ -44,7 +45,7 @@ export function RuleRow({
           >
             <option value="contains">contains</option>
             <option value="exact">exact</option>
-          </select>
+          </NativeSelect>
           <Input
             aria-label={`Rule priority ${rule.id}`}
             title="Higher priority rules are evaluated first"

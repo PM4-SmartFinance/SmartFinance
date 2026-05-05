@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useCreateBudget, useUpdateBudget } from "../lib/queries/budgets";
 import type { Budget, BudgetType } from "../lib/queries/budgets";
 import { useCategories } from "../lib/queries/categories";
@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog } from "@/components/ui/dialog";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 interface CreateEditBudgetDialogProps {
   isOpen: boolean;
@@ -39,38 +42,53 @@ interface FormState {
 }
 
 export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBudgetDialogProps) {
-  const [formState, setFormState] = useState<FormState>(emptyFormState);
+  const initialFormState = useMemo((): FormState => {
+    if (!isOpen || !budget) return emptyFormState;
+    return {
+      entryMode: isGeneralType(budget.type) ? "general" : "specific",
+      limitAmount: budget.limitAmount,
+      categoryId: budget.categoryId,
+      generalType: isGeneralType(budget.type)
+        ? (budget.type as "DAILY" | "MONTHLY" | "YEARLY")
+        : "MONTHLY",
+      specificMonth: budget.month > 0 ? budget.month.toString() : "",
+      specificYear: budget.year > 0 ? budget.year.toString() : "",
+      active: budget.active,
+      error: "",
+    };
+  }, [
+    isOpen,
+    budget?.id,
+    budget?.limitAmount,
+    budget?.categoryId,
+    budget?.type,
+    budget?.month,
+    budget?.year,
+    budget?.active,
+  ]);
+
+  const [formState, setFormState] = useState<FormState>(initialFormState);
+  const [prevInitialFormState, setPrevInitialFormState] = useState(initialFormState);
+  const [isDirty, setIsDirty] = useState(false);
+
+  if (prevInitialFormState !== initialFormState) {
+    setPrevInitialFormState(initialFormState);
+    // On close (or fresh open), force-reset and clear dirty.
+    // On mid-edit prop change, preserve the user's unsaved input.
+    if (!isOpen || !isDirty) {
+      setFormState(initialFormState);
+      setIsDirty(false);
+    }
+  }
+
+  const updateFormState = (updater: (prev: FormState) => FormState) => {
+    setIsDirty(true);
+    setFormState(updater);
+  };
 
   const createMutation = useCreateBudget();
   const updateMutation = useUpdateBudget();
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
-
-  // Reset form when dialog opens/closes or budget changes
-  useEffect(() => {
-    if (!isOpen) {
-      // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect
-      setFormState(emptyFormState);
-      return;
-    }
-    if (budget) {
-      // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect
-      setFormState({
-        entryMode: isGeneralType(budget.type) ? "general" : "specific",
-        limitAmount: budget.limitAmount,
-        categoryId: budget.categoryId,
-        generalType: isGeneralType(budget.type)
-          ? (budget.type as "DAILY" | "MONTHLY" | "YEARLY")
-          : "MONTHLY",
-        specificMonth: budget.month > 0 ? budget.month.toString() : "",
-        specificYear: budget.year > 0 ? budget.year.toString() : "",
-        active: budget.active,
-        error: "",
-      });
-    } else {
-      // eslint-disable-next-line @eslint-react/hooks-extra/no-direct-set-state-in-use-effect
-      setFormState(emptyFormState);
-    }
-  }, [isOpen, budget]);
 
   const handleDialogClose = () => {
     onClose();
@@ -177,18 +195,20 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {formState.error && (
-          <div className="rounded bg-red-50 p-2 text-sm text-red-600">{formState.error}</div>
+          <Alert variant="destructive">
+            <AlertCircle className="size-4" />
+            <AlertDescription>{formState.error}</AlertDescription>
+          </Alert>
         )}
 
         {/* Category Select — shown for both create and edit */}
         <div className="space-y-2">
           <Label htmlFor="category">Category</Label>
-          <select
+          <NativeSelect
             id="category"
             value={formState.categoryId}
-            onChange={(e) => setFormState((prev) => ({ ...prev, categoryId: e.target.value }))}
+            onChange={(e) => updateFormState((prev) => ({ ...prev, categoryId: e.target.value }))}
             disabled={isSubmitting || categoriesLoading}
-            className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <option value="">Select a category…</option>
             {categories.map((cat) => (
@@ -196,7 +216,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
                 {cat.categoryName}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </div>
 
         {/* Entry Mode Toggle */}
@@ -210,7 +230,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-input bg-background text-foreground hover:bg-muted"
               }`}
-              onClick={() => setFormState((prev) => ({ ...prev, entryMode: "general" }))}
+              onClick={() => updateFormState((prev) => ({ ...prev, entryMode: "general" }))}
               disabled={isSubmitting}
             >
               General
@@ -222,7 +242,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-input bg-background text-foreground hover:bg-muted"
               }`}
-              onClick={() => setFormState((prev) => ({ ...prev, entryMode: "specific" }))}
+              onClick={() => updateFormState((prev) => ({ ...prev, entryMode: "specific" }))}
               disabled={isSubmitting}
             >
               Specific
@@ -234,22 +254,21 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
         {formState.entryMode === "general" && (
           <div className="space-y-2">
             <Label htmlFor="period">Period</Label>
-            <select
+            <NativeSelect
               id="period"
               value={formState.generalType}
               onChange={(e) =>
-                setFormState((prev) => ({
+                updateFormState((prev) => ({
                   ...prev,
                   generalType: e.target.value as "DAILY" | "MONTHLY" | "YEARLY",
                 }))
               }
               disabled={isSubmitting}
-              className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <option value="DAILY">Daily</option>
               <option value="MONTHLY">Monthly</option>
               <option value="YEARLY">Yearly</option>
-            </select>
+            </NativeSelect>
           </div>
         )}
 
@@ -258,14 +277,13 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
           <>
             <div className="space-y-2">
               <Label htmlFor="specific-month">Month (optional)</Label>
-              <select
+              <NativeSelect
                 id="specific-month"
                 value={formState.specificMonth}
                 onChange={(e) =>
-                  setFormState((prev) => ({ ...prev, specificMonth: e.target.value }))
+                  updateFormState((prev) => ({ ...prev, specificMonth: e.target.value }))
                 }
                 disabled={isSubmitting}
-                className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="">Any month</option>
                 {months.map((m) => {
@@ -278,18 +296,17 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
                     </option>
                   );
                 })}
-              </select>
+              </NativeSelect>
             </div>
             <div className="space-y-2">
               <Label htmlFor="specific-year">Year (optional)</Label>
-              <select
+              <NativeSelect
                 id="specific-year"
                 value={formState.specificYear}
                 onChange={(e) =>
-                  setFormState((prev) => ({ ...prev, specificYear: e.target.value }))
+                  updateFormState((prev) => ({ ...prev, specificYear: e.target.value }))
                 }
                 disabled={isSubmitting}
-                className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="">Any year</option>
                 {years.map((y) => (
@@ -297,7 +314,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
                     {y}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
           </>
         )}
@@ -310,7 +327,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
             type="number"
             step="0.01"
             value={formState.limitAmount}
-            onChange={(e) => setFormState((prev) => ({ ...prev, limitAmount: e.target.value }))}
+            onChange={(e) => updateFormState((prev) => ({ ...prev, limitAmount: e.target.value }))}
             placeholder="Enter limit amount"
             disabled={isSubmitting}
           />
@@ -327,7 +344,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
               type="button"
               role="switch"
               aria-checked={formState.active}
-              onClick={() => setFormState((prev) => ({ ...prev, active: !prev.active }))}
+              onClick={() => updateFormState((prev) => ({ ...prev, active: !prev.active }))}
               disabled={isSubmitting}
               className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
                 formState.active ? "bg-primary" : "bg-input"
