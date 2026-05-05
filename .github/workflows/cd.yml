@@ -21,8 +21,11 @@ jobs:
     permissions:
       actions: read
       contents: write
+    outputs:
+      skipped: ${{ steps.sync-check.outputs.skipped }}
     steps:
       - name: Verify release source and healthy develop
+        id: sync-check
         uses: actions/github-script@v7
         with:
           script: |
@@ -30,50 +33,77 @@ jobs:
             const releaseTag = release.tag_name;
             const targetCommitish = release.target_commitish || "";
 
-            if (targetCommitish && targetCommitish !== "develop") {
+            if (targetCommitish !== "develop") {
               core.setFailed(
-                `Release ${releaseTag} targets ${targetCommitish}, but this workflow only syncs releases created from develop.`,
+                `Release ${releaseTag} targets '${targetCommitish || "(empty)"}', but this workflow only syncs releases created from develop.`,
               );
               return;
             }
 
-            const { data: developRef } = await github.rest.git.getRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: "heads/develop",
-            });
-
-            const { data: mainRef } = await github.rest.git.getRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: "heads/main",
-            });
-
-            const { data: releaseTagRef } = await github.rest.git.getRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: `tags/${releaseTag}`,
-            });
-
-            let releaseTagSha = releaseTagRef.object.sha;
-
-            if (releaseTagRef.object.type === "tag") {
-              const { data: tagObject } = await github.rest.git.getTag({
+            let developRef;
+            try {
+              ({ data: developRef } = await github.rest.git.getRef({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                tag_sha: releaseTagSha,
-              });
-              releaseTagSha = tagObject.object.sha;
+                ref: "heads/develop",
+              }));
+            } catch (error) {
+              core.setFailed(`Could not resolve branch 'develop': ${error.message}`);
+              return;
             }
 
-            const { data: workflowRuns } = await github.rest.actions.listWorkflowRunsForWorkflow({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: "ci.yml",
-              branch: "develop",
-              status: "completed",
-              per_page: 1,
-            });
+            let mainRef;
+            try {
+              ({ data: mainRef } = await github.rest.git.getRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: "heads/main",
+              }));
+            } catch (error) {
+              core.setFailed(`Could not resolve branch 'main': ${error.message}`);
+              return;
+            }
+
+            let releaseTagSha;
+            try {
+              const { data: releaseTagRef } = await github.rest.git.getRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `tags/${releaseTag}`,
+              });
+              releaseTagSha = releaseTagRef.object.sha;
+
+              if (releaseTagRef.object.type === "tag") {
+                const { data: tagObject } = await github.rest.git.getTag({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  tag_sha: releaseTagSha,
+                });
+                releaseTagSha = tagObject.object.sha;
+              }
+            } catch (error) {
+              core.setFailed(
+                `Failed to resolve tag '${releaseTag}' to a commit SHA: ${error.message}`,
+              );
+              return;
+            }
+
+            let workflowRuns;
+            try {
+              ({ data: workflowRuns } = await github.rest.actions.listWorkflowRunsForWorkflow({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: "ci.yml",
+                branch: "develop",
+                status: "completed",
+                per_page: 1,
+              }));
+            } catch (error) {
+              core.setFailed(
+                `Failed to list CI runs for workflow 'ci.yml' on branch 'develop': ${error.message}`,
+              );
+              return;
+            }
 
             const latestRun = workflowRuns.workflow_runs[0];
 
@@ -105,6 +135,7 @@ jobs:
 
             if (mainRef.object.sha === developRef.object.sha) {
               core.info("main already matches develop — no sync required.");
+              core.setOutput("skipped", "true");
               return;
             }
 
@@ -115,14 +146,20 @@ jobs:
                 base: "main",
                 head: "develop",
                 commit_message: `Sync develop into main for release ${releaseTag}`,
-                merge_method: "merge",
               });
 
               core.info(`Synced develop into main for release ${releaseTag}.`);
+              core.setOutput("skipped", "false");
             } catch (error) {
-              core.setFailed(
-                `Failed to sync develop into main for release ${releaseTag}: ${error.message}`,
-              );
+              if (error.status === 409) {
+                core.setFailed(
+                  `Merge conflict syncing develop (${developRef.object.sha}) into main (${mainRef.object.sha}) for release ${releaseTag}. Resolve conflicts manually before retrying.`,
+                );
+              } else {
+                core.setFailed(
+                  `Failed to sync develop into main for release ${releaseTag}: ${error.message} (HTTP ${error.status ?? "unknown"})`,
+                );
+              }
             }
 
   docker-ci:
@@ -194,7 +231,7 @@ jobs:
   docker-release:
     name: Build & Push Docker Images (release)
     runs-on: ubuntu-24.04
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' && needs.sync-release.outputs.skipped != 'true'
     needs:
       - sync-release
     permissions:
