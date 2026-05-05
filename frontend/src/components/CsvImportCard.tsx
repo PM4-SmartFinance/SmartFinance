@@ -60,8 +60,6 @@ export function CsvImportCard() {
   const [result, setResult] = useState<UploadResult | null>(null);
   const queryClient = useQueryClient();
 
-  const queryClient = useQueryClient();
-
   const { data: accountsData, isError: isAccountsError } = useQuery({
     queryKey: ["accounts"],
     queryFn: () => api.get<{ accounts: Account[] }>("/accounts"),
