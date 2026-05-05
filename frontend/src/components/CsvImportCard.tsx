@@ -12,6 +12,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+const QUERY_KEYS_TO_INVALIDATE_AFTER_IMPORT = [
+  ["budgets"],
+  ["dashboard"],
+  ["transactions"],
+] as const;
+
 const FORMATS = [
   { value: "neon", label: "Neon" },
   { value: "zkb", label: "ZKB" },
@@ -85,14 +91,24 @@ export function CsvImportCard() {
         formData,
       );
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setResult(data);
-      // Importing transactions affects transactions list, budgets, and dashboard widgets.
-      queryClient.invalidateQueries({ queryKey: ["transactions"] }).catch((err) => {
-        console.warn("Failed to invalidate transactions cache after import", err);
+
+      const invalidations = await Promise.allSettled(
+        QUERY_KEYS_TO_INVALIDATE_AFTER_IMPORT.map((queryKey) =>
+          queryClient.invalidateQueries({ queryKey }),
+        ),
+      );
+
+      invalidations.forEach((result, index) => {
+        if (result.status === "rejected") {
+          const key = QUERY_KEYS_TO_INVALIDATE_AFTER_IMPORT[index]!.join("/");
+          console.warn(
+            `CsvImportCard: failed to invalidate query '${key}' after import`,
+            result.reason,
+          );
+        }
       });
-      void queryClient.invalidateQueries({ queryKey: ["budgets"] });
-      void queryClient.invalidateQueries({ queryKey: ["dashboard", "budgets"] });
     },
   });
 

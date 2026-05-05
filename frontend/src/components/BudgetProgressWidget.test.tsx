@@ -48,6 +48,19 @@ describe("BudgetProgressWidget", () => {
     expect(screen.getByText("Loading budget progress...")).toBeInTheDocument();
   });
 
+  it("shows error state when any period query fails", () => {
+    mockUseBudgets
+      .mockReturnValueOnce({ isLoading: false, error: new Error("Daily failed"), data: undefined })
+      .mockReturnValueOnce({ isLoading: false, error: null, data: undefined })
+      .mockReturnValueOnce({ isLoading: false, error: null, data: undefined });
+
+    renderWidget();
+
+    expect(
+      screen.getByText("Failed to load budget progress. Please try again."),
+    ).toBeInTheDocument();
+  });
+
   it("shows empty state when no tracked totals exist", () => {
     const emptyData = { budgets: [], categorySpending: [] };
     mockUseBudgets
@@ -62,6 +75,10 @@ describe("BudgetProgressWidget", () => {
         "No tracked budget totals yet. Create budgets and import transactions to populate these charts.",
       ),
     ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "View all budgets" })).toHaveAttribute(
+      "href",
+      "/budgets",
+    );
   });
 
   it("renders daily, monthly and yearly pies with totals", () => {

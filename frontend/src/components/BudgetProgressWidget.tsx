@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { Link } from "react-router";
 import { useCategories } from "../lib/queries/categories";
@@ -27,7 +27,10 @@ interface PeriodSnapshot {
 function toNumber(value: string | null): number {
   if (value == null) return 0;
   const n = parseFloat(value);
-  return Number.isFinite(n) ? n : 0;
+  if (Number.isFinite(n)) return n;
+
+  console.warn("BudgetProgressWidget: encountered malformed numeric value", { value });
+  return 0;
 }
 
 function buildSnapshot(
@@ -61,15 +64,13 @@ function buildSnapshot(
 function getCategoryLabel(categoryId: string, names: Map<string, string>): string {
   const known = names.get(categoryId);
   if (known) return known;
+
+  console.warn("BudgetProgressWidget: missing category name for categoryId", { categoryId });
   return `Category ${categoryId.slice(0, 6)}`;
 }
 
-function getCategoryColor(categoryId: string): string {
-  let hash = 0;
-  for (let i = 0; i < categoryId.length; i += 1) {
-    hash = (hash * 31 + categoryId.charCodeAt(i)) >>> 0;
-  }
-  return INNER_COLORS[hash % INNER_COLORS.length]!;
+function getCategoryColor(index: number): string {
+  return INNER_COLORS[index % INNER_COLORS.length]!;
 }
 
 export function BudgetProgressWidget() {
@@ -86,8 +87,29 @@ export function BudgetProgressWidget() {
     return map;
   }, [categoriesQuery.data]);
 
+  const periodErrors = useMemo(
+    () =>
+      [
+        { label: "Daily", error: daily.error },
+        { label: "Monthly", error: monthly.error },
+        { label: "Yearly", error: yearly.error },
+      ].filter((entry) => entry.error != null),
+    [daily.error, monthly.error, yearly.error],
+  );
+
   const isLoading = daily.isLoading || monthly.isLoading || yearly.isLoading;
-  const error = daily.error || monthly.error || yearly.error;
+  const error = periodErrors[0]?.error ?? categoriesQuery.error;
+
+  useEffect(() => {
+    if (periodErrors.length > 0) {
+      console.error("BudgetProgressWidget: failed to load one or more periods", {
+        periods: periodErrors.map((entry) => entry.label),
+      });
+    }
+    if (categoriesQuery.error) {
+      console.error("BudgetProgressWidget: failed to load categories", categoriesQuery.error);
+    }
+  }, [periodErrors, categoriesQuery.error]);
 
   const snapshots = useMemo(
     () => [
@@ -101,10 +123,13 @@ export function BudgetProgressWidget() {
   if (error) {
     return (
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-xs font-semibold uppercase tracking-wider">
             Budget Progress
           </CardTitle>
+          <Link to="/budgets" className="text-xs font-medium text-primary hover:underline">
+            View all budgets
+          </Link>
         </CardHeader>
         <CardContent>
           <div className="rounded border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
@@ -118,10 +143,13 @@ export function BudgetProgressWidget() {
   if (isLoading) {
     return (
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-xs font-semibold uppercase tracking-wider">
             Budget Progress
           </CardTitle>
+          <Link to="/budgets" className="text-xs font-medium text-primary hover:underline">
+            View all budgets
+          </Link>
         </CardHeader>
         <CardContent>
           <div className="flex min-h-72 items-center justify-center rounded bg-muted/30">
@@ -137,10 +165,13 @@ export function BudgetProgressWidget() {
   if (!hasTrackedBudgets) {
     return (
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-xs font-semibold uppercase tracking-wider">
             Budget Progress
           </CardTitle>
+          <Link to="/budgets" className="text-xs font-medium text-primary hover:underline">
+            View all budgets
+          </Link>
         </CardHeader>
         <CardContent>
           <div className="flex min-h-72 items-center justify-center rounded bg-muted/30 px-4 text-center">
@@ -155,122 +186,123 @@ export function BudgetProgressWidget() {
   }
 
   return (
-    <Link to="/budgets" className="block hover:opacity-95 transition-opacity">
-      <Card className="cursor-pointer">
-        <CardHeader>
-          <CardTitle className="text-xs font-semibold uppercase tracking-wider">
-            Budget Progress
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            {snapshots.map((snapshot) => {
-              const outerData = [
-                { name: "Spent", value: snapshot.spentWithinLimit, fill: OUTER_COLORS.spent },
-                { name: "Remaining", value: snapshot.remaining, fill: OUTER_COLORS.remaining },
-                ...(snapshot.overBudget > 0
-                  ? [{ name: "Over", value: snapshot.overBudget, fill: OUTER_COLORS.over }]
-                  : []),
-              ].filter((d) => d.value > 0);
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
+        <CardTitle className="text-xs font-semibold uppercase tracking-wider">
+          Budget Progress
+        </CardTitle>
+        <Link to="/budgets" className="text-xs font-medium text-primary hover:underline">
+          View all budgets
+        </Link>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {snapshots.map((snapshot) => {
+            const outerData = [
+              { name: "Spent", value: snapshot.spentWithinLimit, fill: OUTER_COLORS.spent },
+              { name: "Remaining", value: snapshot.remaining, fill: OUTER_COLORS.remaining },
+              ...(snapshot.overBudget > 0
+                ? [{ name: "Over", value: snapshot.overBudget, fill: OUTER_COLORS.over }]
+                : []),
+            ].filter((d) => d.value > 0);
 
-              const innerData =
-                snapshot.categories.length > 0
-                  ? snapshot.categories.map((c) => ({
-                      name: getCategoryLabel(c.categoryId, categoryNames),
-                      value: c.spending,
-                      fill: getCategoryColor(c.categoryId),
-                    }))
-                  : [{ name: "No category spending", value: 1, fill: "hsl(var(--muted))" }];
+            const innerData =
+              snapshot.categories.length > 0
+                ? snapshot.categories.map((c, index) => ({
+                    name: getCategoryLabel(c.categoryId, categoryNames),
+                    value: c.spending,
+                    fill: getCategoryColor(index),
+                  }))
+                : [{ name: "No category spending", value: 1, fill: "hsl(var(--muted))" }];
 
-              return (
-                <div key={snapshot.label} className="rounded border border-border p-4">
-                  <p className="mb-2 text-sm font-semibold">{snapshot.label}</p>
-                  <div className="h-52 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={outerData}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={58}
-                          outerRadius={80}
-                          stroke="none"
-                        >
-                          {outerData.map((entry) => (
-                            <Cell key={`${snapshot.label}-${entry.name}`} fill={entry.fill} />
-                          ))}
-                        </Pie>
-                        <Pie
-                          data={innerData}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={35}
-                          outerRadius={54}
-                          stroke="none"
-                        >
-                          {innerData.map((entry) => (
-                            <Cell key={`${snapshot.label}-${entry.name}-inner`} fill={entry.fill} />
-                          ))}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  {snapshot.categories.length > 0 ? (
-                    <ul className="mt-3 space-y-1">
-                      {snapshot.categories.slice(0, 4).map((cat) => (
-                        <li
-                          key={`${snapshot.label}-${cat.categoryId}`}
-                          className="flex items-center justify-between text-xs"
-                        >
-                          <span className="inline-flex items-center gap-2 text-muted-foreground">
-                            <span
-                              className="inline-block h-2.5 w-2.5 rounded-full"
-                              style={{ backgroundColor: getCategoryColor(cat.categoryId) }}
-                              aria-hidden="true"
-                            />
-                            {getCategoryLabel(cat.categoryId, categoryNames)}
-                          </span>
-                          <span className="font-medium">{formatCurrency(cat.spending)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="mt-3 text-xs text-muted-foreground">No category spending yet.</p>
-                  )}
-
-                  <div className="mt-3 flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Spent</span>
-                    <span className="font-medium">{formatCurrency(snapshot.totalSpent)}</span>
-                  </div>
-                  <div className="mt-1 flex items-center justify-between text-xs">
-                    <span className="inline-flex items-center gap-2 text-muted-foreground">
-                      <span
-                        className="inline-block h-2.5 w-2.5 rounded-full bg-black"
-                        aria-hidden="true"
-                      />
-                      Tracked total
-                    </span>
-                    <span className="font-medium">{formatCurrency(snapshot.totalLimit)}</span>
-                  </div>
-                  {snapshot.overBudget > 0 && (
-                    <div className="mt-1 flex items-center justify-between text-xs">
-                      <span className="text-destructive">Over budget</span>
-                      <span className="font-medium text-destructive">
-                        - {formatCurrency(snapshot.overBudget)}
-                      </span>
-                    </div>
-                  )}
+            return (
+              <div key={snapshot.label} className="rounded border border-border p-4">
+                <p className="mb-2 text-sm font-semibold">{snapshot.label}</p>
+                <div className="h-52 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={outerData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={58}
+                        outerRadius={80}
+                        stroke="none"
+                      >
+                        {outerData.map((entry) => (
+                          <Cell key={`${snapshot.label}-${entry.name}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Pie
+                        data={innerData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={35}
+                        outerRadius={54}
+                        stroke="none"
+                      >
+                        {innerData.map((entry) => (
+                          <Cell key={`${snapshot.label}-${entry.name}-inner`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
+
+                {snapshot.categories.length > 0 ? (
+                  <ul className="mt-3 space-y-1">
+                    {snapshot.categories.slice(0, 4).map((cat, index) => (
+                      <li
+                        key={`${snapshot.label}-${cat.categoryId}`}
+                        className="flex items-center justify-between text-xs"
+                      >
+                        <span className="inline-flex items-center gap-2 text-muted-foreground">
+                          <span
+                            className="inline-block h-2.5 w-2.5 rounded-full"
+                            style={{ backgroundColor: getCategoryColor(index) }}
+                            aria-hidden="true"
+                          />
+                          {getCategoryLabel(cat.categoryId, categoryNames)}
+                        </span>
+                        <span className="font-medium">{formatCurrency(cat.spending)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-3 text-xs text-muted-foreground">No category spending yet.</p>
+                )}
+
+                <div className="mt-3 flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Spent</span>
+                  <span className="font-medium">{formatCurrency(snapshot.totalSpent)}</span>
+                </div>
+                <div className="mt-1 flex items-center justify-between text-xs">
+                  <span className="inline-flex items-center gap-2 text-muted-foreground">
+                    <span
+                      className="inline-block h-2.5 w-2.5 rounded-full bg-black"
+                      aria-hidden="true"
+                    />
+                    Tracked total
+                  </span>
+                  <span className="font-medium">{formatCurrency(snapshot.totalLimit)}</span>
+                </div>
+                {snapshot.overBudget > 0 && (
+                  <div className="mt-1 flex items-center justify-between text-xs">
+                    <span className="text-destructive">Over budget</span>
+                    <span className="font-medium text-destructive">
+                      - {formatCurrency(snapshot.overBudget)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

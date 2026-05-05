@@ -1,7 +1,9 @@
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router";
 import { CsvImportCard } from "./CsvImportCard";
+import { BudgetProgressWidget } from "./BudgetProgressWidget";
 import { api, ApiError } from "../lib/api";
 
 vi.mock("../lib/api", () => {
@@ -291,29 +293,71 @@ describe("upload", () => {
     );
   });
 
-  it("invalidates budget queries after a successful import", async () => {
+  it("refetches BudgetProgressWidget data after successful import", async () => {
+    let budgetRequests = 0;
     mockUpload.mockResolvedValue({ imported: 3 });
+    mockGet.mockImplementation((path: string) => {
+      if (path === "/accounts") {
+        return Promise.resolve({ accounts: ACCOUNTS });
+      }
+      if (path === "/categories" || path.startsWith("/categories?")) {
+        return Promise.resolve({ categories: [{ id: "cat-1", categoryName: "Groceries" }] });
+      }
+      if (path.startsWith("/budgets?")) {
+        budgetRequests += 1;
+        if (budgetRequests <= 3) {
+          return Promise.resolve({ budgets: [], categorySpending: [] });
+        }
+        return Promise.resolve({
+          budgets: [],
+          categorySpending: [
+            {
+              categoryId: "cat-1",
+              spending: "75.00",
+              scaledLimit: "100.00",
+              sourceBudgetType: "MONTHLY",
+            },
+          ],
+        });
+      }
+      return Promise.resolve({});
+    });
+
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
     });
-    const invalidateQueriesSpy = vi.spyOn(queryClient, "invalidateQueries");
-
-    renderCard(queryClient);
-
-    await waitFor(() =>
-      expect(
-        screen.queryByText("No accounts found. Create an account first."),
-      ).not.toBeInTheDocument(),
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <div>
+            <BudgetProgressWidget />
+            <CsvImportCard />
+          </div>
+        </MemoryRouter>
+      </QueryClientProvider>,
     );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "No tracked budget totals yet. Create budgets and import transactions to populate these charts.",
+        ),
+      ).toBeInTheDocument();
+    });
 
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
     await userEvent.upload(input, makeCsvFile());
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
 
     await waitFor(() => {
-      expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ["budgets"] });
-      expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ["dashboard", "budgets"] });
+      expect(
+        screen.queryByText(
+          "No tracked budget totals yet. Create budgets and import transactions to populate these charts.",
+        ),
+      ).not.toBeInTheDocument();
+      expect(screen.getAllByText("Tracked total").length).toBeGreaterThan(0);
     });
+    expect(budgetRequests).toBeGreaterThan(3);
   });
 
   it("uses singular 'transaction' when imported count is 1", async () => {
