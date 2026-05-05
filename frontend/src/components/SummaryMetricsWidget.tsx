@@ -3,6 +3,10 @@ import { useDashboardSummary } from "../lib/queries/dashboard";
 import { formatCurrency } from "../lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
+// SummaryMetricsWidget is a Link wrapping a 3-up grid of MetricCards.
+// Unlike other dashboard tiles (Card-shaped), this one is a grid layout, so
+// it does not use DashboardTileLink — but it shares the focus ring styling.
+
 function MetricCard({
   title,
   value,

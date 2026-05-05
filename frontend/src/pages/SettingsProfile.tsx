@@ -203,10 +203,7 @@ export function SettingsProfile() {
                   </Alert>
                 )}
                 {profileSuccess && (
-                  <Alert
-                    role="status"
-                    className="border-green-500/50 text-green-700 dark:text-green-400 [&>svg]:text-green-600"
-                  >
+                  <Alert variant="success" role="status">
                     <CheckCircle2 className="size-4" />
                     <AlertDescription>Profile updated successfully.</AlertDescription>
                   </Alert>
@@ -280,10 +277,7 @@ export function SettingsProfile() {
                 </Alert>
               )}
               {passwordSuccess && (
-                <Alert
-                  role="status"
-                  className="border-green-500/50 text-green-700 dark:text-green-400 [&>svg]:text-green-600"
-                >
+                <Alert variant="success" role="status">
                   <CheckCircle2 className="size-4" />
                   <AlertDescription>Password changed. Please sign in again.</AlertDescription>
                 </Alert>

@@ -9,6 +9,8 @@ import {
   useDeleteBudget,
   getBudgetTypeLabel,
   getMostSpecificActiveBudget,
+  groupBudgetsByCategory,
+  getMostSpecificBudgetsPerCategory,
   Budget,
 } from "./budgets";
 
@@ -237,5 +239,47 @@ describe("getMostSpecificActiveBudget", () => {
       makeBudget({ id: "b-active-low", isActive: true, priority: 0 }),
     ];
     expect(getMostSpecificActiveBudget(budgets)!.id).toBe("b-active-low");
+  });
+});
+
+describe("groupBudgetsByCategory", () => {
+  const makeBudget = (overrides: Partial<Budget>): Budget => ({ ...baseBudget, ...overrides });
+
+  it("returns an empty array for empty input", () => {
+    expect(groupBudgetsByCategory([])).toEqual([]);
+  });
+
+  it("groups budgets by their categoryId", () => {
+    const budgets = [
+      makeBudget({ id: "b-1", categoryId: "cat-a" }),
+      makeBudget({ id: "b-2", categoryId: "cat-b" }),
+      makeBudget({ id: "b-3", categoryId: "cat-a" }),
+    ];
+    const grouped = groupBudgetsByCategory(budgets);
+    expect(grouped).toHaveLength(2);
+    const catA = grouped.find(([id]) => id === "cat-a")!;
+    expect(catA[1].map((b) => b.id)).toEqual(["b-1", "b-3"]);
+  });
+});
+
+describe("getMostSpecificBudgetsPerCategory", () => {
+  const makeBudget = (overrides: Partial<Budget>): Budget => ({ ...baseBudget, ...overrides });
+
+  it("returns one most-specific active budget per category", () => {
+    const budgets = [
+      makeBudget({ id: "a-low", categoryId: "cat-a", isActive: true, priority: 1 }),
+      makeBudget({ id: "a-high", categoryId: "cat-a", isActive: true, priority: 3 }),
+      makeBudget({ id: "b-only", categoryId: "cat-b", isActive: true, priority: 2 }),
+    ];
+    const result = getMostSpecificBudgetsPerCategory(budgets);
+    expect(result.map((b) => b.id).sort()).toEqual(["a-high", "b-only"]);
+  });
+
+  it("skips categories where no budget is active", () => {
+    const budgets = [
+      makeBudget({ id: "a", categoryId: "cat-a", isActive: false }),
+      makeBudget({ id: "b", categoryId: "cat-b", isActive: true }),
+    ];
+    expect(getMostSpecificBudgetsPerCategory(budgets).map((b) => b.id)).toEqual(["b"]);
   });
 });
