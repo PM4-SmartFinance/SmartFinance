@@ -52,13 +52,13 @@ const TEXT = {
 
 export function CsvImportCard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const [format, setFormat] = useState<ImportFormat>("neon");
   const [accountId, setAccountId] = useState<string>("");
   const [isDragOver, setIsDragOver] = useState(false);
   const [typeError, setTypeError] = useState<string | null>(null);
   const [result, setResult] = useState<UploadResult | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: accountsData, isError: isAccountsError } = useQuery({
     queryKey: ["accounts"],
@@ -85,8 +85,8 @@ export function CsvImportCard() {
         formData,
       );
     },
-    onSuccess: (data) => {
-      void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    onSuccess: async (data) => {
+      await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       setResult(data);
     },
   });
