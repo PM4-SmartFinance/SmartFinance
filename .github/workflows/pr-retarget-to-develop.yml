@@ -39,16 +39,16 @@ jobs:
               return;
             }
 
-            if (pullRequest.base.ref === 'develop') {
-              core.info(`Skipping PR #${pullRequest.number} because it already targets develop.`);
-              return;
+            try {
+              await github.rest.pulls.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pullRequest.number,
+                base: 'develop',
+              });
+              core.info(`Retargeted PR #${pullRequest.number} from main to develop.`);
+            } catch (error) {
+              core.setFailed(
+                `Failed to retarget PR #${pullRequest.number} to develop: ${error.message} (HTTP ${error.status ?? 'unknown'})`,
+              );
             }
-
-            await github.rest.pulls.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: pullRequest.number,
-              base: 'develop',
-            });
-
-            core.info(`Retargeted PR #${pullRequest.number} from main to develop.`);
