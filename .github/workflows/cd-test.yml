@@ -1,0 +1,77 @@
+name: CD Sync-Release — Logic Tests
+
+# Runs the sync-release guard logic test suite only when the CD workflow itself
+# changes. Mirrors the pattern used by pr-cutoff-label-test.yml.
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/cd.yml
+      - .github/workflows/cd-test.yml
+
+jobs:
+  test-logic:
+    name: Sync-Release Guard Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Run sync-release guard test suite
+        run: |
+          python3 - <<'PYEOF'
+          # Pure-Python port of the validation chain in cd.yml `sync-release`.
+          # Keep in sync with the JS guard in actions/github-script step.
+
+          def evaluate(target_commitish, ci_conclusion, ci_head_sha,
+                       develop_sha, main_sha, release_tag_sha):
+              """
+              Return one of:
+                ("FAIL", reason)   — guard rejects, sync-release exits with setFailed
+                ("SKIP", reason)   — main already matches develop, no merge needed
+                ("MERGE", "")      — proceed to merge develop into main
+              """
+              if target_commitish != "develop":
+                  return ("FAIL", f"target_commitish '{target_commitish}' is not 'develop'")
+              if ci_conclusion != "success":
+                  return ("FAIL", f"CI conclusion '{ci_conclusion}' is not success")
+              if ci_head_sha != develop_sha:
+                  return ("FAIL", f"CI head {ci_head_sha} != develop {develop_sha}")
+              if release_tag_sha != develop_sha:
+                  return ("FAIL", f"release tag {release_tag_sha} != develop {develop_sha}")
+              if main_sha == develop_sha:
+                  return ("SKIP", "main already matches develop")
+              return ("MERGE", "")
+
+          DEV  = "aaaaaaa"
+          MAIN = "bbbbbbb"
+          OLD  = "ccccccc"
+
+          cases = [
+              # description, target_commitish, ci_conclusion, ci_head, dev, main, tag, expected
+              ("happy path",              "develop", "success", DEV, DEV, MAIN, DEV, "MERGE"),
+              ("main already at develop", "develop", "success", DEV, DEV, DEV,  DEV, "SKIP"),
+
+              ("target_commitish empty",  "",         "success", DEV, DEV, MAIN, DEV, "FAIL"),
+              ("target_commitish main",   "main",     "success", DEV, DEV, MAIN, DEV, "FAIL"),
+              ("target_commitish other",  "feature/x","success", DEV, DEV, MAIN, DEV, "FAIL"),
+
+              ("CI failure",              "develop", "failure", DEV, DEV, MAIN, DEV, "FAIL"),
+              ("CI cancelled",            "develop", "cancelled", DEV, DEV, MAIN, DEV, "FAIL"),
+
+              ("CI head stale vs develop","develop", "success", OLD, DEV, MAIN, DEV, "FAIL"),
+              ("release tag stale",       "develop", "success", DEV, DEV, MAIN, OLD, "FAIL"),
+              ("release tag != develop",  "develop", "success", DEV, DEV, MAIN, MAIN,"FAIL"),
+          ]
+
+          failed = False
+          for desc, tc, conc, ci, dev, main, tag, expected in cases:
+              outcome, reason = evaluate(tc, conc, ci, dev, main, tag)
+              ok = outcome == expected
+              print(f"  [{'PASS' if ok else 'FAIL'}] {desc}")
+              if not ok:
+                  print(f"         got      = {outcome} ({reason})")
+                  print(f"         expected = {expected}")
+                  failed = True
+
+          if failed:
+              raise SystemExit("Sync-release guard tests failed.")
+          print(f"\nAll {len(cases)} tests passed.")
+          PYEOF
