@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { Link } from "react-router";
 import { useCategories } from "../lib/queries/categories";
@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 const OUTER_COLORS = {
   spent: "hsl(var(--primary))",
   remaining: "hsl(var(--muted))",
-  over: "#ef4444",
+  over: "hsl(var(--destructive))",
 } as const;
 
 const INNER_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
@@ -21,16 +21,14 @@ interface PeriodSnapshot {
   spentWithinLimit: number;
   remaining: number;
   overBudget: number;
+  hasInvalidValue: boolean;
   categories: Array<{ categoryId: string; spending: number }>;
 }
 
-function toNumber(value: string | null): number {
-  if (value == null) return 0;
+function toNumber(value: string | null): number | null {
+  if (value == null) return null;
   const n = parseFloat(value);
-  if (Number.isFinite(n)) return n;
-
-  console.warn("BudgetProgressWidget: encountered malformed numeric value", { value });
-  return 0;
+  return Number.isFinite(n) ? n : null;
 }
 
 function buildSnapshot(
@@ -39,38 +37,39 @@ function buildSnapshot(
 ): PeriodSnapshot {
   const tracked = (categorySpending ?? []).filter((c) => c.scaledLimit !== null);
 
-  const totalLimit = tracked.reduce((acc, cur) => acc + toNumber(cur.scaledLimit), 0);
-  const totalSpent = tracked.reduce((acc, cur) => acc + toNumber(cur.spending), 0);
-  const spentWithinLimit = Math.min(totalSpent, totalLimit);
-  const remaining = Math.max(totalLimit - totalSpent, 0);
-  const overBudget = Math.max(totalSpent - totalLimit, 0);
+  let hasInvalidValue = false;
+  let totalLimit = 0;
+  let totalSpent = 0;
+  const categories: Array<{ categoryId: string; spending: number }> = [];
 
-  const categories = tracked
-    .map((c) => ({ categoryId: c.categoryId, spending: toNumber(c.spending) }))
-    .filter((c) => c.spending > 0)
-    .sort((a, b) => b.spending - a.spending);
+  for (const c of tracked) {
+    const limit = toNumber(c.scaledLimit);
+    const spending = toNumber(c.spending);
+    if (limit === null || spending === null) {
+      hasInvalidValue = true;
+      continue;
+    }
+    totalLimit += limit;
+    totalSpent += spending;
+    if (spending > 0) categories.push({ categoryId: c.categoryId, spending });
+  }
+
+  categories.sort((a, b) => b.spending - a.spending);
 
   return {
     label,
     totalLimit,
     totalSpent,
-    spentWithinLimit,
-    remaining,
-    overBudget,
+    spentWithinLimit: Math.min(totalSpent, totalLimit),
+    remaining: Math.max(totalLimit - totalSpent, 0),
+    overBudget: Math.max(totalSpent - totalLimit, 0),
+    hasInvalidValue,
     categories,
   };
 }
 
-function getCategoryLabel(categoryId: string, names: Map<string, string>): string {
-  const known = names.get(categoryId);
-  if (known) return known;
-
-  console.warn("BudgetProgressWidget: missing category name for categoryId", { categoryId });
-  return `Category ${categoryId.slice(0, 6)}`;
-}
-
 function getCategoryColor(index: number): string {
-  return INNER_COLORS[index % INNER_COLORS.length]!;
+  return INNER_COLORS[index % INNER_COLORS.length] ?? INNER_COLORS[0]!;
 }
 
 export function BudgetProgressWidget() {
@@ -78,6 +77,7 @@ export function BudgetProgressWidget() {
   const monthly = useBudgets({ period: "MONTHLY" });
   const yearly = useBudgets({ period: "YEARLY" });
   const categoriesQuery = useCategories();
+  const loggedMissingCategoryIdsRef = useRef<Set<string>>(new Set());
 
   const categoryNames = useMemo(() => {
     const map = new Map<string, string>();
@@ -100,17 +100,6 @@ export function BudgetProgressWidget() {
   const isLoading = daily.isLoading || monthly.isLoading || yearly.isLoading;
   const error = periodErrors[0]?.error ?? categoriesQuery.error;
 
-  useEffect(() => {
-    if (periodErrors.length > 0) {
-      console.error("BudgetProgressWidget: failed to load one or more periods", {
-        periods: periodErrors.map((entry) => entry.label),
-      });
-    }
-    if (categoriesQuery.error) {
-      console.error("BudgetProgressWidget: failed to load categories", categoriesQuery.error);
-    }
-  }, [periodErrors, categoriesQuery.error]);
-
   const snapshots = useMemo(
     () => [
       buildSnapshot("Daily", daily.data?.categorySpending),
@@ -119,6 +108,31 @@ export function BudgetProgressWidget() {
     ],
     [daily.data?.categorySpending, monthly.data?.categorySpending, yearly.data?.categorySpending],
   );
+
+  const hasInvalidData = snapshots.some((s) => s.hasInvalidValue);
+
+  const missingCategoryIds = useMemo(() => {
+    if (!categoriesQuery.isSuccess) return [] as string[];
+    const seen = new Set<string>();
+    for (const snapshot of snapshots) {
+      for (const cat of snapshot.categories) {
+        if (!categoryNames.has(cat.categoryId)) seen.add(cat.categoryId);
+      }
+    }
+    return [...seen];
+  }, [snapshots, categoryNames, categoriesQuery.isSuccess]);
+
+  useEffect(() => {
+    for (const categoryId of missingCategoryIds) {
+      if (loggedMissingCategoryIdsRef.current.has(categoryId)) continue;
+      loggedMissingCategoryIdsRef.current.add(categoryId);
+      console.warn("BudgetProgressWidget: missing category name for categoryId", { categoryId });
+    }
+  }, [missingCategoryIds]);
+
+  function getCategoryLabel(categoryId: string): string {
+    return categoryNames.get(categoryId) ?? "Unknown";
+  }
 
   if (error) {
     return (
@@ -174,10 +188,11 @@ export function BudgetProgressWidget() {
           </Link>
         </CardHeader>
         <CardContent>
-          <div className="flex min-h-72 items-center justify-center rounded bg-muted/30 px-4 text-center">
+          <div className="flex min-h-72 flex-col items-center justify-center gap-2 rounded bg-muted/30 px-4 py-8 text-center">
             <p className="text-sm text-muted-foreground">
-              No tracked budget totals yet. Create budgets and import transactions to populate these
-              charts.
+              {hasInvalidData
+                ? "Some budget values could not be parsed. Please refresh — if the problem persists, contact support."
+                : "No tracked budget totals yet. Create budgets and import transactions to populate these charts."}
             </p>
           </div>
         </CardContent>
@@ -196,6 +211,14 @@ export function BudgetProgressWidget() {
         </Link>
       </CardHeader>
       <CardContent>
+        {hasInvalidData && (
+          <p
+            role="alert"
+            className="mb-4 rounded border border-destructive bg-destructive/10 p-2 text-xs text-destructive"
+          >
+            Some budget values could not be parsed and were excluded from the totals below.
+          </p>
+        )}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {snapshots.map((snapshot) => {
             const outerData = [
@@ -209,7 +232,7 @@ export function BudgetProgressWidget() {
             const innerData =
               snapshot.categories.length > 0
                 ? snapshot.categories.map((c, index) => ({
-                    name: getCategoryLabel(c.categoryId, categoryNames),
+                    name: getCategoryLabel(c.categoryId),
                     value: c.spending,
                     fill: getCategoryColor(index),
                   }))
@@ -266,7 +289,7 @@ export function BudgetProgressWidget() {
                             style={{ backgroundColor: getCategoryColor(index) }}
                             aria-hidden="true"
                           />
-                          {getCategoryLabel(cat.categoryId, categoryNames)}
+                          {getCategoryLabel(cat.categoryId)}
                         </span>
                         <span className="font-medium">{formatCurrency(cat.spending)}</span>
                       </li>
@@ -281,13 +304,7 @@ export function BudgetProgressWidget() {
                   <span className="font-medium">{formatCurrency(snapshot.totalSpent)}</span>
                 </div>
                 <div className="mt-1 flex items-center justify-between text-xs">
-                  <span className="inline-flex items-center gap-2 text-muted-foreground">
-                    <span
-                      className="inline-block h-2.5 w-2.5 rounded-full bg-black"
-                      aria-hidden="true"
-                    />
-                    Tracked total
-                  </span>
+                  <span className="text-muted-foreground">Tracked total</span>
                   <span className="font-medium">{formatCurrency(snapshot.totalLimit)}</span>
                 </div>
                 {snapshot.overBudget > 0 && (
