@@ -28,13 +28,12 @@ const mockCurrency = { id: "currency-1", code: "CHF", name: "Swiss Franc" };
 describe("auth.service audit events", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(userRepository.findByEmail).mockResolvedValue(null);
+    vi.mocked(userRepository.findByEmailWithPassword).mockResolvedValue(null);
     vi.mocked(userRepository.findCurrencyByCode).mockResolvedValue(mockCurrency as never);
-    vi.mocked(userRepository.createUser).mockResolvedValue(mockUser as never);
   });
 
   it("fires LOGIN_SUCCESS on successful login", async () => {
-    vi.mocked(userRepository.findByEmail).mockResolvedValue(mockUser as never);
+    vi.mocked(userRepository.findByEmailWithPassword).mockResolvedValue(mockUser as never);
 
     await login("test@example.com", "Password123!");
 
@@ -44,7 +43,7 @@ describe("auth.service audit events", () => {
   });
 
   it("fires LOGIN_FAILED when user does not exist", async () => {
-    vi.mocked(userRepository.findByEmail).mockResolvedValue(null);
+    vi.mocked(userRepository.findByEmailWithPassword).mockResolvedValue(null);
 
     await expect(login("ghost@example.com", "Password123!")).rejects.toThrow();
 
@@ -54,7 +53,7 @@ describe("auth.service audit events", () => {
   });
 
   it("fires LOGIN_FAILED when password is wrong", async () => {
-    vi.mocked(userRepository.findByEmail).mockResolvedValue(mockUser as never);
+    vi.mocked(userRepository.findByEmailWithPassword).mockResolvedValue(mockUser as never);
     const argon2 = await import("argon2");
     vi.mocked(argon2.default.verify).mockResolvedValueOnce(false);
 

@@ -1,7 +1,9 @@
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MemoryRouter } from "react-router";
 import { CsvImportCard } from "./CsvImportCard";
+import { BudgetProgressWidget } from "./BudgetProgressWidget";
 import { api, ApiError } from "../lib/api";
 
 vi.mock("../lib/api", () => {
@@ -29,16 +31,20 @@ const ACCOUNTS = [
   { id: "acc-2", name: "Savings", iban: "CH56 0483 5012 3456 7800 9" },
 ];
 
-function renderCard() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
-  const result = render(
-    <QueryClientProvider client={queryClient}>
+function renderCard(queryClient?: QueryClient) {
+  const client =
+    queryClient ??
+    new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+
+  const renderResult = render(
+    <QueryClientProvider client={client}>
       <CsvImportCard />
     </QueryClientProvider>,
   );
-  return { ...result, queryClient };
+
+  return { ...renderResult, queryClient: client };
 }
 
 function makeCsvFile(name = "export.csv") {
@@ -287,6 +293,75 @@ describe("upload", () => {
     );
   });
 
+  it("refetches BudgetProgressWidget data after successful import", async () => {
+    let budgetRequests = 0;
+    mockUpload.mockResolvedValue({ imported: 3 });
+    mockGet.mockImplementation((path: string) => {
+      if (path === "/accounts") {
+        return Promise.resolve({ accounts: ACCOUNTS });
+      }
+      if (path === "/categories" || path.startsWith("/categories?")) {
+        return Promise.resolve({ categories: [{ id: "cat-1", categoryName: "Groceries" }] });
+      }
+      if (path.startsWith("/budgets?")) {
+        budgetRequests += 1;
+        if (budgetRequests <= 3) {
+          return Promise.resolve({ budgets: [], categorySpending: [] });
+        }
+        return Promise.resolve({
+          budgets: [],
+          categorySpending: [
+            {
+              categoryId: "cat-1",
+              spending: "75.00",
+              scaledLimit: "100.00",
+              sourceBudgetType: "MONTHLY",
+            },
+          ],
+        });
+      }
+      return Promise.resolve({});
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <div>
+            <BudgetProgressWidget />
+            <CsvImportCard />
+          </div>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "No tracked budget totals yet. Create budgets and import transactions to populate these charts.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    await userEvent.upload(input, makeCsvFile());
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+
+    await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["budgets"] }));
+    await waitFor(() => {
+      expect(
+        screen.queryByText(
+          "No tracked budget totals yet. Create budgets and import transactions to populate these charts.",
+        ),
+      ).not.toBeInTheDocument();
+      expect(screen.getAllByText("Tracked total").length).toBeGreaterThan(0);
+    });
+    expect(budgetRequests).toBeGreaterThan(3);
+  });
+
   it("uses singular 'transaction' when imported count is 1", async () => {
     mockUpload.mockResolvedValue({ imported: 1 });
     renderCard();
@@ -362,6 +437,41 @@ describe("upload", () => {
     await userEvent.upload(input, makeCsvFile());
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
     await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["transactions"] }));
+  });
+
+  it("invalidates the budgets and dashboard caches on successful upload", async () => {
+    mockUpload.mockResolvedValue({ imported: 3 });
+    const { queryClient } = renderCard();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    await waitFor(() =>
+      expect(
+        screen.queryByText("No accounts found. Create an account first."),
+      ).not.toBeInTheDocument(),
+    );
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    await userEvent.upload(input, makeCsvFile());
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+    await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["budgets"] }));
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["dashboard"] });
+  });
+
+  it("renders a refresh hint when post-import invalidation fails", async () => {
+    mockUpload.mockResolvedValue({ imported: 3 });
+    const { queryClient } = renderCard();
+    vi.spyOn(queryClient, "invalidateQueries").mockRejectedValue(new Error("invalidation boom"));
+    await waitFor(() =>
+      expect(
+        screen.queryByText("No accounts found. Create an account first."),
+      ).not.toBeInTheDocument(),
+    );
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    await userEvent.upload(input, makeCsvFile());
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+    await waitFor(() =>
+      expect(
+        screen.getByText("Imported, but the dashboard may need a manual refresh."),
+      ).toBeInTheDocument(),
+    );
   });
 
   it("does not invalidate the transactions cache when upload fails", async () => {
