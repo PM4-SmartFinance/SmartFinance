@@ -4,7 +4,7 @@ import * as userRepository from "../repositories/user.repository.js";
 import * as auditService from "./audit.service.js";
 
 export async function login(email: string, password: string) {
-  const user = await userRepository.findByEmail(email);
+  const user = await userRepository.findByEmailWithPassword(email);
   if (!user) {
     void auditService.logEvent("LOGIN_FAILED", null, { email });
     throw new ServiceError(401, "Invalid credentials");
