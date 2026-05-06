@@ -3,8 +3,6 @@ import { prisma } from "../prisma.js";
 import { EmailConflictError } from "../errors.js";
 import { getLogger } from "../logger.js";
 
-export { EmailConflictError };
-
 export async function findByEmail(email: string) {
   return prisma.dimUser.findUnique({
     where: { email },
@@ -155,25 +153,19 @@ export async function createUserAtomic(
 }
 
 function logRetry(attempt: number, maxAttempts: number, backoffMs: number, message: string) {
-  try {
-    getLogger().warn(
-      { attempt, maxAttempts, backoffMs, err: message },
-      "createUserAtomic: serialization failure, retrying",
-    );
-  } catch {
-    // Logger not initialized (e.g. during isolated tests). Silent.
-  }
+  if (process.env.NODE_ENV === "test") return;
+  getLogger().warn(
+    { attempt, maxAttempts, backoffMs, err: message },
+    "createUserAtomic: serialization failure, retrying",
+  );
 }
 
 function logRetryExhausted(maxAttempts: number, message: string) {
-  try {
-    getLogger().error(
-      { maxAttempts, err: message },
-      "createUserAtomic: serialization retries exhausted",
-    );
-  } catch {
-    // Logger not initialized (e.g. during isolated tests). Silent.
-  }
+  if (process.env.NODE_ENV === "test") return;
+  getLogger().error(
+    { maxAttempts, err: message },
+    "createUserAtomic: serialization retries exhausted",
+  );
 }
 
 export async function updateUserById(

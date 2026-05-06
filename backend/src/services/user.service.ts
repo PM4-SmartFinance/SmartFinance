@@ -37,9 +37,7 @@ export async function updateProfile(
     throw err;
   }
 
-  void auditService
-    .logEvent("PROFILE_UPDATED", userId, { fields: Object.keys(updateData) })
-    .catch(() => {});
+  void auditService.logEvent("PROFILE_UPDATED", userId, { fields: Object.keys(updateData) });
 
   return updated;
 }
@@ -54,7 +52,7 @@ export async function changePassword(userId: string, currentPassword: string, ne
   const hashed = await argon2.hash(newPassword);
   await userRepository.updatePassword(userId, hashed);
 
-  void auditService.logEvent("PASSWORD_CHANGED", userId).catch(() => {});
+  void auditService.logEvent("PASSWORD_CHANGED", userId);
 }
 
 export async function resetUserPassword(
@@ -77,11 +75,9 @@ export async function resetUserPassword(
   const hashed = await argon2.hash(newPassword);
   await userRepository.updatePassword(targetUserId, hashed);
 
-  void auditService
-    .logEvent("PASSWORD_RESET", requestingUser.id, {
-      targetUserId,
-    })
-    .catch(() => {});
+  void auditService.logEvent("PASSWORD_RESET", requestingUser.id, {
+    targetUserId,
+  });
 }
 
 export async function onboardUser(
@@ -124,15 +120,12 @@ export async function onboardUser(
     throw err;
   }
 
-  // Track the event — best-effort
-  void auditService
-    .logEvent("USER_CREATED", requestingUser?.id ?? null, {
-      targetUserId: user.id,
-      email: user.email,
-      role: user.role,
-      isBootstrap: requestingUser === null,
-    })
-    .catch(() => {});
+  void auditService.logEvent("USER_CREATED", requestingUser?.id ?? null, {
+    targetUserId: user.id,
+    email: user.email,
+    role: user.role,
+    isBootstrap: requestingUser === null,
+  });
 
   return user;
 }
@@ -211,7 +204,7 @@ export async function updateUser(
       targetUserId: id,
       oldRole,
       newRole: data.role,
-    }).catch(() => {});
+    });
   }
   return updated;
 }
@@ -236,7 +229,7 @@ export async function deleteUser(requestingUser: { id: string; role: string } | 
   void logEvent("USER_DELETED", requestingUser.id, {
     targetUserId: id,
     email: existing.email,
-  }).catch(() => {});
+  });
 
   return;
 }
