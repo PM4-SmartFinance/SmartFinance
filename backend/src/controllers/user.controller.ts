@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { requireRole, requireOwnerOrAdmin, getSessionUser } from "../middleware/rbac.js";
 import * as userService from "../services/user.service.js";
+import { ServiceError } from "../errors.js";
 
 interface UserParams {
   id: string;

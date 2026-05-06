@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { requireRole, getSessionUser } from "../middleware/rbac.js";
 import * as categoryService from "../services/category.service.js";
+import { ServiceError } from "../errors.js";
 
 export async function categoryRoutes(app: FastifyInstance): Promise<void> {
   // GET: List all categories (Global + User-specific)
