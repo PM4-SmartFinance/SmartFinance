@@ -1,13 +1,11 @@
 import type { FastifyInstance } from "fastify";
-import { requireRole } from "../middleware/rbac.js";
+import { requireRole, getSessionUser } from "../middleware/rbac.js";
 import * as categoryService from "../services/category.service.js";
-import { ServiceError } from "../errors.js";
 
 export async function categoryRoutes(app: FastifyInstance): Promise<void> {
   // GET: List all categories (Global + User-specific)
   app.get("/categories", { preHandler: requireRole("USER") }, async (request, reply) => {
-    const user = request.session.get("user");
-    if (!user) throw new ServiceError(401, "Unauthorized");
+    const user = getSessionUser(request);
 
     const categories = await categoryService.getAllCategories(user.id);
     return reply.status(200).send({ categories });

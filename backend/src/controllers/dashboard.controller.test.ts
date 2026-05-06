@@ -24,6 +24,11 @@ vi.mock("../middleware/rbac.js", () => ({
     if (rejectAuth) throw new ServiceError(401, "Unauthorized");
     request.session.set("user", { id: "user-1", role: "USER", email: "test@example.com" });
   },
+  getSessionUser: (request: FastifyRequest) => {
+    const user = request.session.get("user");
+    if (!user) throw new ServiceError(401, "Unauthorized");
+    return user;
+  },
 }));
 
 import { buildApp } from "../app.js";

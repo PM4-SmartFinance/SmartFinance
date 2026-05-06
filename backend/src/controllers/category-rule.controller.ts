@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { requireRole } from "../middleware/rbac.js";
+import { requireRole, getSessionUser } from "../middleware/rbac.js";
 import * as categoryRuleService from "../services/category-rule.service.js";
 import type { MatchType } from "../repositories/category-rule.repository.js";
 
@@ -57,7 +57,7 @@ const updateRuleSchema = {
 
 export async function categoryRuleRoutes(app: FastifyInstance): Promise<void> {
   app.get("/category-rules", { preHandler: requireRole("USER") }, async (request, reply) => {
-    const session = request.session.get("user")!;
+    const session = getSessionUser(request);
     const rules = await categoryRuleService.listRules(session.id);
     return reply.send({ rules });
   });
@@ -66,7 +66,7 @@ export async function categoryRuleRoutes(app: FastifyInstance): Promise<void> {
     "/category-rules/preview",
     { preHandler: requireRole("USER"), schema: { body: createRuleSchema } },
     async (request, reply) => {
-      const session = request.session.get("user")!;
+      const session = getSessionUser(request);
       const result = await categoryRuleService.previewRule(session.id, request.body);
       return reply.send(result);
     },
@@ -76,7 +76,7 @@ export async function categoryRuleRoutes(app: FastifyInstance): Promise<void> {
     "/category-rules/:id",
     { preHandler: requireRole("USER"), schema: { params: ruleParamsSchema } },
     async (request, reply) => {
-      const session = request.session.get("user")!;
+      const session = getSessionUser(request);
       const rule = await categoryRuleService.getRule(request.params.id, session.id);
       return reply.send({ rule });
     },
@@ -86,7 +86,7 @@ export async function categoryRuleRoutes(app: FastifyInstance): Promise<void> {
     "/category-rules",
     { preHandler: requireRole("USER"), schema: { body: createRuleSchema } },
     async (request, reply) => {
-      const session = request.session.get("user")!;
+      const session = getSessionUser(request);
       const { pattern, matchType, categoryId, priority } = request.body;
       const rule = await categoryRuleService.createRule(
         session.id,
@@ -106,7 +106,7 @@ export async function categoryRuleRoutes(app: FastifyInstance): Promise<void> {
       schema: { params: ruleParamsSchema, body: updateRuleSchema },
     },
     async (request, reply) => {
-      const session = request.session.get("user")!;
+      const session = getSessionUser(request);
       const rule = await categoryRuleService.updateRule(
         request.params.id,
         session.id,
@@ -120,7 +120,7 @@ export async function categoryRuleRoutes(app: FastifyInstance): Promise<void> {
     "/category-rules/:id",
     { preHandler: requireRole("USER"), schema: { params: ruleParamsSchema } },
     async (request, reply) => {
-      const session = request.session.get("user")!;
+      const session = getSessionUser(request);
       await categoryRuleService.deleteRule(request.params.id, session.id);
       return reply.status(204).send();
     },
