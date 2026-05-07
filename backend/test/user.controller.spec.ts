@@ -261,13 +261,16 @@ describe("User management endpoints", () => {
     const cookies = adminLogin.cookies as unknown as Array<{ name: string; value: string }>;
     const session = cookies.find((c) => c.name === "session");
 
-    // USER_B was promoted to ADMIN in the previous test
-    const userB = await prisma.dimUser.findUnique({ where: { email: USER_B_EMAIL } });
-    expect(userB?.role).toBe("ADMIN");
+    // Set up precondition explicitly — don't depend on the previous test's PATCH side effect.
+    const userB = await prisma.dimUser.update({
+      where: { email: USER_B_EMAIL },
+      data: { role: "ADMIN" },
+    });
+    expect(userB.role).toBe("ADMIN");
 
     const res = await app.inject({
       method: "DELETE",
-      url: `/api/v1/users/${userB!.id}`,
+      url: `/api/v1/users/${userB.id}`,
       cookies: { session: session!.value },
     });
     expect(res.statusCode).toBe(403);

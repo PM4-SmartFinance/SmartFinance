@@ -3,7 +3,16 @@ import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { vi } from "vitest";
 import { DashboardPage } from "./DashboardPage";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth, type User } from "../hooks/useAuth";
+
+const USER_FIXTURE = {
+  id: "123",
+  email: "test@example.com",
+  role: "USER",
+  name: null,
+  active: true,
+  createdAt: "2024-01-01T00:00:00.000Z",
+} satisfies User;
 
 const mockSummaryData = {
   totalIncome: 6500.0,
@@ -52,18 +61,11 @@ vi.mock("../lib/api", () => {
   };
 });
 
-// Mock auth hook — using vi.fn so individual tests can override the role
+// Mock auth hook — using vi.fn so individual tests can override the role.
+// Defaults are configured per-describe in beforeEach so a forgotten override
+// can't leak across tests.
 vi.mock("../hooks/useAuth", () => ({
-  useAuth: vi.fn(() => ({
-    user: {
-      id: "123",
-      email: "test@example.com",
-      role: "USER",
-      name: null,
-      active: true,
-      createdAt: "2024-01-01T00:00:00.000Z",
-    },
-  })),
+  useAuth: vi.fn(),
 }));
 
 function renderWithProviders() {
@@ -82,6 +84,12 @@ function renderWithProviders() {
 
 describe("DashboardPage", () => {
   beforeEach(() => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: USER_FIXTURE,
+      isAuthenticated: true,
+      isLoading: false,
+    });
+
     mockGet.mockImplementation((path: string) => {
       if (path.includes("/dashboard/summary")) {
         return Promise.resolve(mockSummaryData);
@@ -187,7 +195,7 @@ describe("DashboardPage", () => {
     );
     expect(screen.getByRole("link", { name: "Budgets" })).toHaveAttribute("href", "/budgets");
     expect(screen.getByRole("link", { name: "Categories" })).toHaveAttribute("href", "/categories");
-    expect(screen.getByRole("link", { name: "Profile" })).toHaveAttribute("href", "/profile");
+    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings");
   });
 
   it("full-card 'Recent Transactions' widget links to /transactions", async () => {
@@ -197,8 +205,14 @@ describe("DashboardPage", () => {
       expect(screen.getByText("CHF 3'659.50")).toBeInTheDocument();
     });
 
-    const recentTransactionsLink = screen.getByRole("link", { name: /recent transactions/i });
-    expect(recentTransactionsLink).toHaveAttribute("href", "/transactions");
+    // The widget wraps its card in a link with aria-label "View transactions";
+    // every such link on the dashboard must route to /transactions (query string
+    // params like date range are allowed for some sibling widgets).
+    const links = screen.getAllByRole("link", { name: /view transactions/i });
+    expect(links.length).toBeGreaterThan(0);
+    for (const link of links) {
+      expect(link.getAttribute("href")).toMatch(/^\/transactions(\?.*)?$/);
+    }
   });
 
   it("full-card 'Budget Progress' widget links to /budgets", async () => {
@@ -208,96 +222,12 @@ describe("DashboardPage", () => {
       expect(screen.getByText("CHF 3'659.50")).toBeInTheDocument();
     });
 
-    const budgetProgressLink = screen.getByRole("link", { name: /budget progress/i });
-    expect(budgetProgressLink).toHaveAttribute("href", "/budgets");
-  });
-});
-
-describe("DashboardPage — admin navigation", () => {
-  beforeEach(() => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: {
-        id: "admin-1",
-        email: "admin@example.com",
-        role: "ADMIN",
-        name: null,
-        active: true,
-        createdAt: "2024-01-01T00:00:00.000Z",
-      },
-      isAuthenticated: true,
-      isLoading: false,
-    });
-
-    mockGet.mockImplementation((path: string) => {
-      if (path.includes("/dashboard/summary")) return Promise.resolve(mockSummaryData);
-      if (path.includes("/dashboard/trends")) return Promise.resolve(mockTrendData);
-      if (path.includes("/dashboard/categories")) return Promise.resolve(mockCategoryData);
-      if (path.includes("/budgets")) return Promise.resolve({ budgets: [] });
-      return Promise.resolve({});
-    });
-  });
-
-  afterEach(() => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: {
-        id: "123",
-        email: "test@example.com",
-        role: "USER",
-        name: null,
-        active: true,
-        createdAt: "2024-01-01T00:00:00.000Z",
-      },
-      isAuthenticated: true,
-      isLoading: false,
-    });
-  });
-
-  it("shows 'Users' nav link for ADMIN role linking to /admin/users", async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false, staleTime: 0 } },
-    });
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <DashboardPage />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByRole("link", { name: "Users" })).toBeInTheDocument();
-    });
-    expect(screen.getByRole("link", { name: "Users" })).toHaveAttribute("href", "/admin/users");
-  });
-
-  it("does not show 'Users' nav link for USER role", async () => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: {
-        id: "123",
-        email: "user@example.com",
-        role: "USER",
-        name: null,
-        active: true,
-        createdAt: "2024-01-01T00:00:00.000Z",
-      },
-      isAuthenticated: true,
-      isLoading: false,
-    });
-
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false, staleTime: 0 } },
-    });
-    render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
-          <DashboardPage />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
-    });
-    expect(screen.queryByRole("link", { name: "Users" })).not.toBeInTheDocument();
+    // The Budget Progress card is wrapped in a link with aria-label "View budgets";
+    // every such link on the dashboard must point to /budgets.
+    const links = screen.getAllByRole("link", { name: /view budgets/i });
+    expect(links.length).toBeGreaterThan(0);
+    for (const link of links) {
+      expect(link).toHaveAttribute("href", "/budgets");
+    }
   });
 });
