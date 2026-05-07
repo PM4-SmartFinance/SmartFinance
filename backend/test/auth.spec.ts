@@ -417,10 +417,12 @@ describe("Auth and Onboarding acceptance tests", () => {
     expect(clearedSessionCookie?.value).toBe("");
 
     // 5. Try accessing protected route with old session cookie (should be 401)
-    // Actually, since it's client side, the client drops the cookie, but even if we send the old one, does the server reject it?
-    // Wait, @fastify/secure-session is stateless! The session data is encrypted in the cookie.
-    // If the client sends the EXACT SAME cookie string, the server will decrypt it and STILL think the user is valid!
-    // UNLESS the server has a session revocation list, OR we rotate the secret, OR we store a session version in DB.
+    const resProtected = await app.inject({
+      method: "GET",
+      url: "/api/v1/protected",
+      cookies: { session: sessionCookie.value },
+    });
+    expect(resProtected.statusCode).toBe(401);
   });
 });
 

@@ -1,5 +1,6 @@
 import type { FastifyRequest } from "fastify";
 import { ServiceError } from "../errors.js";
+import { prisma } from "../prisma.js";
 
 /**
  * Extract the authenticated user from the session.
@@ -26,12 +27,38 @@ export const ROLES = {
 
 export type RoleType = keyof typeof ROLES;
 
+/**
+ * Validates the session against the database to ensure the user is still active
+ * and their password hasn't been changed since the session was issued.
+ */
+export async function verifySession(request: FastifyRequest) {
+  const user = request.session.get("user");
+  if (!user) {
+    throw new ServiceError(401, "Unauthorized");
+  }
+
+  const dbUser = await prisma.dimUser.findUnique({
+    where: { id: user.id },
+    select: { active: true, password: true, role: true },
+  });
+
+  if (!dbUser || !dbUser.active) {
+    request.session.delete();
+    throw new ServiceError(401, "Unauthorized");
+  }
+
+  if (user.pwdVersion && user.pwdVersion !== dbUser.password.slice(-10)) {
+    request.session.delete();
+    throw new ServiceError(401, "Session expired due to password change");
+  }
+
+  return user;
+}
+
 export function requireRole(requiredRole: RoleType) {
   return async (request: FastifyRequest) => {
-    const user = request.session.get("user");
-    if (!user) {
-      throw new ServiceError(401, "Unauthorized");
-    }
+    const user = await verifySession(request);
+
     if (!(user.role in ROLES)) {
       throw new ServiceError(403, "Forbidden");
     }
@@ -44,10 +71,8 @@ export function requireRole(requiredRole: RoleType) {
 
 export function requireOwnerOrAdmin(paramIdName = "id") {
   return async (request: FastifyRequest) => {
-    const user = request.session.get("user");
-    if (!user) {
-      throw new ServiceError(401, "Unauthorized");
-    }
+    const user = await verifySession(request);
+
     if (!(user.role in ROLES)) {
       throw new ServiceError(403, "Forbidden");
     }

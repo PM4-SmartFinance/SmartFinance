@@ -24,7 +24,7 @@ export async function login(email: string, password: string) {
 
   void auditService.logEvent("LOGIN_SUCCESS", user.id, { email });
 
-  return { id: user.id, role: user.role, email: user.email };
+  return { id: user.id, role: user.role, email: user.email, password: user.password };
 }
 
 export async function recordLogout(userId: string | null) {
