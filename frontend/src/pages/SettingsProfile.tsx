@@ -62,8 +62,10 @@ export function SettingsProfile() {
       api.post<{ ok: boolean }>("/users/me/change-password", input),
     onSuccess: () => {
       setPasswordSuccess(true);
-      void queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
-      setTimeout(() => navigate("/login"), 1500);
+      setTimeout(() => {
+        void queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
+        navigate("/login");
+      }, 1500);
     },
     onError: () => setPasswordSuccess(false),
   });
