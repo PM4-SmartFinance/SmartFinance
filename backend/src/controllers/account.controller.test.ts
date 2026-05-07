@@ -12,6 +12,18 @@ let sessionUser: { id: string; role: string; email: string } | undefined = {
   email: "test@example.com",
 };
 
+vi.mock("../prisma.js", () => ({
+  prisma: {
+    dimUser: {
+      findUnique: vi.fn().mockResolvedValue({
+        active: true,
+        password: "mocked-hash-1234567890",
+        role: "USER",
+      }),
+    },
+  },
+}));
+
 vi.mock("../services/account.service.js", () => ({
   getAccountsByUser: vi.fn(),
 }));
