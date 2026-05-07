@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { Prisma } from "@prisma/client";
 import {
   getProfile,
   updateProfile,
@@ -6,11 +7,11 @@ import {
   deleteUser,
   updateUser,
   resetUserPassword,
+  onboardUser,
 } from "./user.service.js";
 import * as userRepository from "../repositories/user.repository.js";
-import { EmailConflictError } from "../repositories/user.repository.js";
 import * as auditService from "./audit.service.js";
-import { ServiceError } from "../errors.js";
+import { EmailConflictError, ServiceError } from "../errors.js";
 
 const mockArgon2 = vi.hoisted(() => ({
   verify: vi.fn().mockResolvedValue(true),
@@ -25,12 +26,8 @@ vi.mock("../repositories/user.repository.js", () => ({
   updateProfileAtomic: vi.fn(),
   updatePassword: vi.fn(),
   updateUserById: vi.fn(),
-  EmailConflictError: class EmailConflictError extends Error {
-    constructor() {
-      super("Email already in use");
-      this.name = "EmailConflictError";
-    }
-  },
+  createUserAtomic: vi.fn(),
+  findCurrencyByCode: vi.fn(),
 }));
 
 vi.mock("./audit.service.js", () => ({
@@ -435,5 +432,59 @@ describe("resetUserPassword", () => {
     await resetUserPassword(adminUser, selfAdmin.id, "NewPass1!");
 
     expect(userRepository.updatePassword).toHaveBeenCalledWith(selfAdmin.id, "new-hashed-password");
+  });
+});
+
+describe("onboardUser — error mapping", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(userRepository.findCurrencyByCode).mockResolvedValue({
+      id: "currency-chf",
+      code: "CHF",
+    } as never);
+  });
+
+  const payload = {
+    email: "new@example.com",
+    password: "Pw1!",
+    role: "USER" as const,
+  };
+
+  it("maps EmailConflictError from the repository to a 409 ServiceError", async () => {
+    vi.mocked(userRepository.createUserAtomic).mockRejectedValue(new EmailConflictError());
+
+    await expect(onboardUser(adminUser, payload)).rejects.toMatchObject({
+      statusCode: 409,
+      message: "Email already in use",
+    });
+  });
+
+  it("maps a Prisma P2034 (serialization failure exhausted) to a 503 ServiceError", async () => {
+    const p2034 = new Prisma.PrismaClientKnownRequestError("could not serialize access", {
+      code: "P2034",
+      clientVersion: "5.0.0",
+    });
+    vi.mocked(userRepository.createUserAtomic).mockRejectedValue(p2034);
+
+    await expect(onboardUser(adminUser, payload)).rejects.toMatchObject({
+      statusCode: 503,
+      message: "Transaction failed due to a write conflict",
+    });
+  });
+
+  it("rethrows unexpected errors unchanged", async () => {
+    const other = new Error("DB connection lost");
+    vi.mocked(userRepository.createUserAtomic).mockRejectedValue(other);
+
+    await expect(onboardUser(adminUser, payload)).rejects.toBe(other);
+  });
+
+  it("returns 500 when default currency is missing", async () => {
+    vi.mocked(userRepository.findCurrencyByCode).mockResolvedValue(null);
+
+    await expect(onboardUser(adminUser, payload)).rejects.toMatchObject({
+      statusCode: 500,
+    });
+    expect(userRepository.createUserAtomic).not.toHaveBeenCalled();
   });
 });

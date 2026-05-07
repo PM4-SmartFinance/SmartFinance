@@ -1,0 +1,325 @@
+import { useEffect, useMemo, useRef } from "react";
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { Link } from "react-router";
+import { useCategories } from "../lib/queries/categories";
+import { useBudgets, type CategorySpending } from "../lib/queries/budgets";
+import { formatCurrency } from "../lib/utils";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+
+const OUTER_COLORS = {
+  spent: "hsl(var(--primary))",
+  remaining: "hsl(var(--muted))",
+  over: "hsl(var(--destructive))",
+} as const;
+
+const INNER_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
+
+interface PeriodSnapshot {
+  label: string;
+  totalLimit: number;
+  totalSpent: number;
+  spentWithinLimit: number;
+  remaining: number;
+  overBudget: number;
+  hasInvalidValue: boolean;
+  categories: Array<{ categoryId: string; spending: number }>;
+}
+
+function toNumber(value: string | null): number | null {
+  if (value == null) return null;
+  const n = parseFloat(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function buildSnapshot(
+  label: string,
+  categorySpending: CategorySpending[] | undefined,
+): PeriodSnapshot {
+  const tracked = (categorySpending ?? []).filter((c) => c.scaledLimit !== null);
+
+  let hasInvalidValue = false;
+  let totalLimit = 0;
+  let totalSpent = 0;
+  const categories: Array<{ categoryId: string; spending: number }> = [];
+
+  for (const c of tracked) {
+    const limit = toNumber(c.scaledLimit);
+    const spending = toNumber(c.spending);
+    if (limit === null || spending === null) {
+      hasInvalidValue = true;
+      continue;
+    }
+    totalLimit += limit;
+    totalSpent += spending;
+    if (spending > 0) categories.push({ categoryId: c.categoryId, spending });
+  }
+
+  categories.sort((a, b) => b.spending - a.spending);
+
+  return {
+    label,
+    totalLimit,
+    totalSpent,
+    spentWithinLimit: Math.min(totalSpent, totalLimit),
+    remaining: Math.max(totalLimit - totalSpent, 0),
+    overBudget: Math.max(totalSpent - totalLimit, 0),
+    hasInvalidValue,
+    categories,
+  };
+}
+
+function getCategoryColor(index: number): string {
+  return INNER_COLORS[index % INNER_COLORS.length] ?? INNER_COLORS[0]!;
+}
+
+export function BudgetProgressWidget() {
+  const daily = useBudgets({ period: "DAILY" });
+  const monthly = useBudgets({ period: "MONTHLY" });
+  const yearly = useBudgets({ period: "YEARLY" });
+  const categoriesQuery = useCategories();
+  const loggedMissingCategoryIdsRef = useRef<Set<string>>(new Set());
+
+  const categoryNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of categoriesQuery.data ?? []) {
+      map.set(c.id, c.categoryName);
+    }
+    return map;
+  }, [categoriesQuery.data]);
+
+  const periodErrors = useMemo(
+    () =>
+      [
+        { label: "Daily", error: daily.error },
+        { label: "Monthly", error: monthly.error },
+        { label: "Yearly", error: yearly.error },
+      ].filter((entry) => entry.error != null),
+    [daily.error, monthly.error, yearly.error],
+  );
+
+  const isLoading = daily.isLoading || monthly.isLoading || yearly.isLoading;
+  const error = periodErrors[0]?.error ?? categoriesQuery.error;
+
+  const snapshots = useMemo(
+    () => [
+      buildSnapshot("Daily", daily.data?.categorySpending),
+      buildSnapshot("Monthly", monthly.data?.categorySpending),
+      buildSnapshot("Yearly", yearly.data?.categorySpending),
+    ],
+    [daily.data?.categorySpending, monthly.data?.categorySpending, yearly.data?.categorySpending],
+  );
+
+  const hasInvalidData = snapshots.some((s) => s.hasInvalidValue);
+
+  const missingCategoryIds = useMemo(() => {
+    if (!categoriesQuery.isSuccess) return [] as string[];
+    const seen = new Set<string>();
+    for (const snapshot of snapshots) {
+      for (const cat of snapshot.categories) {
+        if (!categoryNames.has(cat.categoryId)) seen.add(cat.categoryId);
+      }
+    }
+    return [...seen];
+  }, [snapshots, categoryNames, categoriesQuery.isSuccess]);
+
+  useEffect(() => {
+    for (const categoryId of missingCategoryIds) {
+      if (loggedMissingCategoryIdsRef.current.has(categoryId)) continue;
+      loggedMissingCategoryIdsRef.current.add(categoryId);
+      console.warn("BudgetProgressWidget: missing category name for categoryId", { categoryId });
+    }
+  }, [missingCategoryIds]);
+
+  function getCategoryLabel(categoryId: string): string {
+    return categoryNames.get(categoryId) ?? "Unknown";
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardTitle className="text-xs font-semibold uppercase tracking-wider">
+            Budget Progress
+          </CardTitle>
+          <Link to="/budgets" className="text-xs font-medium text-primary hover:underline">
+            View all budgets
+          </Link>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
+            Failed to load budget progress. Please try again.
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardTitle className="text-xs font-semibold uppercase tracking-wider">
+            Budget Progress
+          </CardTitle>
+          <Link to="/budgets" className="text-xs font-medium text-primary hover:underline">
+            View all budgets
+          </Link>
+        </CardHeader>
+        <CardContent>
+          <div className="flex min-h-72 items-center justify-center rounded bg-muted/30">
+            <p className="text-sm text-muted-foreground">Loading budget progress...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const hasTrackedBudgets = snapshots.some((s) => s.totalLimit > 0);
+
+  if (!hasTrackedBudgets) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardTitle className="text-xs font-semibold uppercase tracking-wider">
+            Budget Progress
+          </CardTitle>
+          <Link to="/budgets" className="text-xs font-medium text-primary hover:underline">
+            View all budgets
+          </Link>
+        </CardHeader>
+        <CardContent>
+          <div className="flex min-h-72 flex-col items-center justify-center gap-2 rounded bg-muted/30 px-4 py-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              {hasInvalidData
+                ? "Some budget values could not be parsed. Please refresh — if the problem persists, contact support."
+                : "No tracked budget totals yet. Create budgets and import transactions to populate these charts."}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
+        <CardTitle className="text-xs font-semibold uppercase tracking-wider">
+          Budget Progress
+        </CardTitle>
+        <Link to="/budgets" className="text-xs font-medium text-primary hover:underline">
+          View all budgets
+        </Link>
+      </CardHeader>
+      <CardContent>
+        {hasInvalidData && (
+          <p
+            role="alert"
+            className="mb-4 rounded border border-destructive bg-destructive/10 p-2 text-xs text-destructive"
+          >
+            Some budget values could not be parsed and were excluded from the totals below.
+          </p>
+        )}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {snapshots.map((snapshot) => {
+            const outerData = [
+              { name: "Spent", value: snapshot.spentWithinLimit, fill: OUTER_COLORS.spent },
+              { name: "Remaining", value: snapshot.remaining, fill: OUTER_COLORS.remaining },
+              ...(snapshot.overBudget > 0
+                ? [{ name: "Over", value: snapshot.overBudget, fill: OUTER_COLORS.over }]
+                : []),
+            ].filter((d) => d.value > 0);
+
+            const innerData =
+              snapshot.categories.length > 0
+                ? snapshot.categories.map((c, index) => ({
+                    name: getCategoryLabel(c.categoryId),
+                    value: c.spending,
+                    fill: getCategoryColor(index),
+                  }))
+                : [{ name: "No category spending", value: 1, fill: "hsl(var(--muted))" }];
+
+            return (
+              <div key={snapshot.label} className="rounded border border-border p-4">
+                <p className="mb-2 text-sm font-semibold">{snapshot.label}</p>
+                <div className="h-52 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={outerData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={58}
+                        outerRadius={80}
+                        stroke="none"
+                      >
+                        {outerData.map((entry) => (
+                          <Cell key={`${snapshot.label}-${entry.name}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Pie
+                        data={innerData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={35}
+                        outerRadius={54}
+                        stroke="none"
+                      >
+                        {innerData.map((entry) => (
+                          <Cell key={`${snapshot.label}-${entry.name}-inner`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {snapshot.categories.length > 0 ? (
+                  <ul className="mt-3 space-y-1">
+                    {snapshot.categories.slice(0, 4).map((cat, index) => (
+                      <li
+                        key={`${snapshot.label}-${cat.categoryId}`}
+                        className="flex items-center justify-between text-xs"
+                      >
+                        <span className="inline-flex items-center gap-2 text-muted-foreground">
+                          <span
+                            className="inline-block h-2.5 w-2.5 rounded-full"
+                            style={{ backgroundColor: getCategoryColor(index) }}
+                            aria-hidden="true"
+                          />
+                          {getCategoryLabel(cat.categoryId)}
+                        </span>
+                        <span className="font-medium">{formatCurrency(cat.spending)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-3 text-xs text-muted-foreground">No category spending yet.</p>
+                )}
+
+                <div className="mt-3 flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Spent</span>
+                  <span className="font-medium">{formatCurrency(snapshot.totalSpent)}</span>
+                </div>
+                <div className="mt-1 flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Tracked total</span>
+                  <span className="font-medium">{formatCurrency(snapshot.totalLimit)}</span>
+                </div>
+                {snapshot.overBudget > 0 && (
+                  <div className="mt-1 flex items-center justify-between text-xs">
+                    <span className="text-destructive">Over budget</span>
+                    <span className="font-medium text-destructive">
+                      - {formatCurrency(snapshot.overBudget)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

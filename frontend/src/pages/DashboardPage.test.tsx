@@ -100,8 +100,11 @@ describe("DashboardPage", () => {
       if (path.includes("/dashboard/categories")) {
         return Promise.resolve(mockCategoryData);
       }
+      if (path === "/categories" || path.startsWith("/categories?")) {
+        return Promise.resolve({ categories: [] });
+      }
       if (path.includes("/budgets")) {
-        return Promise.resolve({ budgets: [] });
+        return Promise.resolve({ budgets: [], categorySpending: [] });
       }
       if (path.includes("/transactions")) {
         return Promise.resolve({

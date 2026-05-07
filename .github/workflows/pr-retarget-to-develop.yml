@@ -1,0 +1,54 @@
+name: Retarget Pull Requests to develop
+
+on:
+  pull_request:
+    types:
+      - opened
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  retarget:
+    name: Retarget PR base if needed
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Retarget PR base branch to develop
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pullRequest = context.payload.pull_request;
+            const sourceRepository = pullRequest.head.repo?.full_name;
+            const targetRepository = pullRequest.base.repo?.full_name;
+
+            if (sourceRepository !== targetRepository) {
+              core.info(`Skipping fork-based PR #${pullRequest.number}.`);
+              return;
+            }
+
+            if (pullRequest.base.ref !== 'main') {
+              core.info(`Skipping PR #${pullRequest.number} because it does not target main.`);
+              return;
+            }
+
+            if (pullRequest.head.ref === 'develop') {
+              core.info(`Skipping release PR #${pullRequest.number} from develop to main.`);
+              return;
+            }
+
+            try {
+              await github.rest.pulls.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pullRequest.number,
+                base: 'develop',
+              });
+              core.info(`Retargeted PR #${pullRequest.number} from main to develop.`);
+            } catch (error) {
+              core.setFailed(
+                `Failed to retarget PR #${pullRequest.number} to develop: ${error.message} (HTTP ${error.status ?? 'unknown'})`,
+              );
+            }
