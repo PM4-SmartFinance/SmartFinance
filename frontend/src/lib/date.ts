@@ -6,11 +6,25 @@ export function formatLocalDate(date: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+export function subDays(date: Date, n: number): Date {
+  const r = new Date(date);
+  r.setDate(r.getDate() - n);
+  return r;
+}
+
+export function subMonths(date: Date, n: number): Date {
+  const r = new Date(date);
+  const day = r.getDate();
+  r.setDate(1);
+  r.setMonth(r.getMonth() - n);
+  const daysInMonth = new Date(r.getFullYear(), r.getMonth() + 1, 0).getDate();
+  r.setDate(Math.min(day, daysInMonth));
+  return r;
+}
+
 /** Default start date for filters: 30 days before today. */
 export function getDefaultStartDate(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 30);
-  return formatLocalDate(d);
+  return formatLocalDate(subDays(new Date(), 30));
 }
 
 /** Default end date for filters: today. */
@@ -20,16 +34,4 @@ export function getDefaultEndDate(): string {
 
 export function getDefaultDateRange(): { start: string; end: string } {
   return { start: getDefaultStartDate(), end: getDefaultEndDate() };
-}
-
-export function subDays(date: Date, n: number): Date {
-  const r = new Date(date);
-  r.setDate(r.getDate() - n);
-  return r;
-}
-
-export function subMonths(date: Date, n: number): Date {
-  const r = new Date(date);
-  r.setMonth(r.getMonth() - n);
-  return r;
 }
