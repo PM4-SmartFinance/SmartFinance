@@ -119,6 +119,10 @@ export function patternsOverlap(
 ): boolean {
   const ap = a.pattern.toLowerCase();
   const bp = b.pattern.toLowerCase();
+  // Defence-in-depth: the controller validates `minLength: 1`, but a stored
+  // empty `contains` pattern would otherwise match every candidate via
+  // `includes("")` and report false-positive overlaps.
+  if (!ap || !bp) return false;
   if (a.matchType === "exact" && b.matchType === "exact") return ap === bp;
   if (a.matchType === "exact" && b.matchType === "contains") return ap.includes(bp);
   if (a.matchType === "contains" && b.matchType === "exact") return bp.includes(ap);
