@@ -375,6 +375,55 @@ describe("Auth and Onboarding acceptance tests", () => {
     });
     expect(res.statusCode).toBe(401);
   });
+
+  it("change password invalidates current session and requires re-login", async () => {
+    const email = "change.password@example.com";
+    const password = "OldPassword!1";
+    const newPassword = "NewPassword!2";
+
+    // 1. Create user
+    const r = await app.inject({
+      method: "POST",
+      url: "/api/v1/users",
+      cookies: { session: adminSessionCookie! },
+      payload: { email, password },
+    });
+    expect(r.statusCode).toBe(201);
+
+    // 2. Login
+    const resLogin = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: { email, password },
+    });
+    expect(resLogin.statusCode).toBe(200);
+    const loginCookies = (resLogin.cookies as SessionCookie[] | undefined) ?? [];
+    const sessionCookie = loginCookies.find((c) => c.name === "session")!;
+
+    // 3. Change password
+    const resChange = await app.inject({
+      method: "POST",
+      url: "/api/v1/users/me/change-password",
+      cookies: { session: sessionCookie.value },
+      payload: { currentPassword: password, newPassword },
+    });
+    expect(resChange.statusCode).toBe(200);
+
+    // 4. Verify session is invalidated (the response should clear the session cookie)
+    const changeCookies = (resChange.cookies as SessionCookie[] | undefined) ?? [];
+    const clearedSessionCookie = changeCookies.find((c) => c.name === "session");
+    // @fastify/secure-session deletes by sending a cookie with maxAge=0 / expires in past or empty value
+    expect(clearedSessionCookie).toBeDefined();
+    expect(clearedSessionCookie?.value).toBe("");
+
+    // 5. Try accessing protected route with old session cookie (should be 401)
+    const resProtected = await app.inject({
+      method: "GET",
+      url: "/api/v1/protected",
+      cookies: { session: sessionCookie.value },
+    });
+    expect(resProtected.statusCode).toBe(401);
+  });
 });
 
 describe("Concurrent bootstrap race", () => {
