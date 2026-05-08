@@ -30,9 +30,10 @@ export interface TrendDataPoint {
 }
 
 export interface CategoryBreakdown {
-  categoryId: string;
+  categoryId: string | null;
   categoryName: string;
   total: number;
+  isUncategorized?: boolean;
 }
 
 // Re-export for consumers that import Budget from dashboard queries

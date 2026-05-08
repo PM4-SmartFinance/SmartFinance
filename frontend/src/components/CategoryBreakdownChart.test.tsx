@@ -23,8 +23,16 @@ vi.mock("../lib/api", () => ({
           { categoryId: "cat-2", categoryName: "Transport", total: 280.0 },
           { categoryId: "cat-3", categoryName: "Dining", total: 320.5 },
           { categoryId: "cat-4", categoryName: "Entertainment", total: 195.25 },
-          { categoryId: "cat-5", categoryName: "Utilities", total: 125.0 },
+          // Zero-spend category — must still appear in the chart data.
+          { categoryId: "cat-5", categoryName: "Utilities", total: 0 },
           { categoryId: "cat-6", categoryName: "Shopping", total: 473.0 },
+          // Synthetic Uncategorized bucket pinned last by the backend.
+          {
+            categoryId: null,
+            categoryName: "Uncategorized",
+            total: 88.5,
+            isUncategorized: true,
+          },
         ]);
       }
       return Promise.resolve({});
@@ -89,6 +97,59 @@ describe("CategoryBreakdownChart", () => {
         ),
       ).toBeInTheDocument();
     });
+  });
+
+  it("shows the empty state when every category has zero spend and there is no uncategorized bucket", async () => {
+    const apiMock = await vi.importMock("../lib/api");
+    apiMock.api.get.mockImplementation((path: string) => {
+      if (path.includes("/dashboard/categories")) {
+        return Promise.resolve([
+          { categoryId: "cat-1", categoryName: "Groceries", total: 0 },
+          { categoryId: "cat-2", categoryName: "Transport", total: 0 },
+        ]);
+      }
+      return Promise.resolve({});
+    });
+
+    renderWithQuery(<CategoryBreakdownChart />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "No category breakdown yet. Import transactions or a CSV to see spending by category.",
+        ),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("renders the chart when only the Uncategorized bucket has spend", async () => {
+    const apiMock = await vi.importMock("../lib/api");
+    apiMock.api.get.mockImplementation((path: string) => {
+      if (path.includes("/dashboard/categories")) {
+        return Promise.resolve([
+          { categoryId: "cat-1", categoryName: "Groceries", total: 0 },
+          {
+            categoryId: null,
+            categoryName: "Uncategorized",
+            total: 42,
+            isUncategorized: true,
+          },
+        ]);
+      }
+      return Promise.resolve({});
+    });
+
+    renderWithQuery(<CategoryBreakdownChart />);
+
+    // The empty-state copy must NOT appear — uncategorized spend is real spend.
+    await waitFor(() => {
+      expect(screen.getByRole("link", { name: /view categories/i })).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByText(
+        "No category breakdown yet. Import transactions or a CSV to see spending by category.",
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a neutral empty state when the backend has no breakdown endpoint yet", async () => {
