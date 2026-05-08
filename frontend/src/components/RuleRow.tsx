@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
-import type { CategoryRule } from "../lib/queries/categories";
+import { useRuleOverlap, type CategoryRule } from "../lib/queries/categories";
 
 interface RuleEditorState {
   pattern: string;
@@ -24,6 +24,14 @@ export function RuleRow({
   isDeleting: boolean;
 }) {
   const [editor, setEditor] = useState<RuleEditorState | null>(null);
+
+  // Hooks must run unconditionally; pass empty pattern when not editing so
+  // the query stays disabled.
+  const { data: conflicts = [] } = useRuleOverlap(
+    editor?.pattern ?? "",
+    editor?.matchType ?? "contains",
+    rule.id,
+  );
 
   if (editor) {
     return (
@@ -72,6 +80,26 @@ export function RuleRow({
             </Button>
           </div>
         </div>
+        {conflicts.length > 0 && (
+          <div
+            role="alert"
+            className="mt-2 rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400"
+          >
+            <p className="font-semibold">
+              Pattern overlaps with {conflicts.length} other rule{conflicts.length === 1 ? "" : "s"}
+              .
+            </p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-4">
+              {conflicts.map((c) => (
+                <li key={c.id}>
+                  <span className="font-mono">"{c.pattern}"</span> ({c.matchType}) →{" "}
+                  {c.categoryName}
+                  <span className="text-muted-foreground"> — priority {c.priority}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </li>
     );
   }

@@ -9,6 +9,8 @@ import {
   useCreateCategoryRule,
   useUpdateCategoryRule,
   useDeleteCategoryRule,
+  useAutoCategorize,
+  useRecategorizeRange,
   type Category,
   type CategoryRule,
   type RuleDraft,
@@ -47,6 +49,17 @@ export function CategoriesPage() {
   >({});
   const [refreshHint, setRefreshHint] = useState(false);
   const onInvalidationFailure = () => setRefreshHint(true);
+  const [recategorizeOpen, setRecategorizeOpen] = useState(false);
+  const [recategorizeStart, setRecategorizeStart] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().slice(0, 10);
+  });
+  const [recategorizeEnd, setRecategorizeEnd] = useState(() =>
+    new Date().toISOString().slice(0, 10),
+  );
+  const [actionResult, setActionResult] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const {
     data: categories = [],
@@ -58,6 +71,8 @@ export function CategoriesPage() {
   const createCategory = useCreateCategory({ onInvalidationFailure });
   const updateCategory = useUpdateCategory({ onInvalidationFailure });
   const deleteCategory = useDeleteCategory({ onInvalidationFailure });
+  const autoCategorize = useAutoCategorize({ onInvalidationFailure });
+  const recategorize = useRecategorizeRange({ onInvalidationFailure });
 
   const createRule = useCreateCategoryRule();
   const updateRule = useUpdateCategoryRule();
@@ -279,6 +294,44 @@ export function CategoriesPage() {
     }
   }
 
+  async function handleAutoCategorize() {
+    setActionError(null);
+    setActionResult(null);
+    try {
+      const { categorized } = await autoCategorize.mutateAsync();
+      setActionResult(
+        categorized === 0
+          ? "No uncategorized transactions matched any rule."
+          : `Categorized ${categorized} transaction${categorized === 1 ? "" : "s"}.`,
+      );
+    } catch (error) {
+      setActionError(getErrorMessage(error, "Failed to run auto-categorization."));
+    }
+  }
+
+  async function handleRecategorize() {
+    setActionError(null);
+    setActionResult(null);
+    if (recategorizeStart > recategorizeEnd) {
+      setActionError("Start date must not be after end date.");
+      return;
+    }
+    try {
+      const { recategorized } = await recategorize.mutateAsync({
+        startDate: recategorizeStart,
+        endDate: recategorizeEnd,
+      });
+      setRecategorizeOpen(false);
+      setActionResult(
+        recategorized === 0
+          ? "No transactions changed in the selected range."
+          : `Recategorized ${recategorized} transaction${recategorized === 1 ? "" : "s"}.`,
+      );
+    } catch (error) {
+      setActionError(getErrorMessage(error, "Failed to recategorize the selected range."));
+    }
+  }
+
   if (isCategoriesLoading || isRulesLoading) {
     return <main className="min-h-screen bg-background p-6">Loading categories and rules…</main>;
   }
@@ -332,6 +385,77 @@ export function CategoriesPage() {
               Add
             </Button>
           </CardContent>
+        </Card>
+
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Apply Rules</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Auto-categorize processes uncategorized transactions only. Recategorize re-applies
+              every rule (highest priority first) to all non-manually-edited transactions in the
+              selected range, overwriting prior auto-categorizations.
+            </p>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-end gap-3">
+            <Button onClick={handleAutoCategorize} disabled={autoCategorize.isPending}>
+              {autoCategorize.isPending ? "Auto-categorizing…" : "Auto-categorize uncategorized"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setActionError(null);
+                setActionResult(null);
+                setRecategorizeOpen((open) => !open);
+              }}
+            >
+              {recategorizeOpen ? "Cancel" : "Recategorize date range…"}
+            </Button>
+          </CardContent>
+          {recategorizeOpen && (
+            <CardContent className="flex flex-wrap items-end gap-3 border-t pt-4">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="recategorize-start" className="text-xs text-muted-foreground">
+                  From
+                </Label>
+                <Input
+                  id="recategorize-start"
+                  type="date"
+                  value={recategorizeStart}
+                  onChange={(event) => setRecategorizeStart(event.target.value)}
+                  className="w-44"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="recategorize-end" className="text-xs text-muted-foreground">
+                  To
+                </Label>
+                <Input
+                  id="recategorize-end"
+                  type="date"
+                  value={recategorizeEnd}
+                  onChange={(event) => setRecategorizeEnd(event.target.value)}
+                  className="w-44"
+                />
+              </div>
+              <Button onClick={handleRecategorize} disabled={recategorize.isPending}>
+                {recategorize.isPending ? "Recategorizing…" : "Run"}
+              </Button>
+            </CardContent>
+          )}
+          {actionResult && (
+            <CardContent className="border-t pt-4">
+              <p role="status" className="text-sm text-foreground">
+                {actionResult}
+              </p>
+            </CardContent>
+          )}
+          {actionError && (
+            <CardContent className="border-t pt-4">
+              <p role="alert" className="text-sm text-destructive">
+                {actionError}
+              </p>
+            </CardContent>
+          )}
         </Card>
 
         {createCategoryError && (

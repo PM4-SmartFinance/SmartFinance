@@ -162,3 +162,67 @@ export function useDeleteCategoryRule() {
     },
   });
 }
+
+export interface RuleConflict {
+  id: string;
+  pattern: string;
+  matchType: "exact" | "contains";
+  priority: number;
+  categoryId: string;
+  categoryName: string;
+}
+
+export function useRuleOverlap(
+  pattern: string,
+  matchType: "exact" | "contains",
+  excludeRuleId?: string,
+) {
+  const trimmed = pattern.trim();
+  return useQuery<RuleConflict[]>({
+    queryKey: [
+      "category-rules",
+      "overlap",
+      { pattern: trimmed, matchType, excludeRuleId },
+    ] as const,
+    queryFn: async () => {
+      const params = new URLSearchParams({ pattern: trimmed, matchType });
+      if (excludeRuleId) params.set("excludeRuleId", excludeRuleId);
+      const response = await api.get<{ conflicts: RuleConflict[] }>(
+        `/category-rules/overlap?${params}`,
+      );
+      return response.conflicts;
+    },
+    enabled: trimmed.length > 0,
+    staleTime: 5_000,
+  });
+}
+
+export function useAutoCategorize(options?: CategoryMutationOptions) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () =>
+      api.post<{ categorized: number }>("/transactions/auto-categorize", null as never),
+    onSuccess: () =>
+      invalidateAll(
+        queryClient,
+        [["transactions"], DASHBOARD_QUERY_KEY],
+        options?.onInvalidationFailure,
+      ),
+  });
+}
+
+export function useRecategorizeRange(options?: CategoryMutationOptions) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (range: { startDate: string; endDate: string }) =>
+      api.post<{ recategorized: number }>("/transactions/recategorize", range),
+    onSuccess: () =>
+      invalidateAll(
+        queryClient,
+        [["transactions"], DASHBOARD_QUERY_KEY],
+        options?.onInvalidationFailure,
+      ),
+  });
+}
