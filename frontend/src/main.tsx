@@ -7,7 +7,9 @@ import { AuthProvider } from "./contexts/AuthProvider";
 import { router } from "./router";
 import "./index.css";
 
-if (localStorage.getItem("theme") === "dark") {
+const storedTheme = localStorage.getItem("theme");
+const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+if (storedTheme === "dark" || (storedTheme === "system" && prefersDark)) {
   document.documentElement.classList.add("dark");
 }
 

@@ -15,6 +15,7 @@ import { getDefaultDateRange } from "../lib/date";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { BackToDashboardLink } from "@/components/BackToDashboardLink";
+import { UserMenu } from "@/components/UserMenu";
 
 const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
   { value: "DAILY", label: "Daily" },
@@ -148,9 +149,12 @@ export function BudgetsPage() {
             </p>
             <BackToDashboardLink className="mt-2" />
           </div>
-          <Button onClick={handleCreate} size="sm">
-            Create Budget
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={handleCreate} size="sm">
+              Create Budget
+            </Button>
+            <UserMenu />
+          </div>
         </header>
 
         {/* Period Filter */}

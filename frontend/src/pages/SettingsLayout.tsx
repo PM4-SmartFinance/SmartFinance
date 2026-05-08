@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from "react-router";
 import { useAuth } from "../hooks/useAuth";
 import { BackToDashboardLink } from "../components/BackToDashboardLink";
+import { UserMenu } from "../components/UserMenu";
 import { User, Users } from "lucide-react";
 
 export function SettingsLayout() {
@@ -14,12 +15,15 @@ export function SettingsLayout() {
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <header className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground">Settings</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage your account and platform settings.
-          </p>
-          <BackToDashboardLink className="mt-4" />
+        <header className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-foreground">Settings</h1>
+            <p className="text-sm text-muted-foreground">
+              Manage your account and platform settings.
+            </p>
+            <BackToDashboardLink className="mt-4" />
+          </div>
+          <UserMenu />
         </header>
 
         <div className="flex flex-col gap-6 md:flex-row md:gap-8">

@@ -1,9 +1,5 @@
 import { Link } from "react-router";
-import { Moon, Sun } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
-import { useLogout } from "../hooks/useLogout";
-import { useAppStore } from "../store/appStore";
-import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "../components/DateRangePicker";
 import { SummaryMetricsWidget } from "../components/SummaryMetricsWidget";
 import { BudgetWidget } from "../components/BudgetWidget";
@@ -12,20 +8,16 @@ import { SpendingTrendChart } from "../components/SpendingTrendChart";
 import { CategoryBreakdownChart } from "../components/CategoryBreakdownChart";
 import { CsvImportCard } from "../components/CsvImportCard";
 import { RecentTransactionsWidget } from "../components/RecentTransactionsWidget";
+import { UserMenu } from "../components/UserMenu";
 
 const TEXT = {
   heading: "Dashboard",
   subtitle: "View your financial overview at a glance",
   greeting: "Welcome back",
-  signOut: "Sign out",
-  signingOut: "Signing out…",
 } as const;
 
 export function DashboardPage() {
   const { user } = useAuth();
-  const { mutate: logout, isPending } = useLogout();
-  const theme = useAppStore((s) => s.theme);
-  const toggleTheme = useAppStore((s) => s.toggleTheme);
 
   return (
     <main className="min-h-screen bg-background">
@@ -53,12 +45,7 @@ export function DashboardPage() {
                 {label}
               </Link>
             ))}
-            <Button variant="outline" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
-              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-            <Button variant="outline" size="sm" disabled={isPending} onClick={() => logout()}>
-              {isPending ? TEXT.signingOut : TEXT.signOut}
-            </Button>
+            <UserMenu />
           </nav>
         </header>
 

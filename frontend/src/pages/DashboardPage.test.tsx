@@ -137,9 +137,9 @@ describe("DashboardPage", () => {
     expect(screen.getByRole("button", { name: "Custom" })).toBeInTheDocument();
   });
 
-  it("renders the sign out button", () => {
+  it("renders the user menu button", () => {
     renderWithProviders();
-    expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "User menu" })).toBeInTheDocument();
   });
 
   it("triggers loading states when date range is changed", async () => {

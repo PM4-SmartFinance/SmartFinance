@@ -44,6 +44,18 @@ vi.mock("../lib/api", () => ({
   },
 }));
 
+vi.mock("../hooks/useAuth", () => ({
+  useAuth: () => ({
+    user: { id: "1", email: "test@example.com", role: "USER" },
+    isAuthenticated: true,
+    isLoading: false,
+  }),
+}));
+
+vi.mock("../hooks/useLogout", () => ({
+  useLogout: () => ({ mutate: vi.fn(), isPending: false }),
+}));
+
 vi.mock("../lib/queries/categories", () => ({
   useCategories: () => ({
     data: [

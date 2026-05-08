@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RuleRow } from "@/components/RuleRow";
 import { NewRuleForm } from "@/components/NewRuleForm";
 import { BackToDashboardLink } from "@/components/BackToDashboardLink";
+import { UserMenu } from "@/components/UserMenu";
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof ApiError) {
@@ -357,12 +358,15 @@ export function CategoriesPage() {
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Categories & Rules</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage your categories and auto-categorization rules in one place.
-          </p>
-          <BackToDashboardLink className="mt-2" />
+        <header className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Categories & Rules</h1>
+            <p className="text-sm text-muted-foreground">
+              Manage your categories and auto-categorization rules in one place.
+            </p>
+            <BackToDashboardLink className="mt-2" />
+          </div>
+          <UserMenu />
         </header>
 
         {refreshHint && (
