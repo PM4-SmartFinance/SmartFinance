@@ -372,6 +372,40 @@ This endpoint is idempotent: running it multiple times has no additional effect 
 
 ---
 
+### POST /transactions/recategorize
+
+Re-applies the rule engine to every non-manual-override transaction in the supplied date range, **including transactions that already have a category**. The highest-priority matching rule wins. Transactions whose merchant matches no rule are left untouched (their previous category, if any, is preserved). Requires the `USER` role.
+
+Use this endpoint after editing or adding rules when the user wants past transactions reclassified. `POST /transactions/auto-categorize` only touches _uncategorized_ rows; this endpoint touches all rows in range that are not manually overridden.
+
+**Request Body:**
+
+```json
+{
+  "startDate": "2026-01-01",
+  "endDate": "2026-01-31"
+}
+```
+
+| Field       | Type   | Required | Validation                                                                        |
+| ----------- | ------ | -------- | --------------------------------------------------------------------------------- |
+| `startDate` | string | yes      | ISO date `YYYY-MM-DD`, must be a real calendar date                               |
+| `endDate`   | string | yes      | ISO date `YYYY-MM-DD`, must be a real calendar date, must not precede `startDate` |
+
+**Response 200:**
+
+```json
+{ "recategorized": 5 }
+```
+
+`recategorized` is the actual database-affected row count. Rows already in the matching category are skipped and not counted.
+
+**Response 400:** Missing/malformed dates, invalid calendar date, or `startDate` after `endDate`
+**Response 401:** Not authenticated
+**Response 403:** Authenticated but does not have the `USER` role
+
+---
+
 ### GET /transactions/:id
 
 Returns a single transaction with its associated category, account, merchant, and date. Only the owner can access their transactions.
@@ -995,6 +1029,50 @@ Previews matching transactions for a proposed rule without creating it. Returns 
 
 ---
 
+### GET /category-rules/overlap
+
+Returns rules whose pattern overlaps with the supplied candidate. Used by the rule editor as a soft warning — overlap does not block saving. Priority disambiguates at evaluation time. Requires the `USER` role.
+
+Two patterns overlap (case-insensitive) when at least one merchant string can satisfy both:
+
+- `exact` vs `exact`: equal patterns
+- `exact` vs `contains`: the contains pattern is a substring of the exact pattern
+- `contains` vs `exact`: the contains pattern is a substring of the exact pattern (mirror)
+- `contains` vs `contains`: either pattern contains the other
+
+**Query Parameters:**
+
+| Parameter       | Type   | Required | Validation                                                              |
+| --------------- | ------ | -------- | ----------------------------------------------------------------------- |
+| `pattern`       | string | yes      | Non-empty                                                               |
+| `matchType`     | string | yes      | `"exact"` or `"contains"`                                               |
+| `excludeRuleId` | string | no       | UUID — pass when editing an existing rule to exclude it from the result |
+
+**Response 200:**
+
+```json
+{
+  "conflicts": [
+    {
+      "id": "uuid",
+      "pattern": "coop migros",
+      "matchType": "contains",
+      "priority": 5,
+      "categoryId": "uuid",
+      "categoryName": "Hobby"
+    }
+  ]
+}
+```
+
+`conflicts` is an empty array when no other user-owned rule overlaps. The list excludes the rule referenced by `excludeRuleId` (when supplied) so the editor does not flag a rule against itself.
+
+**Response 400:** Invalid input (missing required parameter, invalid matchType, invalid UUID)
+**Response 401:** Not authenticated
+**Response 403:** Authenticated but does not have the `USER` role
+
+---
+
 ### PATCH /category-rules/:id
 
 Updates an existing category rule. Only rules owned by the authenticated user can be updated. At least one field must be provided.
@@ -1099,7 +1177,7 @@ All values are `0` when there are no transactions in the range. Use `transaction
 
 ### GET /dashboard/categories
 
-Returns expense totals grouped by category for the authenticated user within the specified date range. Intended to power the spending-by-category pie/donut chart on the dashboard.
+Returns expense totals grouped by category for the authenticated user within the specified date range. Intended to power the spending-by-category bar chart on the dashboard.
 
 **Query Parameters:**
 
@@ -1120,16 +1198,29 @@ Returns expense totals grouped by category for the authenticated user within the
   {
     "categoryId": "uuid",
     "categoryName": "Transport",
-    "total": 30.0
+    "total": 0
+  },
+  {
+    "categoryId": null,
+    "categoryName": "Uncategorized",
+    "total": 88.5,
+    "isUncategorized": true
   }
 ]
 ```
 
+| Field             | Type           | Notes                                                                    |
+| ----------------- | -------------- | ------------------------------------------------------------------------ |
+| `categoryId`      | string \| null | UUID for tracked categories; `null` for the synthetic Uncategorized row  |
+| `categoryName`    | string         | Category display name; literally `"Uncategorized"` for the synthetic row |
+| `total`           | number         | Absolute value of summed expenses in CHF, rounded to two decimals        |
+| `isUncategorized` | boolean (opt.) | Present and `true` only on the synthetic Uncategorized row               |
+
 - Only expense transactions (negative amounts) are aggregated. Positive-amount (income) transactions are excluded.
-- `total` is the absolute value of the summed expenses for the category, rounded to two decimals.
-- Results are sorted by `total` descending (highest spending first).
-- Transactions with no category (`categoryId = NULL`) are intentionally excluded; they do not contribute to any bucket. If a user has significant uncategorized spending, the returned totals will be incomplete.
-- Returns `200 []` when there are no matching transactions in the range.
+- **Every category owned by the user is returned**, including categories with zero spend in the range (`total: 0`). This lets the chart show the full set of categories the user is tracking.
+- Tracked categories are sorted by `total` descending; ties broken by `categoryName` ascending.
+- A synthetic **Uncategorized** row aggregates expenses with `categoryId IS NULL`. It is **pinned to the end of the array** (regardless of total) and is **omitted entirely when its `total` is 0**.
+- Returns `200 []` only when the user has no categories at all (rare — the bootstrap flow seeds defaults).
 
 **Response 400:** Missing or malformed `startDate`/`endDate`, invalid calendar date (e.g. month 13), or `startDate` is after `endDate`
 **Response 401:** Not authenticated

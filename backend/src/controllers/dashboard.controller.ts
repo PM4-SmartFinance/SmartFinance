@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { requireRole } from "../middleware/rbac.js";
+import { requireRole, getSessionUser } from "../middleware/rbac.js";
 import * as dashboardService from "../services/dashboard.service.js";
 
 interface DashboardSummaryQuery {
@@ -59,9 +59,10 @@ const dashboardCategoriesResponseSchema = {
     items: {
       type: "object",
       properties: {
-        categoryId: { type: "string" },
+        categoryId: { type: ["string", "null"] },
         categoryName: { type: "string" },
         total: { type: "number" },
+        isUncategorized: { type: "boolean" },
       },
       required: ["categoryId", "categoryName", "total"],
     },
@@ -76,8 +77,7 @@ export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
       schema: { querystring: dashboardSummaryQuerySchema },
     },
     async (request, reply) => {
-      // session is guaranteed non-null: requireRole preHandler rejects unauthenticated requests
-      const session = request.session.get("user")!;
+      const session = getSessionUser(request);
       const { startDate, endDate } = request.query;
       const summary = await dashboardService.getDashboardSummary(session.id, startDate, endDate);
       return reply.send(summary);
@@ -94,7 +94,7 @@ export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
       },
     },
     async (request, reply) => {
-      const session = request.session.get("user")!;
+      const session = getSessionUser(request);
       const { startDate, endDate } = request.query;
       const data = await dashboardService.getDashboardCategories(session.id, startDate, endDate);
       return reply.send(data);
@@ -108,7 +108,7 @@ export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
       schema: { querystring: dashboardTrendsQuerySchema, response: dashboardTrendsResponseSchema },
     },
     async (request, reply) => {
-      const session = request.session.get("user")!;
+      const session = getSessionUser(request);
       const { startDate, endDate } = request.query;
       const data = await dashboardService.getDashboardTrends(session.id, startDate, endDate);
       return reply.send({ data });

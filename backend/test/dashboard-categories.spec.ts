@@ -201,7 +201,18 @@ describe("GET /api/v1/dashboard/categories", () => {
     expect(res.statusCode).toBe(401);
   });
 
-  it("returns positive totals, grouped by category, sorted descending, and ignores income", async () => {
+  // Helpers — narrow each response to the rows seeded by this spec so
+  // user-bootstrap default categories (DEFAULT_CATEGORIES from
+  // user.service.ts) do not couple this spec's assertions to that list.
+  type Row = {
+    categoryId: string | null;
+    categoryName: string;
+    total: number;
+    isUncategorized?: boolean;
+  };
+  const isTestRow = (r: Row) => r.categoryName.startsWith("Test_") || r.isUncategorized === true;
+
+  it("returns spent test categories sorted desc, then Uncategorized last, and ignores income", async () => {
     const res = await app.inject({
       method: "GET",
       url: "/api/v1/dashboard/categories?startDate=2026-05-01&endDate=2026-05-31",
@@ -209,21 +220,31 @@ describe("GET /api/v1/dashboard/categories", () => {
     });
 
     expect(res.statusCode).toBe(200);
-    const data = res.json();
+    const data = (res.json() as Row[]).filter(isTestRow);
 
-    expect(data).toHaveLength(2);
+    // Test_Groceries (150), Test_Transport (30), Uncategorized (999). The
+    // synthetic Uncategorized row is pinned to the end despite its higher
+    // total.
+    expect(data).toHaveLength(3);
 
-    // Groceries should be first (|-50| + |-100| = 150) -> Note: the +500 is ignored!
     expect(data[0].categoryName).toBe("Test_Groceries");
     expect(data[0].total).toBe(150);
+    expect(data[0].isUncategorized).toBeFalsy();
 
-    // Transport should be second (|-30| = 30)
     expect(data[1].categoryName).toBe("Test_Transport");
     expect(data[1].total).toBe(30);
+    expect(data[1].isUncategorized).toBeFalsy();
+
+    expect(data[2].categoryName).toBe("Uncategorized");
+    expect(data[2].categoryId).toBeNull();
+    expect(data[2].total).toBe(999);
+    expect(data[2].isUncategorized).toBe(true);
   });
 
-  it("filters out transactions outside the date range", async () => {
-    // Only query June
+  it("includes zero-spend categories with total = 0 inside the date range", async () => {
+    // June has only a Test_Groceries expense; Test_Transport is zero-spend
+    // and must still appear so the user can see the category exists. Default
+    // categories created at user bootstrap should also appear with total 0.
     const res = await app.inject({
       method: "GET",
       url: "/api/v1/dashboard/categories?startDate=2026-06-01&endDate=2026-06-30",
@@ -231,12 +252,16 @@ describe("GET /api/v1/dashboard/categories", () => {
     });
 
     expect(res.statusCode).toBe(200);
-    const data = res.json();
+    const data = res.json() as Row[];
 
-    // Should only see the one June transaction
-    expect(data).toHaveLength(1);
-    expect(data[0].categoryName).toBe("Test_Groceries");
-    expect(data[0].total).toBe(80);
+    const groceries = data.find((r) => r.categoryName === "Test_Groceries");
+    const transport = data.find((r) => r.categoryName === "Test_Transport");
+    expect(groceries?.total).toBe(80);
+    expect(transport?.total).toBe(0);
+    // Bootstrap defaults are present too — pick one as a witness.
+    expect(data.some((r) => r.categoryName === "Housing" && r.total === 0)).toBe(true);
+    // No uncategorized expense in June, so no synthetic row.
+    expect(data.some((r) => r.isUncategorized)).toBe(false);
   });
 
   it("does not leak another user's spending into the response", async () => {
@@ -249,11 +274,9 @@ describe("GET /api/v1/dashboard/categories", () => {
     });
 
     expect(res.statusCode).toBe(200);
-    const data = res.json();
+    const data = res.json() as Row[];
 
-    // Only the first user's two categories show up (Groceries=150, Transport=30).
-    expect(data).toHaveLength(2);
-    const totals = data.map((row: { total: number }) => row.total);
+    const totals = data.map((row) => row.total);
     expect(totals).not.toContain(12345);
   });
 
@@ -265,27 +288,44 @@ describe("GET /api/v1/dashboard/categories", () => {
     });
 
     expect(res.statusCode).toBe(200);
-    const data = res.json();
-    expect(data).toHaveLength(1);
-    expect(data[0].total).toBe(12345);
+    const data = res.json() as Row[];
+    // Only the other user's Test_Groceries has spend; their bootstrap defaults
+    // are zero-spend and there is no uncategorized expense for them.
+    const spent = data.filter((r) => r.total > 0);
+    expect(spent).toHaveLength(1);
+    expect(spent[0]!.categoryName).toBe("Test_Groceries");
+    expect(spent[0]!.total).toBe(12345);
+    expect(data.some((r) => r.isUncategorized)).toBe(false);
   });
 
-  it("excludes uncategorized transactions (INNER JOIN behaviour is intentional)", async () => {
-    // The seeded -999 row has categoryId=null. Its absolute value must not
-    // appear anywhere in the response for May.
-    const res = await app.inject({
+  it("includes the Uncategorized bucket only when categoryId IS NULL expenses exist in range", async () => {
+    // May has a -999 uncategorized expense → bucket present.
+    const may = await app.inject({
       method: "GET",
       url: "/api/v1/dashboard/categories?startDate=2026-05-01&endDate=2026-05-31",
       cookies: { session: sessionCookie },
     });
+    expect(may.statusCode).toBe(200);
+    const mayData = may.json() as Row[];
+    const mayUncat = mayData.find((r) => r.isUncategorized);
+    expect(mayUncat).toBeDefined();
+    expect(mayUncat?.total).toBe(999);
+    expect(mayUncat?.categoryId).toBeNull();
 
-    expect(res.statusCode).toBe(200);
-    const data = res.json();
-    const totals = data.map((row: { total: number }) => row.total);
-    expect(totals).not.toContain(999);
+    // June has no uncategorized expenses → no bucket.
+    const june = await app.inject({
+      method: "GET",
+      url: "/api/v1/dashboard/categories?startDate=2026-06-01&endDate=2026-06-30",
+      cookies: { session: sessionCookie },
+    });
+    expect(june.statusCode).toBe(200);
+    const juneData = june.json() as Row[];
+    expect(juneData.some((r) => r.isUncategorized)).toBe(false);
   });
 
-  it("returns an empty array when there are no matching transactions", async () => {
+  it("returns the user's categories with total = 0 when no transactions match", async () => {
+    // 2030 has no seeded transactions. The seeded test categories must still
+    // appear with total 0 (alongside any bootstrap defaults).
     const res = await app.inject({
       method: "GET",
       url: "/api/v1/dashboard/categories?startDate=2030-01-01&endDate=2030-01-31",
@@ -293,7 +333,12 @@ describe("GET /api/v1/dashboard/categories", () => {
     });
 
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual([]);
+    const data = res.json() as Row[];
+    expect(data.length).toBeGreaterThanOrEqual(2);
+    expect(data.every((r) => r.total === 0)).toBe(true);
+    expect(data.some((r) => r.categoryName === "Test_Groceries")).toBe(true);
+    expect(data.some((r) => r.categoryName === "Test_Transport")).toBe(true);
+    expect(data.some((r) => r.isUncategorized)).toBe(false);
   });
 
   it("returns 400 when startDate is after endDate", async () => {
