@@ -52,24 +52,6 @@ vi.mock("../lib/api", () => ({
     }),
   },
 }));
-import {
-  SpendingTrendChart,
-  formatMonthLabel,
-  formatDateLabel,
-  daysBetween,
-  formatYAxisValue,
-  buildChartAriaLabel,
-  computeTickInterval,
-  pickGranularity,
-  bucketize,
-  LABEL_COUNT_OPTIONS,
-} from "./SpendingTrendChart";
-import { useAppStore } from "../store/appStore";
-
-// Pin the appStore date range to a deterministic 3-day window aligned with the mock data.
-beforeEach(() => {
-  useAppStore.setState({ startDate: "2026-01-01", endDate: "2026-01-03" });
-});
 
 function renderWithQuery(component: React.ReactElement) {
   const queryClient = new QueryClient({
