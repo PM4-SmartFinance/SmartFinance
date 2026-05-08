@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
+import { randomUUID } from "node:crypto";
 import { buildApp } from "../src/app.js";
 import { prisma } from "../src/prisma.js";
 import type { FastifyInstance } from "fastify";
@@ -255,7 +256,8 @@ describe("Budget CRUD", () => {
     expect(budget).toHaveProperty("currentSpending");
   });
 
-  it("PATCH /budgets/:id with another user's budget returns 404", async () => {
+  it("PATCH /budgets/:id with another user's budget returns 404 and does not mutate", async () => {
+    const before = await prisma.dimBudget.findUniqueOrThrow({ where: { id: createdBudgetId } });
     const res = await app.inject({
       method: "PATCH",
       url: `/api/v1/budgets/${createdBudgetId}`,
@@ -263,15 +265,23 @@ describe("Budget CRUD", () => {
       payload: { limitAmount: 100 },
     });
     expect(res.statusCode).toBe(404);
+    // 404-on-stranger contract is "deny + no-op": the row must be untouched.
+    const after = await prisma.dimBudget.findUniqueOrThrow({ where: { id: createdBudgetId } });
+    expect(Number(after.limitAmount)).toBe(Number(before.limitAmount));
+    expect(after.categoryId).toBe(before.categoryId);
+    expect(after.type).toBe(before.type);
   });
 
-  it("DELETE /budgets/:id with another user's budget returns 404", async () => {
+  it("DELETE /budgets/:id with another user's budget returns 404 and does not delete", async () => {
     const res = await app.inject({
       method: "DELETE",
       url: `/api/v1/budgets/${createdBudgetId}`,
       cookies: { session: sessionCookie2 },
     });
     expect(res.statusCode).toBe(404);
+    // The budget must still exist after the 404.
+    const stillThere = await prisma.dimBudget.findUnique({ where: { id: createdBudgetId } });
+    expect(stillThere).not.toBeNull();
   });
 
   it("DELETE /budgets/:id returns 204 and budget is gone", async () => {
@@ -661,5 +671,228 @@ describe("Budget CRUD", () => {
     await prisma.dimMerchant.delete({ where: { id: merchant.id } });
     await prisma.dimBudget.delete({ where: { id: budgetId } });
     await prisma.dimCategory.delete({ where: { id: category.id } });
+  });
+});
+
+describe("Budget full-edit contract", () => {
+  // Self-contained fixtures — does not depend on Budget CRUD's residual state.
+  // beforeEach resets budgets so each `it` is order-independent.
+  let fullEditCatA: string; // owns the mutable budgetA
+  let fullEditCatB: string; // owns the conflict-target budgetB
+  let strangerCatId: string; // category owned by testUserId2 — for stranger 404 tests
+  let budgetAId: string;
+  let strangerBudgetId: string;
+
+  beforeAll(async () => {
+    fullEditCatA = (
+      await prisma.dimCategory.create({
+        data: { categoryName: "Test_FullEdit_CatA", userId: testUserId },
+      })
+    ).id;
+    fullEditCatB = (
+      await prisma.dimCategory.create({
+        data: { categoryName: "Test_FullEdit_CatB", userId: testUserId },
+      })
+    ).id;
+    strangerCatId = (
+      await prisma.dimCategory.create({
+        data: { categoryName: "Test_FullEdit_Stranger", userId: testUserId2 },
+      })
+    ).id;
+  });
+
+  afterAll(async () => {
+    await prisma.dimBudget.deleteMany({
+      where: { categoryId: { in: [fullEditCatA, fullEditCatB, strangerCatId] } },
+    });
+    await prisma.dimCategory.deleteMany({
+      where: { id: { in: [fullEditCatA, fullEditCatB, strangerCatId] } },
+    });
+  });
+
+  beforeEach(async () => {
+    // Reset all fixture budgets so tests can run in any order.
+    await prisma.dimBudget.deleteMany({
+      where: { categoryId: { in: [fullEditCatA, fullEditCatB, strangerCatId] } },
+    });
+
+    const rA = await app.inject({
+      method: "POST",
+      url: "/api/v1/budgets",
+      cookies: { session: sessionCookie },
+      payload: { categoryId: fullEditCatA, type: "MONTHLY", limitAmount: 300 },
+    });
+    expect(rA.statusCode).toBe(201);
+    budgetAId = rA.json().budget.id;
+
+    // budgetB is the conflict-target fixture; only its existence matters here.
+    const rB = await app.inject({
+      method: "POST",
+      url: "/api/v1/budgets",
+      cookies: { session: sessionCookie },
+      payload: {
+        categoryId: fullEditCatB,
+        type: "SPECIFIC_MONTH_YEAR",
+        month: 5,
+        year: 2026,
+        limitAmount: 200,
+      },
+    });
+    expect(rB.statusCode).toBe(201);
+
+    const rStranger = await app.inject({
+      method: "POST",
+      url: "/api/v1/budgets",
+      cookies: { session: sessionCookie2 },
+      payload: { categoryId: strangerCatId, type: "MONTHLY", limitAmount: 100 },
+    });
+    expect(rStranger.statusCode).toBe(201);
+    strangerBudgetId = rStranger.json().budget.id;
+  });
+
+  it("POST /budgets response includes full contract shape with concrete isActive/priority values", async () => {
+    // Use SPECIFIC_YEAR for the current year so isActive is deterministically true
+    // regardless of when this test runs.
+    const currentYear = new Date().getFullYear();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/budgets",
+      cookies: { session: sessionCookie },
+      payload: {
+        categoryId: fullEditCatA,
+        type: "SPECIFIC_YEAR",
+        year: currentYear,
+        limitAmount: 150,
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    const { budget } = res.json();
+    expect(budget).toMatchObject({
+      categoryId: fullEditCatA,
+      type: "SPECIFIC_YEAR",
+      month: 0,
+      year: currentYear,
+      isActive: true,
+      priority: 2, // SPECIFIC_YEAR
+    });
+    expect(budget).toHaveProperty("id");
+    expect(budget).toHaveProperty("limitAmount");
+    expect(budget).toHaveProperty("currentSpending");
+    expect(budget).toHaveProperty("percentageUsed");
+    expect(budget).toHaveProperty("remainingAmount");
+    expect(budget).toHaveProperty("isOverBudget");
+  });
+
+  it("PATCH /budgets/:id returns 400 when limitAmount is negative", async () => {
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/budgets/${budgetAId}`,
+      cookies: { session: sessionCookie },
+      payload: { limitAmount: -10 },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("PATCH /budgets/:id updates categoryId and returns 200 with new categoryId", async () => {
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/budgets/${budgetAId}`,
+      cookies: { session: sessionCookie },
+      payload: { categoryId: fullEditCatB },
+    });
+    expect(res.statusCode).toBe(200);
+    const { budget } = res.json();
+    expect(budget.categoryId).toBe(fullEditCatB);
+    expect(budget.type).toBe("MONTHLY"); // type unchanged
+  });
+
+  it("PATCH /budgets/:id updates type, month, and year in one request (200)", async () => {
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/budgets/${budgetAId}`,
+      cookies: { session: sessionCookie },
+      payload: { type: "SPECIFIC_MONTH_YEAR", month: 8, year: 2025 },
+    });
+    expect(res.statusCode).toBe(200);
+    const { budget } = res.json();
+    expect(budget.type).toBe("SPECIFIC_MONTH_YEAR");
+    expect(budget.month).toBe(8);
+    expect(budget.year).toBe(2025);
+  });
+
+  it("PATCH /budgets/:id returns 409 when the update creates a duplicate budget and budgetA is unchanged", async () => {
+    // Move budgetA onto fullEditCatB as SPECIFIC_MONTH_YEAR, month=5, year=2026 — duplicates budgetB.
+    const before = await prisma.dimBudget.findUniqueOrThrow({ where: { id: budgetAId } });
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/budgets/${budgetAId}`,
+      cookies: { session: sessionCookie },
+      payload: { categoryId: fullEditCatB, type: "SPECIFIC_MONTH_YEAR", month: 5, year: 2026 },
+    });
+    expect(res.statusCode).toBe(409);
+    // The 409 must be "deny + no-op": budgetA must retain its original categoryId/type/month/year.
+    const after = await prisma.dimBudget.findUniqueOrThrow({ where: { id: budgetAId } });
+    expect(after.categoryId).toBe(before.categoryId);
+    expect(after.type).toBe(before.type);
+    expect(after.month).toBe(before.month);
+    expect(after.year).toBe(before.year);
+  });
+
+  it("PATCH /budgets/:id updates limitAmount and response has full contract shape", async () => {
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/budgets/${budgetAId}`,
+      cookies: { session: sessionCookie },
+      payload: { limitAmount: 999 },
+    });
+    expect(res.statusCode).toBe(200);
+    const { budget } = res.json();
+    expect(Number(budget.limitAmount)).toBe(999);
+    expect(budget).toHaveProperty("id");
+    expect(budget).toHaveProperty("categoryId");
+    expect(budget).toHaveProperty("type");
+    expect(budget).toHaveProperty("month");
+    expect(budget).toHaveProperty("year");
+    expect(budget).toHaveProperty("currentSpending");
+    expect(budget).toHaveProperty("percentageUsed");
+    expect(budget).toHaveProperty("remainingAmount");
+    expect(budget).toHaveProperty("isOverBudget");
+    expect(budget).toHaveProperty("isActive");
+    expect(budget).toHaveProperty("priority");
+  });
+
+  it("PATCH /budgets/:id returns 404 when categoryId does not belong to the user", async () => {
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/budgets/${budgetAId}`,
+      cookies: { session: sessionCookie },
+      payload: { categoryId: randomUUID() },
+    });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it("PATCH /budgets/:id with limitAmount only returns 404 for a stranger's budget and does not mutate", async () => {
+    const before = await prisma.dimBudget.findUniqueOrThrow({ where: { id: strangerBudgetId } });
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/budgets/${strangerBudgetId}`,
+      cookies: { session: sessionCookie },
+      payload: { limitAmount: 50 },
+    });
+    expect(res.statusCode).toBe(404);
+    const after = await prisma.dimBudget.findUniqueOrThrow({ where: { id: strangerBudgetId } });
+    expect(Number(after.limitAmount)).toBe(Number(before.limitAmount));
+  });
+
+  it("DELETE /budgets/:id returns 404 for a stranger's budget", async () => {
+    const res = await app.inject({
+      method: "DELETE",
+      url: `/api/v1/budgets/${strangerBudgetId}`,
+      cookies: { session: sessionCookie },
+    });
+    expect(res.statusCode).toBe(404);
+    // Verify the stranger's budget still exists
+    const stillThere = await prisma.dimBudget.findUnique({ where: { id: strangerBudgetId } });
+    expect(stillThere).not.toBeNull();
   });
 });
