@@ -5,6 +5,12 @@ import { BrowserRouter } from "react-router";
 import { vi } from "vitest";
 import { SettingsProfile } from "./SettingsProfile";
 
+const { mockNavigate } = vi.hoisted(() => ({ mockNavigate: vi.fn() }));
+vi.mock("react-router", async () => {
+  const actual = await vi.importActual<typeof import("react-router")>("react-router");
+  return { ...actual, useNavigate: () => mockNavigate };
+});
+
 const { mockGet, mockPatch, mockPost } = vi.hoisted(() => {
   return {
     mockGet: vi.fn(),
@@ -51,6 +57,7 @@ function renderWithProviders() {
 describe("SettingsProfile - Password Change Flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockNavigate.mockReset();
     mockGet.mockResolvedValue({
       user: { id: "1", email: "test@example.com", name: "Test User", role: "USER" },
     });
@@ -105,6 +112,38 @@ describe("SettingsProfile - Password Change Flow", () => {
     });
 
     expect(screen.getByText("Password changed. Please sign in again.")).toBeInTheDocument();
+  });
+
+  it("redirects to /login after a successful password change (delayed, not synchronous)", async () => {
+    const user = userEvent.setup();
+    mockPost.mockResolvedValue({ ok: true });
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Test User")).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByLabelText(/Current password/i), "oldpass123");
+    await user.type(screen.getByLabelText(/^New password/i), "newpass123");
+    await user.type(screen.getByLabelText(/Confirm new password/i), "newpass123");
+    await user.click(screen.getByRole("button", { name: "Change password" }));
+
+    // Success banner appears before navigation — locks the "show feedback,
+    // then redirect" sequencing. If the navigate were synchronous, the page
+    // would unmount before the banner could render.
+    await waitFor(() => {
+      expect(screen.getByText("Password changed. Please sign in again.")).toBeInTheDocument();
+    });
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    // Wait long enough for the 1.5s delay to elapse; assert the redirect
+    // ultimately fires with /login.
+    await waitFor(
+      () => {
+        expect(mockNavigate).toHaveBeenCalledExactlyOnceWith("/login");
+      },
+      { timeout: 3000 },
+    );
   });
 
   it("shows api error if password change fails", async () => {
