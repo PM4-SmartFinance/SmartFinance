@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { BudgetsPage } from "./BudgetsPage";
@@ -32,6 +33,16 @@ vi.mock("../lib/api", () => {
     },
     ApiError: MockApiError,
   };
+});
+
+vi.mock("../hooks/useAuth", async () => {
+  const { authMockFactory } = await import("../test/authFixtures");
+  return authMockFactory();
+});
+
+vi.mock("../hooks/useLogout", async () => {
+  const { logoutMockFactory } = await import("../test/authFixtures");
+  return logoutMockFactory();
 });
 
 import { api } from "../lib/api";
@@ -186,5 +197,18 @@ describe("BudgetsPage", () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText("Failed to load categories")).toBeInTheDocument());
+  });
+
+  it("exposes Sign out from the user menu", async () => {
+    mockApiRoutes();
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getAllByText("Groceries").length).toBeGreaterThanOrEqual(1));
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "User menu" }));
+
+    expect(await screen.findByRole("menuitem", { name: /sign out/i })).toBeInTheDocument();
   });
 });

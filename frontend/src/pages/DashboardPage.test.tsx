@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { vi } from "vitest";
@@ -67,6 +68,11 @@ vi.mock("../lib/api", () => {
 vi.mock("../hooks/useAuth", () => ({
   useAuth: vi.fn(),
 }));
+
+vi.mock("../hooks/useLogout", async () => {
+  const { logoutMockFactory } = await import("../test/authFixtures");
+  return logoutMockFactory();
+});
 
 function renderWithProviders() {
   const queryClient = new QueryClient({
@@ -137,9 +143,9 @@ describe("DashboardPage", () => {
     expect(screen.getByRole("button", { name: "Custom" })).toBeInTheDocument();
   });
 
-  it("renders the sign out button", () => {
+  it("renders the user menu button", () => {
     renderWithProviders();
-    expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "User menu" })).toBeInTheDocument();
   });
 
   it("triggers loading states when date range is changed", async () => {
@@ -212,6 +218,16 @@ describe("DashboardPage", () => {
     for (const link of links) {
       expect(link.getAttribute("href")).toMatch(/^\/transactions(\?.*)?$/);
     }
+  });
+
+  it("exposes Sign out from the user menu", async () => {
+    renderWithProviders();
+
+    await waitFor(() => expect(screen.getByText("CHF 3'659.50")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: "User menu" }));
+
+    expect(await screen.findByRole("menuitem", { name: /sign out/i })).toBeInTheDocument();
   });
 
   it("full-card 'Budget Progress' widget links to /budgets", async () => {

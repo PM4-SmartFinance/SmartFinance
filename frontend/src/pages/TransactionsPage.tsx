@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { BackToDashboardLink } from "@/components/BackToDashboardLink";
+import { UserMenu } from "@/components/UserMenu";
 import { SortableColumnHeader } from "@/components/SortableColumnHeader";
 import { AlertCircle } from "lucide-react";
 
@@ -80,8 +81,13 @@ export function TransactionsPage() {
     return (
       <main className="min-h-screen bg-background">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <h1 className="text-4xl font-bold text-foreground">Transactions</h1>
-          <BackToDashboardLink className="mt-2" />
+          <header className="mb-6 flex items-start justify-between">
+            <div>
+              <h1 className="text-4xl font-bold text-foreground">Transactions</h1>
+              <BackToDashboardLink className="mt-2" />
+            </div>
+            <UserMenu />
+          </header>
           <Alert variant="destructive" className="mt-8">
             <AlertCircle className="size-4" />
             <AlertDescription>
@@ -96,8 +102,13 @@ export function TransactionsPage() {
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <h1 className="text-4xl font-bold text-foreground">Transactions</h1>
-        <BackToDashboardLink className="mt-2" />
+        <header className="mb-6 flex items-start justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-foreground">Transactions</h1>
+            <BackToDashboardLink className="mt-2" />
+          </div>
+          <UserMenu />
+        </header>
         {/* Filters */}
         <Card className="mt-6 p-4">
           <div className="space-y-4">

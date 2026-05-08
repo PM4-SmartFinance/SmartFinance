@@ -1,7 +1,5 @@
 import { Link } from "react-router";
 import { useAuth } from "../hooks/useAuth";
-import { useLogout } from "../hooks/useLogout";
-import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "../components/DateRangePicker";
 import { SummaryMetricsWidget } from "../components/SummaryMetricsWidget";
 import { BudgetWidget } from "../components/BudgetWidget";
@@ -10,18 +8,16 @@ import { SpendingTrendChart } from "../components/SpendingTrendChart";
 import { CategoryBreakdownChart } from "../components/CategoryBreakdownChart";
 import { CsvImportCard } from "../components/CsvImportCard";
 import { RecentTransactionsWidget } from "../components/RecentTransactionsWidget";
+import { UserMenu } from "../components/UserMenu";
 
 const TEXT = {
   heading: "Dashboard",
   subtitle: "View your financial overview at a glance",
   greeting: "Welcome back",
-  signOut: "Sign out",
-  signingOut: "Signing out…",
 } as const;
 
 export function DashboardPage() {
   const { user } = useAuth();
-  const { mutate: logout, isPending } = useLogout();
 
   return (
     <main className="min-h-screen bg-background">
@@ -49,9 +45,7 @@ export function DashboardPage() {
                 {label}
               </Link>
             ))}
-            <Button variant="outline" size="sm" disabled={isPending} onClick={() => logout()}>
-              {isPending ? TEXT.signingOut : TEXT.signOut}
-            </Button>
+            <UserMenu />
           </nav>
         </header>
 
