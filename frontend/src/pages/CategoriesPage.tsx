@@ -45,6 +45,8 @@ export function CategoriesPage() {
   const [previewByCategory, setPreviewByCategory] = useState<
     Record<string, { summary: string; lines: string[] }>
   >({});
+  const [refreshHint, setRefreshHint] = useState(false);
+  const onInvalidationFailure = () => setRefreshHint(true);
 
   const {
     data: categories = [],
@@ -53,9 +55,9 @@ export function CategoriesPage() {
   } = useCategories();
   const { data: rules = [], isLoading: isRulesLoading, error: rulesLoadError } = useCategoryRules();
 
-  const createCategory = useCreateCategory();
-  const updateCategory = useUpdateCategory();
-  const deleteCategory = useDeleteCategory();
+  const createCategory = useCreateCategory({ onInvalidationFailure });
+  const updateCategory = useUpdateCategory({ onInvalidationFailure });
+  const deleteCategory = useDeleteCategory({ onInvalidationFailure });
 
   const createRule = useCreateCategoryRule();
   const updateRule = useUpdateCategoryRule();
@@ -299,6 +301,18 @@ export function CategoriesPage() {
           </p>
           <BackToDashboardLink className="mt-2" />
         </header>
+
+        {refreshHint && (
+          <div
+            role="alert"
+            className="mb-4 rounded border border-destructive bg-destructive/10 px-3 py-2 text-xs text-destructive"
+          >
+            Saved, but the dashboard may need a manual refresh.
+            <button type="button" className="ml-2 underline" onClick={() => setRefreshHint(false)}>
+              Dismiss
+            </button>
+          </div>
+        )}
 
         <Card className="mb-6">
           <CardHeader>

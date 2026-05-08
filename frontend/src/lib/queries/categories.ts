@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
+import { DASHBOARD_QUERY_KEY } from "./dashboard";
 
 export interface Category {
   id: string;
@@ -30,6 +31,32 @@ export interface RuleDraft {
 const CATEGORIES_QUERY_KEY = ["categories"] as const;
 const CATEGORY_RULES_QUERY_KEY = ["category-rules"] as const;
 
+export interface CategoryMutationOptions {
+  onInvalidationFailure?: (failedKeys: readonly (readonly unknown[])[]) => void;
+}
+
+async function invalidateAll(
+  queryClient: ReturnType<typeof useQueryClient>,
+  keys: readonly (readonly unknown[])[],
+  onInvalidationFailure?: CategoryMutationOptions["onInvalidationFailure"],
+) {
+  const results = await Promise.allSettled(
+    keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+  );
+  const failed: (readonly unknown[])[] = [];
+  results.forEach((r, i) => {
+    if (r.status === "rejected") {
+      const key = keys[i]!;
+      failed.push(key);
+      console.error(
+        `Category mutation: failed to invalidate query '${key.join("/")}' after success`,
+        r.reason,
+      );
+    }
+  });
+  if (failed.length > 0) onInvalidationFailure?.(failed);
+}
+
 export function useCategories() {
   return useQuery<Category[]>({
     queryKey: CATEGORIES_QUERY_KEY,
@@ -58,43 +85,47 @@ export function useCategoryRules() {
   });
 }
 
-export function useCreateCategory() {
+export function useCreateCategory(options?: CategoryMutationOptions) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (categoryName: string) =>
       api.post<{ category: Category }>("/categories", { categoryName }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
-      await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    },
+    onSuccess: () =>
+      invalidateAll(
+        queryClient,
+        [CATEGORIES_QUERY_KEY, DASHBOARD_QUERY_KEY],
+        options?.onInvalidationFailure,
+      ),
   });
 }
 
-export function useUpdateCategory() {
+export function useUpdateCategory(options?: CategoryMutationOptions) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, categoryName }: { id: string; categoryName: string }) =>
       api.patch<{ category: Category }>(`/categories/${id}`, { categoryName }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
-      await queryClient.invalidateQueries({ queryKey: CATEGORY_RULES_QUERY_KEY });
-      await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    },
+    onSuccess: () =>
+      invalidateAll(
+        queryClient,
+        [CATEGORIES_QUERY_KEY, CATEGORY_RULES_QUERY_KEY, DASHBOARD_QUERY_KEY],
+        options?.onInvalidationFailure,
+      ),
   });
 }
 
-export function useDeleteCategory() {
+export function useDeleteCategory(options?: CategoryMutationOptions) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (id: string) => api.delete(`/categories/${id}`),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: CATEGORIES_QUERY_KEY });
-      await queryClient.invalidateQueries({ queryKey: CATEGORY_RULES_QUERY_KEY });
-      await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    },
+    onSuccess: () =>
+      invalidateAll(
+        queryClient,
+        [CATEGORIES_QUERY_KEY, CATEGORY_RULES_QUERY_KEY, DASHBOARD_QUERY_KEY],
+        options?.onInvalidationFailure,
+      ),
   });
 }
 
