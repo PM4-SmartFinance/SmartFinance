@@ -59,9 +59,10 @@ const dashboardCategoriesResponseSchema = {
     items: {
       type: "object",
       properties: {
-        categoryId: { type: "string" },
+        categoryId: { type: ["string", "null"] },
         categoryName: { type: "string" },
         total: { type: "number" },
+        isUncategorized: { type: "boolean" },
       },
       required: ["categoryId", "categoryName", "total"],
     },
