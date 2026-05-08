@@ -25,6 +25,31 @@ vi.mock("../lib/api", () => ({
   },
 }));
 
+// Recharts barely renders in jsdom — the SVG axis labels are skipped without a
+// real layout pass. Replace the chart with a deterministic stand-in that
+// surfaces each row's `categoryName`, so behavioural assertions can verify
+// the chart re-renders with fresh data after an invalidation.
+type ChartRow = { categoryId: string | null; categoryName: string; total: number };
+vi.mock("recharts", () => ({
+  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  BarChart: ({ data, children }: { data: ChartRow[]; children: React.ReactNode }) => (
+    <div data-testid="bar-chart">
+      {data.map((row) => (
+        <div key={row.categoryId ?? "uncategorized"} data-testid="bar-row">
+          {row.categoryName}: {row.total}
+        </div>
+      ))}
+      {children}
+    </div>
+  ),
+  Bar: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+  Cell: () => null,
+  XAxis: () => null,
+  YAxis: () => null,
+  CartesianGrid: () => null,
+  Tooltip: () => null,
+}));
+
 const mockGet = vi.mocked(api.get);
 const mockPost = vi.mocked(api.post);
 const mockPatch = vi.mocked(api.patch);
@@ -116,11 +141,18 @@ describe("CategoryBreakdownChart — refresh on category mutations", () => {
     await waitFor(() => {
       expect(categoryBreakdownCallCount()).toBe(1);
     });
+    // Initial render: only Groceries axis label is present.
+    expect(screen.queryByText(/Dining/)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "create-category" }));
 
     await waitFor(() => {
       expect(categoryBreakdownCallCount()).toBeGreaterThan(1);
+    });
+    // After invalidation + refetch the chart must show the new bar — proves
+    // the chart re-rendered with fresh data, not just that a refetch fired.
+    await waitFor(() => {
+      expect(screen.getByText(/Dining/)).toBeInTheDocument();
     });
   });
 
