@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { vi } from "vitest";
@@ -35,7 +36,9 @@ describe("SettingsLayout", () => {
   });
 
   it("renders layout correctly with profile link for normal users", () => {
-    mockAuth.mockReturnValue({ user: { role: "USER" } });
+    mockAuth.mockReturnValue({
+      user: { id: "1", email: "test@example.com", role: "USER" },
+    });
     renderSettings();
     expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
     expect(screen.getByText("Profile")).toBeInTheDocument();
@@ -44,9 +47,22 @@ describe("SettingsLayout", () => {
   });
 
   it("renders User Management link for admins", () => {
-    mockAuth.mockReturnValue({ user: { role: "ADMIN" } });
+    mockAuth.mockReturnValue({
+      user: { id: "1", email: "admin@example.com", role: "ADMIN" },
+    });
     renderSettings();
     expect(screen.getByText("Profile")).toBeInTheDocument();
     expect(screen.getByText("User Management")).toBeInTheDocument();
+  });
+
+  it("exposes Sign out from the user menu", async () => {
+    mockAuth.mockReturnValue({
+      user: { id: "1", email: "test@example.com", role: "USER" },
+    });
+    renderSettings();
+
+    await userEvent.click(screen.getByRole("button", { name: "User menu" }));
+
+    expect(await screen.findByRole("menuitem", { name: /sign out/i })).toBeInTheDocument();
   });
 });

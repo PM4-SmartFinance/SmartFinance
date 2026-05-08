@@ -44,17 +44,15 @@ vi.mock("../lib/api", () => ({
   },
 }));
 
-vi.mock("../hooks/useAuth", () => ({
-  useAuth: () => ({
-    user: { id: "1", email: "test@example.com", role: "USER" },
-    isAuthenticated: true,
-    isLoading: false,
-  }),
-}));
+vi.mock("../hooks/useAuth", async () => {
+  const { authMockFactory } = await import("../test/authFixtures");
+  return authMockFactory();
+});
 
-vi.mock("../hooks/useLogout", () => ({
-  useLogout: () => ({ mutate: vi.fn(), isPending: false }),
-}));
+vi.mock("../hooks/useLogout", async () => {
+  const { logoutMockFactory } = await import("../test/authFixtures");
+  return logoutMockFactory();
+});
 
 vi.mock("../lib/queries/categories", () => ({
   useCategories: () => ({
@@ -444,6 +442,18 @@ describe("TransactionsPage", () => {
       expect(state.sortBy).toBe("amount");
       expect(state.sortOrder).toBe("desc");
     });
+  });
+
+  it("exposes Sign out from the user menu", async () => {
+    vi.mocked(apiModule.api.get).mockResolvedValue(mockTransactionsResponse);
+
+    renderTransactionsPage();
+
+    await waitFor(() => expect(screen.getByText("Migros")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: "User menu" }));
+
+    expect(await screen.findByRole("menuitem", { name: /sign out/i })).toBeInTheDocument();
   });
 
   it("displays null categories as dash", async () => {
