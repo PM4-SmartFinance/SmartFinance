@@ -13,6 +13,9 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+
 jobs:
   sync-release:
     name: Sync develop into main

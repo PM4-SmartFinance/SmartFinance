@@ -100,3 +100,14 @@ We use Husky and lint-staged to automatically format and lint code before it is 
 - When you run `git commit`, Prettier will format your staged files, and ESLint will check for structural errors.
 - If ESLint finds severe, unfixable errors, your commit will be safely blocked.
 - **How to handle failures:** Read the terminal output to locate the specific line causing the linting error. Fix the issue in your IDE, stage the file again using `git add <file>`, and re-run your `git commit` command. Do not use the `--no-verify` flag to bypass these checks.
+
+## 6. Test Coverage Requirements
+
+We enforce test coverage to prevent regressions. Key points:
+
+- **Minimum thresholds:** 70% for lines, functions, branches, and statements for the backend and frontend.
+- **Local checks:** Run `bun run --filter @smartfinance/backend test:coverage` or `bun run --filter @smartfinance/frontend test:coverage` to generate HTML and JSON reports in the `coverage/` directory.
+- **CI enforcement:** The CI pipeline runs coverage and will fail PRs if thresholds drop below the configured minimums.
+- **PR feedback:** CI posts a coverage summary as a PR comment and uploads the HTML report as a downloadable artifact.
+
+If you need to increase coverage for a change, add focused tests in the appropriate `test/` folder and re-run coverage locally before opening your PR.

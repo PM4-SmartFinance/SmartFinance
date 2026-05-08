@@ -1,5 +1,7 @@
 import * as categoryRuleRepository from "../repositories/category-rule.repository.js";
 import * as transactionRepository from "../repositories/transaction.repository.js";
+import { dateStringToId } from "../repositories/dashboard.repository.js";
+import { validateDateRange } from "./date-range.js";
 
 export type RuleForMatching = {
   pattern: string;
@@ -63,4 +65,62 @@ export async function autoCategorize(userId: string): Promise<{ categorized: num
   // had `manualOverride` toggled between the read and the write.
   const categorized = await transactionRepository.bulkSetCategory(userId, updates);
   return { categorized };
+}
+
+/**
+ * Re-applies category rules to every non-manual-override transaction in the
+ * given date range. Unlike {@link autoCategorize}, this also overwrites rows
+ * that already have a category — useful when the user adds a new rule and
+ * wants past transactions reclassified.
+ *
+ * Rules are evaluated in priority-desc order (the order returned by
+ * {@link categoryRuleRepository.findAllByUser}) so the highest-weight rule
+ * always wins, regardless of category alphabetical order. Transactions whose
+ * merchant matches no rule are left untouched (their previous category — if
+ * any — is preserved).
+ */
+export async function recategorizeRange(
+  userId: string,
+  startDate: string,
+  endDate: string,
+): Promise<{ recategorized: number }> {
+  validateDateRange(startDate, endDate);
+
+  const rules = await categoryRuleRepository.findAllByUser(userId);
+  if (rules.length === 0) return { recategorized: 0 };
+
+  const startDateId = dateStringToId(startDate);
+  const endDateId = dateStringToId(endDate);
+  const transactions = await transactionRepository.findCategorizableInRange(
+    userId,
+    startDateId,
+    endDateId,
+  );
+  if (transactions.length === 0) return { recategorized: 0 };
+
+  const merchantCategoryMap = new Map<string, string>();
+  const updates: Array<{ id: string; categoryId: string }> = [];
+  for (const tx of transactions) {
+    const name = tx.merchant?.name;
+    if (!name) continue;
+
+    let categoryId = merchantCategoryMap.get(name);
+    if (categoryId === undefined) {
+      const matched = matchTransaction(name, rules);
+      if (matched === null) continue;
+      categoryId = matched;
+      merchantCategoryMap.set(name, categoryId);
+    }
+
+    // Skip writes when the row is already in the right category — avoids
+    // unnecessary updateMany churn and noisy "0 changes" UI feedback.
+    if (tx.categoryId === categoryId) continue;
+
+    updates.push({ id: tx.id, categoryId });
+  }
+
+  if (updates.length === 0) return { recategorized: 0 };
+
+  const recategorized = await transactionRepository.bulkSetCategory(userId, updates);
+  return { recategorized };
 }

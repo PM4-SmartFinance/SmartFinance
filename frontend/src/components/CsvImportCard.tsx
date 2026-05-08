@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "../lib/api";
+import { DASHBOARD_QUERY_KEY } from "../lib/queries/dashboard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -14,7 +15,7 @@ import {
 
 const QUERY_KEYS_TO_INVALIDATE_AFTER_IMPORT = [
   ["budgets"],
-  ["dashboard"],
+  DASHBOARD_QUERY_KEY,
   ["transactions"],
 ] as const;
 

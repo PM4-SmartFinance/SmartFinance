@@ -575,4 +575,184 @@ describe("CategoriesPage", () => {
     });
     expect(mockPatch).not.toHaveBeenCalled();
   });
+
+  it("UI alignment (KAN-112): all user-owned categories show edit/delete buttons — no global read-only badge", async () => {
+    // Simulate the KAN-112 model: all categories are owned by the user (no global userId=null)
+    categories = [
+      {
+        id: "cat-1",
+        categoryName: "Groceries",
+        userId: "user-1",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: "cat-2",
+        categoryName: "Housing",
+        userId: "user-1",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+      expect(screen.getByText("Housing")).toBeInTheDocument();
+    });
+
+    // No global category badge should appear
+    expect(screen.queryByText("Global category (read-only)")).not.toBeInTheDocument();
+
+    // Both categories must have Edit and Delete buttons (they are user-owned)
+    expect(screen.getByRole("button", { name: "Edit category Groceries" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete category Groceries" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit category Housing" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete category Housing" })).toBeInTheDocument();
+
+    // Global Categories section should be empty (no global categories in this model)
+    expect(screen.getByText("No categories in this section.")).toBeInTheDocument();
+  });
+
+  it("auto-categorize button calls the API and renders the result message", async () => {
+    mockPost.mockImplementationOnce((path: string) => {
+      if (path === "/transactions/auto-categorize") {
+        return Promise.resolve({ categorized: 3 });
+      }
+      return Promise.resolve({});
+    });
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Auto-categorize uncategorized/i }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith("/transactions/auto-categorize", null);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Categorized 3 transactions.")).toBeInTheDocument();
+    });
+  });
+
+  it("recategorize panel blocks the API call when start date is after end date", async () => {
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Recategorize date range/i }));
+
+    fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-02-01" } });
+    fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-01-01" } });
+
+    mockPost.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Run" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Start date must not be after end date.")).toBeInTheDocument();
+    });
+    expect(mockPost).not.toHaveBeenCalledWith("/transactions/recategorize", expect.anything());
+  });
+
+  it("renders the overlap warning when /category-rules/overlap reports conflicts", async () => {
+    mockGet.mockImplementation((path: string) => {
+      if (path === "/categories") return Promise.resolve({ categories });
+      if (path === "/category-rules") return Promise.resolve({ rules });
+      if (path.startsWith("/category-rules/overlap")) {
+        return Promise.resolve({
+          conflicts: [
+            {
+              id: "rule-other",
+              pattern: "coop migros",
+              matchType: "contains",
+              priority: 5,
+              categoryId: "cat-2",
+              categoryName: "Rent",
+            },
+          ],
+        });
+      }
+      return Promise.resolve({});
+    });
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("New rule pattern for Groceries"), {
+      target: { value: "coop" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Pattern overlaps with 1 existing rule\./i)).toBeInTheDocument();
+    });
+  });
+
+  it("renders a degraded-state notice when /category-rules/overlap fails", async () => {
+    const { ApiError } = await vi.importMock<typeof import("../lib/api")>("../lib/api");
+    mockGet.mockImplementation((path: string) => {
+      if (path === "/categories") return Promise.resolve({ categories });
+      if (path === "/category-rules") return Promise.resolve({ rules });
+      if (path.startsWith("/category-rules/overlap")) {
+        return Promise.reject(new ApiError(500, "boom"));
+      }
+      return Promise.resolve({});
+    });
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("New rule pattern for Groceries"), {
+      target: { value: "coop" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("overlap-degraded-new")).toBeInTheDocument();
+    });
+  });
+
+  it("recategorize panel calls the API on a valid range and renders the result", async () => {
+    mockPost.mockImplementation((path: string) => {
+      if (path === "/transactions/recategorize") {
+        return Promise.resolve({ recategorized: 2 });
+      }
+      return Promise.resolve({});
+    });
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Recategorize date range/i }));
+
+    fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-01-01" } });
+    fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-01-31" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Run" }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith("/transactions/recategorize", {
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Recategorized 2 transactions.")).toBeInTheDocument();
+    });
+  });
 });
