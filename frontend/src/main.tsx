@@ -7,6 +7,10 @@ import { AuthProvider } from "./contexts/AuthProvider";
 import { router } from "./router";
 import "./index.css";
 
+if (localStorage.getItem("theme") === "dark") {
+  document.documentElement.classList.add("dark");
+}
+
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("Root element not found");
 

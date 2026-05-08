@@ -1,6 +1,8 @@
 import { Link } from "react-router";
+import { Moon, Sun } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useLogout } from "../hooks/useLogout";
+import { useAppStore } from "../store/appStore";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "../components/DateRangePicker";
 import { SummaryMetricsWidget } from "../components/SummaryMetricsWidget";
@@ -22,6 +24,8 @@ const TEXT = {
 export function DashboardPage() {
   const { user } = useAuth();
   const { mutate: logout, isPending } = useLogout();
+  const theme = useAppStore((s) => s.theme);
+  const toggleTheme = useAppStore((s) => s.toggleTheme);
 
   return (
     <main className="min-h-screen bg-background">
@@ -49,6 +53,9 @@ export function DashboardPage() {
                 {label}
               </Link>
             ))}
+            <Button variant="outline" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
             <Button variant="outline" size="sm" disabled={isPending} onClick={() => logout()}>
               {isPending ? TEXT.signingOut : TEXT.signOut}
             </Button>
