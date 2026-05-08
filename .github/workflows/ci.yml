@@ -250,21 +250,23 @@ jobs:
       - name: Build coverage markdown
         run: |
           set -euo pipefail
-          BACK_SUM="artifacts/backend/coverage/coverage-summary.json"
-          FRONT_SUM="artifacts/frontend/coverage/coverage-summary.json"
+          BACK_SUM=$(find artifacts/backend -type f -name coverage-summary.json | head -n1)
+          FRONT_SUM=$(find artifacts/frontend -type f -name coverage-summary.json | head -n1)
           BACK_BASE_FILE=".coverage-baselines/backend-summary.json"
           FRONT_BASE_FILE=".coverage-baselines/frontend-summary.json"
 
-          for f in "$BACK_SUM" "$FRONT_SUM"; do
-            if [ ! -f "$f" ]; then
-              echo "::error::Missing coverage summary: $f"
-              exit 1
-            fi
-            if ! jq empty "$f" 2>/dev/null; then
-              echo "::error::Malformed coverage summary: $f"
-              exit 1
-            fi
-          done
+          if [ -z "$BACK_SUM" ] || [ ! -f "$BACK_SUM" ]; then
+            echo "::error::backend coverage-summary.json missing in downloaded artifact"
+            ls -R artifacts/backend || true
+            exit 1
+          fi
+          if [ -z "$FRONT_SUM" ] || [ ! -f "$FRONT_SUM" ]; then
+            echo "::error::frontend coverage-summary.json missing in downloaded artifact"
+            ls -R artifacts/frontend || true
+            exit 1
+          fi
+          jq empty "$BACK_SUM" || { echo "::error::malformed $BACK_SUM"; exit 1; }
+          jq empty "$FRONT_SUM" || { echo "::error::malformed $FRONT_SUM"; exit 1; }
 
           {
             echo "<!-- coverage-report -->"
@@ -324,8 +326,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .coverage-baselines
-          cp artifacts/backend/coverage/coverage-summary.json .coverage-baselines/backend-summary.json
-          cp artifacts/frontend/coverage/coverage-summary.json .coverage-baselines/frontend-summary.json
+          BACK_SUM=$(find artifacts/backend -type f -name coverage-summary.json | head -n1)
+          FRONT_SUM=$(find artifacts/frontend -type f -name coverage-summary.json | head -n1)
+          [ -n "$BACK_SUM" ] || { echo "::error::backend coverage-summary.json missing in artifact"; exit 1; }
+          [ -n "$FRONT_SUM" ] || { echo "::error::frontend coverage-summary.json missing in artifact"; exit 1; }
+          cp "$BACK_SUM" .coverage-baselines/backend-summary.json
+          cp "$FRONT_SUM" .coverage-baselines/frontend-summary.json
           jq empty .coverage-baselines/backend-summary.json
           jq empty .coverage-baselines/frontend-summary.json
           BACK_PCT=$(jq -r '.total.lines.pct | tostring | split(".")[0]' .coverage-baselines/backend-summary.json)
