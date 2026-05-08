@@ -174,70 +174,60 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          BASE_REF: ${{ github.base_ref }}
         run: |
           set -euo pipefail
-          # current summaries
-          BACK_SUM=backend/coverage/coverage-summary.json
-          FRONT_SUM=frontend/coverage/coverage-summary.json
 
-          # fetch baseline summaries from develop branch if present
-          git fetch origin develop:develop || true
-          BASE_BACK=coverage/baseline-backend-summary.json
-          BASE_FRONT=coverage/baseline-frontend-summary.json
-          if [ -f develop/$BASE_BACK ]; then
-            cp develop/$BASE_BACK /tmp/base-back.json
-          else
-            echo "No backend baseline in develop"
-          fi
-          if [ -f develop/$BASE_FRONT ]; then
-            cp develop/$BASE_FRONT /tmp/base-front.json
-          else
-            echo "No frontend baseline in develop"
-          fi
+          # fetch baseline summaries from develop branch
+          git fetch origin develop:develop 2>/dev/null || true
 
-          make_report() {
-            local CURRENT=$1
-            local BASE=$2
-            local NAME=$3
-            if [ ! -f "$CURRENT" ]; then
-              echo "No current summary for $NAME"
-              return
+          # generate coverage report markdown
+          {
+            echo "## 📊 Test Coverage Report"
+            echo ""
+            echo "| Module | Current | Baseline | Delta |"
+            echo "|--------|---------|----------|-------|"
+            
+            # process backend coverage
+            if [ -f backend/coverage/coverage-summary.json ]; then
+              BACK_CUR=$(jq -r '.total.lines.pct' backend/coverage/coverage-summary.json)
+              if [ -f develop/coverage/baseline-backend-summary.json ]; then
+                BACK_BASE=$(jq -r '.total.lines.pct' develop/coverage/baseline-backend-summary.json)
+                BACK_DELTA=$(printf "%.2f" "$(echo "$BACK_CUR - $BACK_BASE" | bc -l)")
+                echo "| Backend | $BACK_CUR% | $BACK_BASE% | $BACK_DELTA% |"
+              else
+                echo "| Backend | $BACK_CUR% | - | - |"
+              fi
             fi
-            cur_overall=$(jq -r '.total.lines.pct' "$CURRENT")
-            per=$(jq -r 'to_entries[] | select(.key != "total") | "\(.key) \(.value.lines.pct)"' "$CURRENT" )
-            if [ -f "$BASE" ]; then
-              base_overall=$(jq -r '.total.lines.pct' "$BASE")
-              delta=$(printf "%.2f" "$(echo "$cur_overall - $base_overall" | bc -l)")
-            else
-              base_overall=null
-              delta=null
+            
+            # process frontend coverage
+            if [ -f frontend/coverage/coverage-summary.json ]; then
+              FRONT_CUR=$(jq -r '.total.lines.pct' frontend/coverage/coverage-summary.json)
+              if [ -f develop/coverage/baseline-frontend-summary.json ]; then
+                FRONT_BASE=$(jq -r '.total.lines.pct' develop/coverage/baseline-frontend-summary.json)
+                FRONT_DELTA=$(printf "%.2f" "$(echo "$FRONT_CUR - $FRONT_BASE" | bc -l)")
+                echo "| Frontend | $FRONT_CUR% | $FRONT_BASE% | $FRONT_DELTA% |"
+              else
+                echo "| Frontend | $FRONT_CUR% | - | - |"
+              fi
             fi
-            echo "$NAME|$base_overall|$cur_overall|$delta|$per"
-          }
-
-          report_backend=$(make_report "$BACK_SUM" "/tmp/base-back.json" "Backend") || true
-          report_frontend=$(make_report "$FRONT_SUM" "/tmp/base-front.json" "Frontend") || true
-
-          body="## Coverage Report\n\n"
-          for r in "$report_backend" "$report_frontend"; do
-            if [ -z "$r" ] || [ "$r" = "null" ]; then
-              continue
+            
+            # backend breakdown
+            if [ -f backend/coverage/coverage-summary.json ]; then
+              echo ""
+              echo "#### Backend Per-File Coverage"
+              jq -r 'to_entries[] | select(.key != "total") | "- **\(.key)**: \(.value.lines.pct)%"' backend/coverage/coverage-summary.json | head -20 || true
             fi
-            IFS='|' read -r name base cur delta perlines <<< "$r"
-            body+="**$name** — baseline: ${base:-N/A}%, current: ${cur:-N/A}%, delta: ${delta:-N/A}%\n\n"
-            if [ -n "$perlines" ]; then
-              body+="**Per-file (lines%)**\n\n"
-              echo "$perlines" | while read -r line; do
-                file=$(echo "$line" | awk '{print $1}')
-                pct=$(echo "$line" | awk '{print $2}')
-                body+="- $file: $pct%\n"
-              done
-              body+="\n"
+            
+            # frontend breakdown
+            if [ -f frontend/coverage/coverage-summary.json ]; then
+              echo ""
+              echo "#### Frontend Per-File Coverage"
+              jq -r 'to_entries[] | select(.key != "total") | "- **\(.key)**: \(.value.lines.pct)%"' frontend/coverage/coverage-summary.json | head -20 || true
             fi
-          done
+          } > /tmp/coverage_report.md
 
-          # post comment
+          # post comment to PR
+          body=$(cat /tmp/coverage_report.md)
           payload=$(jq -n --arg body "$body" '{body: $body}')
           curl -s -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/json" --data "$payload" "https://api.github.com/repos/$REPO/issues/$PR_NUMBER/comments"
 
