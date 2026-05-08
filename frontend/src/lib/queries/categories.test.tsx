@@ -53,6 +53,10 @@ describe("category mutations", () => {
           expect.objectContaining({ queryKey: ["dashboard"] }),
         );
       });
+
+      expect(invalidateSpy).not.toHaveBeenCalledWith(
+        expect.objectContaining({ queryKey: ["category-rules"] }),
+      );
     });
 
     it("does not invalidate any queries on failure", async () => {
