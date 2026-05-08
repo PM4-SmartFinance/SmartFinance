@@ -72,6 +72,36 @@ export async function categoryRuleRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
+  app.get<{
+    Querystring: { pattern: string; matchType: MatchType; excludeRuleId?: string };
+  }>(
+    "/category-rules/overlap",
+    {
+      preHandler: requireRole("USER"),
+      schema: {
+        querystring: {
+          type: "object",
+          required: ["pattern", "matchType"],
+          properties: {
+            pattern: { type: "string", minLength: 1 },
+            matchType: { type: "string", enum: ["exact", "contains"] },
+            excludeRuleId: { type: "string", pattern: uuidPattern },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const session = request.session.get("user")!;
+      const { pattern, matchType, excludeRuleId } = request.query;
+      const conflicts = await categoryRuleService.findOverlappingRules(session.id, {
+        pattern,
+        matchType,
+        excludeRuleId,
+      });
+      return reply.send({ conflicts });
+    },
+  );
+
   app.get<{ Params: RuleParams }>(
     "/category-rules/:id",
     { preHandler: requireRole("USER"), schema: { params: ruleParamsSchema } },

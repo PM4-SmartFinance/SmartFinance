@@ -92,3 +92,60 @@ export async function previewRule(
   }
   return transactionRepository.findPreviewMatchesForUser(userId, rule.pattern, rule.matchType, 3);
 }
+
+export interface RuleOverlap {
+  id: string;
+  pattern: string;
+  matchType: MatchType;
+  priority: number;
+  categoryId: string;
+  categoryName: string;
+}
+
+/**
+ * Two patterns overlap when at least one merchant string can satisfy both
+ * rules. Used by the rule editor to warn the user about conflicting rules
+ * without blocking the save (priority disambiguates at evaluation time).
+ *
+ * Heuristic — case-insensitive:
+ *  - exact A   vs exact B   : overlap iff A === B
+ *  - exact A   vs contains B: overlap iff A includes B
+ *  - contains A vs exact B  : overlap iff B includes A
+ *  - contains A vs contains B: overlap iff either includes the other
+ */
+export function patternsOverlap(
+  a: { pattern: string; matchType: MatchType },
+  b: { pattern: string; matchType: MatchType },
+): boolean {
+  const ap = a.pattern.toLowerCase();
+  const bp = b.pattern.toLowerCase();
+  if (a.matchType === "exact" && b.matchType === "exact") return ap === bp;
+  if (a.matchType === "exact" && b.matchType === "contains") return ap.includes(bp);
+  if (a.matchType === "contains" && b.matchType === "exact") return bp.includes(ap);
+  return ap.includes(bp) || bp.includes(ap);
+}
+
+export async function findOverlappingRules(
+  userId: string,
+  candidate: { pattern: string; matchType: MatchType; excludeRuleId?: string },
+): Promise<RuleOverlap[]> {
+  if (candidate.pattern.trim().length === 0) return [];
+
+  const all = await categoryRuleRepository.findAllByUser(userId);
+  return all
+    .filter((rule) => rule.id !== candidate.excludeRuleId)
+    .filter((rule) =>
+      patternsOverlap(
+        { pattern: candidate.pattern, matchType: candidate.matchType },
+        { pattern: rule.pattern, matchType: rule.matchType as MatchType },
+      ),
+    )
+    .map((rule) => ({
+      id: rule.id,
+      pattern: rule.pattern,
+      matchType: rule.matchType as MatchType,
+      priority: rule.priority,
+      categoryId: rule.categoryId,
+      categoryName: rule.category.categoryName,
+    }));
+}
