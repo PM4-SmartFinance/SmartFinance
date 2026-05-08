@@ -293,6 +293,33 @@ describe("category-rule.service", () => {
         ),
       ).toBe(false);
     });
+
+    it("returns true when contains pattern is a substring of an exact pattern (mirror direction)", () => {
+      // Mirrors the exact-vs-contains case to pin both branches independently.
+      expect(
+        service.patternsOverlap(
+          { pattern: "coop", matchType: "contains" },
+          { pattern: "Coop Migros", matchType: "exact" },
+        ),
+      ).toBe(true);
+    });
+
+    it("returns false when either pattern is empty (defence-in-depth)", () => {
+      // The boundary validates `minLength: 1`, but a stored empty `contains`
+      // pattern would otherwise overlap everything via includes("").
+      expect(
+        service.patternsOverlap(
+          { pattern: "", matchType: "contains" },
+          { pattern: "anything", matchType: "contains" },
+        ),
+      ).toBe(false);
+      expect(
+        service.patternsOverlap(
+          { pattern: "anything", matchType: "exact" },
+          { pattern: "", matchType: "exact" },
+        ),
+      ).toBe(false);
+    });
   });
 
   describe("findOverlappingRules", () => {

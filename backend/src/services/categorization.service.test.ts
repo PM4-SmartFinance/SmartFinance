@@ -452,6 +452,31 @@ describe("recategorizeRange", () => {
     expect(mockTxRepo.bulkSetCategory).not.toHaveBeenCalled();
   });
 
+  it("skips transactions with a null merchant in the range without throwing", async () => {
+    mockRuleRepo.findAllByUser.mockResolvedValue([
+      {
+        ...rule("Migros", "contains", "cat-1", 10),
+        id: "r1",
+        userId: "user-1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        category: { id: "cat-1", categoryName: "Groceries" },
+      },
+    ] as unknown as Awaited<ReturnType<typeof ruleRepo.findAllByUser>>);
+    mockTxRepo.findCategorizableInRange.mockResolvedValue([
+      { id: "tx-1", categoryId: null, merchant: null },
+      { id: "tx-2", categoryId: null, merchant: { name: "Migros" } },
+    ] as unknown as Awaited<ReturnType<typeof txRepo.findCategorizableInRange>>);
+    mockTxRepo.bulkSetCategory.mockResolvedValueOnce(1);
+
+    const result = await recategorizeRange("user-1", "2026-01-01", "2026-01-31");
+
+    expect(result).toEqual({ recategorized: 1 });
+    expect(mockTxRepo.bulkSetCategory).toHaveBeenCalledWith("user-1", [
+      { id: "tx-2", categoryId: "cat-1" },
+    ]);
+  });
+
   it("respects rule priority order (highest priority wins, not category alphabetical)", async () => {
     // Higher-priority rule appears first because findAllByUser returns
     // priority-desc. recategorizeRange must use that ordering when matching.
