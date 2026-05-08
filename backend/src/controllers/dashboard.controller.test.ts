@@ -15,21 +15,21 @@ vi.mock("../services/dashboard.service.js", () => ({
 // per-test without rebuilding the app.
 let rejectAuth = false;
 
-vi.mock("../middleware/rbac.js", () => ({
-  requireRole: () => async (request: FastifyRequest) => {
-    if (rejectAuth) throw new ServiceError(401, "Unauthorized");
-    request.session.set("user", { id: "user-1", role: "USER", email: "test@example.com" });
-  },
-  requireOwnerOrAdmin: () => async (request: FastifyRequest) => {
-    if (rejectAuth) throw new ServiceError(401, "Unauthorized");
-    request.session.set("user", { id: "user-1", role: "USER", email: "test@example.com" });
-  },
-  getSessionUser: (request: FastifyRequest) => {
-    const user = request.session.get("user");
-    if (!user) throw new ServiceError(401, "Unauthorized");
-    return user;
-  },
-}));
+vi.mock("../middleware/rbac.js", async () => {
+  const actual =
+    await vi.importActual<typeof import("../middleware/rbac.js")>("../middleware/rbac.js");
+  return {
+    ...actual,
+    requireRole: () => async (request: FastifyRequest) => {
+      if (rejectAuth) throw new ServiceError(401, "Unauthorized");
+      request.session.set("user", { id: "user-1", role: "USER", email: "test@example.com" });
+    },
+    requireOwnerOrAdmin: () => async (request: FastifyRequest) => {
+      if (rejectAuth) throw new ServiceError(401, "Unauthorized");
+      request.session.set("user", { id: "user-1", role: "USER", email: "test@example.com" });
+    },
+  };
+});
 
 import { buildApp } from "../app.js";
 import * as dashboardService from "../services/dashboard.service.js";
