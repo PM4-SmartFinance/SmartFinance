@@ -9,7 +9,8 @@ import "./index.css";
 
 const storedTheme = localStorage.getItem("theme");
 const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-if (storedTheme === "dark" || (storedTheme === "system" && prefersDark)) {
+const isSystem = storedTheme === "system" || storedTheme === null;
+if (storedTheme === "dark" || (isSystem && prefersDark)) {
   document.documentElement.classList.add("dark");
 }
 
