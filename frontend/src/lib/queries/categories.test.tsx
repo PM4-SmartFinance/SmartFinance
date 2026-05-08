@@ -3,7 +3,16 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactNode } from "react";
-import { useCreateCategory, useDeleteCategory, useUpdateCategory } from "./categories";
+import {
+  useAutoCategorize,
+  useCreateCategory,
+  useCreateCategoryRule,
+  useDeleteCategory,
+  useDeleteCategoryRule,
+  useRecategorizeRange,
+  useUpdateCategory,
+  useUpdateCategoryRule,
+} from "./categories";
 import { api } from "../api";
 
 vi.mock("../api");
@@ -175,6 +184,172 @@ describe("category mutations", () => {
       });
 
       expect(invalidateSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("useAutoCategorize", () => {
+    it("invalidates transactions and dashboard on success", async () => {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+      });
+      const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+      mockPost.mockResolvedValue({ categorized: 3 });
+
+      const { result } = renderHook(() => useAutoCategorize(), {
+        wrapper: createWrapper(queryClient),
+      });
+
+      result.current.mutate();
+
+      await waitFor(() => {
+        expect(invalidateSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ queryKey: ["transactions"] }),
+        );
+        expect(invalidateSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ queryKey: ["dashboard"] }),
+        );
+      });
+    });
+
+    it("does not invalidate any queries on failure", async () => {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+      });
+      const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+      mockPost.mockRejectedValue(new Error("Auto-categorize failed"));
+
+      const { result } = renderHook(() => useAutoCategorize(), {
+        wrapper: createWrapper(queryClient),
+      });
+
+      result.current.mutate();
+
+      await waitFor(() => {
+        expect(result.current.isError).toBe(true);
+      });
+
+      expect(invalidateSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("useRecategorizeRange", () => {
+    it("invalidates transactions and dashboard on success", async () => {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+      });
+      const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+      mockPost.mockResolvedValue({ recategorized: 2 });
+
+      const { result } = renderHook(() => useRecategorizeRange(), {
+        wrapper: createWrapper(queryClient),
+      });
+
+      result.current.mutate({ startDate: "2026-01-01", endDate: "2026-01-31" });
+
+      await waitFor(() => {
+        expect(invalidateSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ queryKey: ["transactions"] }),
+        );
+        expect(invalidateSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ queryKey: ["dashboard"] }),
+        );
+      });
+    });
+
+    it("does not invalidate any queries on failure", async () => {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+      });
+      const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+      mockPost.mockRejectedValue(new Error("Recategorize failed"));
+
+      const { result } = renderHook(() => useRecategorizeRange(), {
+        wrapper: createWrapper(queryClient),
+      });
+
+      result.current.mutate({ startDate: "2026-01-01", endDate: "2026-01-31" });
+
+      await waitFor(() => {
+        expect(result.current.isError).toBe(true);
+      });
+
+      expect(invalidateSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("rule mutations", () => {
+    it("useCreateCategoryRule invalidates rules and dashboard on success", async () => {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+      });
+      const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+      mockPost.mockResolvedValue({ rule: { id: "r1" } });
+
+      const { result } = renderHook(() => useCreateCategoryRule(), {
+        wrapper: createWrapper(queryClient),
+      });
+
+      result.current.mutate({
+        pattern: "coop",
+        matchType: "contains",
+        categoryId: "cat-1",
+        priority: 0,
+      });
+
+      await waitFor(() => {
+        expect(invalidateSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ queryKey: ["category-rules"] }),
+        );
+        expect(invalidateSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ queryKey: ["dashboard"] }),
+        );
+      });
+    });
+
+    it("useUpdateCategoryRule invalidates rules and dashboard on success", async () => {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+      });
+      const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+      mockPatch.mockResolvedValue({ rule: { id: "r1" } });
+
+      const { result } = renderHook(() => useUpdateCategoryRule(), {
+        wrapper: createWrapper(queryClient),
+      });
+
+      result.current.mutate({ id: "r1", draft: { priority: 5 } });
+
+      await waitFor(() => {
+        expect(invalidateSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ queryKey: ["category-rules"] }),
+        );
+        expect(invalidateSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ queryKey: ["dashboard"] }),
+        );
+      });
+    });
+
+    it("useDeleteCategoryRule invalidates rules and dashboard on success", async () => {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+      });
+      const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+      mockDelete.mockResolvedValue({});
+
+      const { result } = renderHook(() => useDeleteCategoryRule(), {
+        wrapper: createWrapper(queryClient),
+      });
+
+      result.current.mutate("r1");
+
+      await waitFor(() => {
+        expect(invalidateSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ queryKey: ["category-rules"] }),
+        );
+        expect(invalidateSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ queryKey: ["dashboard"] }),
+        );
+      });
     });
   });
 });
