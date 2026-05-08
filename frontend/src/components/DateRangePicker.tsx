@@ -1,15 +1,8 @@
 import { useAppStore } from "../store/appStore";
-import { formatLocalDate, subDays, subMonths } from "../lib/date";
+import { formatLocalDate } from "../lib/date";
+import { PRESETS } from "../lib/datePresets";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
-
-const PRESETS = [
-  { label: "Last 7 days", key: "7d", start: () => subDays(new Date(), 7) },
-  { label: "Last 30 days", key: "30d", start: () => subDays(new Date(), 30) },
-  { label: "Last 3 months", key: "3m", start: () => subMonths(new Date(), 3) },
-  { label: "Last year", key: "1y", start: () => subMonths(new Date(), 12) },
-  { label: "Custom", key: "custom", start: null },
-] as const;
 
 export function DateRangePicker() {
   const startDate = useAppStore((s) => s.startDate);
@@ -17,21 +10,21 @@ export function DateRangePicker() {
   const activePresetKey = useAppStore((s) => s.activePresetKey);
   const setDateRange = useAppStore((s) => s.setDateRange);
 
-  const handlePreset = (key: string) => {
-    const preset = PRESETS.find((p) => p.key === key);
-    if (!preset) return;
+  const handlePreset = (preset: (typeof PRESETS)[number]) => {
     if (preset.start === null) {
       setDateRange(startDate, endDate, "custom");
       return;
     }
-    setDateRange(formatLocalDate(preset.start()), formatLocalDate(new Date()), key);
+    setDateRange(formatLocalDate(preset.start()), formatLocalDate(new Date()), preset.key);
   };
 
   const handleCustomStart = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.value) return;
     setDateRange(e.target.value, endDate, "custom");
   };
 
   const handleCustomEnd = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.value) return;
     setDateRange(startDate, e.target.value, "custom");
   };
 
@@ -44,7 +37,8 @@ export function DateRangePicker() {
               key={preset.key}
               variant={activePresetKey === preset.key ? "default" : "outline"}
               size="sm"
-              onClick={() => handlePreset(preset.key)}
+              aria-pressed={activePresetKey === preset.key}
+              onClick={() => handlePreset(preset)}
             >
               {preset.label}
             </Button>
