@@ -16,6 +16,9 @@ export default defineConfig({
     },
     coverage: {
       provider: "v8",
+      reportsDirectory: "coverage",
+      reporter: ["text", "html", "lcov", "json-summary"],
+      all: true,
       thresholds: {
         lines: 70,
         functions: 70,
