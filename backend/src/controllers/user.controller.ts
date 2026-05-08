@@ -1,7 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { requireRole, requireOwnerOrAdmin, getSessionUser } from "../middleware/rbac.js";
 import * as userService from "../services/user.service.js";
-import { ServiceError } from "../errors.js";
 
 interface UserParams {
   id: string;
@@ -123,8 +122,7 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
     "/users/me",
     { preHandler: requireRole("USER"), schema: { body: updateProfileSchema } },
     async (request, reply) => {
-      const sessionUser = request.session.get("user");
-      if (!sessionUser) throw new ServiceError(401, "Unauthorized");
+      const sessionUser = getSessionUser(request);
 
       const { displayName, email } = request.body;
       const updated = await userService.updateProfile(sessionUser.id, {
@@ -149,8 +147,7 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
     "/users/me/change-password",
     { preHandler: requireRole("USER"), schema: { body: changePasswordSchema } },
     async (request, reply) => {
-      const sessionUser = request.session.get("user");
-      if (!sessionUser) throw new ServiceError(401, "Unauthorized");
+      const sessionUser = getSessionUser(request);
 
       await userService.changePassword(
         sessionUser.id,
@@ -179,6 +176,7 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
       },
     },
     async (request, reply) => {
+      // NOTE: do not use getSessionUser here — bootstrap must allow an absent session.
       const sessionUser = request.session.get("user") ?? null;
       // Bootstrap is unauthenticated — the first user is always ADMIN and any
       // caller-supplied `role` is irrelevant. Drop it defensively so no code

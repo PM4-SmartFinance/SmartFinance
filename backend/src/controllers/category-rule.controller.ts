@@ -91,7 +91,7 @@ export async function categoryRuleRoutes(app: FastifyInstance): Promise<void> {
       },
     },
     async (request, reply) => {
-      const session = request.session.get("user")!;
+      const session = getSessionUser(request);
       const { pattern, matchType, excludeRuleId } = request.query;
       const conflicts = await categoryRuleService.findOverlappingRules(session.id, {
         pattern,
