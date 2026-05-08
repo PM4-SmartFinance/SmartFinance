@@ -245,118 +245,131 @@ jobs:
           path: artifacts/backend
 
       - name: Install jq and bc
-        run: sudo apt-get update && sudo apt-get install -y jq bc
+        run: sudo apt-get update -qq && sudo apt-get install -y jq bc
 
-      - name: Generate and post coverage report
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+      - name: Build coverage markdown
         run: |
           set -euo pipefail
-          # locate coverage-summary.json files
-          BACK_SUM=$(find artifacts -type f -name coverage-summary.json | grep backend || true)
-          FRONT_SUM=$(find artifacts -type f -name coverage-summary.json | grep frontend || true)
+          BACK_SUM="artifacts/backend/coverage/coverage-summary.json"
+          FRONT_SUM="artifacts/frontend/coverage/coverage-summary.json"
+          BACK_BASE_FILE=".coverage-baselines/backend-summary.json"
+          FRONT_BASE_FILE=".coverage-baselines/frontend-summary.json"
 
-          # build markdown
-          echo "## Test Coverage Report" > /tmp/coverage_report.md
-          echo "" >> /tmp/coverage_report.md
-          echo "| Module | Current | Baseline | Delta |" >> /tmp/coverage_report.md
-          echo "|--------|---------|----------|-------|" >> /tmp/coverage_report.md
-
-          if [ -n "$BACK_SUM" ] && [ -f "$BACK_SUM" ]; then
-            BACK_CUR=$(jq -r '.total.lines.pct' "$BACK_SUM")
-            if [ -f coverage/baseline-backend-summary.json ]; then
-              BACK_BASE=$(jq -r '.total.lines.pct' coverage/baseline-backend-summary.json)
-              BACK_DELTA=$(printf "%.2f" "$(echo "$BACK_CUR - $BACK_BASE" | bc -l)")
-              echo "| Backend | $BACK_CUR% | $BACK_BASE% | $BACK_DELTA% |" >> /tmp/coverage_report.md
-            else
-              echo "| Backend | $BACK_CUR% | - | - |" >> /tmp/coverage_report.md
+          for f in "$BACK_SUM" "$FRONT_SUM"; do
+            if [ ! -f "$f" ]; then
+              echo "::error::Missing coverage summary: $f"
+              exit 1
             fi
-          fi
-
-          if [ -n "$FRONT_SUM" ] && [ -f "$FRONT_SUM" ]; then
-            FRONT_CUR=$(jq -r '.total.lines.pct' "$FRONT_SUM")
-            if [ -f coverage/baseline-frontend-summary.json ]; then
-              FRONT_BASE=$(jq -r '.total.lines.pct' coverage/baseline-frontend-summary.json)
-              FRONT_DELTA=$(printf "%.2f" "$(echo "$FRONT_CUR - $FRONT_BASE" | bc -l)")
-              echo "| Frontend | $FRONT_CUR% | $FRONT_BASE% | $FRONT_DELTA% |" >> /tmp/coverage_report.md
-            else
-              echo "| Frontend | $FRONT_CUR% | - | - |" >> /tmp/coverage_report.md
+            if ! jq empty "$f" 2>/dev/null; then
+              echo "::error::Malformed coverage summary: $f"
+              exit 1
             fi
+          done
+
+          {
+            echo "<!-- coverage-report -->"
+            echo "## Test Coverage Report"
+            echo ""
+            echo "| Module | Current | Baseline | Delta |"
+            echo "|--------|---------|----------|-------|"
+          } > coverage_report.md
+
+          BACK_CUR=$(jq -r '.total.lines.pct' "$BACK_SUM")
+          FRONT_CUR=$(jq -r '.total.lines.pct' "$FRONT_SUM")
+
+          if [ -f "$BACK_BASE_FILE" ]; then
+            BACK_BASE=$(jq -r '.total.lines.pct' "$BACK_BASE_FILE")
+            BACK_DELTA=$(LC_ALL=C printf "%.2f" "$(echo "$BACK_CUR - $BACK_BASE" | bc -l)")
+            echo "| Backend | ${BACK_CUR}% | ${BACK_BASE}% | ${BACK_DELTA}% |" >> coverage_report.md
+          else
+            echo "| Backend | ${BACK_CUR}% | - | - |" >> coverage_report.md
           fi
 
-          if [ -n "$BACK_SUM" ] && [ -f "$BACK_SUM" ]; then
-            echo "" >> /tmp/coverage_report.md
-            echo "#### Backend Per-File Coverage" >> /tmp/coverage_report.md
-            jq -r 'to_entries[] | select(.key != "total") | "- **\(.key)**: \(.value.lines.pct)%"' "$BACK_SUM" | head -20 >> /tmp/coverage_report.md || true
+          if [ -f "$FRONT_BASE_FILE" ]; then
+            FRONT_BASE=$(jq -r '.total.lines.pct' "$FRONT_BASE_FILE")
+            FRONT_DELTA=$(LC_ALL=C printf "%.2f" "$(echo "$FRONT_CUR - $FRONT_BASE" | bc -l)")
+            echo "| Frontend | ${FRONT_CUR}% | ${FRONT_BASE}% | ${FRONT_DELTA}% |" >> coverage_report.md
+          else
+            echo "| Frontend | ${FRONT_CUR}% | - | - |" >> coverage_report.md
           fi
 
-          if [ -n "$FRONT_SUM" ] && [ -f "$FRONT_SUM" ]; then
-            echo "" >> /tmp/coverage_report.md
-            echo "#### Frontend Per-File Coverage" >> /tmp/coverage_report.md
-            jq -r 'to_entries[] | select(.key != "total") | "- **\(.key)**: \(.value.lines.pct)%"' "$FRONT_SUM" | head -20 >> /tmp/coverage_report.md || true
-          fi
+          {
+            echo ""
+            echo "<details><summary>Backend per-file coverage (lowest first)</summary>"
+            echo ""
+            jq -r 'to_entries[] | select(.key != "total") | [.value.lines.pct, .key] | "\(.[0])\t\(.[1])"' "$BACK_SUM" \
+              | sort -n \
+              | awk -F'\t' '{ printf("- **%s**: %s%%\n", $2, $1) }'
+            echo ""
+            echo "</details>"
+            echo ""
+            echo "<details><summary>Frontend per-file coverage (lowest first)</summary>"
+            echo ""
+            jq -r 'to_entries[] | select(.key != "total") | [.value.lines.pct, .key] | "\(.[0])\t\(.[1])"' "$FRONT_SUM" \
+              | sort -n \
+              | awk -F'\t' '{ printf("- **%s**: %s%%\n", $2, $1) }'
+            echo ""
+            echo "</details>"
+          } >> coverage_report.md
 
-          # post if PR
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            body=$(cat /tmp/coverage_report.md)
-            payload=$(jq -n --arg body "$body" '{body: $body}')
-            curl -s -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/json" --data "$payload" "https://api.github.com/repos/$REPO/issues/${{ github.event.pull_request.number }}/comments"
-          fi
+      - name: Post sticky coverage comment
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: coverage-report
+          path: coverage_report.md
 
-      - name: Generate badges and update baselines (on develop push)
+      - name: Generate badges and stage baselines (on develop push)
         if: github.ref == 'refs/heads/develop' && success()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          mkdir -p coverage
-          # copy summaries if present
-          if [ -f artifacts/backend/coverage/coverage-summary.json ]; then
-            cp artifacts/backend/coverage/coverage-summary.json coverage/baseline-backend-summary.json
-          fi
-          if [ -f artifacts/frontend/coverage/coverage-summary.json ]; then
-            cp artifacts/frontend/coverage/coverage-summary.json coverage/baseline-frontend-summary.json
-          fi
-          # derive percentages
-          back_pct=0
-          front_pct=0
-          if [ -f coverage/baseline-backend-summary.json ]; then
-            back_pct=$(jq -r '.total.lines.pct' coverage/baseline-backend-summary.json)
-          fi
-          if [ -f coverage/baseline-frontend-summary.json ]; then
-            front_pct=$(jq -r '.total.lines.pct' coverage/baseline-frontend-summary.json)
-          fi
+          mkdir -p .coverage-baselines
+          cp artifacts/backend/coverage/coverage-summary.json .coverage-baselines/backend-summary.json
+          cp artifacts/frontend/coverage/coverage-summary.json .coverage-baselines/frontend-summary.json
+          jq empty .coverage-baselines/backend-summary.json
+          jq empty .coverage-baselines/frontend-summary.json
+          BACK_PCT=$(jq -r '.total.lines.pct | tostring | split(".")[0]' .coverage-baselines/backend-summary.json)
+          FRONT_PCT=$(jq -r '.total.lines.pct | tostring | split(".")[0]' .coverage-baselines/frontend-summary.json)
           cat > backend-coverage-badge.svg <<EOF
           <svg xmlns="http://www.w3.org/2000/svg" width="140" height="20">
             <rect width="70" height="20" fill="#555" />
             <rect x="70" width="70" height="20" fill="#4c1" />
             <g fill="#fff" text-anchor="middle" font-family="Verdana" font-size="11">
               <text x="35" y="14">backend</text>
-              <text x="105" y="14">${back_pct}%</text>
+              <text x="105" y="14">${BACK_PCT}%</text>
             </g>
           </svg>
           EOF
-
           cat > frontend-coverage-badge.svg <<EOF
           <svg xmlns="http://www.w3.org/2000/svg" width="140" height="20">
             <rect width="70" height="20" fill="#555" />
             <rect x="70" width="70" height="20" fill="#4c1" />
             <g fill="#fff" text-anchor="middle" font-family="Verdana" font-size="11">
               <text x="35" y="14">frontend</text>
-              <text x="105" y="14">${front_pct}%</text>
+              <text x="105" y="14">${FRONT_PCT}%</text>
             </g>
           </svg>
           EOF
 
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add coverage/baseline-backend-summary.json coverage/baseline-frontend-summary.json backend-coverage-badge.svg frontend-coverage-badge.svg || true
-          git remote set-url origin https://${GITHUB_TOKEN}@github.com/${REPO}.git
-          if git commit -m "chore(ci): update coverage baselines and badges [skip ci]"; then
-            git push origin develop
-          else
-            echo "No baseline changes to commit"
-          fi
+      - name: Open baseline-update PR (on develop push)
+        if: github.ref == 'refs/heads/develop' && success()
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/coverage-baseline-update
+          base: develop
+          commit-message: "chore(ci): [KAN-140] update coverage baselines and badges"
+          title: "chore(ci): [KAN-140] update coverage baselines and badges"
+          body: |
+            Automated coverage baseline + badge update from latest develop run (commit ${{ github.sha }}).
+
+            Generated by the `coverage-report` job. Merge to refresh PR delta comparisons.
+          labels: |
+            chore
+            automated
+          add-paths: |
+            .coverage-baselines/backend-summary.json
+            .coverage-baselines/frontend-summary.json
+            backend-coverage-badge.svg
+            frontend-coverage-badge.svg
+          delete-branch: true
