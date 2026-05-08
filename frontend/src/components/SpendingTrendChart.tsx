@@ -452,44 +452,40 @@ export function SpendingTrendChart() {
           <ResponsiveContainer width="100%" height="100%">
             {chartStyle === "line" ? (
               <LineChart data={buckets} margin={{ top: 8, right: 16, left: 0, bottom: 32 }}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="hsl(var(--muted-foreground) / 0.2)"
-                  vertical={false}
-                />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis
                   dataKey="date"
                   tickFormatter={xAxisFormatter}
                   interval={tickInterval}
                   minTickGap={0}
                   height={48}
-                  stroke="hsl(var(--muted-foreground))"
+                  stroke="var(--border)"
                   style={{ fontSize: "12px" }}
                   tick={{
-                    fill: "hsl(var(--muted-foreground))",
+                    fill: "var(--foreground)",
                     angle: -35,
                     textAnchor: "end",
                   }}
                   tickMargin={8}
-                  axisLine={{ stroke: "hsl(var(--border))" }}
+                  axisLine={{ stroke: "var(--border)" }}
                 />
                 <YAxis
                   tickFormatter={formatYAxisValue}
                   domain={[0, "auto"]}
-                  stroke="hsl(var(--muted-foreground))"
+                  stroke="var(--border)"
                   style={{ fontSize: "13px" }}
-                  tick={{ fill: "hsl(var(--muted-foreground))" }}
-                  axisLine={{ stroke: "hsl(var(--border))" }}
+                  tick={{ fill: "var(--foreground)" }}
+                  axisLine={{ stroke: "var(--border)" }}
                   width={84}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "hsl(var(--background))",
-                    border: "1px solid hsl(var(--border))",
+                    backgroundColor: "var(--card)",
+                    border: "1px solid var(--border)",
                     borderRadius: "6px",
                     boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
                   }}
-                  labelStyle={{ color: "hsl(var(--foreground))" }}
+                  labelStyle={{ color: "var(--foreground)" }}
                   formatter={(value, name) => {
                     const num = Number(value);
                     return [isFinite(num) ? formatCurrency(num) : "—", name];
@@ -521,44 +517,40 @@ export function SpendingTrendChart() {
               </LineChart>
             ) : (
               <BarChart data={buckets} margin={{ top: 8, right: 16, left: 0, bottom: 32 }}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="hsl(var(--muted-foreground) / 0.2)"
-                  vertical={false}
-                />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis
                   dataKey="date"
                   tickFormatter={xAxisFormatter}
                   interval={tickInterval}
                   minTickGap={0}
                   height={48}
-                  stroke="hsl(var(--muted-foreground))"
+                  stroke="var(--border)"
                   style={{ fontSize: "12px" }}
                   tick={{
-                    fill: "hsl(var(--muted-foreground))",
+                    fill: "var(--foreground)",
                     angle: -35,
                     textAnchor: "end",
                   }}
                   tickMargin={8}
-                  axisLine={{ stroke: "hsl(var(--border))" }}
+                  axisLine={{ stroke: "var(--border)" }}
                 />
                 <YAxis
                   tickFormatter={formatYAxisValue}
                   domain={[0, "auto"]}
-                  stroke="hsl(var(--muted-foreground))"
+                  stroke="var(--border)"
                   style={{ fontSize: "13px" }}
-                  tick={{ fill: "hsl(var(--muted-foreground))" }}
-                  axisLine={{ stroke: "hsl(var(--border))" }}
+                  tick={{ fill: "var(--foreground)" }}
+                  axisLine={{ stroke: "var(--border)" }}
                   width={84}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "hsl(var(--background))",
-                    border: "1px solid hsl(var(--border))",
+                    backgroundColor: "var(--card)",
+                    border: "1px solid var(--border)",
                     borderRadius: "6px",
                     boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
                   }}
-                  labelStyle={{ color: "hsl(var(--foreground))" }}
+                  labelStyle={{ color: "var(--foreground)" }}
                   formatter={(value, name) => {
                     const num = Number(value);
                     return [isFinite(num) ? formatCurrency(num) : "—", name];
