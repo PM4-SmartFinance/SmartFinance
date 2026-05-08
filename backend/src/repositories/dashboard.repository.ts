@@ -104,16 +104,20 @@ export async function listDailyTrends(args: ListDailyTrendsArgs): Promise<DailyT
 }
 
 export interface CategoryTotalAggregate {
-  categoryId: string;
+  categoryId: string | null;
   categoryName: string;
   total: number;
+  isUncategorized?: boolean;
 }
 
 interface RawCategoryRow {
-  categoryId: string;
+  categoryId: string | null;
   categoryName: string;
   totalAmount: number | string;
+  isUncategorized: boolean;
 }
+
+const UNCATEGORIZED_LABEL = "Uncategorized";
 
 export async function getCategoryTotals(
   userId: string,
@@ -123,33 +127,72 @@ export async function getCategoryTotals(
   const startId = dateStringToId(startDate);
   const endId = dateStringToId(endDate);
 
-  // Using raw SQL to easily join FactTransactions with DimCategory.
+  // Two-part query merged via UNION ALL:
+  //  1) LEFT JOIN over the user's categories so zero-spend categories appear
+  //     with total = 0 (the chart should display every tracked category).
+  //  2) Synthetic "Uncategorized" row summing transactions with categoryId IS
+  //     NULL — surfaces money the user hasn't classified yet so they can act.
   //
-  // Note: `INNER JOIN` intentionally excludes transactions whose `categoryId`
-  // is NULL (uncategorized) as well as those whose category has been deleted
-  // (FactTransactions.categoryId has `onDelete: SetNull`). The
-  // spending-by-category chart is meaningless for rows without a category,
-  // so dropping them here is the intended product behaviour. The companion
-  // unit and integration tests assert this exclusion.
+  // Final ordering and filtering of the zero-total Uncategorized row happen
+  // in TypeScript (kept out of SQL to keep the query readable).
   const rows = await prisma.$queryRaw<RawCategoryRow[]>`
     SELECT
-      c.id AS "categoryId",
+      CAST(c.id AS TEXT) AS "categoryId",
       c."categoryName" AS "categoryName",
-      ROUND(ABS(SUM(t.amount)), 2)::double precision AS "totalAmount"
-    FROM "FactTransactions" t
-    INNER JOIN "DimCategory" c ON t."categoryId" = c.id
-    WHERE t."userId" = ${userId}
+      COALESCE(ROUND(ABS(SUM(t.amount)), 2)::double precision, 0) AS "totalAmount",
+      FALSE AS "isUncategorized"
+    FROM "DimCategory" c
+    LEFT JOIN "FactTransactions" t
+      ON t."categoryId" = c.id
+      AND t."userId" = ${userId}
       AND t."dateId" >= ${startId}
       AND t."dateId" <= ${endId}
       AND t.amount < 0
+    WHERE c."userId" = ${userId}
     GROUP BY c.id, c."categoryName"
-    ORDER BY "totalAmount" DESC
+
+    UNION ALL
+
+    SELECT
+      NULL::text AS "categoryId",
+      ${UNCATEGORIZED_LABEL} AS "categoryName",
+      COALESCE(ROUND(ABS(SUM(amount)), 2)::double precision, 0) AS "totalAmount",
+      TRUE AS "isUncategorized"
+    FROM "FactTransactions"
+    WHERE "userId" = ${userId}
+      AND "categoryId" IS NULL
+      AND "dateId" >= ${startId}
+      AND "dateId" <= ${endId}
+      AND amount < 0
   `;
 
-  // Map the raw postgres results to our TypeScript interface
-  return rows.map((r) => ({
-    categoryId: r.categoryId,
-    categoryName: r.categoryName,
-    total: Number(r.totalAmount),
-  }));
+  const categorized: CategoryTotalAggregate[] = [];
+  let uncategorized: CategoryTotalAggregate | null = null;
+
+  for (const r of rows) {
+    const total = Number(r.totalAmount);
+    if (r.isUncategorized) {
+      if (total > 0) {
+        uncategorized = {
+          categoryId: null,
+          categoryName: r.categoryName,
+          total,
+          isUncategorized: true,
+        };
+      }
+      continue;
+    }
+    categorized.push({
+      categoryId: r.categoryId,
+      categoryName: r.categoryName,
+      total,
+    });
+  }
+
+  categorized.sort((a, b) => {
+    if (a.total !== b.total) return b.total - a.total;
+    return a.categoryName.localeCompare(b.categoryName);
+  });
+
+  return uncategorized ? [...categorized, uncategorized] : categorized;
 }

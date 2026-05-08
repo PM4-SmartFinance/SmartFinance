@@ -326,6 +326,7 @@ describe("upload", () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
     });
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
     render(
       <QueryClientProvider client={queryClient}>
         <MemoryRouter>
@@ -349,6 +350,7 @@ describe("upload", () => {
     await userEvent.upload(input, makeCsvFile());
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
 
+    await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["budgets"] }));
     await waitFor(() => {
       expect(
         screen.queryByText(
@@ -435,6 +437,41 @@ describe("upload", () => {
     await userEvent.upload(input, makeCsvFile());
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
     await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["transactions"] }));
+  });
+
+  it("invalidates the budgets and dashboard caches on successful upload", async () => {
+    mockUpload.mockResolvedValue({ imported: 3 });
+    const { queryClient } = renderCard();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    await waitFor(() =>
+      expect(
+        screen.queryByText("No accounts found. Create an account first."),
+      ).not.toBeInTheDocument(),
+    );
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    await userEvent.upload(input, makeCsvFile());
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+    await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["budgets"] }));
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["dashboard"] });
+  });
+
+  it("renders a refresh hint when post-import invalidation fails", async () => {
+    mockUpload.mockResolvedValue({ imported: 3 });
+    const { queryClient } = renderCard();
+    vi.spyOn(queryClient, "invalidateQueries").mockRejectedValue(new Error("invalidation boom"));
+    await waitFor(() =>
+      expect(
+        screen.queryByText("No accounts found. Create an account first."),
+      ).not.toBeInTheDocument(),
+    );
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    await userEvent.upload(input, makeCsvFile());
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+    await waitFor(() =>
+      expect(
+        screen.getByText("Imported, but the dashboard may need a manual refresh."),
+      ).toBeInTheDocument(),
+    );
   });
 
   it("does not invalidate the transactions cache when upload fails", async () => {

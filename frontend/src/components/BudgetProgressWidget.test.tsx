@@ -17,6 +17,22 @@ vi.mock("../lib/queries/categories", () => ({
   useCategories: mockUseCategories,
 }));
 
+type Period = "DAILY" | "MONTHLY" | "YEARLY";
+type PeriodResult = {
+  isLoading: boolean;
+  error: Error | null;
+  data: { budgets: unknown[]; categorySpending: unknown[] } | undefined;
+};
+
+function setPeriods(map: Partial<Record<Period, PeriodResult>>) {
+  const fallback: PeriodResult = {
+    isLoading: false,
+    error: null,
+    data: { budgets: [], categorySpending: [] },
+  };
+  mockUseBudgets.mockImplementation(({ period }: { period: Period }) => map[period] ?? fallback);
+}
+
 function renderWidget() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -34,42 +50,69 @@ function renderWidget() {
 describe("BudgetProgressWidget", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseCategories.mockReturnValue({ data: [], isLoading: false, error: null });
+    mockUseCategories.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isSuccess: true,
+      error: null,
+    });
   });
 
-  it("shows loading state", () => {
-    mockUseBudgets
-      .mockReturnValueOnce({ isLoading: true, error: null, data: undefined })
-      .mockReturnValueOnce({ isLoading: false, error: null, data: undefined })
-      .mockReturnValueOnce({ isLoading: false, error: null, data: undefined });
-
+  it("shows loading state when any period is loading", () => {
+    setPeriods({
+      DAILY: { isLoading: true, error: null, data: undefined },
+    });
     renderWidget();
-
     expect(screen.getByText("Loading budget progress...")).toBeInTheDocument();
   });
 
-  it("shows error state when any period query fails", () => {
-    mockUseBudgets
-      .mockReturnValueOnce({ isLoading: false, error: new Error("Daily failed"), data: undefined })
-      .mockReturnValueOnce({ isLoading: false, error: null, data: undefined })
-      .mockReturnValueOnce({ isLoading: false, error: null, data: undefined });
-
+  it("shows error state when the daily query fails", () => {
+    setPeriods({
+      DAILY: { isLoading: false, error: new Error("Daily failed"), data: undefined },
+    });
     renderWidget();
+    expect(
+      screen.getByText("Failed to load budget progress. Please try again."),
+    ).toBeInTheDocument();
+  });
 
+  it("shows error state when only the monthly query fails", () => {
+    setPeriods({
+      MONTHLY: { isLoading: false, error: new Error("Monthly failed"), data: undefined },
+    });
+    renderWidget();
+    expect(
+      screen.getByText("Failed to load budget progress. Please try again."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows error state when only the yearly query fails", () => {
+    setPeriods({
+      YEARLY: { isLoading: false, error: new Error("Yearly failed"), data: undefined },
+    });
+    renderWidget();
+    expect(
+      screen.getByText("Failed to load budget progress. Please try again."),
+    ).toBeInTheDocument();
+  });
+
+  it("prefers a categoriesQuery error when no period query has failed", () => {
+    setPeriods({});
+    mockUseCategories.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isSuccess: false,
+      error: new Error("categories failed"),
+    });
+    renderWidget();
     expect(
       screen.getByText("Failed to load budget progress. Please try again."),
     ).toBeInTheDocument();
   });
 
   it("shows empty state when no tracked totals exist", () => {
-    const emptyData = { budgets: [], categorySpending: [] };
-    mockUseBudgets
-      .mockReturnValueOnce({ isLoading: false, error: null, data: emptyData })
-      .mockReturnValueOnce({ isLoading: false, error: null, data: emptyData })
-      .mockReturnValueOnce({ isLoading: false, error: null, data: emptyData });
-
+    setPeriods({});
     renderWidget();
-
     expect(
       screen.getByText(
         "No tracked budget totals yet. Create budgets and import transactions to populate these charts.",
@@ -81,48 +124,123 @@ describe("BudgetProgressWidget", () => {
     );
   });
 
-  it("renders daily, monthly and yearly pies with totals", () => {
-    const dailyData = {
+  it("shows the malformed-data message in the empty state when all values are unparseable", () => {
+    const broken = {
       budgets: [],
       categorySpending: [
         {
           categoryId: "cat-1",
-          spending: "120.00",
-          scaledLimit: "100.00",
-          sourceBudgetType: "DAILY",
-        },
-      ],
-    };
-    const monthlyData = {
-      budgets: [],
-      categorySpending: [
-        {
-          categoryId: "cat-1",
-          spending: "85.50",
-          scaledLimit: "1500.00",
+          spending: "not-a-number",
+          scaledLimit: "also-bad",
           sourceBudgetType: "MONTHLY",
         },
       ],
     };
-    const yearlyData = {
+    setPeriods({
+      DAILY: { isLoading: false, error: null, data: broken },
+      MONTHLY: { isLoading: false, error: null, data: broken },
+      YEARLY: { isLoading: false, error: null, data: broken },
+    });
+    renderWidget();
+    expect(
+      screen.getByText(
+        "Some budget values could not be parsed. Please refresh — if the problem persists, contact support.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("renders an inline alert when some values are malformed but tracked totals still exist", () => {
+    const valid = {
       budgets: [],
       categorySpending: [
         {
           categoryId: "cat-1",
-          spending: "2200.00",
-          scaledLimit: "12000.00",
-          sourceBudgetType: "YEARLY",
+          spending: "10.00",
+          scaledLimit: "100.00",
+          sourceBudgetType: "MONTHLY",
+        },
+        {
+          categoryId: "cat-2",
+          spending: "garbage",
+          scaledLimit: "50.00",
+          sourceBudgetType: "MONTHLY",
         },
       ],
     };
+    setPeriods({
+      DAILY: { isLoading: false, error: null, data: valid },
+      MONTHLY: { isLoading: false, error: null, data: valid },
+      YEARLY: { isLoading: false, error: null, data: valid },
+    });
+    mockUseCategories.mockReturnValue({
+      data: [
+        { id: "cat-1", categoryName: "Food" },
+        { id: "cat-2", categoryName: "Transit" },
+      ],
+      isLoading: false,
+      isSuccess: true,
+      error: null,
+    });
+    renderWidget();
+    expect(
+      screen.getByText(
+        "Some budget values could not be parsed and were excluded from the totals below.",
+      ),
+    ).toBeInTheDocument();
+  });
 
-    mockUseBudgets
-      .mockReturnValueOnce({ isLoading: false, error: null, data: dailyData })
-      .mockReturnValueOnce({ isLoading: false, error: null, data: monthlyData })
-      .mockReturnValueOnce({ isLoading: false, error: null, data: yearlyData });
+  it("renders daily, monthly and yearly pies with totals", () => {
+    setPeriods({
+      DAILY: {
+        isLoading: false,
+        error: null,
+        data: {
+          budgets: [],
+          categorySpending: [
+            {
+              categoryId: "cat-1",
+              spending: "120.00",
+              scaledLimit: "100.00",
+              sourceBudgetType: "DAILY",
+            },
+          ],
+        },
+      },
+      MONTHLY: {
+        isLoading: false,
+        error: null,
+        data: {
+          budgets: [],
+          categorySpending: [
+            {
+              categoryId: "cat-1",
+              spending: "85.50",
+              scaledLimit: "1500.00",
+              sourceBudgetType: "MONTHLY",
+            },
+          ],
+        },
+      },
+      YEARLY: {
+        isLoading: false,
+        error: null,
+        data: {
+          budgets: [],
+          categorySpending: [
+            {
+              categoryId: "cat-1",
+              spending: "2200.00",
+              scaledLimit: "12000.00",
+              sourceBudgetType: "YEARLY",
+            },
+          ],
+        },
+      },
+    });
     mockUseCategories.mockReturnValue({
       data: [{ id: "cat-1", categoryName: "Hobby" }],
       isLoading: false,
+      isSuccess: true,
       error: null,
     });
 
@@ -135,5 +253,66 @@ describe("BudgetProgressWidget", () => {
     expect(screen.getAllByText("Tracked total").length).toBe(3);
     expect(screen.getAllByText("Hobby").length).toBeGreaterThan(0);
     expect(screen.getByText("Over budget")).toBeInTheDocument();
+  });
+
+  it("renders the negative over-budget amount with currency formatting", () => {
+    setPeriods({
+      MONTHLY: {
+        isLoading: false,
+        error: null,
+        data: {
+          budgets: [],
+          categorySpending: [
+            {
+              categoryId: "cat-1",
+              spending: "150.00",
+              scaledLimit: "100.00",
+              sourceBudgetType: "MONTHLY",
+            },
+          ],
+        },
+      },
+    });
+    mockUseCategories.mockReturnValue({
+      data: [{ id: "cat-1", categoryName: "Food" }],
+      isLoading: false,
+      isSuccess: true,
+      error: null,
+    });
+
+    renderWidget();
+
+    const overLabel = screen.getByText("Over budget");
+    const overValue = overLabel.parentElement?.querySelector("span:last-child");
+    expect(overValue?.textContent).toMatch(/^-/);
+    expect(overValue?.textContent).toContain("50");
+  });
+
+  it("renders 'Unknown' for category ids missing from categories data", () => {
+    setPeriods({
+      MONTHLY: {
+        isLoading: false,
+        error: null,
+        data: {
+          budgets: [],
+          categorySpending: [
+            {
+              categoryId: "ghost",
+              spending: "20.00",
+              scaledLimit: "100.00",
+              sourceBudgetType: "MONTHLY",
+            },
+          ],
+        },
+      },
+    });
+    mockUseCategories.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isSuccess: true,
+      error: null,
+    });
+    renderWidget();
+    expect(screen.getAllByText("Unknown").length).toBeGreaterThan(0);
   });
 });

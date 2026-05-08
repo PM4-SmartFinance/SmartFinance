@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "../lib/api";
+import { DASHBOARD_QUERY_KEY } from "../lib/queries/dashboard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -14,7 +15,7 @@ import {
 
 const QUERY_KEYS_TO_INVALIDATE_AFTER_IMPORT = [
   ["budgets"],
-  ["dashboard"],
+  DASHBOARD_QUERY_KEY,
   ["transactions"],
 ] as const;
 
@@ -26,8 +27,6 @@ const FORMATS = [
 
 type ImportFormat = (typeof FORMATS)[number]["value"];
 
-// TODO: KAN-34 – Jira AC requires skipped and failed counts. Update this type
-// and the result messages once the backend returns those fields.
 type UploadResult = { imported: number };
 
 interface Account {
@@ -54,6 +53,7 @@ const TEXT = {
   resultSuccess: (n: number) => `${n} transaction${n !== 1 ? "s" : ""} imported successfully.`,
   resultZero: "No new transactions found (all rows may be duplicates).",
   resetBtn: "Import another file",
+  refreshHint: "Imported, but the dashboard may need a manual refresh.",
 } as const;
 
 export function CsvImportCard() {
@@ -65,6 +65,7 @@ export function CsvImportCard() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [typeError, setTypeError] = useState<string | null>(null);
   const [result, setResult] = useState<UploadResult | null>(null);
+  const [refreshHint, setRefreshHint] = useState(false);
 
   const { data: accountsData, isError: isAccountsError } = useQuery({
     queryKey: ["accounts"],
@@ -93,6 +94,7 @@ export function CsvImportCard() {
     },
     onSuccess: async (data) => {
       setResult(data);
+      setRefreshHint(false);
 
       const invalidations = await Promise.allSettled(
         QUERY_KEYS_TO_INVALIDATE_AFTER_IMPORT.map((queryKey) =>
@@ -100,15 +102,18 @@ export function CsvImportCard() {
         ),
       );
 
+      let anyRejected = false;
       invalidations.forEach((result, index) => {
         if (result.status === "rejected") {
+          anyRejected = true;
           const key = QUERY_KEYS_TO_INVALIDATE_AFTER_IMPORT[index]!.join("/");
-          console.warn(
+          console.error(
             `CsvImportCard: failed to invalidate query '${key}' after import`,
             result.reason,
           );
         }
       });
+      if (anyRejected) setRefreshHint(true);
     },
   });
 
@@ -127,7 +132,7 @@ export function CsvImportCard() {
     setFile(f);
   }
 
-  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+  function handleDrop(e: React.DragEvent<HTMLButtonElement>) {
     e.preventDefault();
     setIsDragOver(false);
     const dropped = e.dataTransfer.files[0];
@@ -149,6 +154,7 @@ export function CsvImportCard() {
     setFile(null);
     setResult(null);
     setTypeError(null);
+    setRefreshHint(false);
     resetMutation();
   }
 
@@ -190,6 +196,14 @@ export function CsvImportCard() {
             <p className="text-sm font-medium text-foreground">
               {result.imported > 0 ? TEXT.resultSuccess(result.imported) : TEXT.resultZero}
             </p>
+            {refreshHint && (
+              <p
+                role="alert"
+                className="rounded border border-destructive bg-destructive/10 px-3 py-2 text-xs text-destructive"
+              >
+                {TEXT.refreshHint}
+              </p>
+            )}
             <Button variant="outline" size="sm" onClick={handleReset}>
               {TEXT.resetBtn}
             </Button>
@@ -197,9 +211,8 @@ export function CsvImportCard() {
         ) : (
           <>
             {/* ── Drop zone ── */}
-            <div
-              role="button"
-              tabIndex={0}
+            <button
+              type="button"
               aria-label="File drop zone"
               className={[
                 "flex min-h-36 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-8 text-center transition-colors",
@@ -208,9 +221,6 @@ export function CsvImportCard() {
                   : "border-border bg-muted/20 hover:bg-muted/40",
               ].join(" ")}
               onClick={() => fileInputRef.current?.click()}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click();
-              }}
               onDragOver={(e) => {
                 e.preventDefault();
                 setIsDragOver(true);
@@ -240,7 +250,7 @@ export function CsvImportCard() {
                     : TEXT.dropZoneIdle}
               </p>
               <p className="text-xs text-muted-foreground/60">.csv files only · max 10 MB</p>
-            </div>
+            </button>
 
             <input
               ref={fileInputRef}

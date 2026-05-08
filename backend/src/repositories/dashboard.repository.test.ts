@@ -95,8 +95,18 @@ describe("getCategoryTotals", () => {
 
   it("maps raw SQL rows to the CategoryTotalAggregate interface", async () => {
     vi.mocked(prisma.$queryRaw).mockResolvedValue([
-      { categoryId: "cat-1", categoryName: "Rent", totalAmount: "1200.50" },
-      { categoryId: "cat-2", categoryName: "Food", totalAmount: "45.00" },
+      {
+        categoryId: "cat-1",
+        categoryName: "Rent",
+        totalAmount: "1200.50",
+        isUncategorized: false,
+      },
+      {
+        categoryId: "cat-2",
+        categoryName: "Food",
+        totalAmount: "45.00",
+        isUncategorized: false,
+      },
     ] as never);
 
     const result = await getCategoryTotals("user-1", "2025-01-01", "2025-01-31");
@@ -106,19 +116,60 @@ describe("getCategoryTotals", () => {
     expect(result[1]).toEqual({ categoryId: "cat-2", categoryName: "Food", total: 45 });
   });
 
-  it("preserves the order returned by the database (sort contract lives in SQL)", async () => {
+  it("sorts categorized rows by total desc with categoryName as tiebreaker", async () => {
+    // Database returns rows in arbitrary order; the repository sorts in TS.
     vi.mocked(prisma.$queryRaw).mockResolvedValue([
-      { categoryId: "a", categoryName: "A", totalAmount: "100" },
-      { categoryId: "b", categoryName: "B", totalAmount: "100" },
-      { categoryId: "c", categoryName: "C", totalAmount: "50" },
+      { categoryId: "c", categoryName: "C", totalAmount: "50", isUncategorized: false },
+      { categoryId: "b", categoryName: "B", totalAmount: "100", isUncategorized: false },
+      { categoryId: "a", categoryName: "A", totalAmount: "100", isUncategorized: false },
     ] as never);
 
     const result = await getCategoryTotals("user-1", "2025-01-01", "2025-01-31");
 
+    // 100/A, 100/B (alphabetical tiebreaker), then 50/C.
     expect(result.map((r) => r.categoryId)).toEqual(["a", "b", "c"]);
   });
 
-  it("returns an empty array when no categorized expenses exist", async () => {
+  it("appends the Uncategorized row last and only when its total > 0", async () => {
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([
+      // Even though Uncategorized has the largest total, it must be pinned
+      // last so the user sees their tracked categories first.
+      {
+        categoryId: null,
+        categoryName: "Uncategorized",
+        totalAmount: "999",
+        isUncategorized: true,
+      },
+      { categoryId: "a", categoryName: "A", totalAmount: "100", isUncategorized: false },
+      { categoryId: "b", categoryName: "B", totalAmount: "0", isUncategorized: false },
+    ] as never);
+
+    const result = await getCategoryTotals("user-1", "2025-01-01", "2025-01-31");
+
+    expect(result).toHaveLength(3);
+    expect(result[0]!.categoryId).toBe("a");
+    expect(result[1]!.categoryId).toBe("b");
+    expect(result[2]).toEqual({
+      categoryId: null,
+      categoryName: "Uncategorized",
+      total: 999,
+      isUncategorized: true,
+    });
+  });
+
+  it("drops the Uncategorized row when its total is 0", async () => {
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([
+      { categoryId: "a", categoryName: "A", totalAmount: "100", isUncategorized: false },
+      { categoryId: null, categoryName: "Uncategorized", totalAmount: "0", isUncategorized: true },
+    ] as never);
+
+    const result = await getCategoryTotals("user-1", "2025-01-01", "2025-01-31");
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.categoryId).toBe("a");
+  });
+
+  it("returns an empty array when the query yields no rows", async () => {
     vi.mocked(prisma.$queryRaw).mockResolvedValue([] as never);
 
     const result = await getCategoryTotals("user-1", "2025-01-01", "2025-01-31");
@@ -126,17 +177,22 @@ describe("getCategoryTotals", () => {
     expect(result).toEqual([]);
   });
 
-  it("passes userId, startId, and endId as interpolated parameters to $queryRaw", async () => {
+  it("interpolates userId, startId, endId, and the Uncategorized label into $queryRaw", async () => {
     vi.mocked(prisma.$queryRaw).mockResolvedValue([] as never);
 
     await getCategoryTotals("user-42", "2025-01-01", "2025-01-31");
 
-    // $queryRaw is a tagged-template call: (strings, ...values). We assert on
-    // the interpolated values to prove the SQL was parameterized correctly.
+    // $queryRaw is a tagged-template call: (strings, ...values). The SQL has
+    // two parts (LEFT JOIN over categories, UNION ALL with the uncategorized
+    // bucket) so userId / startId / endId each appear twice and the literal
+    // "Uncategorized" appears once.
     const mockFn = vi.mocked(prisma.$queryRaw);
     expect(mockFn).toHaveBeenCalledTimes(1);
     const values = mockFn.mock.calls[0]!.slice(1);
-    expect(values).toEqual(["user-42", 20250101, 20250131]);
+    expect(values.filter((v) => v === "user-42")).toHaveLength(3);
+    expect(values.filter((v) => v === 20250101)).toHaveLength(2);
+    expect(values.filter((v) => v === 20250131)).toHaveLength(2);
+    expect(values).toContain("Uncategorized");
   });
 
   it("scopes the query to the given userId (regression guard against dropping WHERE)", async () => {
