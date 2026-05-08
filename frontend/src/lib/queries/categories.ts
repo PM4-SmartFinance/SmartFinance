@@ -129,37 +129,46 @@ export function useDeleteCategory(options?: CategoryMutationOptions) {
   });
 }
 
-export function useCreateCategoryRule() {
+export function useCreateCategoryRule(options?: CategoryMutationOptions) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (draft: RuleDraft) => api.post<{ rule: CategoryRule }>("/category-rules", draft),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: CATEGORY_RULES_QUERY_KEY });
-    },
+    onSuccess: () =>
+      invalidateAll(
+        queryClient,
+        [CATEGORY_RULES_QUERY_KEY, DASHBOARD_QUERY_KEY],
+        options?.onInvalidationFailure,
+      ),
   });
 }
 
-export function useUpdateCategoryRule() {
+export function useUpdateCategoryRule(options?: CategoryMutationOptions) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, draft }: { id: string; draft: Partial<RuleDraft> }) =>
       api.patch<{ rule: CategoryRule }>(`/category-rules/${id}`, draft),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: CATEGORY_RULES_QUERY_KEY });
-    },
+    onSuccess: () =>
+      invalidateAll(
+        queryClient,
+        [CATEGORY_RULES_QUERY_KEY, DASHBOARD_QUERY_KEY],
+        options?.onInvalidationFailure,
+      ),
   });
 }
 
-export function useDeleteCategoryRule() {
+export function useDeleteCategoryRule(options?: CategoryMutationOptions) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (id: string) => api.delete(`/category-rules/${id}`),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: CATEGORY_RULES_QUERY_KEY });
-    },
+    onSuccess: () =>
+      invalidateAll(
+        queryClient,
+        [CATEGORY_RULES_QUERY_KEY, DASHBOARD_QUERY_KEY],
+        options?.onInvalidationFailure,
+      ),
   });
 }
 

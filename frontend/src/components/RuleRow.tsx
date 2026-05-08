@@ -18,7 +18,7 @@ export function RuleRow({
   isDeleting,
 }: {
   rule: CategoryRule;
-  onSave: (draft: RuleEditorState) => void;
+  onSave: (draft: RuleEditorState) => Promise<boolean>;
   onDelete: () => void;
   isSaving: boolean;
   isDeleting: boolean;
@@ -27,11 +27,17 @@ export function RuleRow({
 
   // Hooks must run unconditionally; pass empty pattern when not editing so
   // the query stays disabled.
-  const { data: conflicts = [] } = useRuleOverlap(
+  const { data: conflicts = [], error: overlapError } = useRuleOverlap(
     editor?.pattern ?? "",
     editor?.matchType ?? "contains",
     rule.id,
   );
+
+  async function handleSave() {
+    if (!editor) return;
+    const ok = await onSave(editor);
+    if (ok) setEditor(null);
+  }
 
   if (editor) {
     return (
@@ -70,7 +76,7 @@ export function RuleRow({
             <Button
               aria-label={`Save rule ${rule.id}`}
               size="sm"
-              onClick={() => onSave(editor)}
+              onClick={handleSave}
               disabled={isSaving}
             >
               Save
@@ -80,6 +86,15 @@ export function RuleRow({
             </Button>
           </div>
         </div>
+        {overlapError && !conflicts.length && (
+          <p
+            role="alert"
+            className="mt-2 text-xs text-muted-foreground"
+            data-testid={`overlap-degraded-${rule.id}`}
+          >
+            Conflict check unavailable.
+          </p>
+        )}
         {conflicts.length > 0 && (
           <div
             role="alert"

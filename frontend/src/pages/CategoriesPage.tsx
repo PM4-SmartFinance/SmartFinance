@@ -74,9 +74,11 @@ export function CategoriesPage() {
   const autoCategorize = useAutoCategorize({ onInvalidationFailure });
   const recategorize = useRecategorizeRange({ onInvalidationFailure });
 
-  const createRule = useCreateCategoryRule();
-  const updateRule = useUpdateCategoryRule();
-  const deleteRule = useDeleteCategoryRule();
+  const createRule = useCreateCategoryRule({ onInvalidationFailure });
+  const updateRule = useUpdateCategoryRule({ onInvalidationFailure });
+  const deleteRule = useDeleteCategoryRule({ onInvalidationFailure });
+  const [pendingRuleSaveId, setPendingRuleSaveId] = useState<string | null>(null);
+  const [pendingRuleDeleteId, setPendingRuleDeleteId] = useState<string | null>(null);
   const rulesByCategory = useMemo(() => {
     return rules.reduce<Record<string, CategoryRule[]>>((acc, rule) => {
       const list = acc[rule.categoryId] ?? [];
@@ -263,13 +265,14 @@ export function CategoriesPage() {
   async function handleSaveRule(
     rule: CategoryRule,
     draft: { pattern: string; matchType: "exact" | "contains"; priority: number },
-  ) {
+  ): Promise<boolean> {
     if (!draft.pattern.trim()) {
       setCategoryError(rule.categoryId, "Rule pattern is required.");
-      return;
+      return false;
     }
 
     setCategoryError(rule.categoryId, null);
+    setPendingRuleSaveId(rule.id);
     try {
       await updateRule.mutateAsync({
         id: rule.id,
@@ -280,17 +283,24 @@ export function CategoriesPage() {
           categoryId: rule.categoryId,
         },
       });
+      return true;
     } catch (error) {
       setCategoryError(rule.categoryId, getErrorMessage(error, "Failed to update rule."));
+      return false;
+    } finally {
+      setPendingRuleSaveId(null);
     }
   }
 
   async function handleDeleteRule(ruleId: string, categoryId: string) {
     setCategoryError(categoryId, null);
+    setPendingRuleDeleteId(ruleId);
     try {
       await deleteRule.mutateAsync(ruleId);
     } catch (error) {
       setCategoryError(categoryId, getErrorMessage(error, "Failed to delete rule."));
+    } finally {
+      setPendingRuleDeleteId(null);
     }
   }
 
@@ -572,8 +582,8 @@ export function CategoriesPage() {
                                     rule={rule}
                                     onSave={(draft) => handleSaveRule(rule, draft)}
                                     onDelete={() => handleDeleteRule(rule.id, category.id)}
-                                    isSaving={updateRule.isPending}
-                                    isDeleting={deleteRule.isPending}
+                                    isSaving={pendingRuleSaveId === rule.id}
+                                    isDeleting={pendingRuleDeleteId === rule.id}
                                   />
                                 ))}
                               </ul>
