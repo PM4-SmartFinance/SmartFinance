@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -49,9 +49,15 @@ export function NewRuleForm({
     return () => clearTimeout(timerRef.current);
   }, [draft]);
 
-  // Soft warning — query is debounced via TanStack Query's request dedupe +
-  // staleTime; effectively only fires once per (pattern, matchType) tuple.
-  const { data: conflicts = [] } = useRuleOverlap(draft.pattern, draft.matchType);
+  // Soft warning. `useDeferredValue` lets React skip overlap queries while
+  // the user is typing fast — paired with TanStack's request dedupe and a 5 s
+  // staleTime, the network call effectively fires once per settled (pattern,
+  // matchType) tuple.
+  const deferredPattern = useDeferredValue(draft.pattern);
+  const { data: conflicts = [], error: overlapError } = useRuleOverlap(
+    deferredPattern,
+    draft.matchType,
+  );
 
   async function handleSubmit() {
     const success = await onSubmit(draft);
@@ -97,6 +103,15 @@ export function NewRuleForm({
           Add Rule
         </Button>
       </div>
+      {overlapError && conflicts.length === 0 && (
+        <p
+          role="alert"
+          className="mt-2 text-xs text-muted-foreground"
+          data-testid="overlap-degraded-new"
+        >
+          Conflict check unavailable.
+        </p>
+      )}
       {conflicts.length > 0 && (
         <div
           role="alert"
