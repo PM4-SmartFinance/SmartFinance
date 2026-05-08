@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { matchTransaction, autoCategorize } from "./categorization.service.js";
+import { matchTransaction, autoCategorize, recategorizeRange } from "./categorization.service.js";
 
 vi.mock("../repositories/category-rule.repository.js", () => ({
   findAllByUser: vi.fn(),
@@ -7,6 +7,7 @@ vi.mock("../repositories/category-rule.repository.js", () => ({
 
 vi.mock("../repositories/transaction.repository.js", () => ({
   findUncategorizedForUser: vi.fn(),
+  findCategorizableInRange: vi.fn(),
   bulkSetCategory: vi.fn(),
 }));
 
@@ -341,6 +342,146 @@ describe("autoCategorize", () => {
       { id: "tx-1", categoryId: "cat-1" },
       { id: "tx-2", categoryId: "cat-1" },
       { id: "tx-3", categoryId: "cat-1" },
+    ]);
+  });
+});
+
+describe("recategorizeRange", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("rejects an inverted date range with ServiceError 400", async () => {
+    await expect(recategorizeRange("user-1", "2026-01-31", "2026-01-01")).rejects.toMatchObject({
+      statusCode: 400,
+    });
+    expect(mockRuleRepo.findAllByUser).not.toHaveBeenCalled();
+  });
+
+  it("returns recategorized: 0 when the user has no rules", async () => {
+    mockRuleRepo.findAllByUser.mockResolvedValue([]);
+
+    const result = await recategorizeRange("user-1", "2026-01-01", "2026-01-31");
+
+    expect(result).toEqual({ recategorized: 0 });
+    expect(mockTxRepo.findCategorizableInRange).not.toHaveBeenCalled();
+  });
+
+  it("queries transactions in the date range using dateId integers", async () => {
+    mockRuleRepo.findAllByUser.mockResolvedValue([
+      {
+        ...rule("Migros", "contains", "cat-1", 10),
+        id: "r1",
+        userId: "user-1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        category: { id: "cat-1", categoryName: "Groceries" },
+      },
+    ] as unknown as Awaited<ReturnType<typeof ruleRepo.findAllByUser>>);
+    mockTxRepo.findCategorizableInRange.mockResolvedValue([]);
+
+    await recategorizeRange("user-1", "2026-01-01", "2026-01-31");
+
+    expect(mockTxRepo.findCategorizableInRange).toHaveBeenCalledWith("user-1", 20260101, 20260131);
+  });
+
+  it("overwrites already-categorized transactions when a rule now matches a different category", async () => {
+    mockRuleRepo.findAllByUser.mockResolvedValue([
+      {
+        ...rule("coop", "contains", "cat-groceries", 10),
+        id: "r1",
+        userId: "user-1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        category: { id: "cat-groceries", categoryName: "Groceries" },
+      },
+    ] as unknown as Awaited<ReturnType<typeof ruleRepo.findAllByUser>>);
+    mockTxRepo.findCategorizableInRange.mockResolvedValue([
+      // Currently misclassified into Hobby — recategorize must move to Groceries.
+      { id: "tx-1", categoryId: "cat-hobby", merchant: { name: "Coop" } },
+    ] as unknown as Awaited<ReturnType<typeof txRepo.findCategorizableInRange>>);
+    mockTxRepo.bulkSetCategory.mockResolvedValueOnce(1);
+
+    const result = await recategorizeRange("user-1", "2026-01-01", "2026-01-31");
+
+    expect(result).toEqual({ recategorized: 1 });
+    expect(mockTxRepo.bulkSetCategory).toHaveBeenCalledWith("user-1", [
+      { id: "tx-1", categoryId: "cat-groceries" },
+    ]);
+  });
+
+  it("skips transactions already in the matched category to avoid no-op writes", async () => {
+    mockRuleRepo.findAllByUser.mockResolvedValue([
+      {
+        ...rule("coop", "contains", "cat-groceries", 10),
+        id: "r1",
+        userId: "user-1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        category: { id: "cat-groceries", categoryName: "Groceries" },
+      },
+    ] as unknown as Awaited<ReturnType<typeof ruleRepo.findAllByUser>>);
+    mockTxRepo.findCategorizableInRange.mockResolvedValue([
+      { id: "tx-1", categoryId: "cat-groceries", merchant: { name: "Coop" } },
+    ] as unknown as Awaited<ReturnType<typeof txRepo.findCategorizableInRange>>);
+
+    const result = await recategorizeRange("user-1", "2026-01-01", "2026-01-31");
+
+    expect(result).toEqual({ recategorized: 0 });
+    expect(mockTxRepo.bulkSetCategory).not.toHaveBeenCalled();
+  });
+
+  it("leaves transactions untouched when no rule matches their merchant", async () => {
+    mockRuleRepo.findAllByUser.mockResolvedValue([
+      {
+        ...rule("coop", "contains", "cat-groceries", 10),
+        id: "r1",
+        userId: "user-1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        category: { id: "cat-groceries", categoryName: "Groceries" },
+      },
+    ] as unknown as Awaited<ReturnType<typeof ruleRepo.findAllByUser>>);
+    mockTxRepo.findCategorizableInRange.mockResolvedValue([
+      { id: "tx-1", categoryId: "cat-hobby", merchant: { name: "Random Merchant" } },
+    ] as unknown as Awaited<ReturnType<typeof txRepo.findCategorizableInRange>>);
+
+    const result = await recategorizeRange("user-1", "2026-01-01", "2026-01-31");
+
+    expect(result).toEqual({ recategorized: 0 });
+    expect(mockTxRepo.bulkSetCategory).not.toHaveBeenCalled();
+  });
+
+  it("respects rule priority order (highest priority wins, not category alphabetical)", async () => {
+    // Higher-priority rule appears first because findAllByUser returns
+    // priority-desc. recategorizeRange must use that ordering when matching.
+    mockRuleRepo.findAllByUser.mockResolvedValue([
+      {
+        ...rule("coop", "contains", "cat-high-priority", 100),
+        id: "r-high",
+        userId: "user-1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        category: { id: "cat-high-priority", categoryName: "Z_AlphabeticallyLast" },
+      },
+      {
+        ...rule("coop", "contains", "cat-low-priority", 1),
+        id: "r-low",
+        userId: "user-1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        category: { id: "cat-low-priority", categoryName: "A_AlphabeticallyFirst" },
+      },
+    ] as unknown as Awaited<ReturnType<typeof ruleRepo.findAllByUser>>);
+    mockTxRepo.findCategorizableInRange.mockResolvedValue([
+      { id: "tx-1", categoryId: null, merchant: { name: "Coop Migros" } },
+    ] as unknown as Awaited<ReturnType<typeof txRepo.findCategorizableInRange>>);
+    mockTxRepo.bulkSetCategory.mockResolvedValueOnce(1);
+
+    await recategorizeRange("user-1", "2026-01-01", "2026-01-31");
+
+    expect(mockTxRepo.bulkSetCategory).toHaveBeenCalledWith("user-1", [
+      { id: "tx-1", categoryId: "cat-high-priority" },
     ]);
   });
 });

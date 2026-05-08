@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { ServiceError } from "../errors.js";
 import * as transactionRepository from "../repositories/transaction.repository.js";
-import { autoCategorize } from "./categorization.service.js";
+import { autoCategorize, recategorizeRange } from "./categorization.service.js";
 
 export async function getTransaction(id: string, userId: string) {
   return transactionRepository.findByIdForUser(id, userId);
@@ -63,6 +63,14 @@ function dateIdToIso(dateId: number): string {
  */
 export async function autoCategorizeTransactions(userId: string): Promise<{ categorized: number }> {
   return autoCategorize(userId);
+}
+
+export async function recategorizeTransactionsInRange(
+  userId: string,
+  startDate: string,
+  endDate: string,
+): Promise<{ recategorized: number }> {
+  return recategorizeRange(userId, startDate, endDate);
 }
 
 export async function listTransactions(params: ListTransactionsParams) {
