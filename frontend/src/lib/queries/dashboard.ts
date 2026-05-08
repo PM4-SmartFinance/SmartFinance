@@ -7,6 +7,9 @@ import type { Budget } from "./budgets";
 // default (30s) to reduce unnecessary refetches when switching between pages.
 const DASHBOARD_STALE_TIME = 5 * 60 * 1000; // 5 minutes
 
+// Query key for all dashboard-related queries
+export const DASHBOARD_QUERY_KEY = ["dashboard"] as const;
+
 // Type definitions for API responses
 export interface DashboardSummary {
   totalIncome: number;
@@ -27,9 +30,10 @@ export interface TrendDataPoint {
 }
 
 export interface CategoryBreakdown {
-  categoryId: string;
+  categoryId: string | null;
   categoryName: string;
   total: number;
+  isUncategorized?: boolean;
 }
 
 // Re-export for consumers that import Budget from dashboard queries
