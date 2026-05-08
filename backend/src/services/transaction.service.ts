@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { ServiceError } from "../errors.js";
 import * as transactionRepository from "../repositories/transaction.repository.js";
+import { dateStringToId } from "../repositories/dashboard.repository.js";
 import { autoCategorize, recategorizeRange } from "./categorization.service.js";
 
 export async function getTransaction(id: string, userId: string) {
@@ -41,10 +42,6 @@ export interface ListTransactionsParams {
   minAmount?: number;
   maxAmount?: number;
   search?: string;
-}
-
-function dateStringToId(s: string): number {
-  return parseInt(s.replace(/-/g, ""), 10);
 }
 
 function dateIdToIso(dateId: number): string {
