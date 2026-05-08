@@ -158,8 +158,9 @@ describe("Category CRUD and Authorization Tests", () => {
     expect(res.json().category.categoryName).toBe("Test_Squash");
   });
 
-  it("PATCH: returns 404 when editing another user's category", async () => {
+  it("PATCH: returns 404 when editing another user's category and does not mutate", async () => {
     // User B trying to edit User A's category — returns 404 to avoid leaking existence
+    const before = await prisma.dimCategory.findUniqueOrThrow({ where: { id: customCatId } });
     const res = await app.inject({
       method: "PATCH",
       url: `/api/v1/categories/${customCatId}`,
@@ -168,9 +169,12 @@ describe("Category CRUD and Authorization Tests", () => {
     });
 
     expect(res.statusCode).toBe(404);
+    // 404-on-stranger contract is "deny + no-op": the row must be untouched.
+    const after = await prisma.dimCategory.findUniqueOrThrow({ where: { id: customCatId } });
+    expect(after.categoryName).toBe(before.categoryName);
   });
 
-  it("DELETE: returns 404 for another user's category", async () => {
+  it("DELETE: returns 404 for another user's category and does not delete", async () => {
     // User B trying to delete User A's category — returns 404 to avoid leaking existence
     const res = await app.inject({
       method: "DELETE",
@@ -179,6 +183,8 @@ describe("Category CRUD and Authorization Tests", () => {
     });
 
     expect(res.statusCode).toBe(404);
+    const stillThere = await prisma.dimCategory.findUnique({ where: { id: customCatId } });
+    expect(stillThere).not.toBeNull();
   });
 
   it("DELETE: prevents deletion if category is in use (409 Conflict)", async () => {
@@ -297,7 +303,10 @@ describe("Example category rework (KAN-112)", () => {
     expect(cat).toHaveProperty("userId");
   });
 
-  it("example category cannot be edited by a different user (404)", async () => {
+  it("example category cannot be edited by a different user (404) and is not mutated", async () => {
+    const before = await prisma.dimCategory.findUniqueOrThrow({
+      where: { id: groceriesCategoryId },
+    });
     const res = await app.inject({
       method: "PATCH",
       url: `/api/v1/categories/${groceriesCategoryId}`,
@@ -305,6 +314,10 @@ describe("Example category rework (KAN-112)", () => {
       payload: { categoryName: "Test_Stolen" },
     });
     expect(res.statusCode).toBe(404);
+    const after = await prisma.dimCategory.findUniqueOrThrow({
+      where: { id: groceriesCategoryId },
+    });
+    expect(after.categoryName).toBe(before.categoryName);
   });
 
   it("example (onboarded) category can be edited by its owner — PATCH returns 200 with updated name", async () => {
@@ -347,13 +360,15 @@ describe("Example category rework (KAN-112)", () => {
     await prisma.dimMerchant.delete({ where: { id: merchant.id } });
   });
 
-  it("example category cannot be deleted by a different user (404)", async () => {
+  it("example category cannot be deleted by a different user (404) and is not deleted", async () => {
     const res = await app.inject({
       method: "DELETE",
       url: `/api/v1/categories/${housingCategoryId}`,
       cookies: { session: userBCookie },
     });
     expect(res.statusCode).toBe(404);
+    const stillThere = await prisma.dimCategory.findUnique({ where: { id: housingCategoryId } });
+    expect(stillThere).not.toBeNull();
   });
 
   it("example (onboarded) category can be deleted by its owner — DELETE returns 204", async () => {
