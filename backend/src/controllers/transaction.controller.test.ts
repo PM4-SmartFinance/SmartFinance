@@ -8,10 +8,14 @@ import { ServiceError } from "../errors.js";
 // Controlled session state — mutated per test to simulate auth scenarios.
 // The fake session shim below makes request.session.get() return this value,
 // which is exactly what requireRole() and the route handler read.
-let sessionUser: { id: string; role: string; email: string } | undefined = {
+// pwdVersion must match the trailing 10 chars of the mocked password hash
+// returned by `prisma.dimUser.findUnique` below — verifySession fails closed
+// if the session has no pwdVersion or it doesn't match the stored hash.
+let sessionUser: { id: string; role: string; email: string; pwdVersion?: string } | undefined = {
   id: "user-1",
   role: "USER",
   email: "test@example.com",
+  pwdVersion: "1234567890",
 };
 
 vi.mock("../prisma.js", () => ({
@@ -103,7 +107,12 @@ describe("POST /api/v1/transactions/auto-categorize", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    sessionUser = { id: "user-1", role: "USER", email: "test@example.com" };
+    sessionUser = {
+      id: "user-1",
+      role: "USER",
+      email: "test@example.com",
+      pwdVersion: "1234567890",
+    };
   });
 
   it("returns 200 with the categorized count from the service", async () => {
@@ -122,7 +131,12 @@ describe("POST /api/v1/transactions/auto-categorize", () => {
     // Critical IDOR guard: the user id passed to the categorization engine
     // must come from the authenticated session, never from any client input.
     mockAutoCategorize.mockResolvedValue({ categorized: 0 });
-    sessionUser = { id: "user-42", role: "USER", email: "x@example.com" };
+    sessionUser = {
+      id: "user-42",
+      role: "USER",
+      email: "x@example.com",
+      pwdVersion: "1234567890",
+    };
 
     await app.inject({ method: "POST", url: "/api/v1/transactions/auto-categorize" });
 
@@ -142,7 +156,12 @@ describe("POST /api/v1/transactions/auto-categorize", () => {
   });
 
   it("returns 403 when the session user has an unrecognized role", async () => {
-    sessionUser = { id: "user-1", role: "GUEST", email: "g@example.com" };
+    sessionUser = {
+      id: "user-1",
+      role: "GUEST",
+      email: "g@example.com",
+      pwdVersion: "1234567890",
+    };
 
     const response = await app.inject({
       method: "POST",
@@ -154,7 +173,12 @@ describe("POST /api/v1/transactions/auto-categorize", () => {
   });
 
   it("allows ADMIN to call the endpoint (role hierarchy)", async () => {
-    sessionUser = { id: "admin-1", role: "ADMIN", email: "a@example.com" };
+    sessionUser = {
+      id: "admin-1",
+      role: "ADMIN",
+      email: "a@example.com",
+      pwdVersion: "1234567890",
+    };
     mockAutoCategorize.mockResolvedValue({ categorized: 3 });
 
     const response = await app.inject({
@@ -227,7 +251,12 @@ describe("GET /api/v1/transactions/:id", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    sessionUser = { id: "user-1", role: "USER", email: "test@example.com" };
+    sessionUser = {
+      id: "user-1",
+      role: "USER",
+      email: "test@example.com",
+      pwdVersion: "1234567890",
+    };
     mockGetTransaction.mockResolvedValue(mockTx as never);
   });
 
@@ -241,7 +270,12 @@ describe("GET /api/v1/transactions/:id", () => {
   });
 
   it("passes the route :id param and the session user id to the service", async () => {
-    sessionUser = { id: "user-42", role: "USER", email: "x@example.com" };
+    sessionUser = {
+      id: "user-42",
+      role: "USER",
+      email: "x@example.com",
+      pwdVersion: "1234567890",
+    };
     await app.inject({ method: "GET", url: `/api/v1/transactions/${VALID_TX_ID}` });
     expect(mockGetTransaction).toHaveBeenCalledExactlyOnceWith(VALID_TX_ID, "user-42");
   });
@@ -257,7 +291,12 @@ describe("GET /api/v1/transactions/:id", () => {
   });
 
   it("returns 403 when the session user has an insufficient role", async () => {
-    sessionUser = { id: "user-1", role: "GUEST", email: "g@example.com" };
+    sessionUser = {
+      id: "user-1",
+      role: "GUEST",
+      email: "g@example.com",
+      pwdVersion: "1234567890",
+    };
     const response = await app.inject({
       method: "GET",
       url: `/api/v1/transactions/${VALID_TX_ID}`,
@@ -267,7 +306,12 @@ describe("GET /api/v1/transactions/:id", () => {
   });
 
   it("allows ADMIN to call the endpoint (role hierarchy)", async () => {
-    sessionUser = { id: "admin-1", role: "ADMIN", email: "a@example.com" };
+    sessionUser = {
+      id: "admin-1",
+      role: "ADMIN",
+      email: "a@example.com",
+      pwdVersion: "1234567890",
+    };
     const response = await app.inject({
       method: "GET",
       url: `/api/v1/transactions/${VALID_TX_ID}`,
@@ -311,7 +355,12 @@ describe("PATCH /api/v1/transactions/:id", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    sessionUser = { id: "user-1", role: "USER", email: "test@example.com" };
+    sessionUser = {
+      id: "user-1",
+      role: "USER",
+      email: "test@example.com",
+      pwdVersion: "1234567890",
+    };
     mockUpdateTransaction.mockResolvedValue(mockTx as never);
   });
 
@@ -326,7 +375,12 @@ describe("PATCH /api/v1/transactions/:id", () => {
   });
 
   it("passes the route :id, session user id, and request body to the service", async () => {
-    sessionUser = { id: "user-42", role: "USER", email: "x@example.com" };
+    sessionUser = {
+      id: "user-42",
+      role: "USER",
+      email: "x@example.com",
+      pwdVersion: "1234567890",
+    };
     await app.inject({
       method: "PATCH",
       url: `/api/v1/transactions/${VALID_TX_ID}`,
@@ -407,7 +461,12 @@ describe("PATCH /api/v1/transactions/:id", () => {
   });
 
   it("returns 403 when the session user has an insufficient role", async () => {
-    sessionUser = { id: "user-1", role: "GUEST", email: "g@example.com" };
+    sessionUser = {
+      id: "user-1",
+      role: "GUEST",
+      email: "g@example.com",
+      pwdVersion: "1234567890",
+    };
     const response = await app.inject({
       method: "PATCH",
       url: `/api/v1/transactions/${VALID_TX_ID}`,
@@ -418,7 +477,12 @@ describe("PATCH /api/v1/transactions/:id", () => {
   });
 
   it("allows ADMIN to update transactions (role hierarchy)", async () => {
-    sessionUser = { id: "admin-1", role: "ADMIN", email: "a@example.com" };
+    sessionUser = {
+      id: "admin-1",
+      role: "ADMIN",
+      email: "a@example.com",
+      pwdVersion: "1234567890",
+    };
     const response = await app.inject({
       method: "PATCH",
       url: `/api/v1/transactions/${VALID_TX_ID}`,
@@ -466,7 +530,12 @@ describe("DELETE /api/v1/transactions/:id", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    sessionUser = { id: "user-1", role: "USER", email: "test@example.com" };
+    sessionUser = {
+      id: "user-1",
+      role: "USER",
+      email: "test@example.com",
+      pwdVersion: "1234567890",
+    };
     mockDeleteTransaction.mockResolvedValue(undefined);
   });
 
@@ -479,7 +548,12 @@ describe("DELETE /api/v1/transactions/:id", () => {
   });
 
   it("passes the route :id and session user id to the service", async () => {
-    sessionUser = { id: "user-42", role: "USER", email: "x@example.com" };
+    sessionUser = {
+      id: "user-42",
+      role: "USER",
+      email: "x@example.com",
+      pwdVersion: "1234567890",
+    };
     await app.inject({ method: "DELETE", url: `/api/v1/transactions/${VALID_TX_ID}` });
     expect(mockDeleteTransaction).toHaveBeenCalledExactlyOnceWith(VALID_TX_ID, "user-42");
   });
@@ -495,7 +569,12 @@ describe("DELETE /api/v1/transactions/:id", () => {
   });
 
   it("returns 403 when the session user has an insufficient role", async () => {
-    sessionUser = { id: "user-1", role: "GUEST", email: "g@example.com" };
+    sessionUser = {
+      id: "user-1",
+      role: "GUEST",
+      email: "g@example.com",
+      pwdVersion: "1234567890",
+    };
     const response = await app.inject({
       method: "DELETE",
       url: `/api/v1/transactions/${VALID_TX_ID}`,
@@ -505,7 +584,12 @@ describe("DELETE /api/v1/transactions/:id", () => {
   });
 
   it("allows ADMIN to delete transactions (role hierarchy)", async () => {
-    sessionUser = { id: "admin-1", role: "ADMIN", email: "a@example.com" };
+    sessionUser = {
+      id: "admin-1",
+      role: "ADMIN",
+      email: "a@example.com",
+      pwdVersion: "1234567890",
+    };
     const response = await app.inject({
       method: "DELETE",
       url: `/api/v1/transactions/${VALID_TX_ID}`,
@@ -548,7 +632,12 @@ describe("GET /api/v1/transactions", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    sessionUser = { id: "user-1", role: "USER", email: "test@example.com" };
+    sessionUser = {
+      id: "user-1",
+      role: "USER",
+      email: "test@example.com",
+      pwdVersion: "1234567890",
+    };
     mockListTransactions.mockResolvedValue({
       data: [],
       meta: { totalCount: 0, totalPages: 0, page: 1, limit: 20 },
@@ -569,7 +658,12 @@ describe("GET /api/v1/transactions", () => {
   });
 
   it("forwards the session user id (not a request param) to the service", async () => {
-    sessionUser = { id: "user-42", role: "USER", email: "x@example.com" };
+    sessionUser = {
+      id: "user-42",
+      role: "USER",
+      email: "x@example.com",
+      pwdVersion: "1234567890",
+    };
 
     await app.inject({ method: "GET", url: "/api/v1/transactions" });
 
@@ -591,7 +685,12 @@ describe("GET /api/v1/transactions", () => {
   });
 
   it("returns 403 when the session user has an insufficient role", async () => {
-    sessionUser = { id: "user-1", role: "GUEST", email: "g@example.com" };
+    sessionUser = {
+      id: "user-1",
+      role: "GUEST",
+      email: "g@example.com",
+      pwdVersion: "1234567890",
+    };
 
     const response = await app.inject({
       method: "GET",
@@ -603,7 +702,12 @@ describe("GET /api/v1/transactions", () => {
   });
 
   it("allows ADMIN to call the endpoint (role hierarchy)", async () => {
-    sessionUser = { id: "admin-1", role: "ADMIN", email: "a@example.com" };
+    sessionUser = {
+      id: "admin-1",
+      role: "ADMIN",
+      email: "a@example.com",
+      pwdVersion: "1234567890",
+    };
 
     const response = await app.inject({
       method: "GET",
@@ -738,7 +842,12 @@ describe("POST /api/v1/transactions/import", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    sessionUser = { id: "user-1", role: "USER", email: "test@example.com" };
+    sessionUser = {
+      id: "user-1",
+      role: "USER",
+      email: "test@example.com",
+      pwdVersion: "1234567890",
+    };
   });
 
   it("returns 401 when there is no authenticated session", async () => {
@@ -755,7 +864,12 @@ describe("POST /api/v1/transactions/import", () => {
   });
 
   it("returns 403 when the session user has an insufficient role", async () => {
-    sessionUser = { id: "user-1", role: "GUEST", email: "g@example.com" };
+    sessionUser = {
+      id: "user-1",
+      role: "GUEST",
+      email: "g@example.com",
+      pwdVersion: "1234567890",
+    };
 
     const response = await app.inject({
       method: "POST",
@@ -820,7 +934,12 @@ describe("POST /api/v1/transactions/import", () => {
     // IDOR guard for the import endpoint: the user id passed to the service
     // must always come from the authenticated session, never from any
     // client-controlled input.
-    sessionUser = { id: "user-77", role: "USER", email: "y@example.com" };
+    sessionUser = {
+      id: "user-77",
+      role: "USER",
+      email: "y@example.com",
+      pwdVersion: "1234567890",
+    };
     mockImportTransactions.mockResolvedValue({ imported: 1, categorized: 0 });
     const { payload, headers } = buildMultipart("file", "tx.csv", "Date,Amount\n");
 

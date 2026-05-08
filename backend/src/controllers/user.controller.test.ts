@@ -3,10 +3,14 @@ import type { FastifyInstance } from "fastify";
 import Fastify from "fastify";
 import { userRoutes } from "./user.controller.js";
 
-let sessionUser: { id: string; role: string; email: string } | undefined = {
+// pwdVersion must match the trailing 10 chars of the mocked password hash
+// returned by `prisma.dimUser.findUnique` below — verifySession fails closed
+// if the session has no pwdVersion or it doesn't match the stored hash.
+let sessionUser: { id: string; role: string; email: string; pwdVersion?: string } | undefined = {
   id: "user-1",
   role: "USER",
   email: "test@example.com",
+  pwdVersion: "1234567890",
 };
 
 vi.mock("../prisma.js", () => ({
@@ -79,7 +83,12 @@ describe("GET /api/v1/users/me", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    sessionUser = { id: "user-1", role: "USER", email: "test@example.com" };
+    sessionUser = {
+      id: "user-1",
+      role: "USER",
+      email: "test@example.com",
+      pwdVersion: "1234567890",
+    };
   });
 
   it("returns 200 with the user profile", async () => {
@@ -122,7 +131,12 @@ describe("PATCH /api/v1/users/me", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    sessionUser = { id: "user-1", role: "USER", email: "test@example.com" };
+    sessionUser = {
+      id: "user-1",
+      role: "USER",
+      email: "test@example.com",
+      pwdVersion: "1234567890",
+    };
   });
 
   it("returns 200 with the updated profile", async () => {
@@ -205,7 +219,12 @@ describe("POST /api/v1/users/me/change-password", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    sessionUser = { id: "user-1", role: "USER", email: "test@example.com" };
+    sessionUser = {
+      id: "user-1",
+      role: "USER",
+      email: "test@example.com",
+      pwdVersion: "1234567890",
+    };
   });
 
   it("returns 200 on success", async () => {
@@ -306,7 +325,12 @@ describe("DELETE /api/v1/users/:id", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    sessionUser = { id: "admin-1", role: "ADMIN", email: "admin@example.com" };
+    sessionUser = {
+      id: "admin-1",
+      role: "ADMIN",
+      email: "admin@example.com",
+      pwdVersion: "1234567890",
+    };
   });
 
   it("returns 204 when an admin deletes a regular user", async () => {
@@ -319,7 +343,7 @@ describe("DELETE /api/v1/users/:id", () => {
 
     expect(response.statusCode).toBe(204);
     expect(mockDeleteUser).toHaveBeenCalledExactlyOnceWith(
-      { id: "admin-1", role: "ADMIN", email: "admin@example.com" },
+      { id: "admin-1", role: "ADMIN", email: "admin@example.com", pwdVersion: "1234567890" },
       "user-2",
     );
   });
@@ -337,7 +361,12 @@ describe("DELETE /api/v1/users/:id", () => {
   });
 
   it("returns 403 when a non-admin attempts to delete a different user", async () => {
-    sessionUser = { id: "user-1", role: "USER", email: "user@example.com" };
+    sessionUser = {
+      id: "user-1",
+      role: "USER",
+      email: "user@example.com",
+      pwdVersion: "1234567890",
+    };
 
     const response = await app.inject({
       method: "DELETE",
@@ -398,7 +427,12 @@ describe("PATCH /api/v1/users/:id", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    sessionUser = { id: "admin-1", role: "ADMIN", email: "admin@example.com" };
+    sessionUser = {
+      id: "admin-1",
+      role: "ADMIN",
+      email: "admin@example.com",
+      pwdVersion: "1234567890",
+    };
   });
 
   it("returns 200 when an admin deactivates a regular user", async () => {
@@ -420,7 +454,7 @@ describe("PATCH /api/v1/users/:id", () => {
 
     expect(response.statusCode).toBe(200);
     expect(mockUpdateUser).toHaveBeenCalledExactlyOnceWith(
-      { id: "admin-1", role: "ADMIN", email: "admin@example.com" },
+      { id: "admin-1", role: "ADMIN", email: "admin@example.com", pwdVersion: "1234567890" },
       "user-2",
       { active: false },
     );
@@ -440,7 +474,12 @@ describe("PATCH /api/v1/users/:id", () => {
   });
 
   it("returns 403 when a non-admin attempts to patch a different user", async () => {
-    sessionUser = { id: "user-1", role: "USER", email: "user@example.com" };
+    sessionUser = {
+      id: "user-1",
+      role: "USER",
+      email: "user@example.com",
+      pwdVersion: "1234567890",
+    };
 
     const response = await app.inject({
       method: "PATCH",
@@ -479,7 +518,12 @@ describe("POST /api/v1/users/:id/reset-password", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    sessionUser = { id: "admin-1", role: "ADMIN", email: "admin@example.com" };
+    sessionUser = {
+      id: "admin-1",
+      role: "ADMIN",
+      email: "admin@example.com",
+      pwdVersion: "1234567890",
+    };
   });
 
   it("returns 200 and forwards the session user to the service", async () => {
@@ -494,7 +538,7 @@ describe("POST /api/v1/users/:id/reset-password", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ ok: true });
     expect(mockResetUserPassword).toHaveBeenCalledExactlyOnceWith(
-      { id: "admin-1", role: "ADMIN", email: "admin@example.com" },
+      { id: "admin-1", role: "ADMIN", email: "admin@example.com", pwdVersion: "1234567890" },
       "user-2",
       "NewPass1!",
     );
@@ -536,7 +580,12 @@ describe("POST /api/v1/users/:id/reset-password", () => {
   });
 
   it("returns 403 when a non-admin attempts to reset a password", async () => {
-    sessionUser = { id: "user-1", role: "USER", email: "user@example.com" };
+    sessionUser = {
+      id: "user-1",
+      role: "USER",
+      email: "user@example.com",
+      pwdVersion: "1234567890",
+    };
 
     const response = await app.inject({
       method: "POST",

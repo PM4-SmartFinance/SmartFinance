@@ -6,10 +6,14 @@ import { accountRoutes } from "./account.controller.js";
 // Controlled session state — mutated per test to simulate auth scenarios.
 // The fake session shim below makes request.session.get() return this value,
 // which is exactly what requireRole() and the route handler read.
-let sessionUser: { id: string; role: string; email: string } | undefined = {
+// pwdVersion must match the trailing 10 chars of the mocked password hash
+// returned by `prisma.dimUser.findUnique` below — verifySession fails closed
+// if the session has no pwdVersion or it doesn't match the stored hash.
+let sessionUser: { id: string; role: string; email: string; pwdVersion?: string } | undefined = {
   id: "user-1",
   role: "USER",
   email: "test@example.com",
+  pwdVersion: "1234567890",
 };
 
 vi.mock("../prisma.js", () => ({
@@ -60,7 +64,12 @@ describe("GET /api/v1/accounts", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    sessionUser = { id: "user-1", role: "USER", email: "test@example.com" };
+    sessionUser = {
+      id: "user-1",
+      role: "USER",
+      email: "test@example.com",
+      pwdVersion: "1234567890",
+    };
   });
 
   it("returns 200 with the accounts list", async () => {
