@@ -28,25 +28,26 @@ const getDefaultDateRange = (): DateRange & { activePresetKey: PresetKey } => {
 
 const defaultRange = getDefaultDateRange();
 
-const getStoredTheme = (): Theme => {
+export const isTheme = (v: unknown): v is Theme => v === "light" || v === "dark" || v === "system";
+
+export function getStoredTheme(): Theme {
   try {
     const stored = localStorage.getItem("theme");
-    if (stored === "light" || stored === "dark" || stored === "system") return stored;
+    return isTheme(stored) ? stored : "system";
+  } catch {
     return "system";
-  } catch {
-    return "light";
   }
-};
+}
 
-function applyThemeToDOM(theme: Theme) {
-  try {
-    const isDark =
-      theme === "dark" ||
-      (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    document.documentElement.classList.toggle("dark", isDark);
-  } catch {
-    // Not in a browser environment (e.g. tests)
-  }
+export function applyThemeToDOM(theme: Theme): void {
+  if (typeof document === "undefined") return;
+  const isDark =
+    theme === "dark" ||
+    (theme === "system" &&
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.classList.toggle("dark", isDark);
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -56,11 +57,13 @@ export const useAppStore = create<AppState>((set) => ({
   theme: getStoredTheme(),
   setTheme: (theme: Theme) =>
     set(() => {
+      applyThemeToDOM(theme);
       try {
         localStorage.setItem("theme", theme);
-        applyThemeToDOM(theme);
-      } catch {
-        // Not in a browser environment (e.g. tests)
+      } catch (err) {
+        if (import.meta.env.DEV) {
+          console.warn("[theme] could not persist preference", err);
+        }
       }
       return { theme };
     }),
@@ -68,3 +71,19 @@ export const useAppStore = create<AppState>((set) => ({
     set({ startDate, endDate, activePresetKey: presetKey });
   },
 }));
+
+// Single app-wide subscription to OS theme changes. Re-applies the DOM class
+// only when the user's selected theme is "system" — explicit "light" / "dark"
+// choices are not overridden by OS preference flips.
+if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
+  try {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    mq.addEventListener("change", () => {
+      if (useAppStore.getState().theme === "system") {
+        applyThemeToDOM("system");
+      }
+    });
+  } catch {
+    // matchMedia unavailable — best-effort.
+  }
+}

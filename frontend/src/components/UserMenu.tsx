@@ -1,9 +1,8 @@
-import { useEffect } from "react";
 import { Menu } from "@base-ui/react/menu";
 import { Sun, Moon, Monitor, LogOut, Check } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useLogout } from "../hooks/useLogout";
-import { useAppStore } from "../store/appStore";
+import { useAppStore, isTheme } from "../store/appStore";
 import type { Theme } from "../store/appStore";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 
@@ -19,17 +18,9 @@ export function UserMenu() {
   const theme = useAppStore((s) => s.theme);
   const setTheme = useAppStore((s) => s.setTheme);
 
-  useEffect(() => {
-    if (theme !== "system") return;
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = (e: MediaQueryListEvent) => {
-      document.documentElement.classList.toggle("dark", e.matches);
-    };
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, [theme]);
+  if (!user) return null;
 
-  const initials = user?.email ? user.email.slice(0, 2).toUpperCase() : "U";
+  const initials = user.email.slice(0, 2).toUpperCase();
 
   return (
     <Menu.Root>
@@ -45,15 +36,18 @@ export function UserMenu() {
       <Menu.Portal>
         <Menu.Positioner side="bottom" align="end" sideOffset={8}>
           <Menu.Popup className="z-50 min-w-48 rounded-lg border border-border bg-popover py-1 shadow-md text-sm text-popover-foreground origin-(--transform-origin) data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 transition-[opacity,transform]">
-            {user?.email && (
-              <div className="px-3 py-2 text-xs text-muted-foreground truncate border-b border-border mb-1">
-                {user.email}
-              </div>
-            )}
+            <div className="px-3 py-2 text-xs text-muted-foreground truncate border-b border-border mb-1">
+              {user.email}
+            </div>
 
             <div className="px-3 pt-1 pb-0.5 text-xs font-medium text-muted-foreground">Theme</div>
 
-            <Menu.RadioGroup value={theme} onValueChange={(v) => setTheme(v as Theme)}>
+            <Menu.RadioGroup
+              value={theme}
+              onValueChange={(v) => {
+                if (isTheme(v)) setTheme(v);
+              }}
+            >
               {THEME_OPTIONS.map(({ value, label, Icon }) => (
                 <Menu.RadioItem
                   key={value}
