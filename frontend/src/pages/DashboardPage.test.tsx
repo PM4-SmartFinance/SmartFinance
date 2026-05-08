@@ -3,6 +3,16 @@ import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { vi } from "vitest";
 import { DashboardPage } from "./DashboardPage";
+import { useAuth, type User } from "../hooks/useAuth";
+
+const USER_FIXTURE = {
+  id: "123",
+  email: "test@example.com",
+  role: "USER",
+  name: null,
+  active: true,
+  createdAt: "2024-01-01T00:00:00.000Z",
+} satisfies User;
 
 const mockSummaryData = {
   totalIncome: 6500.0,
@@ -51,11 +61,11 @@ vi.mock("../lib/api", () => {
   };
 });
 
-// Mock auth hook
+// Mock auth hook — using vi.fn so individual tests can override the role.
+// Defaults are configured per-describe in beforeEach so a forgotten override
+// can't leak across tests.
 vi.mock("../hooks/useAuth", () => ({
-  useAuth: () => ({
-    user: { id: "123", email: "test@example.com", role: "USER" },
-  }),
+  useAuth: vi.fn(),
 }));
 
 function renderWithProviders() {
@@ -74,6 +84,12 @@ function renderWithProviders() {
 
 describe("DashboardPage", () => {
   beforeEach(() => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: USER_FIXTURE,
+      isAuthenticated: true,
+      isLoading: false,
+    });
+
     mockGet.mockImplementation((path: string) => {
       if (path.includes("/dashboard/summary")) {
         return Promise.resolve(mockSummaryData);
@@ -163,5 +179,54 @@ describe("DashboardPage", () => {
     expect(screen.getAllByText("Net Balance").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Monthly Income vs. Expenses").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Spending by Category").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("nav links route to correct pages", async () => {
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("link", { name: "Transactions" })).toHaveAttribute(
+      "href",
+      "/transactions",
+    );
+    expect(screen.getByRole("link", { name: "Budgets" })).toHaveAttribute("href", "/budgets");
+    expect(screen.getByRole("link", { name: "Categories" })).toHaveAttribute("href", "/categories");
+    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings");
+  });
+
+  it("full-card 'Recent Transactions' widget links to /transactions", async () => {
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("CHF 3'659.50")).toBeInTheDocument();
+    });
+
+    // The widget wraps its card in a link with aria-label "View transactions";
+    // every such link on the dashboard must route to /transactions (query string
+    // params like date range are allowed for some sibling widgets).
+    const links = screen.getAllByRole("link", { name: /view transactions/i });
+    expect(links.length).toBeGreaterThan(0);
+    for (const link of links) {
+      expect(link.getAttribute("href")).toMatch(/^\/transactions(\?.*)?$/);
+    }
+  });
+
+  it("full-card 'Budget Progress' widget links to /budgets", async () => {
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("CHF 3'659.50")).toBeInTheDocument();
+    });
+
+    // The Budget Progress card is wrapped in a link with aria-label "View budgets";
+    // every such link on the dashboard must point to /budgets.
+    const links = screen.getAllByRole("link", { name: /view budgets/i });
+    expect(links.length).toBeGreaterThan(0);
+    for (const link of links) {
+      expect(link).toHaveAttribute("href", "/budgets");
+    }
   });
 });

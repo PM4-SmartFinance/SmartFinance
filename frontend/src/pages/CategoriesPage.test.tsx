@@ -576,6 +576,45 @@ describe("CategoriesPage", () => {
     expect(mockPatch).not.toHaveBeenCalled();
   });
 
+  it("UI alignment (KAN-112): all user-owned categories show edit/delete buttons — no global read-only badge", async () => {
+    // Simulate the KAN-112 model: all categories are owned by the user (no global userId=null)
+    categories = [
+      {
+        id: "cat-1",
+        categoryName: "Groceries",
+        userId: "user-1",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: "cat-2",
+        categoryName: "Housing",
+        userId: "user-1",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+      expect(screen.getByText("Housing")).toBeInTheDocument();
+    });
+
+    // No global category badge should appear
+    expect(screen.queryByText("Global category (read-only)")).not.toBeInTheDocument();
+
+    // Both categories must have Edit and Delete buttons (they are user-owned)
+    expect(screen.getByRole("button", { name: "Edit category Groceries" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete category Groceries" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit category Housing" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete category Housing" })).toBeInTheDocument();
+
+    // Global Categories section should be empty (no global categories in this model)
+    expect(screen.getByText("No categories in this section.")).toBeInTheDocument();
+  });
+
   it("auto-categorize button calls the API and renders the result message", async () => {
     mockPost.mockImplementationOnce((path: string) => {
       if (path === "/transactions/auto-categorize") {
