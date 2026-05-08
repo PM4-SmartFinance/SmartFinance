@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
+import { useRuleOverlap } from "../lib/queries/categories";
 
 interface RuleEditorState {
   pattern: string;
@@ -48,6 +49,16 @@ export function NewRuleForm({
     return () => clearTimeout(timerRef.current);
   }, [draft]);
 
+  // Soft warning. `useDeferredValue` lets React skip overlap queries while
+  // the user is typing fast — paired with TanStack's request dedupe and a 5 s
+  // staleTime, the network call effectively fires once per settled (pattern,
+  // matchType) tuple.
+  const deferredPattern = useDeferredValue(draft.pattern);
+  const { data: conflicts = [], error: overlapError } = useRuleOverlap(
+    deferredPattern,
+    draft.matchType,
+  );
+
   async function handleSubmit() {
     const success = await onSubmit(draft);
     if (success) {
@@ -92,6 +103,37 @@ export function NewRuleForm({
           Add Rule
         </Button>
       </div>
+      {overlapError && conflicts.length === 0 && (
+        <p
+          role="alert"
+          className="mt-2 text-xs text-muted-foreground"
+          data-testid="overlap-degraded-new"
+        >
+          Conflict check unavailable.
+        </p>
+      )}
+      {conflicts.length > 0 && (
+        <div
+          role="alert"
+          className="mt-2 rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400"
+        >
+          <p className="font-semibold">
+            Pattern overlaps with {conflicts.length} existing rule
+            {conflicts.length === 1 ? "" : "s"}.
+          </p>
+          <p className="mt-1 text-[11px]">
+            Higher-priority rules win when both match. You can save anyway.
+          </p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4">
+            {conflicts.map((c) => (
+              <li key={c.id}>
+                <span className="font-mono">"{c.pattern}"</span> ({c.matchType}) → {c.categoryName}
+                <span className="text-muted-foreground"> — priority {c.priority}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {preview && (
         <div className="mt-2">
           <p className="text-xs text-muted-foreground">{preview.summary}</p>

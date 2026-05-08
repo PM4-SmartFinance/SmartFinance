@@ -247,4 +247,155 @@ describe("category-rule.service", () => {
       expect(result).toEqual({ matchCount: 0, matchedTransactions: [] });
     });
   });
+
+  describe("patternsOverlap", () => {
+    it("returns true for identical exact patterns (case-insensitive)", () => {
+      expect(
+        service.patternsOverlap(
+          { pattern: "Migros", matchType: "exact" },
+          { pattern: "migros", matchType: "exact" },
+        ),
+      ).toBe(true);
+    });
+
+    it("returns false for distinct exact patterns", () => {
+      expect(
+        service.patternsOverlap(
+          { pattern: "Migros", matchType: "exact" },
+          { pattern: "Coop", matchType: "exact" },
+        ),
+      ).toBe(false);
+    });
+
+    it("returns true when an exact pattern contains the other contains pattern", () => {
+      expect(
+        service.patternsOverlap(
+          { pattern: "Coop Migros", matchType: "exact" },
+          { pattern: "coop", matchType: "contains" },
+        ),
+      ).toBe(true);
+    });
+
+    it("returns true for two contains patterns where one is a substring of the other", () => {
+      expect(
+        service.patternsOverlap(
+          { pattern: "coop", matchType: "contains" },
+          { pattern: "coop migros", matchType: "contains" },
+        ),
+      ).toBe(true);
+    });
+
+    it("returns false for two unrelated contains patterns", () => {
+      expect(
+        service.patternsOverlap(
+          { pattern: "coop", matchType: "contains" },
+          { pattern: "migros", matchType: "contains" },
+        ),
+      ).toBe(false);
+    });
+
+    it("returns true when contains pattern is a substring of an exact pattern (mirror direction)", () => {
+      // Mirrors the exact-vs-contains case to pin both branches independently.
+      expect(
+        service.patternsOverlap(
+          { pattern: "coop", matchType: "contains" },
+          { pattern: "Coop Migros", matchType: "exact" },
+        ),
+      ).toBe(true);
+    });
+
+    it("returns false when either pattern is empty (defence-in-depth)", () => {
+      // The boundary validates `minLength: 1`, but a stored empty `contains`
+      // pattern would otherwise overlap everything via includes("").
+      expect(
+        service.patternsOverlap(
+          { pattern: "", matchType: "contains" },
+          { pattern: "anything", matchType: "contains" },
+        ),
+      ).toBe(false);
+      expect(
+        service.patternsOverlap(
+          { pattern: "anything", matchType: "exact" },
+          { pattern: "", matchType: "exact" },
+        ),
+      ).toBe(false);
+    });
+  });
+
+  describe("findOverlappingRules", () => {
+    it("returns an empty array for an empty pattern", async () => {
+      const result = await service.findOverlappingRules("user-1", {
+        pattern: "",
+        matchType: "contains",
+      });
+      expect(result).toEqual([]);
+      expect(mockRepo.findAllByUser).not.toHaveBeenCalled();
+    });
+
+    it("filters out the rule being edited via excludeRuleId", async () => {
+      mockRepo.findAllByUser.mockResolvedValue([
+        {
+          id: "rule-self",
+          pattern: "coop",
+          matchType: "contains",
+          priority: 10,
+          categoryId: "cat-1",
+          userId: "user-1",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          category: { id: "cat-1", categoryName: "Groceries" },
+        },
+      ] as never);
+
+      const result = await service.findOverlappingRules("user-1", {
+        pattern: "coop",
+        matchType: "contains",
+        excludeRuleId: "rule-self",
+      });
+
+      expect(result).toEqual([]);
+    });
+
+    it("maps overlapping rules with category info", async () => {
+      mockRepo.findAllByUser.mockResolvedValue([
+        {
+          id: "rule-existing",
+          pattern: "coop migros",
+          matchType: "contains",
+          priority: 5,
+          categoryId: "cat-other",
+          userId: "user-1",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          category: { id: "cat-other", categoryName: "Hobby" },
+        },
+        {
+          id: "rule-unrelated",
+          pattern: "spotify",
+          matchType: "contains",
+          priority: 1,
+          categoryId: "cat-music",
+          userId: "user-1",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          category: { id: "cat-music", categoryName: "Music" },
+        },
+      ] as never);
+
+      const result = await service.findOverlappingRules("user-1", {
+        pattern: "coop",
+        matchType: "contains",
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        id: "rule-existing",
+        pattern: "coop migros",
+        matchType: "contains",
+        priority: 5,
+        categoryId: "cat-other",
+        categoryName: "Hobby",
+      });
+    });
+  });
 });

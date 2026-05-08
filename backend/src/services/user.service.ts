@@ -1,12 +1,7 @@
 import argon2 from "argon2";
-import { ServiceError } from "../errors.js";
 import { Prisma } from "@prisma/client";
+import { EmailConflictError, ServiceError } from "../errors.js";
 import * as userRepository from "../repositories/user.repository.js";
-import {
-  BootstrapForbiddenError,
-  BootstrapUnauthorizedError,
-  EmailConflictError,
-} from "../repositories/user.repository.js";
 import * as auditService from "./audit.service.js";
 import { logEvent } from "./audit.service.js";
 
@@ -42,9 +37,7 @@ export async function updateProfile(
     throw err;
   }
 
-  void auditService
-    .logEvent("PROFILE_UPDATED", userId, { fields: Object.keys(updateData) })
-    .catch(() => {});
+  void auditService.logEvent("PROFILE_UPDATED", userId, { fields: Object.keys(updateData) });
 
   return updated;
 }
@@ -59,7 +52,7 @@ export async function changePassword(userId: string, currentPassword: string, ne
   const hashed = await argon2.hash(newPassword);
   await userRepository.updatePassword(userId, hashed);
 
-  void auditService.logEvent("PASSWORD_CHANGED", userId).catch(() => {});
+  void auditService.logEvent("PASSWORD_CHANGED", userId);
 }
 
 export async function resetUserPassword(
@@ -82,11 +75,9 @@ export async function resetUserPassword(
   const hashed = await argon2.hash(newPassword);
   await userRepository.updatePassword(targetUserId, hashed);
 
-  void auditService
-    .logEvent("PASSWORD_RESET", requestingUser.id, {
-      targetUserId,
-    })
-    .catch(() => {});
+  void auditService.logEvent("PASSWORD_RESET", requestingUser.id, {
+    targetUserId,
+  });
 }
 
 export async function onboardUser(
@@ -102,32 +93,39 @@ export async function onboardUser(
 
   let user: Awaited<ReturnType<typeof userRepository.createUserAtomic>>;
   try {
-    user = await userRepository.createUserAtomic(requestingUser, {
-      email: payload.email,
-      password: hashed,
-      defaultCurrencyId: currency.id,
-      ...(payload.displayName !== undefined && { name: payload.displayName }),
-      ...(payload.role !== undefined && { role: payload.role }),
-      defaultCategories: DEFAULT_CATEGORIES,
-    });
+    user = await userRepository.createUserAtomic(
+      {
+        email: payload.email,
+        password: hashed,
+        defaultCurrencyId: currency.id,
+        ...(payload.displayName !== undefined && { name: payload.displayName }),
+        ...(payload.role !== undefined && { role: payload.role }),
+        defaultCategories: DEFAULT_CATEGORIES,
+      },
+      (count) => {
+        // Bootstrap policy: the very first user is created without a session
+        // (count === 0). After that, only an authenticated ADMIN may onboard
+        // additional users. Keeping the policy here — not in the repository —
+        // preserves layered separation of business rules from data access.
+        if (count > 0) {
+          if (!requestingUser) throw new ServiceError(401, "Unauthorized");
+          if (requestingUser.role !== "ADMIN") throw new ServiceError(403, "Forbidden");
+        }
+      },
+    );
   } catch (err) {
-    if (err instanceof BootstrapUnauthorizedError) throw new ServiceError(401, "Unauthorized");
-    if (err instanceof BootstrapForbiddenError) throw new ServiceError(403, "Forbidden");
     if (err instanceof EmailConflictError) throw new ServiceError(409, "Email already in use");
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034")
       throw new ServiceError(503, "Transaction failed due to a write conflict");
     throw err;
   }
 
-  // Track the event — best-effort
-  void auditService
-    .logEvent("USER_CREATED", requestingUser?.id ?? null, {
-      targetUserId: user.id,
-      email: user.email,
-      role: user.role,
-      isBootstrap: requestingUser === null,
-    })
-    .catch(() => {});
+  void auditService.logEvent("USER_CREATED", requestingUser?.id ?? null, {
+    targetUserId: user.id,
+    email: user.email,
+    role: user.role,
+    isBootstrap: requestingUser === null,
+  });
 
   return user;
 }
@@ -206,7 +204,7 @@ export async function updateUser(
       targetUserId: id,
       oldRole,
       newRole: data.role,
-    }).catch(() => {});
+    });
   }
   return updated;
 }
@@ -231,7 +229,7 @@ export async function deleteUser(requestingUser: { id: string; role: string } | 
   void logEvent("USER_DELETED", requestingUser.id, {
     targetUserId: id,
     email: existing.email,
-  }).catch(() => {});
+  });
 
   return;
 }

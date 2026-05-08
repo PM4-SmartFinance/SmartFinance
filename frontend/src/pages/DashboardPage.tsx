@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "../components/DateRangePicker";
 import { SummaryMetricsWidget } from "../components/SummaryMetricsWidget";
 import { BudgetWidget } from "../components/BudgetWidget";
+import { BudgetProgressWidget } from "../components/BudgetProgressWidget";
 import { SpendingTrendChart } from "../components/SpendingTrendChart";
 import { CategoryBreakdownChart } from "../components/CategoryBreakdownChart";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CsvImportCard } from "../components/CsvImportCard";
 import { RecentTransactionsWidget } from "../components/RecentTransactionsWidget";
 
@@ -73,34 +73,17 @@ export function DashboardPage() {
           <BudgetWidget />
         </section>
 
+        {/* ── Budget Progress ── */}
+        <section className="mb-8">
+          <BudgetProgressWidget />
+        </section>
+
         {/* ── Charts Grid ── */}
         <section className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
           <CategoryBreakdownChart />
 
           {/* ── Recent Transactions (Full Width) ── */}
           <RecentTransactionsWidget />
-
-          {/* ── Budget Progress (Full Width) ── */}
-          <Link
-            to="/budgets"
-            aria-label="View budgets"
-            className="group col-span-1 sm:col-span-2 lg:col-span-3 block rounded-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <Card className="cursor-pointer transition-all duration-200 group-hover:border-primary/50 group-hover:bg-accent/5 group-hover:shadow-md">
-              <CardHeader>
-                <CardTitle className="text-xs font-semibold uppercase tracking-wider">
-                  Budget Progress
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex min-h-48 items-center justify-center rounded bg-muted/30 px-4 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    Track spending against your budget limits
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
 
           {/* ── CSV Import ── */}
           <CsvImportCard />
