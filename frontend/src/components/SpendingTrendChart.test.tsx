@@ -4,28 +4,19 @@ import { userEvent } from "@testing-library/user-event";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 
-// Mock the API before importing the component so hooks that import `api` use the mock.
-const mockTrendData = {
-  data: [
-    { date: "2026-01-01", income: 100, expenses: 50 },
-    { date: "2026-01-02", income: 200, expenses: 80 },
-    { date: "2026-01-03", income: 150, expenses: 60 },
-  ],
-};
-
-const apiMockFactory = () => ({
-  api: {
-    get: vi.fn((path: string) => {
-      if (path.includes("/dashboard/trends")) {
-        return Promise.resolve(mockTrendData);
-      }
-      return Promise.resolve({});
-    }),
-  },
-});
-
-vi.mock("../lib/api", apiMockFactory);
-vi.mock("@/lib/api", apiMockFactory);
+import {
+  SpendingTrendChart,
+  formatMonthLabel,
+  formatDateLabel,
+  daysBetween,
+  formatYAxisValue,
+  buildChartAriaLabel,
+  computeTickInterval,
+  pickGranularity,
+  bucketize,
+  LABEL_COUNT_OPTIONS,
+} from "./SpendingTrendChart";
+import { useAppStore } from "../store/appStore";
 
 // Allow LineChart and its children to render in jsdom without a real layout engine.
 vi.mock("recharts", async () => {
@@ -38,6 +29,29 @@ vi.mock("recharts", async () => {
   };
 });
 
+// Pin the appStore date range to a deterministic 3-day window aligned with the mock data.
+beforeEach(() => {
+  useAppStore.setState({ startDate: "2026-01-01", endDate: "2026-01-03" });
+});
+
+const mockTrendData = {
+  data: [
+    { date: "2026-01-01", income: 100, expenses: 50 },
+    { date: "2026-01-02", income: 200, expenses: 80 },
+    { date: "2026-01-03", income: 150, expenses: 60 },
+  ],
+};
+
+vi.mock("../lib/api", () => ({
+  api: {
+    get: vi.fn((path) => {
+      if (path.includes("/dashboard/trends")) {
+        return Promise.resolve(mockTrendData);
+      }
+      return Promise.resolve({});
+    }),
+  },
+}));
 import {
   SpendingTrendChart,
   formatMonthLabel,
