@@ -160,7 +160,7 @@ export function BudgetsPage() {
         {/* Period Filter */}
         <div className="mb-6 flex flex-wrap items-end gap-4">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="period-filter" className="text-sm font-medium">
+            <label htmlFor="period-filter" className="text-sm font-medium text-foreground">
               View Period
             </label>
             <NativeSelect
@@ -180,7 +180,7 @@ export function BudgetsPage() {
           {period === "DATE_RANGE" && (
             <>
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="range-start" className="text-sm font-medium">
+                <label htmlFor="range-start" className="text-sm font-medium text-foreground">
                   Start Date
                 </label>
                 <input
@@ -189,11 +189,11 @@ export function BudgetsPage() {
                   value={dateRange.start}
                   onChange={(e) => setDateRange((prev) => ({ ...prev, start: e.target.value }))}
                   max={dateRange.end}
-                  className="rounded border border-input bg-background px-3 py-2 text-sm"
+                  className="rounded border border-input bg-background px-3 py-2 text-sm text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="range-end" className="text-sm font-medium">
+                <label htmlFor="range-end" className="text-sm font-medium text-foreground">
                   End Date
                 </label>
                 <input
@@ -202,7 +202,7 @@ export function BudgetsPage() {
                   value={dateRange.end}
                   onChange={(e) => setDateRange((prev) => ({ ...prev, end: e.target.value }))}
                   min={dateRange.start}
-                  className="rounded border border-input bg-background px-3 py-2 text-sm"
+                  className="rounded border border-input bg-background px-3 py-2 text-sm text-foreground [color-scheme:light] dark:[color-scheme:dark]"
                 />
               </div>
             </>
