@@ -17,8 +17,10 @@ vi.mock("@/lib/api", () => defaultMock);
 // Provide a minimal global fetch stub as a safety net. Tests should prefer
 // mocking `@/lib/api` but some libraries may call `fetch` directly.
 if (typeof globalThis.fetch === "undefined") {
-  // Cast through unknown to avoid `any` lint rule while still stubbing fetch.
-  globalThis.fetch = vi.fn(() =>
-    Promise.reject(new Error("global fetch not mocked")),
-  ) as unknown as typeof fetch;
+  // Default to a benign 200/empty JSON response so tests don't fail with network errors.
+  globalThis.fetch = vi.fn(async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({}),
+  })) as unknown as typeof fetch;
 }
