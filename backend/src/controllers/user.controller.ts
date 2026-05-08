@@ -1,6 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { requireRole, requireOwnerOrAdmin } from "../middleware/rbac.js";
-import { ServiceError } from "../errors.js";
+import { requireRole, requireOwnerOrAdmin, getSessionUser } from "../middleware/rbac.js";
 import * as userService from "../services/user.service.js";
 
 interface UserParams {
@@ -113,8 +112,7 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
   // --- Profile routes (from develop) ---
 
   app.get("/users/me", { preHandler: requireRole("USER") }, async (request, reply) => {
-    const sessionUser = request.session.get("user");
-    if (!sessionUser) throw new ServiceError(401, "Unauthorized");
+    const sessionUser = getSessionUser(request);
 
     const profile = await userService.getProfile(sessionUser.id);
     return reply.send({ user: profile });
@@ -124,8 +122,7 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
     "/users/me",
     { preHandler: requireRole("USER"), schema: { body: updateProfileSchema } },
     async (request, reply) => {
-      const sessionUser = request.session.get("user");
-      if (!sessionUser) throw new ServiceError(401, "Unauthorized");
+      const sessionUser = getSessionUser(request);
 
       const { displayName, email } = request.body;
       const updated = await userService.updateProfile(sessionUser.id, {
@@ -150,8 +147,7 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
     "/users/me/change-password",
     { preHandler: requireRole("USER"), schema: { body: changePasswordSchema } },
     async (request, reply) => {
-      const sessionUser = request.session.get("user");
-      if (!sessionUser) throw new ServiceError(401, "Unauthorized");
+      const sessionUser = getSessionUser(request);
 
       await userService.changePassword(
         sessionUser.id,
@@ -180,6 +176,7 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
       },
     },
     async (request, reply) => {
+      // NOTE: do not use getSessionUser here — bootstrap must allow an absent session.
       const sessionUser = request.session.get("user") ?? null;
       // Bootstrap is unauthenticated — the first user is always ADMIN and any
       // caller-supplied `role` is irrelevant. Drop it defensively so no code
@@ -204,7 +201,7 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
     async (request, reply) => {
       // Fastify schema guarantees these are numbers/boolean
       const { limit, offset, active } = request.query;
-      const sessionUser = request.session.get("user") ?? null;
+      const sessionUser = getSessionUser(request);
 
       const res = await userService.listUsers(sessionUser, {
         limit,
@@ -220,7 +217,7 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: requireOwnerOrAdmin("id") },
     async (request, reply) => {
       const { id } = request.params;
-      const sessionUser = request.session.get("user") ?? null;
+      const sessionUser = getSessionUser(request);
       const user = await userService.getUserById(sessionUser, id);
       return reply.send({ user });
     },
@@ -232,7 +229,7 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
     async (request, reply) => {
       const { id } = request.params;
       const payload = request.body;
-      const sessionUser = request.session.get("user") ?? null;
+      const sessionUser = getSessionUser(request);
       const updated = await userService.updateUser(sessionUser, id, payload);
       return reply.send({ user: updated });
     },
@@ -243,7 +240,7 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: requireOwnerOrAdmin("id") },
     async (request, reply) => {
       const { id } = request.params;
-      const sessionUser = request.session.get("user") ?? null;
+      const sessionUser = getSessionUser(request);
       await userService.deleteUser(sessionUser, id);
       return reply.status(204).send();
     },
@@ -254,7 +251,7 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: requireRole("ADMIN"), schema: resetPasswordSchema },
     async (request, reply) => {
       const { id } = request.params;
-      const sessionUser = request.session.get("user") ?? null;
+      const sessionUser = getSessionUser(request);
       await userService.resetUserPassword(sessionUser, id, request.body.newPassword);
       return reply.send({ ok: true });
     },

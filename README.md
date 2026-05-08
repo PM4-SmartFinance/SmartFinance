@@ -9,6 +9,7 @@ Academic semester project (PM4) at ZHAW School of Engineering.
 [![Latest release](https://img.shields.io/github/v/release/PM4-SmartFinance/SmartFinance?label=latest%20release)](https://github.com/PM4-SmartFinance/SmartFinance/releases)
 [![CI on main](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/ci.yml?query=branch%3Amain)
 [![Release / CD](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/cd.yml/badge.svg)](https://github.com/PM4-SmartFinance/SmartFinance/actions/workflows/cd.yml)
+[![Backend coverage](backend-coverage-badge.svg)](backend-coverage-badge.svg) [![Frontend coverage](frontend-coverage-badge.svg)](frontend-coverage-badge.svg)
 
 ## Project Status
 

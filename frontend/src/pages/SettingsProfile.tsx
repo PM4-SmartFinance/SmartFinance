@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+const LOGOUT_REDIRECT_DELAY_MS = 1500;
 import { api, ApiError } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,8 +64,10 @@ export function SettingsProfile() {
       api.post<{ ok: boolean }>("/users/me/change-password", input),
     onSuccess: () => {
       setPasswordSuccess(true);
-      void queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
-      setTimeout(() => navigate("/login"), 1500);
+      // Server has already deleted the session; the login page refetches
+      // /auth/me on mount and the auth guard will treat the cleared cookie as
+      // anonymous — no need to invalidate the cache here.
+      setTimeout(() => navigate("/login"), LOGOUT_REDIRECT_DELAY_MS);
     },
     onError: () => setPasswordSuccess(false),
   });

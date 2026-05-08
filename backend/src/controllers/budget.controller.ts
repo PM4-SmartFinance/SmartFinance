@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { requireRole } from "../middleware/rbac.js";
+import { requireRole, getSessionUser } from "../middleware/rbac.js";
 import * as budgetService from "../services/budget.service.js";
 import type { PeriodFilter } from "../services/budget.service.js";
 import { BudgetType } from "@prisma/client";
@@ -85,7 +85,7 @@ export async function budgetRoutes(app: FastifyInstance): Promise<void> {
     "/budgets",
     { preHandler: requireRole("USER"), schema: { querystring: budgetQuerystringSchema } },
     async (request, reply) => {
-      const session = request.session.get("user")!;
+      const session = getSessionUser(request);
       const budgets = await budgetService.listBudgets(session.id);
       const { period, startDate, endDate } = request.query;
 
@@ -108,7 +108,7 @@ export async function budgetRoutes(app: FastifyInstance): Promise<void> {
     "/budgets",
     { preHandler: requireRole("USER"), schema: { body: createBudgetSchema } },
     async (request, reply) => {
-      const session = request.session.get("user")!;
+      const session = getSessionUser(request);
       const { categoryId, type, limitAmount, month, year } = request.body;
       const budget = await budgetService.createBudget(
         session.id,
@@ -129,7 +129,7 @@ export async function budgetRoutes(app: FastifyInstance): Promise<void> {
       schema: { params: budgetParamsSchema, body: updateBudgetSchema },
     },
     async (request, reply) => {
-      const session = request.session.get("user")!;
+      const session = getSessionUser(request);
       const budget = await budgetService.updateBudget(request.params.id, session.id, request.body);
       return reply.send({ budget });
     },
@@ -139,7 +139,7 @@ export async function budgetRoutes(app: FastifyInstance): Promise<void> {
     "/budgets/:id",
     { preHandler: requireRole("USER"), schema: { params: budgetParamsSchema } },
     async (request, reply) => {
-      const session = request.session.get("user")!;
+      const session = getSessionUser(request);
       await budgetService.deleteBudget(request.params.id, session.id);
       return reply.status(204).send();
     },
