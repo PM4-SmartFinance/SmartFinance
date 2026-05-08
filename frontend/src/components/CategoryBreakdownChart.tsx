@@ -1,4 +1,13 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import {
+  BarChart,
+  Bar,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 import { ApiError } from "../lib/api";
 import { useDashboardCategories } from "../lib/queries/dashboard";
 import { formatCurrency } from "../lib/utils";
@@ -19,6 +28,10 @@ export function CategoryBreakdownChart() {
   const { data, isLoading, error } = useDashboardCategories();
   const chartData = Array.isArray(data) ? data : [];
   const isNotFoundError = error instanceof ApiError && error.status === 404;
+  // Show the empty-state copy only when there is genuinely nothing to plot —
+  // i.e. no rows or every row is a zero-spend category with no Uncategorized
+  // bucket. Once any spend exists (categorized or not), render the chart.
+  const hasAnySpend = chartData.some((row) => row.total > 0);
 
   if (error && !isNotFoundError) {
     return (
@@ -41,7 +54,7 @@ export function CategoryBreakdownChart() {
     );
   }
 
-  if (isNotFoundError || chartData.length === 0) {
+  if (isNotFoundError || chartData.length === 0 || !hasAnySpend) {
     return (
       <DashboardTileLink to="/categories" ariaLabel="View categories">
         <CategoryHeader />
@@ -85,7 +98,16 @@ export function CategoryBreakdownChart() {
                 labelStyle={{ color: "hsl(var(--foreground))" }}
                 formatter={(value) => [formatCurrency(Number(value)), "Spent"]}
               />
-              <Bar dataKey="total" fill="hsl(var(--primary))" />
+              <Bar dataKey="total">
+                {chartData.map((row) => (
+                  <Cell
+                    key={row.categoryId ?? "uncategorized"}
+                    fill={
+                      row.isUncategorized ? "hsl(var(--muted-foreground))" : "hsl(var(--primary))"
+                    }
+                  />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>

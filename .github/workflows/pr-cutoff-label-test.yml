@@ -9,6 +9,9 @@ on:
       - .github/workflows/pr-cutoff-label.yml
       - .github/workflows/pr-cutoff-label-test.yml
 
+permissions:
+  contents: read
+
 jobs:
   test-logic:
     name: Date-Window Logic Tests

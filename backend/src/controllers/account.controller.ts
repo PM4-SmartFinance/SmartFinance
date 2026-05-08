@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { requireRole } from "../middleware/rbac.js";
+import { requireRole, getSessionUser } from "../middleware/rbac.js";
 import * as accountService from "../services/account.service.js";
 
 const accountsResponseSchema = {
@@ -30,7 +30,7 @@ export async function accountRoutes(app: FastifyInstance): Promise<void> {
     "/accounts",
     { preHandler: requireRole("USER"), schema: accountsResponseSchema },
     async (request, reply) => {
-      const user = request.session.get("user")!;
+      const user = getSessionUser(request);
       const accounts = await accountService.getAccountsByUser(user.id);
       return reply.status(200).send({ accounts });
     },

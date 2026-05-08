@@ -182,6 +182,27 @@ export async function findUncategorizedForUser(userId: string) {
   });
 }
 
+export async function findCategorizableInRange(
+  userId: string,
+  startDateId: number,
+  endDateId: number,
+) {
+  return prisma.factTransactions.findMany({
+    where: {
+      userId,
+      manualOverride: false,
+      dateId: { gte: startDateId, lte: endDateId },
+    },
+    select: {
+      id: true,
+      categoryId: true,
+      amount: true,
+      dateId: true,
+      merchant: { select: { name: true } },
+    },
+  });
+}
+
 export async function findPreviewMatchesForUser(
   userId: string,
   pattern: string,

@@ -10,6 +10,10 @@ on:
       - main
       - develop
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   commit-msg-validation:
     name: Validate Commit Messages
@@ -93,7 +97,15 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run frontend tests
-        run: bun run --filter @smartfinance/frontend test
+        run: bun run --filter @smartfinance/frontend test:coverage
+
+      - name: Upload frontend coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          retention-days: 7
 
   test:
     name: Backend Tests (≥70% coverage)
@@ -153,6 +165,11 @@ jobs:
           path: backend/coverage/
           retention-days: 7
 
+      # NOTE: coverage reporting and badge generation has been moved to
+      # the `coverage-report` job which waits for both frontend and backend
+      # test jobs to complete. This avoids race conditions where frontend
+      # artifacts are not yet available when the backend job posts the PR comment.
+
   build:
     name: Build (frontend + backend)
     runs-on: ubuntu-24.04
@@ -205,3 +222,160 @@ jobs:
         run: |
           echo "Testing Docker infrastructure..."
           docker compose build
+
+  coverage-report:
+    name: Coverage Report
+    runs-on: ubuntu-24.04
+    needs:
+      - test-frontend
+      - test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download frontend coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-coverage
+          path: artifacts/frontend
+
+      - name: Download backend coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage
+          path: artifacts/backend
+
+      - name: Install jq and bc
+        run: sudo apt-get update -qq && sudo apt-get install -y jq bc
+
+      - name: Build coverage markdown
+        run: |
+          set -euo pipefail
+          BACK_SUM=$(find artifacts/backend -type f -name coverage-summary.json | head -n1)
+          FRONT_SUM=$(find artifacts/frontend -type f -name coverage-summary.json | head -n1)
+          BACK_BASE_FILE=".coverage-baselines/backend-summary.json"
+          FRONT_BASE_FILE=".coverage-baselines/frontend-summary.json"
+
+          if [ -z "$BACK_SUM" ] || [ ! -f "$BACK_SUM" ]; then
+            echo "::error::backend coverage-summary.json missing in downloaded artifact"
+            ls -R artifacts/backend || true
+            exit 1
+          fi
+          if [ -z "$FRONT_SUM" ] || [ ! -f "$FRONT_SUM" ]; then
+            echo "::error::frontend coverage-summary.json missing in downloaded artifact"
+            ls -R artifacts/frontend || true
+            exit 1
+          fi
+          jq empty "$BACK_SUM" || { echo "::error::malformed $BACK_SUM"; exit 1; }
+          jq empty "$FRONT_SUM" || { echo "::error::malformed $FRONT_SUM"; exit 1; }
+
+          {
+            echo "<!-- coverage-report -->"
+            echo "## Test Coverage Report"
+            echo ""
+            echo "| Module | Current | Baseline | Delta |"
+            echo "|--------|---------|----------|-------|"
+          } > coverage_report.md
+
+          BACK_CUR=$(jq -r '.total.lines.pct' "$BACK_SUM")
+          FRONT_CUR=$(jq -r '.total.lines.pct' "$FRONT_SUM")
+
+          if [ -f "$BACK_BASE_FILE" ]; then
+            BACK_BASE=$(jq -r '.total.lines.pct' "$BACK_BASE_FILE")
+            BACK_DELTA=$(LC_ALL=C printf "%.2f" "$(echo "$BACK_CUR - $BACK_BASE" | bc -l)")
+            echo "| Backend | ${BACK_CUR}% | ${BACK_BASE}% | ${BACK_DELTA}% |" >> coverage_report.md
+          else
+            echo "| Backend | ${BACK_CUR}% | - | - |" >> coverage_report.md
+          fi
+
+          if [ -f "$FRONT_BASE_FILE" ]; then
+            FRONT_BASE=$(jq -r '.total.lines.pct' "$FRONT_BASE_FILE")
+            FRONT_DELTA=$(LC_ALL=C printf "%.2f" "$(echo "$FRONT_CUR - $FRONT_BASE" | bc -l)")
+            echo "| Frontend | ${FRONT_CUR}% | ${FRONT_BASE}% | ${FRONT_DELTA}% |" >> coverage_report.md
+          else
+            echo "| Frontend | ${FRONT_CUR}% | - | - |" >> coverage_report.md
+          fi
+
+          {
+            echo ""
+            echo "<details><summary>Backend per-file coverage (lowest first)</summary>"
+            echo ""
+            jq -r 'to_entries[] | select(.key != "total") | [.value.lines.pct, .key] | "\(.[0])\t\(.[1])"' "$BACK_SUM" \
+              | sort -n \
+              | awk -F'\t' '{ printf("- **%s**: %s%%\n", $2, $1) }'
+            echo ""
+            echo "</details>"
+            echo ""
+            echo "<details><summary>Frontend per-file coverage (lowest first)</summary>"
+            echo ""
+            jq -r 'to_entries[] | select(.key != "total") | [.value.lines.pct, .key] | "\(.[0])\t\(.[1])"' "$FRONT_SUM" \
+              | sort -n \
+              | awk -F'\t' '{ printf("- **%s**: %s%%\n", $2, $1) }'
+            echo ""
+            echo "</details>"
+          } >> coverage_report.md
+
+      - name: Post sticky coverage comment
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: coverage-report
+          path: coverage_report.md
+
+      - name: Generate badges and stage baselines (on develop push)
+        if: github.ref == 'refs/heads/develop' && success()
+        run: |
+          set -euo pipefail
+          mkdir -p .coverage-baselines
+          BACK_SUM=$(find artifacts/backend -type f -name coverage-summary.json | head -n1)
+          FRONT_SUM=$(find artifacts/frontend -type f -name coverage-summary.json | head -n1)
+          [ -n "$BACK_SUM" ] || { echo "::error::backend coverage-summary.json missing in artifact"; exit 1; }
+          [ -n "$FRONT_SUM" ] || { echo "::error::frontend coverage-summary.json missing in artifact"; exit 1; }
+          cp "$BACK_SUM" .coverage-baselines/backend-summary.json
+          cp "$FRONT_SUM" .coverage-baselines/frontend-summary.json
+          jq empty .coverage-baselines/backend-summary.json
+          jq empty .coverage-baselines/frontend-summary.json
+          BACK_PCT=$(jq -r '.total.lines.pct | tostring | split(".")[0]' .coverage-baselines/backend-summary.json)
+          FRONT_PCT=$(jq -r '.total.lines.pct | tostring | split(".")[0]' .coverage-baselines/frontend-summary.json)
+          cat > backend-coverage-badge.svg <<EOF
+          <svg xmlns="http://www.w3.org/2000/svg" width="140" height="20">
+            <rect width="70" height="20" fill="#555" />
+            <rect x="70" width="70" height="20" fill="#4c1" />
+            <g fill="#fff" text-anchor="middle" font-family="Verdana" font-size="11">
+              <text x="35" y="14">backend</text>
+              <text x="105" y="14">${BACK_PCT}%</text>
+            </g>
+          </svg>
+          EOF
+          cat > frontend-coverage-badge.svg <<EOF
+          <svg xmlns="http://www.w3.org/2000/svg" width="140" height="20">
+            <rect width="70" height="20" fill="#555" />
+            <rect x="70" width="70" height="20" fill="#4c1" />
+            <g fill="#fff" text-anchor="middle" font-family="Verdana" font-size="11">
+              <text x="35" y="14">frontend</text>
+              <text x="105" y="14">${FRONT_PCT}%</text>
+            </g>
+          </svg>
+          EOF
+
+      - name: Open baseline-update PR (on develop push)
+        if: github.ref == 'refs/heads/develop' && success()
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/coverage-baseline-update
+          base: develop
+          commit-message: "chore(ci): [KAN-140] update coverage baselines and badges"
+          title: "chore(ci): [KAN-140] update coverage baselines and badges"
+          body: |
+            Automated coverage baseline + badge update from latest develop run (commit ${{ github.sha }}).
+
+            Generated by the `coverage-report` job. Merge to refresh PR delta comparisons.
+          labels: |
+            chore
+            automated
+          add-paths: |
+            .coverage-baselines/backend-summary.json
+            .coverage-baselines/frontend-summary.json
+            backend-coverage-badge.svg
+            frontend-coverage-badge.svg
+          delete-branch: true
