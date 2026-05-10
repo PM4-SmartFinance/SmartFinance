@@ -42,6 +42,23 @@ describe("auth.service audit events", () => {
     });
   });
 
+  it("returns only the session-safe fields — never the full password hash", async () => {
+    vi.mocked(userRepository.findByEmailWithPassword).mockResolvedValue({
+      ...mockUser,
+      password: "$argon2id$v=19$m=65536$saltsalt$abcdef1234567890",
+    } as never);
+
+    const result = await login("test@example.com", "Password123!");
+
+    expect(result).toEqual({
+      id: "user-1",
+      role: "USER",
+      email: "test@example.com",
+      pwdVersion: "1234567890",
+    });
+    expect(result).not.toHaveProperty("password");
+  });
+
   it("fires LOGIN_FAILED when user does not exist", async () => {
     vi.mocked(userRepository.findByEmailWithPassword).mockResolvedValue(null);
 

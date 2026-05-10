@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import * as authService from "../services/auth.service.js";
-import { ServiceError } from "../errors.js";
+import { verifySession } from "../middleware/rbac.js";
 
 interface AuthBody {
   email: string;
@@ -30,7 +30,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     },
     async (request, reply) => {
       const user = await authService.login(request.body.email, request.body.password);
-      request.session.set("user", { id: user.id, role: user.role, email: user.email });
+      request.session.set("user", user);
       return reply.send({ ok: true });
     },
   );
@@ -43,10 +43,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.get("/auth/me", async (request, reply) => {
-    const user = request.session.get("user");
-    if (!user) {
-      throw new ServiceError(401, "Unauthorized");
-    }
+    const user = await verifySession(request);
     return reply.send({ user });
   });
 }

@@ -1,4 +1,5 @@
 import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi, beforeEach } from "vitest";
@@ -24,6 +25,16 @@ vi.mock("../lib/api", () => {
     },
     ApiError,
   };
+});
+
+vi.mock("../hooks/useAuth", async () => {
+  const { authMockFactory } = await import("../test/authFixtures");
+  return authMockFactory();
+});
+
+vi.mock("../hooks/useLogout", async () => {
+  const { logoutMockFactory } = await import("../test/authFixtures");
+  return logoutMockFactory();
 });
 
 import { CategoriesPage, formatDateId } from "./CategoriesPage";
@@ -721,6 +732,17 @@ describe("CategoriesPage", () => {
     await waitFor(() => {
       expect(screen.getByTestId("overlap-degraded-new")).toBeInTheDocument();
     });
+  });
+
+  it("exposes Sign out from the user menu", async () => {
+    renderWithProviders();
+
+    await waitFor(() => expect(screen.getByText("Groceries")).toBeInTheDocument());
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "User menu" }));
+
+    expect(await screen.findByRole("menuitem", { name: /sign out/i })).toBeInTheDocument();
   });
 
   it("recategorize panel calls the API on a valid range and renders the result", async () => {

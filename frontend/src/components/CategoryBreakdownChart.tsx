@@ -76,35 +76,35 @@ export function CategoryBreakdownChart() {
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} layout="vertical" margin={{ left: 100, right: 20 }}>
-              <CartesianGrid stroke="hsl(var(--muted-foreground))" />
+              <CartesianGrid stroke="var(--border)" />
               <XAxis
                 type="number"
-                stroke="hsl(var(--muted-foreground))"
+                stroke="var(--border)"
+                tick={{ fill: "var(--foreground)" }}
                 style={{ fontSize: "12px" }}
               />
               <YAxis
                 dataKey="categoryName"
                 type="category"
-                stroke="hsl(var(--muted-foreground))"
+                stroke="var(--border)"
+                tick={{ fill: "var(--foreground)" }}
                 style={{ fontSize: "12px" }}
                 width={90}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "hsl(var(--background))",
-                  border: "1px solid hsl(var(--border))",
+                  backgroundColor: "var(--card)",
+                  border: "1px solid var(--border)",
                   borderRadius: "4px",
                 }}
-                labelStyle={{ color: "hsl(var(--foreground))" }}
+                labelStyle={{ color: "var(--foreground)" }}
                 formatter={(value) => [formatCurrency(Number(value)), "Spent"]}
               />
               <Bar dataKey="total">
                 {chartData.map((row) => (
                   <Cell
                     key={row.categoryId ?? "uncategorized"}
-                    fill={
-                      row.isUncategorized ? "hsl(var(--muted-foreground))" : "hsl(var(--primary))"
-                    }
+                    fill={row.isUncategorized ? "var(--muted-foreground)" : "var(--primary)"}
                   />
                 ))}
               </Bar>
