@@ -16,13 +16,7 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { BackToDashboardLink } from "@/components/BackToDashboardLink";
 import { UserMenu } from "@/components/UserMenu";
-
-const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
-  { value: "DAILY", label: "Daily" },
-  { value: "MONTHLY", label: "Monthly" },
-  { value: "YEARLY", label: "Yearly" },
-  { value: "DATE_RANGE", label: "Date Range" },
-];
+import { useTranslation } from "react-i18next";
 
 export function BudgetsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -34,6 +28,14 @@ export function BudgetsPage() {
     categoryName: string;
     budgetLabel: string;
   } | null>(null);
+  const { t } = useTranslation();
+
+  const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
+    { value: "DAILY", label: t("budgets.periods.daily", "Daily") },
+    { value: "MONTHLY", label: t("budgets.periods.monthly", "Monthly") },
+    { value: "YEARLY", label: t("budgets.periods.yearly", "Yearly") },
+    { value: "DATE_RANGE", label: t("budgets.periods.dateRange", "Date Range") },
+  ];
 
   const [period, setPeriod] = useState<PeriodFilter>("MONTHLY");
   const [dateRange, setDateRange] = useState(getDefaultDateRange);
@@ -93,8 +95,9 @@ export function BudgetsPage() {
     } catch (err) {
       const message =
         err instanceof ApiError
-          ? err.message || "Failed to delete budget. Please try again."
-          : "Failed to delete budget. Please try again.";
+          ? err.message ||
+            t("budgets.errors.deleteFailed", "Failed to delete budget. Please try again.")
+          : t("budgets.errors.deleteFailed", "Failed to delete budget. Please try again.");
       setDeleteError(message);
     }
   };
@@ -108,8 +111,10 @@ export function BudgetsPage() {
     return (
       <main className="min-h-screen bg-background">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <h1 className="text-4xl font-bold text-foreground">Budgets</h1>
-          <div className="mt-8 text-center text-muted-foreground">Loading budgets…</div>
+          <h1 className="text-4xl font-bold text-foreground">{t("budgets.heading", "Budgets")}</h1>
+          <div className="mt-8 text-center text-muted-foreground">
+            {t("budgets.loading", "Loading budgets…")}
+          </div>
         </div>
       </main>
     );
@@ -119,8 +124,10 @@ export function BudgetsPage() {
     return (
       <main className="min-h-screen bg-background">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <h1 className="text-4xl font-bold text-foreground">Budgets</h1>
-          <div className="mt-8 text-center text-destructive">Failed to load budgets</div>
+          <h1 className="text-4xl font-bold text-foreground">{t("budgets.heading", "Budgets")}</h1>
+          <div className="mt-8 text-center text-destructive">
+            {t("budgets.errors.loadFailed", "Failed to load budgets")}
+          </div>
         </div>
       </main>
     );
@@ -130,8 +137,10 @@ export function BudgetsPage() {
     return (
       <main className="min-h-screen bg-background">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <h1 className="text-4xl font-bold text-foreground">Budgets</h1>
-          <div className="mt-8 text-center text-destructive">Failed to load categories</div>
+          <h1 className="text-4xl font-bold text-foreground">{t("budgets.heading", "Budgets")}</h1>
+          <div className="mt-8 text-center text-destructive">
+            {t("budgets.errors.categoriesLoadFailed", "Failed to load categories")}
+          </div>
         </div>
       </main>
     );
@@ -143,15 +152,17 @@ export function BudgetsPage() {
         {/* Page Header */}
         <header className="mb-8 flex items-center justify-between">
           <div className="flex flex-col gap-2">
-            <h1 className="text-4xl font-bold text-foreground">Budgets</h1>
+            <h1 className="text-4xl font-bold text-foreground">
+              {t("budgets.heading", "Budgets")}
+            </h1>
             <p className="text-sm text-muted-foreground">
-              Set spending limits per category and monitor progress
+              {t("budgets.description", "Set spending limits per category and monitor progress")}
             </p>
             <BackToDashboardLink className="mt-2" />
           </div>
           <div className="flex items-center gap-2">
             <Button onClick={handleCreate} size="sm">
-              Create Budget
+              {t("budgets.createBtn", "Create Budget")}
             </Button>
             <UserMenu />
           </div>
@@ -161,7 +172,7 @@ export function BudgetsPage() {
         <div className="mb-6 flex flex-wrap items-end gap-4">
           <div className="flex flex-col gap-1.5">
             <label htmlFor="period-filter" className="text-sm font-medium text-foreground">
-              View Period
+              {t("budgets.filters.viewPeriod", "View Period")}
             </label>
             <NativeSelect
               id="period-filter"
@@ -181,7 +192,7 @@ export function BudgetsPage() {
             <>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="range-start" className="text-sm font-medium text-foreground">
-                  Start Date
+                  {t("budgets.filters.startDate", "Start Date")}
                 </label>
                 <input
                   id="range-start"
@@ -194,7 +205,7 @@ export function BudgetsPage() {
               </div>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="range-end" className="text-sm font-medium text-foreground">
-                  End Date
+                  {t("budgets.filters.endDate", "End Date")}
                 </label>
                 <input
                   id="range-end"
@@ -212,7 +223,7 @@ export function BudgetsPage() {
         {/* Budget Groups */}
         {budgets.length === 0 ? (
           <div className="text-center text-muted-foreground">
-            <p>No budgets yet. Create one to get started.</p>
+            <p>{t("budgets.emptyState", "No budgets yet. Create one to get started.")}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -242,12 +253,14 @@ export function BudgetsPage() {
       {budgetToDelete && (
         <ConfirmDeleteDialog
           isOpen={deleteDialogOpen}
-          title="Delete Budget?"
+          title={t("budgets.deleteDialog.title", "Delete Budget?")}
           description={
             <>
-              Are you sure you want to delete the <strong>{budgetToDelete.budgetLabel}</strong>{" "}
-              budget for <strong>{budgetToDelete.categoryName}</strong>? This action cannot be
-              undone.
+              {t("budgets.deleteDialog.descStart", "Are you sure you want to delete the ")}{" "}
+              <strong>{budgetToDelete.budgetLabel}</strong>{" "}
+              {t("budgets.deleteDialog.descMiddle", "budget for ")}{" "}
+              <strong>{budgetToDelete.categoryName}</strong>
+              {t("budgets.deleteDialog.descEnd", "? This action cannot be undone.")}
             </>
           }
           isDeleting={isDeleting}

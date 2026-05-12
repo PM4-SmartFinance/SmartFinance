@@ -7,17 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
-const TEXT = {
-  brand: "⬡ SmartFinance",
-  title: "Sign in",
-  description: "Enter your credentials to access your account",
-  submit: "Sign in",
-  submitting: "Signing in…",
-  genericError: "Something went wrong. Please try again.",
-  emailLabel: "Email",
-  passwordLabel: "Password",
-} as const;
+import { useTranslation } from "react-i18next";
 
 export function LoginPage() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -25,6 +15,7 @@ export function LoginPage() {
   const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const { t } = useTranslation();
 
   const { mutate, isPending, error } = useMutation({
     mutationFn: () => api.post<{ ok: boolean }>("/auth/login", { email, password }),
@@ -37,7 +28,12 @@ export function LoginPage() {
   if (isLoading) return null;
   if (isAuthenticated) return <Navigate to="/" replace />;
 
-  const errorMessage = error instanceof ApiError ? error.message : error ? TEXT.genericError : null;
+  const errorMessage =
+    error instanceof ApiError
+      ? error.message
+      : error
+        ? t("login.genericError", "Something went wrong. Please try again.")
+        : null;
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -48,9 +44,13 @@ export function LoginPage() {
     <main className="min-h-screen flex items-center justify-center p-4 bg-muted/40">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <div className="text-2xl font-bold tracking-wide mb-1">{TEXT.brand}</div>
-          <CardTitle className="text-xl">{TEXT.title}</CardTitle>
-          <CardDescription>{TEXT.description}</CardDescription>
+          <div className="text-2xl font-bold tracking-wide mb-1">
+            {t("login.brand", "⬡ SmartFinance")}
+          </div>
+          <CardTitle className="text-xl">{t("login.title", "Sign in")}</CardTitle>
+          <CardDescription>
+            {t("login.description", "Enter your credentials to access your account")}
+          </CardDescription>
         </CardHeader>
 
         <CardContent>
@@ -65,7 +65,7 @@ export function LoginPage() {
             )}
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="email">{TEXT.emailLabel}</Label>
+              <Label htmlFor="email">{t("login.emailLabel", "Email")}</Label>
               <Input
                 id="email"
                 type="email"
@@ -78,7 +78,7 @@ export function LoginPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="password">{TEXT.passwordLabel}</Label>
+              <Label htmlFor="password">{t("login.passwordLabel", "Password")}</Label>
               <Input
                 id="password"
                 type="password"
@@ -91,7 +91,7 @@ export function LoginPage() {
             </div>
 
             <Button type="submit" className="w-full mt-1" disabled={isPending}>
-              {isPending ? TEXT.submitting : TEXT.submit}
+              {isPending ? t("login.submitting", "Signing in…") : t("login.submit", "Sign in")}
             </Button>
           </form>
         </CardContent>
