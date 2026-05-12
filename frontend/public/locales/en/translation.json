@@ -67,5 +67,140 @@
       "saveCategory": "Save category {{name}}",
       "deleteCategory": "Delete category {{name}}"
     }
+  },
+  "nav": {
+    "transactions": "Transactions",
+    "budgets": "Budgets",
+    "categories": "Categories",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "heading": "Dashboard",
+    "subtitle": "View your financial overview at a glance",
+    "greeting": "Welcome back, {{email}}"
+  },
+  "login": {
+    "brand": "⬡ SmartFinance",
+    "title": "Sign in",
+    "description": "Enter your credentials to access your account",
+    "submit": "Sign in",
+    "submitting": "Signing in…",
+    "genericError": "Something went wrong. Please try again.",
+    "emailLabel": "Email",
+    "passwordLabel": "Password"
+  },
+  "404": {
+    "title": "404 - Page Not Found",
+    "homepage": "Go to homepage"
+  },
+  "settings": {
+    "heading": "Settings",
+    "description": "Manage your account and platform settings.",
+    "nav": {
+      "profile": "Profile",
+      "userManagement": "User Management"
+    }
+  },
+  "settingsUsers": {
+    "heading": "Users",
+    "description": "Manage platform users and access",
+    "createUserBtn": "Create User",
+    "deleteDialog": {
+      "title": "Delete User?",
+      "descStart": "Permanently delete",
+      "descEnd": "? This action cannot be undone."
+    },
+    "errors": {
+      "deactivateFailed": "Failed to deactivate user",
+      "deleteFailed": "Failed to delete user",
+      "loadFailed": "Failed to load users. Please try again."
+    }
+  },
+  "budgets": {
+    "heading": "Budgets",
+    "description": "Set spending limits per category and monitor progress",
+    "loading": "Loading budgets…",
+    "createBtn": "Create Budget",
+    "emptyState": "No budgets yet. Create one to get started.",
+    "periods": {
+      "daily": "Daily",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "dateRange": "Date Range"
+    },
+    "filters": {
+      "viewPeriod": "View Period",
+      "startDate": "Start Date",
+      "endDate": "End Date"
+    },
+    "deleteDialog": {
+      "title": "Delete Budget?",
+      "descStart": "Are you sure you want to delete the ",
+      "descMiddle": "budget for ",
+      "descEnd": "? This action cannot be undone."
+    },
+    "errors": {
+      "deleteFailed": "Failed to delete budget. Please try again.",
+      "loadFailed": "Failed to load budgets",
+      "categoriesLoadFailed": "Failed to load categories"
+    }
+  },
+  "settingsProfile": {
+    "heading": "Profile",
+    "errors": {
+      "passwordsMismatch": "New passwords do not match.",
+      "generic": "Something went wrong. Please try again."
+    },
+    "account": {
+      "title": "Account information",
+      "description": "Update your display name and email address.",
+      "loadFailed": "Failed to load your profile. Please refresh the page.",
+      "displayNameLabel": "Display name",
+      "displayNamePlaceholder": "Your name",
+      "emailLabel": "Email address",
+      "success": "Profile updated successfully.",
+      "saving": "Saving…",
+      "saveBtn": "Save changes"
+    },
+    "password": {
+      "title": "Change password",
+      "description": "Enter your current password before setting a new one. You will be signed out after a successful change.",
+      "currentLabel": "Current password",
+      "newLabel": "New password",
+      "confirmLabel": "Confirm new password",
+      "success": "Password changed. Please sign in again.",
+      "changing": "Changing…",
+      "changeBtn": "Change password"
+    }
+  },
+  "transactions": {
+    "heading": "Transactions",
+    "emptyState": "No transactions found. Try adjusting your filters.",
+    "filters": {
+      "heading": "Filters",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "category": "Category",
+      "allCategories": "All Categories",
+      "search": "Search",
+      "searchPlaceholder": "Search by merchant name...",
+      "apply": "Apply",
+      "clear": "Clear"
+    },
+    "table": {
+      "date": "Date",
+      "description": "Description",
+      "category": "Category",
+      "amount": "Amount"
+    },
+    "pagination": {
+      "info": "Page {{page}} of {{totalPages}} ({{totalCount}} total)",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "errors": {
+      "loadFailed": "Failed to load transactions. Please try again later.",
+      "categoriesLoadFailed": "Failed to load categories"
+    }
   }
 }
