@@ -11,6 +11,7 @@ import { ResetPasswordDialog } from "../components/ResetPasswordDialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 type SortColumn = "email" | "role" | "createdAt";
 
@@ -23,6 +24,7 @@ export function SettingsUsers() {
   const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [deactivateError, setDeactivateError] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   const { data: response, isLoading, error } = useUsers(50, 0, sortBy, sortOrder);
   const { user: currentUser } = useAuth();
@@ -48,7 +50,10 @@ export function SettingsUsers() {
         logout();
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to deactivate user";
+      const message =
+        err instanceof Error
+          ? err.message
+          : t("settingsUsers.errors.deactivateFailed", "Failed to deactivate user");
       setDeactivateError(message);
     }
   };
@@ -80,7 +85,7 @@ export function SettingsUsers() {
     deleteMutation.error instanceof ApiError
       ? deleteMutation.error.message
       : deleteMutation.error
-        ? "Failed to delete user"
+        ? t("settingsUsers.errors.deleteFailed", "Failed to delete user")
         : null;
 
   const users = response?.items ?? [];
@@ -100,11 +105,15 @@ export function SettingsUsers() {
         {/* Page Header */}
         <header className="flex items-center justify-between">
           <div className="flex flex-col gap-2">
-            <h2 className="text-4xl font-bold text-foreground">Users</h2>
-            <p className="text-sm text-muted-foreground">Manage platform users and access</p>
+            <h2 className="text-4xl font-bold text-foreground">
+              {t("settingsUsers.heading", "Users")}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {t("settingsUsers.description", "Manage platform users and access")}
+            </p>
           </div>
           <Button onClick={() => setIsCreateDialogOpen(true)} size="sm">
-            Create User
+            {t("settingsUsers.createUserBtn", "Create User")}
           </Button>
         </header>
 
@@ -112,7 +121,9 @@ export function SettingsUsers() {
         {error && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="size-4" />
-            <AlertDescription>Failed to load users. Please try again.</AlertDescription>
+            <AlertDescription>
+              {t("settingsUsers.errors.loadFailed", "Failed to load users. Please try again.")}
+            </AlertDescription>
           </Alert>
         )}
 
@@ -157,11 +168,12 @@ export function SettingsUsers() {
       {selectedUser && (
         <ConfirmDeleteDialog
           isOpen={isDeleteDialogOpen}
-          title="Delete User?"
+          title={t("settingsUsers.deleteDialog.title", "Delete User?")}
           description={
             <>
-              Permanently delete <span className="font-medium">{selectedUser.email}</span>? This
-              action cannot be undone.
+              {t("settingsUsers.deleteDialog.descStart", "Permanently delete")}{" "}
+              <span className="font-medium">{selectedUser.email}</span>
+              {t("settingsUsers.deleteDialog.descEnd", "? This action cannot be undone.")}
             </>
           }
           error={deleteErrorMessage}
