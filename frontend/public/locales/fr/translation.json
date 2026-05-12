@@ -1,0 +1,71 @@
+{
+  "common": {
+    "add": "Ajouter",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "dismiss": "Ignorer",
+    "edit": "Modifier",
+    "name": "Nom",
+    "run": "Exécuter",
+    "save": "Enregistrer"
+  },
+  "categories": {
+    "title": "Catégories et règles",
+    "description": "Gérez vos catégories et règles de catégorisation automatique au même endroit.",
+    "loading": "Chargement des catégories et des règles…",
+    "loadingError": "Échec du chargement des catégories ou des règles. Veuillez actualiser.",
+    "refreshHint": "Enregistré, mais le tableau de bord peut nécessiter une actualisation manuelle.",
+
+    "personalTitle": "Vos catégories",
+    "personalDesc": "Catégories modifiables que vous avez créées.",
+    "globalTitle": "Catégories globales",
+    "globalDesc": "Valeurs par défaut partagées disponibles pour tous les utilisateurs.",
+    "globalCategoryReadOnly": "Catégorie globale (lecture seule)",
+    "noCategories": "Aucune catégorie dans cette section.",
+
+    "createCategoryTitle": "Créer une catégorie",
+    "newCategoryPlaceholder": "par ex. Abonnements",
+
+    "applyRulesTitle": "Appliquer les règles",
+    "applyRulesDescription": "La catégorisation automatique traite uniquement les transactions non catégorisées. Recatégoriser réapplique chaque règle (la priorité la plus élevée d'abord) à toutes les transactions non modifiées manuellement dans la plage sélectionnée, en écrasant les catégorisations automatiques précédentes.",
+    "autoCategorizeBtn": "Catégoriser automatiquement les transactions non catégorisées",
+    "autoCategorizing": "Catégorisation automatique en cours…",
+    "recategorizeBtn": "Recatégoriser la plage de dates…",
+    "recategorizing": "Recatégorisation en cours…",
+    "recategorizeFrom": "De",
+    "recategorizeTo": "À",
+
+    "existingRules": "Règles existantes",
+    "noRules": "Aucune règle pour le moment.",
+
+    "matchCount_one": "{{count}} transaction existante correspondrait.",
+    "matchCount_other": "{{count}} transactions existantes correspondraient.",
+    "autoCategorizeNone": "Aucune transaction non catégorisée ne correspond à aucune règle.",
+    "autoCategorizeSuccess_one": "{{count}} transaction catégorisée.",
+    "autoCategorizeSuccess_other": "{{count}} transactions catégorisées.",
+    "recategorizeNone": "Aucune transaction n'a été modifiée dans la plage sélectionnée.",
+    "recategorizeSuccess_one": "{{count}} transaction recatégorisée.",
+    "recategorizeSuccess_other": "{{count}} transactions recatégorisées.",
+
+    "errors": {
+      "nameRequired": "Le nom de la catégorie est requis.",
+      "createFailed": "Échec de la création de la catégorie.",
+      "updateFailed": "Échec de la mise à jour de la catégorie.",
+      "deleteFailed": "Échec de la suppression de la catégorie.",
+      "rulePatternRequired": "Le modèle de règle est requis.",
+      "createRuleFailed": "Échec de la création de la règle.",
+      "previewFailed": "Échec de l'aperçu des correspondances de règles.",
+      "updateRuleFailed": "Échec de la mise à jour de la règle.",
+      "deleteRuleFailed": "Échec de la suppression de la règle.",
+      "autoCategorizeFailed": "Échec de l'exécution de la catégorisation automatique.",
+      "invalidDateRange": "La date de début ne doit pas être postérieure à la date de fin.",
+      "recategorizeFailed": "Échec de la recatégorisation de la plage sélectionnée."
+    },
+
+    "aria": {
+      "editCategory": "Modifier la catégorie {{name}}",
+      "saveCategory": "Enregistrer la catégorie {{name}}",
+      "deleteCategory": "Supprimer la catégorie {{name}}"
+    }
+  }
+}

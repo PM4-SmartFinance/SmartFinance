@@ -1,0 +1,71 @@
+{
+  "common": {
+    "add": "Agiuntar",
+    "cancel": "Annullar",
+    "delete": "Stizzar",
+    "dismiss": "Zuppentar",
+    "edit": "Modifitgar",
+    "name": "Num",
+    "run": "Esequir",
+    "save": "Arcunar"
+  },
+  "categories": {
+    "title": "Categorias & Reglas",
+    "description": "Administrescha tias categorias e reglas da categorisaziun automatica en in lieu.",
+    "loading": "Chargiond categorias e reglas…",
+    "loadingError": "Errur tar il chargiar las categorias u reglas. Per plaschair actualisar.",
+    "refreshHint": "Arcunà, dentant il dashboard basegna forsa in'actualisaziun manuala.",
+
+    "personalTitle": "Tias categorias",
+    "personalDesc": "Categorias modifitgablas che ti has creà.",
+    "globalTitle": "Categorias globalas",
+    "globalDesc": "Standards communabels disponibels per tut ils utilisaders.",
+    "globalCategoryReadOnly": "Categoria globala (be leger)",
+    "noCategories": "Nunginas categorias en questa secziun.",
+
+    "createCategoryTitle": "Crear categoria",
+    "newCategoryPlaceholder": "p.ex. Abunaments",
+
+    "applyRulesTitle": "Applitgar reglas",
+    "applyRulesDescription": "La categorisaziun automatica elavurescha be transacziuns betg categorisadas. Recategorisar applitgescha puspè mintga regla (prioritad la pli auta l'emprim) a tut las transacziuns betg modifitgadas manualmain en il interval tschernì, surscrivend las categorisaziuns automaticas precedentas.",
+    "autoCategorizeBtn": "Categorisar automaticamain las betg categorisadas",
+    "autoCategorizing": "Categorisond automaticamain…",
+    "recategorizeBtn": "Recategorisar l'interval da datas…",
+    "recategorizing": "Recategorisond…",
+    "recategorizeFrom": "Da",
+    "recategorizeTo": "A",
+
+    "existingRules": "Reglas existentas",
+    "noRules": "Aunc nunginas reglas.",
+
+    "matchCount_one": "{{count}} transacziun existenta correspundess.",
+    "matchCount_other": "{{count}} transacziuns existentas correspundessan.",
+    "autoCategorizeNone": "Nunginas transacziuns betg categorisadas correspundan ad ina regla.",
+    "autoCategorizeSuccess_one": "Categorisà {{count}} transacziun.",
+    "autoCategorizeSuccess_other": "Categorisà {{count}} transacziuns.",
+    "recategorizeNone": "Nunginas transacziuns midadas en l'interval tschernì.",
+    "recategorizeSuccess_one": "Recategorisà {{count}} transacziun.",
+    "recategorizeSuccess_other": "Recategorisà {{count}} transacziuns.",
+
+    "errors": {
+      "nameRequired": "Il num da la categoria è necessari.",
+      "createFailed": "Sbagl tar il crear la categoria.",
+      "updateFailed": "Sbagl tar l'actualisar la categoria.",
+      "deleteFailed": "Sbagl tar il stizzar la categoria.",
+      "rulePatternRequired": "Il muster da la regla è necessari.",
+      "createRuleFailed": "Sbagl tar il crear la regla.",
+      "previewFailed": "Sbagl tar la prevista da las correspundenzas da la regla.",
+      "updateRuleFailed": "Sbagl tar l'actualisar la regla.",
+      "deleteRuleFailed": "Sbagl tar il stizzar la regla.",
+      "autoCategorizeFailed": "Sbagl tar l'esequir la categorisaziun automatica.",
+      "invalidDateRange": "La data d'entschatta na dastga betg esser suenter la data da finiziun.",
+      "recategorizeFailed": "Sbagl tar il recategorisar l'interval tschernì."
+    },
+
+    "aria": {
+      "editCategory": "Modifitgar la categoria {{name}}",
+      "saveCategory": "Arcunar la categoria {{name}}",
+      "deleteCategory": "Stizzar la categoria {{name}}"
+    }
+  }
+}

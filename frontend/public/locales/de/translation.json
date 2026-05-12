@@ -1,0 +1,71 @@
+{
+  "common": {
+    "add": "Hinzufügen",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "dismiss": "Schließen",
+    "edit": "Bearbeiten",
+    "name": "Name",
+    "run": "Ausführen",
+    "save": "Speichern"
+  },
+  "categories": {
+    "title": "Kategorien & Regeln",
+    "description": "Verwalte deine Kategorien und Automatisierungsregeln an einem Ort.",
+    "loading": "Kategorien und Regeln werden geladen…",
+    "loadingError": "Fehler beim Laden der Kategorien oder Regeln. Bitte neu laden.",
+    "refreshHint": "Gespeichert, aber das Dashboard muss möglicherweise manuell aktualisiert werden.",
+
+    "personalTitle": "Deine Kategorien",
+    "personalDesc": "Bearbeitbare Kategorien, die du erstellt hast.",
+    "globalTitle": "Globale Kategorien",
+    "globalDesc": "Gemeinsame Standards, die für alle Nutzer verfügbar sind.",
+    "globalCategoryReadOnly": "Globale Kategorie (schreibgeschützt)",
+    "noCategories": "Keine Kategorien in diesem Bereich.",
+
+    "createCategoryTitle": "Kategorie erstellen",
+    "newCategoryPlaceholder": "z. B. Abonnements",
+
+    "applyRulesTitle": "Regeln anwenden",
+    "applyRulesDescription": "Automatisches Kategorisieren verarbeitet nur unkategorisierte Transaktionen. Neukategorisieren wendet alle Regeln (höchste Priorität zuerst) auf alle nicht manuell bearbeiteten Transaktionen im ausgewählten Zeitraum an und überschreibt vorherige automatische Kategorisierungen.",
+    "autoCategorizeBtn": "Unkategorisierte automatisch kategorisieren",
+    "autoCategorizing": "Automatische Kategorisierung läuft…",
+    "recategorizeBtn": "Zeitraum neu kategorisieren…",
+    "recategorizing": "Neu kategorisieren…",
+    "recategorizeFrom": "Von",
+    "recategorizeTo": "Bis",
+
+    "existingRules": "Bestehende Regeln",
+    "noRules": "Noch keine Regeln.",
+
+    "matchCount_one": "{{count}} bestehende Transaktion würde übereinstimmen.",
+    "matchCount_other": "{{count}} bestehende Transaktionen würden übereinstimmen.",
+    "autoCategorizeNone": "Keine unkategorisierten Transaktionen entsprachen einer Regel.",
+    "autoCategorizeSuccess_one": "{{count}} Transaktion kategorisiert.",
+    "autoCategorizeSuccess_other": "{{count}} Transaktionen kategorisiert.",
+    "recategorizeNone": "Im ausgewählten Zeitraum wurden keine Transaktionen geändert.",
+    "recategorizeSuccess_one": "{{count}} Transaktion neu kategorisiert.",
+    "recategorizeSuccess_other": "{{count}} Transaktionen neu kategorisiert.",
+
+    "errors": {
+      "nameRequired": "Kategoriename ist erforderlich.",
+      "createFailed": "Fehler beim Erstellen der Kategorie.",
+      "updateFailed": "Fehler beim Aktualisieren der Kategorie.",
+      "deleteFailed": "Fehler beim Löschen der Kategorie.",
+      "rulePatternRequired": "Regel-Muster ist erforderlich.",
+      "createRuleFailed": "Fehler beim Erstellen der Regel.",
+      "previewFailed": "Fehler bei der Vorschau der Regelübereinstimmungen.",
+      "updateRuleFailed": "Fehler beim Aktualisieren der Regel.",
+      "deleteRuleFailed": "Fehler beim Löschen der Regel.",
+      "autoCategorizeFailed": "Fehler bei der automatischen Kategorisierung.",
+      "invalidDateRange": "Startdatum darf nicht nach dem Enddatum liegen.",
+      "recategorizeFailed": "Fehler bei der Neukategorisierung des ausgewählten Zeitraums."
+    },
+
+    "aria": {
+      "editCategory": "Kategorie {{name}} bearbeiten",
+      "saveCategory": "Kategorie {{name}} speichern",
+      "deleteCategory": "Kategorie {{name}} löschen"
+    }
+  }
+}

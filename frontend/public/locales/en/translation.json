@@ -1,0 +1,71 @@
+{
+  "common": {
+    "add": "Add",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "dismiss": "Dismiss",
+    "edit": "Edit",
+    "name": "Name",
+    "run": "Run",
+    "save": "Save"
+  },
+  "categories": {
+    "title": "Categories & Rules",
+    "description": "Manage your categories and auto-categorization rules in one place.",
+    "loading": "Loading categories and rules…",
+    "loadingError": "Failed to load categories or rules. Please refresh.",
+    "refreshHint": "Saved, but the dashboard may need a manual refresh.",
+
+    "personalTitle": "Your Categories",
+    "personalDesc": "Editable categories you created.",
+    "globalTitle": "Global Categories",
+    "globalDesc": "Shared defaults available to all users.",
+    "globalCategoryReadOnly": "Global category (read-only)",
+    "noCategories": "No categories in this section.",
+
+    "createCategoryTitle": "Create Category",
+    "newCategoryPlaceholder": "e.g. Subscriptions",
+
+    "applyRulesTitle": "Apply Rules",
+    "applyRulesDescription": "Auto-categorize processes uncategorized transactions only. Recategorize re-applies every rule (highest priority first) to all non-manually-edited transactions in the selected range, overwriting prior auto-categorizations.",
+    "autoCategorizeBtn": "Auto-categorize uncategorized",
+    "autoCategorizing": "Auto-categorizing…",
+    "recategorizeBtn": "Recategorize date range…",
+    "recategorizing": "Recategorizing…",
+    "recategorizeFrom": "From",
+    "recategorizeTo": "To",
+
+    "existingRules": "Existing Rules",
+    "noRules": "No rules yet.",
+
+    "matchCount_one": "{{count}} existing transaction would match.",
+    "matchCount_other": "{{count}} existing transactions would match.",
+    "autoCategorizeNone": "No uncategorized transactions matched any rule.",
+    "autoCategorizeSuccess_one": "Categorized {{count}} transaction.",
+    "autoCategorizeSuccess_other": "Categorized {{count}} transactions.",
+    "recategorizeNone": "No transactions changed in the selected range.",
+    "recategorizeSuccess_one": "Recategorized {{count}} transaction.",
+    "recategorizeSuccess_other": "Recategorized {{count}} transactions.",
+
+    "errors": {
+      "nameRequired": "Category name is required.",
+      "createFailed": "Failed to create category.",
+      "updateFailed": "Failed to update category.",
+      "deleteFailed": "Failed to delete category.",
+      "rulePatternRequired": "Rule pattern is required.",
+      "createRuleFailed": "Failed to create rule.",
+      "previewFailed": "Failed to preview rule matches.",
+      "updateRuleFailed": "Failed to update rule.",
+      "deleteRuleFailed": "Failed to delete rule.",
+      "autoCategorizeFailed": "Failed to run auto-categorization.",
+      "invalidDateRange": "Start date must not be after end date.",
+      "recategorizeFailed": "Failed to recategorize the selected range."
+    },
+
+    "aria": {
+      "editCategory": "Edit category {{name}}",
+      "saveCategory": "Save category {{name}}",
+      "deleteCategory": "Delete category {{name}}"
+    }
+  }
+}

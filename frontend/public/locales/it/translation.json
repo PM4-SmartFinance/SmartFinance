@@ -1,0 +1,71 @@
+{
+  "common": {
+    "add": "Aggiungi",
+    "cancel": "Annulla",
+    "delete": "Elimina",
+    "dismiss": "Ignora",
+    "edit": "Modifica",
+    "name": "Nome",
+    "run": "Esegui",
+    "save": "Salva"
+  },
+  "categories": {
+    "title": "Categorie e regole",
+    "description": "Gestisci le tue categorie e le regole di categorizzazione automatica in un unico posto.",
+    "loading": "Caricamento categorie e regole in corso…",
+    "loadingError": "Impossibile caricare categorie o regole. Ricarica la pagina.",
+    "refreshHint": "Salvato, ma la dashboard potrebbe richiedere un aggiornamento manuale.",
+
+    "personalTitle": "Le tue categorie",
+    "personalDesc": "Categorie modificabili che hai creato.",
+    "globalTitle": "Categorie globali",
+    "globalDesc": "Impostazioni predefinite condivise disponibili per tutti gli utenti.",
+    "globalCategoryReadOnly": "Categoria globale (sola lettura)",
+    "noCategories": "Nessuna categoria in questa sezione.",
+
+    "createCategoryTitle": "Crea categoria",
+    "newCategoryPlaceholder": "es. Abbonamenti",
+
+    "applyRulesTitle": "Applica regole",
+    "applyRulesDescription": "La categorizzazione automatica elabora solo le transazioni non categorizzate. Ricategorizza riapplica ogni regola (con priorità più alta per prima) a tutte le transazioni non modificate manualmente nell'intervallo selezionato, sovrascrivendo le precedenti categorizzazioni automatiche.",
+    "autoCategorizeBtn": "Categorizza automaticamente non categorizzate",
+    "autoCategorizing": "Categorizzazione automatica in corso…",
+    "recategorizeBtn": "Ricategorizza intervallo di date…",
+    "recategorizing": "Ricategorizzazione in corso…",
+    "recategorizeFrom": "Da",
+    "recategorizeTo": "A",
+
+    "existingRules": "Regole esistenti",
+    "noRules": "Nessuna regola per ora.",
+
+    "matchCount_one": "{{count}} transazione esistente corrisponderebbe.",
+    "matchCount_other": "{{count}} transazioni esistenti corrisponderebbero.",
+    "autoCategorizeNone": "Nessuna transazione non categorizzata corrisponde a nessuna regola.",
+    "autoCategorizeSuccess_one": "Categorizzata {{count}} transazione.",
+    "autoCategorizeSuccess_other": "Categorizzate {{count}} transazioni.",
+    "recategorizeNone": "Nessuna transazione modificata nell'intervallo selezionato.",
+    "recategorizeSuccess_one": "Ricategorizzata {{count}} transazione.",
+    "recategorizeSuccess_other": "Ricategorizzate {{count}} transazioni.",
+
+    "errors": {
+      "nameRequired": "Il nome della categoria è obbligatorio.",
+      "createFailed": "Creazione della categoria non riuscita.",
+      "updateFailed": "Aggiornamento della categoria non riuscito.",
+      "deleteFailed": "Eliminazione della categoria non riuscita.",
+      "rulePatternRequired": "Il modello della regola è obbligatorio.",
+      "createRuleFailed": "Creazione della regola non riuscita.",
+      "previewFailed": "Anteprima delle corrispondenze della regola non riuscita.",
+      "updateRuleFailed": "Aggiornamento della regola non riuscito.",
+      "deleteRuleFailed": "Eliminazione della regola non riuscita.",
+      "autoCategorizeFailed": "Esecuzione della categorizzazione automatica non riuscita.",
+      "invalidDateRange": "La date di inizio non deve essere successiva alla data di fine.",
+      "recategorizeFailed": "Ricategorizzazione dell'intervallo selezionato non riuscita."
+    },
+
+    "aria": {
+      "editCategory": "Modifica categoria {{name}}",
+      "saveCategory": "Salva categoria {{name}}",
+      "deleteCategory": "Elimina categoria {{name}}"
+    }
+  }
+}
