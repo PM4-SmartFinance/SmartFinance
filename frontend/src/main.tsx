@@ -5,11 +5,12 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { AuthProvider } from "./contexts/AuthProvider";
 import { router } from "./router";
+import "./lib/i18n";
 import "./index.css";
 
 try {
   const storedTheme = localStorage.getItem("theme");
-  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const prefersDark = globalThis.matchMedia("(prefers-color-scheme: dark)").matches;
   const isSystem = storedTheme === "system" || storedTheme === null;
   if (storedTheme === "dark" || (isSystem && prefersDark)) {
     document.documentElement.classList.add("dark");
