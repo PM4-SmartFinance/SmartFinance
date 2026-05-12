@@ -1,10 +1,11 @@
 import { Menu } from "@base-ui/react/menu";
-import { Sun, Moon, Monitor, LogOut, Check } from "lucide-react";
+import { Sun, Moon, Monitor, LogOut, Check, Globe } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useLogout } from "../hooks/useLogout";
 import { useAppStore, isTheme } from "../store/appStore";
 import type { Theme } from "../store/appStore";
 import { Avatar, AvatarFallback } from "./ui/avatar";
+import { useTranslation } from "react-i18next";
 
 const THEME_OPTIONS: { value: Theme; label: string; Icon: typeof Sun }[] = [
   { value: "light", label: "Light", Icon: Sun },
@@ -12,9 +13,18 @@ const THEME_OPTIONS: { value: Theme; label: string; Icon: typeof Sun }[] = [
   { value: "system", label: "System", Icon: Monitor },
 ];
 
+const LANGUAGE_OPTIONS = [
+  { value: "en", label: "English" },
+  { value: "de", label: "Deutsch" },
+  { value: "fr", label: "Français" },
+  { value: "it", label: "Italiano" },
+  { value: "rm", label: "Rumantsch" },
+];
+
 export function UserMenu() {
   const { user } = useAuth();
   const { mutate: logout, isPending } = useLogout();
+  const { i18n } = useTranslation();
   const theme = useAppStore((s) => s.theme);
   const setTheme = useAppStore((s) => s.setTheme);
 
@@ -55,6 +65,30 @@ export function UserMenu() {
                   className="flex items-center gap-2 px-3 py-1.5 mx-1 rounded-sm cursor-default outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
                 >
                   <Icon className="size-3.5 shrink-0" />
+                  {label}
+                  <Menu.RadioItemIndicator className="ml-auto">
+                    <Check className="size-3.5" />
+                  </Menu.RadioItemIndicator>
+                </Menu.RadioItem>
+              ))}
+            </Menu.RadioGroup>
+
+            <Menu.Separator className="my-1 h-px bg-border mx-1" />
+
+            <div className="px-3 pt-1 pb-0.5 text-xs font-medium text-muted-foreground">
+              Language
+            </div>
+            <Menu.RadioGroup
+              value={i18n.resolvedLanguage || "en"}
+              onValueChange={(v) => i18n.changeLanguage(v)}
+            >
+              {LANGUAGE_OPTIONS.map(({ value, label }) => (
+                <Menu.RadioItem
+                  key={value}
+                  value={value}
+                  className="flex items-center gap-2 px-3 py-1.5 mx-1 rounded-sm cursor-default outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                >
+                  <Globe className="size-3.5 shrink-0" />
                   {label}
                   <Menu.RadioItemIndicator className="ml-auto">
                     <Check className="size-3.5" />
