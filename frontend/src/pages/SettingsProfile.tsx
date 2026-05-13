@@ -100,14 +100,14 @@ export function SettingsProfile() {
     profileError instanceof ApiError
       ? profileError.message
       : profileError
-        ? t("settingsProfile.errors.generic", "Something went wrong. Please try again.")
+        ? t("errors.generic", "Something went wrong. Please try again.")
         : null;
 
   const passwordErrorMessage =
     passwordError instanceof ApiError
       ? passwordError.message
       : passwordError
-        ? t("settingsProfile.errors.generic", "Something went wrong. Please try again.")
+        ? t("errors.generic", "Something went wrong. Please try again.")
         : null;
 
   return (

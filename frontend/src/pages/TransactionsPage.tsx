@@ -129,9 +129,7 @@ export function TransactionsPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {/* Start Date */}
               <div className="space-y-2">
-                <Label htmlFor="start-date">
-                  {t("transactions.filters.startDate", "Start Date")}
-                </Label>
+                <Label htmlFor="start-date">{t("common.startDate", "Start Date")}</Label>
                 <Input
                   id="start-date"
                   type="date"
@@ -143,7 +141,7 @@ export function TransactionsPage() {
 
               {/* End Date */}
               <div className="space-y-2">
-                <Label htmlFor="end-date">{t("transactions.filters.endDate", "End Date")}</Label>
+                <Label htmlFor="end-date">{t("common.endDate", "End Date")}</Label>
                 <Input
                   id="end-date"
                   type="date"
@@ -164,7 +162,7 @@ export function TransactionsPage() {
                 >
                   <option value="">
                     {categoriesError
-                      ? t("transactions.errors.categoriesLoadFailed", "Failed to load categories")
+                      ? t("errors.loadCategories", "Failed to load categories")
                       : t("transactions.filters.allCategories", "All Categories")}
                   </option>
                   {categories.map((cat) => (
@@ -178,7 +176,7 @@ export function TransactionsPage() {
 
             {/* Search */}
             <div className="space-y-2">
-              <Label htmlFor="search">{t("transactions.filters.search", "Search")}</Label>
+              <Label htmlFor="search">{t("common.search", "Search")}</Label>
               <Input
                 id="search"
                 type="text"
@@ -195,10 +193,10 @@ export function TransactionsPage() {
             {/* Action Buttons */}
             <div className="flex items-center gap-2">
               <Button onClick={handleApplyFilters} disabled={isLoading} size="sm">
-                {t("transactions.filters.apply", "Apply")}
+                {t("common.apply", "Apply")}
               </Button>
               <Button onClick={handleClearFilters} variant="outline" disabled={isLoading} size="sm">
-                {t("transactions.filters.clear", "Clear")}
+                {t("common.clear", "Clear")}
               </Button>
             </div>
           </div>
@@ -282,7 +280,7 @@ export function TransactionsPage() {
                       variant="outline"
                       size="sm"
                     >
-                      {t("transactions.pagination.previous", "Previous")}
+                      {t("common.previous", "Previous")}
                     </Button>
 
                     {/* Page Numbers — sliding window */}
@@ -317,7 +315,7 @@ export function TransactionsPage() {
                       variant="outline"
                       size="sm"
                     >
-                      {t("transactions.pagination.next", "Next")}
+                      {t("common.next", "Next")}
                     </Button>
                   </div>
                 </div>

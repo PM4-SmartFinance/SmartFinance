@@ -351,9 +351,7 @@ export function CategoriesPage() {
     setActionError(null);
     setActionResult(null);
     if (recategorizeStart > recategorizeEnd) {
-      setActionError(
-        t("categories.errors.invalidDateRange", "Start date must not be after end date."),
-      );
+      setActionError(t("errors.invalidDateRange", "Start date must not be after end date."));
       return;
     }
     try {

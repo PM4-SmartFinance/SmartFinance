@@ -32,7 +32,7 @@ export function LoginPage() {
     error instanceof ApiError
       ? error.message
       : error
-        ? t("login.genericError", "Something went wrong. Please try again.")
+        ? t("errors.generic", "Something went wrong. Please try again.")
         : null;
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {

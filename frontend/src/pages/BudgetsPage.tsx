@@ -139,7 +139,7 @@ export function BudgetsPage() {
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <h1 className="text-4xl font-bold text-foreground">{t("budgets.heading", "Budgets")}</h1>
           <div className="mt-8 text-center text-destructive">
-            {t("budgets.errors.categoriesLoadFailed", "Failed to load categories")}
+            {t("errors.loadCategories", "Failed to load categories")}
           </div>
         </div>
       </main>
@@ -192,7 +192,7 @@ export function BudgetsPage() {
             <>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="range-start" className="text-sm font-medium text-foreground">
-                  {t("budgets.filters.startDate", "Start Date")}
+                  {t("common.startDate", "Start Date")}
                 </label>
                 <input
                   id="range-start"
@@ -205,7 +205,7 @@ export function BudgetsPage() {
               </div>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="range-end" className="text-sm font-medium text-foreground">
-                  {t("budgets.filters.endDate", "End Date")}
+                  {t("common.endDate", "End Date")}
                 </label>
                 <input
                   id="range-end"

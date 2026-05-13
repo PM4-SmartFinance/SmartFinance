@@ -1,13 +1,25 @@
 {
   "common": {
     "add": "Add",
+    "apply": "Apply",
     "cancel": "Cancel",
+    "clear": "Clear",
     "delete": "Delete",
     "dismiss": "Dismiss",
     "edit": "Edit",
     "name": "Name",
+    "next": "Next",
+    "previous": "Previous",
     "run": "Run",
-    "save": "Save"
+    "save": "Save",
+    "search": "Search",
+    "startDate": "Start Date",
+    "endDate": "End Date"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "loadCategories": "Failed to load categories",
+    "invalidDateRange": "Start date must not be after end date."
   },
   "categories": {
     "title": "Categories & Rules",
@@ -15,29 +27,22 @@
     "loading": "Loading categories and rules…",
     "loadingError": "Failed to load categories or rules. Please refresh.",
     "refreshHint": "Saved, but the dashboard may need a manual refresh.",
-
     "personalTitle": "Your Categories",
     "personalDesc": "Editable categories you created.",
     "globalTitle": "Global Categories",
     "globalDesc": "Shared defaults available to all users.",
     "globalCategoryReadOnly": "Global category (read-only)",
     "noCategories": "No categories in this section.",
-
     "createCategoryTitle": "Create Category",
     "newCategoryPlaceholder": "e.g. Subscriptions",
-
     "applyRulesTitle": "Apply Rules",
     "applyRulesDescription": "Auto-categorize processes uncategorized transactions only. Recategorize re-applies every rule (highest priority first) to all non-manually-edited transactions in the selected range, overwriting prior auto-categorizations.",
     "autoCategorizeBtn": "Auto-categorize uncategorized",
     "autoCategorizing": "Auto-categorizing…",
     "recategorizeBtn": "Recategorize date range…",
     "recategorizing": "Recategorizing…",
-    "recategorizeFrom": "From",
-    "recategorizeTo": "To",
-
     "existingRules": "Existing Rules",
     "noRules": "No rules yet.",
-
     "matchCount_one": "{{count}} existing transaction would match.",
     "matchCount_other": "{{count}} existing transactions would match.",
     "autoCategorizeNone": "No uncategorized transactions matched any rule.",
@@ -46,7 +51,6 @@
     "recategorizeNone": "No transactions changed in the selected range.",
     "recategorizeSuccess_one": "Recategorized {{count}} transaction.",
     "recategorizeSuccess_other": "Recategorized {{count}} transactions.",
-
     "errors": {
       "nameRequired": "Category name is required.",
       "createFailed": "Failed to create category.",
@@ -58,10 +62,8 @@
       "updateRuleFailed": "Failed to update rule.",
       "deleteRuleFailed": "Failed to delete rule.",
       "autoCategorizeFailed": "Failed to run auto-categorization.",
-      "invalidDateRange": "Start date must not be after end date.",
       "recategorizeFailed": "Failed to recategorize the selected range."
     },
-
     "aria": {
       "editCategory": "Edit category {{name}}",
       "saveCategory": "Save category {{name}}",
@@ -84,10 +86,7 @@
     "title": "Sign in",
     "description": "Enter your credentials to access your account",
     "submit": "Sign in",
-    "submitting": "Signing in…",
-    "genericError": "Something went wrong. Please try again.",
-    "emailLabel": "Email",
-    "passwordLabel": "Password"
+    "submitting": "Signing in…"
   },
   "404": {
     "title": "404 - Page Not Found",
@@ -129,9 +128,7 @@
       "dateRange": "Date Range"
     },
     "filters": {
-      "viewPeriod": "View Period",
-      "startDate": "Start Date",
-      "endDate": "End Date"
+      "viewPeriod": "View Period"
     },
     "deleteDialog": {
       "title": "Delete Budget?",
@@ -141,15 +138,13 @@
     },
     "errors": {
       "deleteFailed": "Failed to delete budget. Please try again.",
-      "loadFailed": "Failed to load budgets",
-      "categoriesLoadFailed": "Failed to load categories"
+      "loadFailed": "Failed to load budgets"
     }
   },
   "settingsProfile": {
     "heading": "Profile",
     "errors": {
-      "passwordsMismatch": "New passwords do not match.",
-      "generic": "Something went wrong. Please try again."
+      "passwordsMismatch": "New passwords do not match."
     },
     "account": {
       "title": "Account information",
@@ -178,14 +173,9 @@
     "emptyState": "No transactions found. Try adjusting your filters.",
     "filters": {
       "heading": "Filters",
-      "startDate": "Start Date",
-      "endDate": "End Date",
       "category": "Category",
       "allCategories": "All Categories",
-      "search": "Search",
-      "searchPlaceholder": "Search by merchant name...",
-      "apply": "Apply",
-      "clear": "Clear"
+      "searchPlaceholder": "Search by merchant name..."
     },
     "table": {
       "date": "Date",
@@ -194,13 +184,10 @@
       "amount": "Amount"
     },
     "pagination": {
-      "info": "Page {{page}} of {{totalPages}} ({{totalCount}} total)",
-      "previous": "Previous",
-      "next": "Next"
+      "info": "Page {{page}} of {{totalPages}} ({{totalCount}} total)"
     },
     "errors": {
-      "loadFailed": "Failed to load transactions. Please try again later.",
-      "categoriesLoadFailed": "Failed to load categories"
+      "loadFailed": "Failed to load transactions. Please try again later."
     }
   }
 }
