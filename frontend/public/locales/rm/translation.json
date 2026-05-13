@@ -1,13 +1,25 @@
 {
   "common": {
     "add": "Agiuntar",
+    "apply": "Applitgar",
     "cancel": "Annullar",
+    "clear": "Svidar",
     "delete": "Stizzar",
     "dismiss": "Zuppentar",
     "edit": "Modifitgar",
     "name": "Num",
+    "next": "Proxim",
+    "previous": "Precedent",
     "run": "Esequir",
-    "save": "Arcunar"
+    "save": "Arcunar",
+    "search": "Tschertgar",
+    "startDate": "Data d'entschatta",
+    "endDate": "Data da finiziun"
+  },
+  "errors": {
+    "generic": "Insatge è ì fauss. Per plaschair emprova danovamain.",
+    "loadCategories": "Sbagl tar il chargiar las categorias",
+    "invalidDateRange": "La data d'entschatta na dastga betg esser suenter la data da finiziun."
   },
   "categories": {
     "title": "Categorias & Reglas",
@@ -15,29 +27,22 @@
     "loading": "Chargiond categorias e reglas…",
     "loadingError": "Errur tar il chargiar las categorias u reglas. Per plaschair actualisar.",
     "refreshHint": "Arcunà, dentant il dashboard basegna forsa in'actualisaziun manuala.",
-
     "personalTitle": "Tias categorias",
     "personalDesc": "Categorias modifitgablas che ti has creà.",
     "globalTitle": "Categorias globalas",
     "globalDesc": "Standards communabels disponibels per tut ils utilisaders.",
     "globalCategoryReadOnly": "Categoria globala (be leger)",
     "noCategories": "Nunginas categorias en questa secziun.",
-
     "createCategoryTitle": "Crear categoria",
     "newCategoryPlaceholder": "p.ex. Abunaments",
-
     "applyRulesTitle": "Applitgar reglas",
     "applyRulesDescription": "La categorisaziun automatica elavurescha be transacziuns betg categorisadas. Recategorisar applitgescha puspè mintga regla (prioritad la pli auta l'emprim) a tut las transacziuns betg modifitgadas manualmain en il interval tschernì, surscrivend las categorisaziuns automaticas precedentas.",
     "autoCategorizeBtn": "Categorisar automaticamain las betg categorisadas",
     "autoCategorizing": "Categorisond automaticamain…",
     "recategorizeBtn": "Recategorisar l'interval da datas…",
     "recategorizing": "Recategorisond…",
-    "recategorizeFrom": "Da",
-    "recategorizeTo": "A",
-
     "existingRules": "Reglas existentas",
     "noRules": "Aunc nunginas reglas.",
-
     "matchCount_one": "{{count}} transacziun existenta correspundess.",
     "matchCount_other": "{{count}} transacziuns existentas correspundessan.",
     "autoCategorizeNone": "Nunginas transacziuns betg categorisadas correspundan ad ina regla.",
@@ -46,7 +51,6 @@
     "recategorizeNone": "Nunginas transacziuns midadas en l'interval tschernì.",
     "recategorizeSuccess_one": "Recategorisà {{count}} transacziun.",
     "recategorizeSuccess_other": "Recategorisà {{count}} transacziuns.",
-
     "errors": {
       "nameRequired": "Il num da la categoria è necessari.",
       "createFailed": "Sbagl tar il crear la categoria.",
@@ -58,14 +62,132 @@
       "updateRuleFailed": "Sbagl tar l'actualisar la regla.",
       "deleteRuleFailed": "Sbagl tar il stizzar la regla.",
       "autoCategorizeFailed": "Sbagl tar l'esequir la categorisaziun automatica.",
-      "invalidDateRange": "La data d'entschatta na dastga betg esser suenter la data da finiziun.",
       "recategorizeFailed": "Sbagl tar il recategorisar l'interval tschernì."
     },
-
     "aria": {
       "editCategory": "Modifitgar la categoria {{name}}",
       "saveCategory": "Arcunar la categoria {{name}}",
       "deleteCategory": "Stizzar la categoria {{name}}"
+    }
+  },
+  "nav": {
+    "transactions": "Transacziuns",
+    "budgets": "Budgets",
+    "categories": "Categorias",
+    "settings": "Configuraziuns"
+  },
+  "dashboard": {
+    "heading": "Dashboard",
+    "subtitle": "Vesair tia survista finanziala d'in'egliada",
+    "greeting": "Bainvegni enavos, {{email}}"
+  },
+  "login": {
+    "brand": "⬡ SmartFinance",
+    "title": "S'annunziar",
+    "description": "Endatescha tias infurmaziuns per acceder a tes conto",
+    "submit": "S'annunziar",
+    "submitting": "S'annunziond…"
+  },
+  "404": {
+    "title": "404 - Pagina betg chattada",
+    "homepage": "Ir a la pagina d'entschatta"
+  },
+  "settings": {
+    "heading": "Configuraziuns",
+    "description": "Administrescha tes conto e las configuraziuns da la plattafurma.",
+    "nav": {
+      "profile": "Profil",
+      "userManagement": "Administraziun d'utilisaders"
+    }
+  },
+  "settingsUsers": {
+    "heading": "Utilisaders",
+    "description": "Administrar utilisaders ed access a la plattafurma",
+    "createUserBtn": "Crear utilisader",
+    "deleteDialog": {
+      "title": "Stizzar l'utilisader?",
+      "descStart": "Stizzar definitivamain",
+      "descEnd": "? Questa acziun na po betg vegnir revocada."
+    },
+    "errors": {
+      "deactivateFailed": "Sbagl tar il deactivar l'utilisader",
+      "deleteFailed": "Sbagl tar il stizzar l'utilisader",
+      "loadFailed": "Sbagl tar il chargiar ils utilisaders. Per plaschair emprova danovamain."
+    }
+  },
+  "budgets": {
+    "heading": "Budgets",
+    "description": "Definescha limits da las spesas per categoria e controllescha il progress",
+    "loading": "Chargiond ils budgets…",
+    "createBtn": "Crear budget",
+    "emptyState": "Aunc nungins budgets. Creescha in per cumenzar.",
+    "periods": {
+      "daily": "Di per di",
+      "monthly": "Mensil",
+      "yearly": "Annul",
+      "dateRange": "Interval da datas"
+    },
+    "filters": {
+      "viewPeriod": "Mussar il perioda"
+    },
+    "deleteDialog": {
+      "title": "Stizzar il budget?",
+      "descStart": "Es ti segir che ti vuls stizzar il budget ",
+      "descMiddle": " per ",
+      "descEnd": "? Questa acziun na po betg vegnir revocada."
+    },
+    "errors": {
+      "deleteFailed": "Sbagl tar il stizzar il budget. Per plaschair emprova danovamain.",
+      "loadFailed": "Sbagl tar il chargiar ils budgets"
+    }
+  },
+  "settingsProfile": {
+    "heading": "Profil",
+    "errors": {
+      "passwordsMismatch": "Ils novs pleds-clav na correspundan betg."
+    },
+    "account": {
+      "title": "Infurmaziun dal conto",
+      "description": "Actualisescha tes num d'annunzia e tia adressa dad e-mail.",
+      "loadFailed": "Sbagl tar il chargiar tes profil. Per plaschair actualisescha la pagina.",
+      "displayNameLabel": "Num d'annunzia",
+      "displayNamePlaceholder": "Tes num",
+      "emailLabel": "Adressa dad e-mail",
+      "success": "Profil actualisà cun success.",
+      "saving": "Arcunond…",
+      "saveBtn": "Arcunar midadas"
+    },
+    "password": {
+      "title": "Midar il pled-clav",
+      "description": "Endatescha tes pled-clav actual avant che ti defineschas in nov. Ti vegnis deconnectà suenter ina midada cun success.",
+      "currentLabel": "Pled-clav actual",
+      "newLabel": "Nov pled-clav",
+      "confirmLabel": "Confirmar il nov pled-clav",
+      "success": "Pled-clav midà. Per plaschair t'annunzia danovamain.",
+      "changing": "Midond…",
+      "changeBtn": "Midar pled-clav"
+    }
+  },
+  "transactions": {
+    "heading": "Transacziuns",
+    "emptyState": "Nunginas transacziuns chattadas. Emprova d'adattar tes filters.",
+    "filters": {
+      "heading": "Filters",
+      "category": "Categoria",
+      "allCategories": "Tut las categorias",
+      "searchPlaceholder": "Tschertgar suenter il num dal martgadant..."
+    },
+    "table": {
+      "date": "Data",
+      "description": "Descripziun",
+      "category": "Categoria",
+      "amount": "Import"
+    },
+    "pagination": {
+      "info": "Pagina {{page}} da {{totalPages}} ({{totalCount}} en total)"
+    },
+    "errors": {
+      "loadFailed": "Sbagl tar il chargiar las transacziuns. Per plaschair emprova pli tard."
     }
   }
 }

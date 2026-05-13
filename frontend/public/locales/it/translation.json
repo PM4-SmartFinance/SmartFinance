@@ -1,13 +1,25 @@
 {
   "common": {
     "add": "Aggiungi",
+    "apply": "Applica",
     "cancel": "Annulla",
+    "clear": "Cancella",
     "delete": "Elimina",
     "dismiss": "Ignora",
     "edit": "Modifica",
     "name": "Nome",
+    "next": "Successivo",
+    "previous": "Precedente",
     "run": "Esegui",
-    "save": "Salva"
+    "save": "Salva",
+    "search": "Cerca",
+    "startDate": "Data di inizio",
+    "endDate": "Data di fine"
+  },
+  "errors": {
+    "generic": "Qualcosa è andato storto. Riprova.",
+    "loadCategories": "Impossibile caricare le categorie",
+    "invalidDateRange": "La data di inizio non deve essere successiva alla data di fine."
   },
   "categories": {
     "title": "Categorie e regole",
@@ -15,29 +27,22 @@
     "loading": "Caricamento categorie e regole in corso…",
     "loadingError": "Impossibile caricare categorie o regole. Ricarica la pagina.",
     "refreshHint": "Salvato, ma la dashboard potrebbe richiedere un aggiornamento manuale.",
-
     "personalTitle": "Le tue categorie",
     "personalDesc": "Categorie modificabili che hai creato.",
     "globalTitle": "Categorie globali",
     "globalDesc": "Impostazioni predefinite condivise disponibili per tutti gli utenti.",
     "globalCategoryReadOnly": "Categoria globale (sola lettura)",
     "noCategories": "Nessuna categoria in questa sezione.",
-
     "createCategoryTitle": "Crea categoria",
     "newCategoryPlaceholder": "es. Abbonamenti",
-
     "applyRulesTitle": "Applica regole",
     "applyRulesDescription": "La categorizzazione automatica elabora solo le transazioni non categorizzate. Ricategorizza riapplica ogni regola (con priorità più alta per prima) a tutte le transazioni non modificate manualmente nell'intervallo selezionato, sovrascrivendo le precedenti categorizzazioni automatiche.",
     "autoCategorizeBtn": "Categorizza automaticamente non categorizzate",
     "autoCategorizing": "Categorizzazione automatica in corso…",
     "recategorizeBtn": "Ricategorizza intervallo di date…",
     "recategorizing": "Ricategorizzazione in corso…",
-    "recategorizeFrom": "Da",
-    "recategorizeTo": "A",
-
     "existingRules": "Regole esistenti",
     "noRules": "Nessuna regola per ora.",
-
     "matchCount_one": "{{count}} transazione esistente corrisponderebbe.",
     "matchCount_other": "{{count}} transazioni esistenti corrisponderebbero.",
     "autoCategorizeNone": "Nessuna transazione non categorizzata corrisponde a nessuna regola.",
@@ -46,7 +51,6 @@
     "recategorizeNone": "Nessuna transazione modificata nell'intervallo selezionato.",
     "recategorizeSuccess_one": "Ricategorizzata {{count}} transazione.",
     "recategorizeSuccess_other": "Ricategorizzate {{count}} transazioni.",
-
     "errors": {
       "nameRequired": "Il nome della categoria è obbligatorio.",
       "createFailed": "Creazione della categoria non riuscita.",
@@ -58,14 +62,132 @@
       "updateRuleFailed": "Aggiornamento della regola non riuscito.",
       "deleteRuleFailed": "Eliminazione della regola non riuscita.",
       "autoCategorizeFailed": "Esecuzione della categorizzazione automatica non riuscita.",
-      "invalidDateRange": "La date di inizio non deve essere successiva alla data di fine.",
       "recategorizeFailed": "Ricategorizzazione dell'intervallo selezionato non riuscita."
     },
-
     "aria": {
       "editCategory": "Modifica categoria {{name}}",
       "saveCategory": "Salva categoria {{name}}",
       "deleteCategory": "Elimina categoria {{name}}"
+    }
+  },
+  "nav": {
+    "transactions": "Transazioni",
+    "budgets": "Budget",
+    "categories": "Categorie",
+    "settings": "Impostazioni"
+  },
+  "dashboard": {
+    "heading": "Dashboard",
+    "subtitle": "Visualizza la tua panoramica finanziaria a colpo d'occhio",
+    "greeting": "Bentornato, {{email}}"
+  },
+  "login": {
+    "brand": "⬡ SmartFinance",
+    "title": "Accedi",
+    "description": "Inserisci le tue credenziali per accedere al tuo account",
+    "submit": "Accedi",
+    "submitting": "Accesso in corso…"
+  },
+  "404": {
+    "title": "404 - Pagina non trovata",
+    "homepage": "Vai alla homepage"
+  },
+  "settings": {
+    "heading": "Impostazioni",
+    "description": "Gestisci il tuo account e le impostazioni della piattaforma.",
+    "nav": {
+      "profile": "Profilo",
+      "userManagement": "Gestione Utenti"
+    }
+  },
+  "settingsUsers": {
+    "heading": "Utenti",
+    "description": "Gestisci gli utenti della piattaforma e gli accessi",
+    "createUserBtn": "Crea Utente",
+    "deleteDialog": {
+      "title": "Eliminare l'utente?",
+      "descStart": "Eliminare definitivamente",
+      "descEnd": "? Questa azione non può essere annullata."
+    },
+    "errors": {
+      "deactivateFailed": "Disattivazione utente non riuscita",
+      "deleteFailed": "Eliminazione utente non riuscita",
+      "loadFailed": "Impossibile caricare gli utenti. Riprova."
+    }
+  },
+  "budgets": {
+    "heading": "Budget",
+    "description": "Imposta limiti di spesa per categoria e monitora i progressi",
+    "loading": "Caricamento budget…",
+    "createBtn": "Crea Budget",
+    "emptyState": "Nessun budget per ora. Creane uno per iniziare.",
+    "periods": {
+      "daily": "Giornaliero",
+      "monthly": "Mensile",
+      "yearly": "Annuale",
+      "dateRange": "Intervallo di Date"
+    },
+    "filters": {
+      "viewPeriod": "Periodo di visualizzazione"
+    },
+    "deleteDialog": {
+      "title": "Eliminare Budget?",
+      "descStart": "Sei sicuro di voler eliminare il budget ",
+      "descMiddle": " per ",
+      "descEnd": "? Questa azione non può essere annullata."
+    },
+    "errors": {
+      "deleteFailed": "Eliminazione del budget non riuscita. Riprova.",
+      "loadFailed": "Impossibile caricare i budget"
+    }
+  },
+  "settingsProfile": {
+    "heading": "Profilo",
+    "errors": {
+      "passwordsMismatch": "Le nuove password non corrispondono."
+    },
+    "account": {
+      "title": "Informazioni sull'account",
+      "description": "Aggiorna il tuo nome visualizzato e l'indirizzo email.",
+      "loadFailed": "Impossibile caricare il tuo profilo. Ricarica la pagina.",
+      "displayNameLabel": "Nome visualizzato",
+      "displayNamePlaceholder": "Il tuo nome",
+      "emailLabel": "Indirizzo email",
+      "success": "Profilo aggiornato con successo.",
+      "saving": "Salvataggio in corso…",
+      "saveBtn": "Salva modifiche"
+    },
+    "password": {
+      "title": "Cambia password",
+      "description": "Inserisci la tua password attuale prima di impostarne una nuova. Verrai disconnesso dopo una modifica riuscita.",
+      "currentLabel": "Password attuale",
+      "newLabel": "Nuova password",
+      "confirmLabel": "Conferma nuova password",
+      "success": "Password modificata. Accedi di nuovo.",
+      "changing": "Modifica in corso…",
+      "changeBtn": "Cambia password"
+    }
+  },
+  "transactions": {
+    "heading": "Transazioni",
+    "emptyState": "Nessuna transazione trovata. Prova a regolare i filtri.",
+    "filters": {
+      "heading": "Filtri",
+      "category": "Categoria",
+      "allCategories": "Tutte le Categorie",
+      "searchPlaceholder": "Cerca per nome commerciante..."
+    },
+    "table": {
+      "date": "Data",
+      "description": "Descrizione",
+      "category": "Categoria",
+      "amount": "Importo"
+    },
+    "pagination": {
+      "info": "Pagina {{page}} di {{totalPages}} ({{totalCount}} in totale)"
+    },
+    "errors": {
+      "loadFailed": "Impossibile caricare le transazioni. Riprova più tardi."
     }
   }
 }

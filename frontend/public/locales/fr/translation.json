@@ -1,13 +1,25 @@
 {
   "common": {
     "add": "Ajouter",
+    "apply": "Appliquer",
     "cancel": "Annuler",
+    "clear": "Effacer",
     "delete": "Supprimer",
     "dismiss": "Ignorer",
     "edit": "Modifier",
     "name": "Nom",
+    "next": "Suivant",
+    "previous": "Précédent",
     "run": "Exécuter",
-    "save": "Enregistrer"
+    "save": "Enregistrer",
+    "search": "Rechercher",
+    "startDate": "Date de début",
+    "endDate": "Date de fin"
+  },
+  "errors": {
+    "generic": "Une erreur s'est produite. Veuillez réessayer.",
+    "loadCategories": "Échec du chargement des catégories",
+    "invalidDateRange": "La date de début ne doit pas être postérieure à la date de fin."
   },
   "categories": {
     "title": "Catégories et règles",
@@ -15,29 +27,22 @@
     "loading": "Chargement des catégories et des règles…",
     "loadingError": "Échec du chargement des catégories ou des règles. Veuillez actualiser.",
     "refreshHint": "Enregistré, mais le tableau de bord peut nécessiter une actualisation manuelle.",
-
     "personalTitle": "Vos catégories",
     "personalDesc": "Catégories modifiables que vous avez créées.",
     "globalTitle": "Catégories globales",
     "globalDesc": "Valeurs par défaut partagées disponibles pour tous les utilisateurs.",
     "globalCategoryReadOnly": "Catégorie globale (lecture seule)",
     "noCategories": "Aucune catégorie dans cette section.",
-
     "createCategoryTitle": "Créer une catégorie",
     "newCategoryPlaceholder": "par ex. Abonnements",
-
     "applyRulesTitle": "Appliquer les règles",
     "applyRulesDescription": "La catégorisation automatique traite uniquement les transactions non catégorisées. Recatégoriser réapplique chaque règle (la priorité la plus élevée d'abord) à toutes les transactions non modifiées manuellement dans la plage sélectionnée, en écrasant les catégorisations automatiques précédentes.",
     "autoCategorizeBtn": "Catégoriser automatiquement les transactions non catégorisées",
     "autoCategorizing": "Catégorisation automatique en cours…",
     "recategorizeBtn": "Recatégoriser la plage de dates…",
     "recategorizing": "Recatégorisation en cours…",
-    "recategorizeFrom": "De",
-    "recategorizeTo": "À",
-
     "existingRules": "Règles existantes",
     "noRules": "Aucune règle pour le moment.",
-
     "matchCount_one": "{{count}} transaction existante correspondrait.",
     "matchCount_other": "{{count}} transactions existantes correspondraient.",
     "autoCategorizeNone": "Aucune transaction non catégorisée ne correspond à aucune règle.",
@@ -46,7 +51,6 @@
     "recategorizeNone": "Aucune transaction n'a été modifiée dans la plage sélectionnée.",
     "recategorizeSuccess_one": "{{count}} transaction recatégorisée.",
     "recategorizeSuccess_other": "{{count}} transactions recatégorisées.",
-
     "errors": {
       "nameRequired": "Le nom de la catégorie est requis.",
       "createFailed": "Échec de la création de la catégorie.",
@@ -58,14 +62,132 @@
       "updateRuleFailed": "Échec de la mise à jour de la règle.",
       "deleteRuleFailed": "Échec de la suppression de la règle.",
       "autoCategorizeFailed": "Échec de l'exécution de la catégorisation automatique.",
-      "invalidDateRange": "La date de début ne doit pas être postérieure à la date de fin.",
       "recategorizeFailed": "Échec de la recatégorisation de la plage sélectionnée."
     },
-
     "aria": {
       "editCategory": "Modifier la catégorie {{name}}",
       "saveCategory": "Enregistrer la catégorie {{name}}",
       "deleteCategory": "Supprimer la catégorie {{name}}"
+    }
+  },
+  "nav": {
+    "transactions": "Transactions",
+    "budgets": "Budgets",
+    "categories": "Catégories",
+    "settings": "Paramètres"
+  },
+  "dashboard": {
+    "heading": "Tableau de bord",
+    "subtitle": "Consultez votre aperçu financier en un coup d'œil",
+    "greeting": "Bon retour, {{email}}"
+  },
+  "login": {
+    "brand": "⬡ SmartFinance",
+    "title": "Se connecter",
+    "description": "Entrez vos identifiants pour accéder à votre compte",
+    "submit": "Se connecter",
+    "submitting": "Connexion en cours…"
+  },
+  "404": {
+    "title": "404 - Page non trouvée",
+    "homepage": "Aller à la page d'accueil"
+  },
+  "settings": {
+    "heading": "Paramètres",
+    "description": "Gérez votre compte et les paramètres de la plateforme.",
+    "nav": {
+      "profile": "Profil",
+      "userManagement": "Gestion des utilisateurs"
+    }
+  },
+  "settingsUsers": {
+    "heading": "Utilisateurs",
+    "description": "Gérer les utilisateurs de la plateforme et l'accès",
+    "createUserBtn": "Créer un utilisateur",
+    "deleteDialog": {
+      "title": "Supprimer l'utilisateur ?",
+      "descStart": "Supprimer définitivement",
+      "descEnd": "? Cette action ne peut pas être annulée."
+    },
+    "errors": {
+      "deactivateFailed": "Échec de la désactivation de l'utilisateur",
+      "deleteFailed": "Échec de la suppression de l'utilisateur",
+      "loadFailed": "Échec du chargement des utilisateurs. Veuillez réessayer."
+    }
+  },
+  "budgets": {
+    "heading": "Budgets",
+    "description": "Définissez des limites de dépenses par catégorie et suivez vos progrès",
+    "loading": "Chargement des budgets…",
+    "createBtn": "Créer un budget",
+    "emptyState": "Aucun budget pour le moment. Créez-en un pour commencer.",
+    "periods": {
+      "daily": "Quotidien",
+      "monthly": "Mensuel",
+      "yearly": "Annuel",
+      "dateRange": "Plage de dates"
+    },
+    "filters": {
+      "viewPeriod": "Période d'affichage"
+    },
+    "deleteDialog": {
+      "title": "Supprimer le budget ?",
+      "descStart": "Êtes-vous sûr de vouloir supprimer le budget ",
+      "descMiddle": " pour ",
+      "descEnd": " ? Cette action ne peut pas être annulée."
+    },
+    "errors": {
+      "deleteFailed": "Échec de la suppression du budget. Veuillez réessayer.",
+      "loadFailed": "Échec du chargement des budgets"
+    }
+  },
+  "settingsProfile": {
+    "heading": "Profil",
+    "errors": {
+      "passwordsMismatch": "Les nouveaux mots de passe ne correspondent pas."
+    },
+    "account": {
+      "title": "Informations du compte",
+      "description": "Mettez à jour votre nom d'affichage et votre adresse e-mail.",
+      "loadFailed": "Échec du chargement de votre profil. Veuillez actualiser la page.",
+      "displayNameLabel": "Nom d'affichage",
+      "displayNamePlaceholder": "Votre nom",
+      "emailLabel": "Adresse e-mail",
+      "success": "Profil mis à jour avec succès.",
+      "saving": "Enregistrement en cours…",
+      "saveBtn": "Enregistrer les modifications"
+    },
+    "password": {
+      "title": "Changer le mot de passe",
+      "description": "Entrez votre mot de passe actuel avant d'en définir un nouveau. Vous serez déconnecté après une modification réussie.",
+      "currentLabel": "Mot de passe actuel",
+      "newLabel": "Nouveau mot de passe",
+      "confirmLabel": "Confirmez le nouveau mot de passe",
+      "success": "Mot de passe modifié. Veuillez vous reconnecter.",
+      "changing": "Modification en cours…",
+      "changeBtn": "Changer le mot de passe"
+    }
+  },
+  "transactions": {
+    "heading": "Transactions",
+    "emptyState": "Aucune transaction trouvée. Essayez d'ajuster vos filtres.",
+    "filters": {
+      "heading": "Filtres",
+      "category": "Catégorie",
+      "allCategories": "Toutes les catégories",
+      "searchPlaceholder": "Rechercher par nom de marchand..."
+    },
+    "table": {
+      "date": "Date",
+      "description": "Description",
+      "category": "Catégorie",
+      "amount": "Montant"
+    },
+    "pagination": {
+      "info": "Page {{page}} sur {{totalPages}} ({{totalCount}} au total)"
+    },
+    "errors": {
+      "loadFailed": "Échec du chargement des transactions. Veuillez réessayer plus tard."
     }
   }
 }
