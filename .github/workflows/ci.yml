@@ -219,6 +219,7 @@ jobs:
           ACME_EMAIL: "test@example.com"
           POSTGRES_PASSWORD: "dummy_password"
           SESSION_SECRET: "dummy_secret"
+          GF_SECURITY_ADMIN_PASSWORD: "dummy_password"
         run: |
           echo "Testing Docker infrastructure..."
           docker compose build
