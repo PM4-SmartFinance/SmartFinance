@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
+import { TFunction } from "i18next";
 
 import {
   SpendingTrendChart,
@@ -166,16 +167,16 @@ describe("formatYAxisValue", () => {
 // ── buildChartAriaLabel ───────────────────────────────────────────────────────
 
 describe("buildChartAriaLabel", () => {
-  const tMock = ((key: string, fallback: string, options?: any) => {
-    let res = fallback;
+  const tMock = ((key: string, fallback: string, options?: Record<string, string | number>) => {
+    let res = fallback || key;
     if (options) {
       Object.keys(options).forEach((k) => {
         res = res.replace(`{{${k}}}`, String(options[k]));
       });
     }
     return res;
-  }) as any;
-  
+  }) as unknown as TFunction;
+
   it("describes empty data", () => {
     expect(buildChartAriaLabel([], tMock)).toBe("Income and expenses chart, no data.");
   });
@@ -186,7 +187,7 @@ describe("buildChartAriaLabel", () => {
       { date: "2026-02-01", income: 6000, expenses: 3000 },
     ];
     const label = buildChartAriaLabel(data, tMock);
-    
+
     expect(label).toContain("1 Jan 2026");
     expect(label).toContain("1 Feb 2026");
     expect(label).toContain("income");
@@ -200,9 +201,9 @@ describe("buildChartAriaLabel", () => {
       income: i,
       expenses: i,
     }));
-    
+
     const label = buildChartAriaLabel(longRange, tMock);
-    
+
     expect(label).toContain("30 periods");
     expect(label).toContain("periods omitted");
     // Head and tail should be present.

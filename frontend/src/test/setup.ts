@@ -1,78 +1,92 @@
 import "@testing-library/jest-dom/vitest";
-import { vi } from 'vitest';
-import enTranslations from '../../public/locales/en/translation.json';
+import { vi } from "vitest";
+import enTranslations from "../../public/locales/en/translation.json";
 
 const localStorageMock = (function () {
   let store: Record<string, string> = {};
   return {
-    getItem: function (key: string) { return store[key] || null; },
-    setItem: function (key: string, value: string) { store[key] = value.toString(); },
-    removeItem: function (key: string) { delete store[key]; },
-    clear: function () { store = {}; },
+    getItem: function (key: string) {
+      return store[key] || null;
+    },
+    setItem: function (key: string, value: string) {
+      store[key] = value.toString();
+    },
+    removeItem: function (key: string) {
+      delete store[key];
+    },
+    clear: function () {
+      store = {};
+    },
   };
 })();
-Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock, writable: true });
+Object.defineProperty(globalThis, "localStorage", { value: localStorageMock, writable: true });
 
 const originalNumberFormat = Intl.NumberFormat;
 globalThis.Intl.NumberFormat = class extends originalNumberFormat {
   constructor(locales?: string | string[], options?: Intl.NumberFormatOptions) {
-    super('en-CH', options);
+    super("en-CH", options);
   }
-} as any;
+} as unknown as typeof Intl.NumberFormat;
 
 const originalDateTimeFormat = Intl.DateTimeFormat;
 globalThis.Intl.DateTimeFormat = class extends originalDateTimeFormat {
   constructor(locales?: string | string[], options?: Intl.DateTimeFormatOptions) {
-    super('en-CH', options);
+    super("en-CH", options);
   }
-} as any;
+} as unknown as typeof Intl.DateTimeFormat;
 
 const getTranslation = (key: string) => {
-  return key.split('.').reduce((obj, k) => (obj ? obj[k] : undefined), enTranslations as any);
+  return key
+    .split(".")
+    .reduce((obj: unknown, k) => (obj as Record<string, unknown>)?.[k], enTranslations);
 };
 
-vi.mock('react-i18next', () => ({
+vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, fallback?: string | Record<string, any>, options?: Record<string, any>) => {
-      if (key === 'components.createUserDialog.roles.admin') return 'ADMIN';
-      if (key === 'components.createUserDialog.roles.user') return 'USER';
+    t: (
+      key: string,
+      fallback?: string | Record<string, unknown>,
+      options?: Record<string, unknown>,
+    ) => {
+      if (key === "components.createUserDialog.roles.admin") return "ADMIN";
+      if (key === "components.createUserDialog.roles.user") return "USER";
 
-      const opts = typeof fallback === 'object' ? fallback : options;
+      const opts = typeof fallback === "object" ? fallback : options;
       let str = getTranslation(key);
 
       if (!str && opts && opts.count !== undefined) {
-        const suffix = opts.count === 1 ? '_one' : '_other';
+        const suffix = opts.count === 1 ? "_one" : "_other";
         str = getTranslation(`${key}${suffix}`);
       }
 
       if (!str) {
-        str = typeof fallback === 'string' ? fallback : key.split('.').pop() || key;
+        str = typeof fallback === "string" ? fallback : key.split(".").pop() || key;
       }
 
-      if (opts && typeof str === 'string') {
-        Object.keys(opts).forEach((k) => {
-          str = str.replace(`{{${k}}}`, String(opts[k]));
-        });
+      if (opts && typeof str === "string") {
+        str = Object.keys(opts).reduce((acc, k) => {
+          return acc.replace(`{{${k}}}`, String(opts[k]));
+        }, str);
       }
 
-      return str;
+      return str as string;
     },
     i18n: {
       changeLanguage: vi.fn(),
-      resolvedLanguage: 'en-CH',
+      resolvedLanguage: "en-CH",
     },
   }),
   initReactI18next: {
-    type: '3rdParty',
+    type: "3rdParty",
     init: vi.fn(),
   },
 }));
 
-vi.mock('@/lib/i18n', () => ({
+vi.mock("@/lib/i18n", () => ({
   default: {
-    resolvedLanguage: 'en-CH',
+    resolvedLanguage: "en-CH",
     changeLanguage: vi.fn(),
-  }
+  },
 }));
 
 type MediaListener = (event: MediaQueryListEvent) => void;
