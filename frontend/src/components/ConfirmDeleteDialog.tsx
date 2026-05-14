@@ -24,11 +24,14 @@ export function ConfirmDeleteDialog({
   description,
   error,
   isDeleting = false,
+  confirmLabel,
+  cancelLabel,
   size,
   onConfirm,
   onCancel,
 }: ConfirmDeleteDialogProps) {
   const { t } = useTranslation();
+
   return (
     <Dialog isOpen={isOpen} onClose={onCancel} {...(size ? { size } : {})}>
       <h2 className="mb-2 text-xl font-semibold text-foreground">{title}</h2>
@@ -42,8 +45,15 @@ export function ConfirmDeleteDialog({
       )}
 
       <div className="flex gap-2">
-        <Button variant="destructive" disabled={isDeleting} onClick={onConfirm} className="flex-1">
-          {isDeleting ? t("common.deleting", "Deleting…") : t("common.delete", "Delete")}
+        <Button
+          variant="destructive"
+          disabled={isDeleting}
+          onClick={onConfirm}
+          className="flex-1"
+        >
+          {isDeleting
+            ? t("common.deleting", "Deleting…")
+            : (confirmLabel || t("common.delete", "Delete"))}
         </Button>
         <Button
           type="button"
@@ -52,7 +62,7 @@ export function ConfirmDeleteDialog({
           onClick={onCancel}
           className="flex-1"
         >
-          {t("common.cancel", "Cancel")}
+          {cancelLabel || t("common.cancel", "Cancel")}
         </Button>
       </div>
     </Dialog>

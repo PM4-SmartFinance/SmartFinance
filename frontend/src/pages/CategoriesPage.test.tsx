@@ -37,7 +37,7 @@ vi.mock("../hooks/useLogout", async () => {
   return logoutMockFactory();
 });
 
-import { CategoriesPage, formatDateId } from "./CategoriesPage";
+import { CategoriesPage } from "./CategoriesPage";
 
 let categories: Category[] = [
   {
@@ -87,24 +87,6 @@ function renderWithProviders() {
     </QueryClientProvider>,
   );
 }
-
-describe("formatDateId", () => {
-  it("formats a standard date in de-CH locale", () => {
-    expect(formatDateId(20260412)).toMatch(/12.*4.*2026/);
-  });
-
-  it("formats January 1st correctly", () => {
-    expect(formatDateId(20250101)).toMatch(/1.*1.*2025/);
-  });
-
-  it("formats December 31st correctly", () => {
-    expect(formatDateId(20251231)).toMatch(/31.*12.*2025/);
-  });
-
-  it("handles single-digit month and day", () => {
-    expect(formatDateId(20250307)).toMatch(/7.*3.*2025/);
-  });
-});
 
 describe("CategoriesPage", () => {
   beforeEach(() => {

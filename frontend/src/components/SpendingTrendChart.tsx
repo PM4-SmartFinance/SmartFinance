@@ -16,6 +16,7 @@ import { useAppStore } from "../store/appStore";
 import { formatCurrency } from "../lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { useTranslation } from "react-i18next";
+import { formatDate } from "@/lib/format";
 import type { TFunction } from "i18next";
 
 const INCOME_COLOR = "hsl(142 71% 45%)";
@@ -155,7 +156,7 @@ export const ARIA_LABEL_BUCKET_CAP = 12;
 export function buildChartAriaLabel(
   points: TrendDataPoint[],
   t: TFunction<"translation", undefined>,
-  formatter: (date: string) => string = formatMonthLabel,
+  formatter: (date: string) => string = formatDate,
 ): string {
   if (points.length === 0)
     return t("components.spendingTrendChart.aria.empty", "Income and expenses chart, no data.");

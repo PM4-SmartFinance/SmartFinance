@@ -12,7 +12,8 @@ const getSwissLocale = (lng?: string): string => {
 };
 
 export function formatAmount(raw: string | number, currentLanguage?: string): string {
-  const value = typeof raw === "string" ? Number.parseFloat(raw) : raw;
+  const parsed = typeof raw === "string" ? Number.parseFloat(raw) : raw;
+  const value = parsed === 0 ? 0 : parsed;
   if (!Number.isFinite(value)) return FALLBACK;
 
   const locale = getSwissLocale(currentLanguage);
