@@ -23,7 +23,7 @@ import { RuleRow } from "@/components/RuleRow";
 import { NewRuleForm } from "@/components/NewRuleForm";
 import { BackToDashboardLink } from "@/components/BackToDashboardLink";
 import { UserMenu } from "@/components/UserMenu";
-import { formatDateId, formatAmount } from "@/lib/format.ts";
+import { formatDateId, formatAmount } from "@/lib/format";
 import { useTranslation } from "react-i18next";
 
 function getErrorMessage(error: unknown, fallback: string) {

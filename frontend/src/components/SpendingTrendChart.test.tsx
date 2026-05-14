@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
-import { TFunction } from "i18next";
+import type { TFunction } from "i18next";
 
 import {
   SpendingTrendChart,
