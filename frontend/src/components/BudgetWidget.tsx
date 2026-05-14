@@ -3,14 +3,16 @@ import { getMostSpecificBudgetsPerCategory } from "../lib/queries/budgets";
 import { getBudgetStatus } from "./budgetUtils";
 import { CardContent, CardHeader, CardTitle } from "./ui/card";
 import { DashboardTileLink } from "./DashboardTileLink";
+import { useTranslation } from "react-i18next";
 
 export function BudgetWidget() {
   const { data, isLoading, error } = useDashboardBudgets();
+  const { t } = useTranslation();
 
   if (error) {
     return (
       <div className="rounded border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
-        Failed to load budget data. Please try again.
+        {t("components.budgetWidget.error", "Failed to load budget data. Please try again.")}
       </div>
     );
   }
@@ -20,7 +22,7 @@ export function BudgetWidget() {
       <DashboardTileLink to="/budgets" ariaLabel="View budgets" linkClassName="block">
         <CardHeader>
           <CardTitle className="text-xs font-semibold uppercase tracking-wider">
-            Budget Status
+            {t("components.budgetWidget.title", "Budget Status")}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -49,21 +51,31 @@ export function BudgetWidget() {
     <DashboardTileLink to="/budgets" ariaLabel="View budgets" linkClassName="block">
       <CardHeader>
         <CardTitle className="text-xs font-semibold uppercase tracking-wider">
-          Budget Status
+          {t("components.budgetWidget.title", "Budget Status")}
         </CardTitle>
       </CardHeader>
       <CardContent>
         {activeBudgets.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No active budgets. Click to create one.</p>
+          <p className="text-sm text-muted-foreground">
+            {t("components.budgetWidget.empty", "No active budgets. Click to create one.")}
+          </p>
         ) : (
           <div className="space-y-2">
             <p className="text-sm font-medium">
-              {statusCounts["on-track"]} on track, {statusCounts["approaching"]} approaching limit,{" "}
-              {statusCounts["exceeded"]} exceeded
+              {t(
+                "components.budgetWidget.statusSummary",
+                "{{onTrack}} on track, {{approaching}} approaching limit, {{exceeded}} exceeded",
+                {
+                  onTrack: statusCounts["on-track"],
+                  approaching: statusCounts["approaching"],
+                  exceeded: statusCounts["exceeded"],
+                },
+              )}
             </p>
             <p className="text-xs text-muted-foreground">
-              {activeBudgets.length} active budget
-              {activeBudgets.length !== 1 ? "s" : ""}
+              {t("components.budgetWidget.activeCount", "{{count}} active budget", {
+                count: activeBudgets.length,
+              })}
             </p>
           </div>
         )}

@@ -13,12 +13,14 @@ import { useDashboardCategories } from "../lib/queries/dashboard";
 import { formatCurrency } from "../lib/utils";
 import { CardContent, CardHeader, CardTitle } from "./ui/card";
 import { DashboardTileLink } from "./DashboardTileLink";
+import { useTranslation } from "react-i18next";
 
 function CategoryHeader() {
+  const { t } = useTranslation();
   return (
     <CardHeader>
       <CardTitle className="text-xs font-semibold uppercase tracking-wider">
-        Spending by Category
+        {t("components.categoryBreakdownChart.title", "Spending by Category")}
       </CardTitle>
     </CardHeader>
   );
@@ -32,22 +34,31 @@ export function CategoryBreakdownChart() {
   // i.e. no rows or every row is a zero-spend category with no Uncategorized
   // bucket. Once any spend exists (categorized or not), render the chart.
   const hasAnySpend = chartData.some((row) => row.total > 0);
+  const { t } = useTranslation();
 
   if (error && !isNotFoundError) {
     return (
       <div className="col-span-1 sm:col-span-2 lg:col-span-3 rounded border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
-        Failed to load category breakdown data. Please try again.
+        {t(
+          "components.categoryBreakdownChart.error",
+          "Failed to load category breakdown data. Please try again.",
+        )}
       </div>
     );
   }
 
   if (isLoading) {
     return (
-      <DashboardTileLink to="/categories" ariaLabel="View categories">
+      <DashboardTileLink
+        to="/categories"
+        ariaLabel={t("components.categoryBreakdownChart.viewCategoriesAria", "View categories")}
+      >
         <CategoryHeader />
         <CardContent>
           <div className="flex min-h-64 items-center justify-center rounded bg-muted/30">
-            <div className="text-sm text-muted-foreground">Loading chart…</div>
+            <div className="text-sm text-muted-foreground">
+              {t("components.categoryBreakdownChart.loading", "Loading chart…")}
+            </div>
           </div>
         </CardContent>
       </DashboardTileLink>
@@ -56,12 +67,18 @@ export function CategoryBreakdownChart() {
 
   if (isNotFoundError || chartData.length === 0 || !hasAnySpend) {
     return (
-      <DashboardTileLink to="/categories" ariaLabel="View categories">
+      <DashboardTileLink
+        to="/categories"
+        ariaLabel={t("components.categoryBreakdownChart.viewCategoriesAria", "View categories")}
+      >
         <CategoryHeader />
         <CardContent>
           <div className="flex min-h-64 items-center justify-center rounded bg-muted/30 p-4 text-center">
             <div className="max-w-sm text-sm text-muted-foreground">
-              No category breakdown yet. Import transactions or a CSV to see spending by category.
+              {t(
+                "components.categoryBreakdownChart.empty",
+                "No category breakdown yet. Import transactions or a CSV to see spending by category.",
+              )}
             </div>
           </div>
         </CardContent>
@@ -70,7 +87,10 @@ export function CategoryBreakdownChart() {
   }
 
   return (
-    <DashboardTileLink to="/categories" ariaLabel="View categories">
+    <DashboardTileLink
+      to="/categories"
+      ariaLabel={t("components.categoryBreakdownChart.viewCategoriesAria", "View categories")}
+    >
       <CategoryHeader />
       <CardContent>
         <div className="h-64 w-full">
@@ -98,7 +118,10 @@ export function CategoryBreakdownChart() {
                   borderRadius: "4px",
                 }}
                 labelStyle={{ color: "var(--foreground)" }}
-                formatter={(value) => [formatCurrency(Number(value)), "Spent"]}
+                formatter={(value) => [
+                  formatCurrency(Number(value)),
+                  t("components.categoryBreakdownChart.tooltipSpent", "Spent"),
+                ]}
               />
               <Bar dataKey="total">
                 {chartData.map((row) => (

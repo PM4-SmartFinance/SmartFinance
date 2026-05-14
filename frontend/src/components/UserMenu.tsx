@@ -7,10 +7,15 @@ import type { Theme } from "../store/appStore";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { useTranslation } from "react-i18next";
 
-const THEME_OPTIONS: { value: Theme; label: string; Icon: typeof Sun }[] = [
-  { value: "light", label: "Light", Icon: Sun },
-  { value: "dark", label: "Dark", Icon: Moon },
-  { value: "system", label: "System", Icon: Monitor },
+const THEME_OPTIONS: { value: Theme; translationKey: string; label: string; Icon: typeof Sun }[] = [
+  { value: "light", translationKey: "components.userMenu.themes.light", label: "Light", Icon: Sun },
+  { value: "dark", translationKey: "components.userMenu.themes.dark", label: "Dark", Icon: Moon },
+  {
+    value: "system",
+    translationKey: "components.userMenu.themes.system",
+    label: "System",
+    Icon: Monitor,
+  },
 ];
 
 const LANGUAGE_OPTIONS = [
@@ -27,6 +32,7 @@ export function UserMenu() {
   const { i18n } = useTranslation();
   const theme = useAppStore((s) => s.theme);
   const setTheme = useAppStore((s) => s.setTheme);
+  const { t } = useTranslation();
 
   if (!user) return null;
 
@@ -36,7 +42,7 @@ export function UserMenu() {
     <Menu.Root>
       <Menu.Trigger
         className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        aria-label="User menu"
+        aria-label={t("components.userMenu.ariaLabel", "User menu")}
       >
         <Avatar className="size-8 cursor-pointer hover:opacity-80 transition-opacity">
           <AvatarFallback className="text-xs font-medium">{initials}</AvatarFallback>
@@ -50,7 +56,9 @@ export function UserMenu() {
               {user.email}
             </div>
 
-            <div className="px-3 pt-1 pb-0.5 text-xs font-medium text-muted-foreground">Theme</div>
+            <div className="px-3 pt-1 pb-0.5 text-xs font-medium text-muted-foreground">
+              {t("components.userMenu.theme", "Theme")}
+            </div>
 
             <Menu.RadioGroup
               value={theme}
@@ -58,14 +66,14 @@ export function UserMenu() {
                 if (isTheme(v)) setTheme(v);
               }}
             >
-              {THEME_OPTIONS.map(({ value, label, Icon }) => (
+              {THEME_OPTIONS.map(({ value, translationKey, label, Icon }) => (
                 <Menu.RadioItem
                   key={value}
                   value={value}
                   className="flex items-center gap-2 px-3 py-1.5 mx-1 rounded-sm cursor-default outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
                 >
                   <Icon className="size-3.5 shrink-0" />
-                  {label}
+                  {t(translationKey, label)}
                   <Menu.RadioItemIndicator className="ml-auto">
                     <Check className="size-3.5" />
                   </Menu.RadioItemIndicator>
@@ -76,7 +84,7 @@ export function UserMenu() {
             <Menu.Separator className="my-1 h-px bg-border mx-1" />
 
             <div className="px-3 pt-1 pb-0.5 text-xs font-medium text-muted-foreground">
-              Language
+              {t("components.userMenu.language", "Language")}
             </div>
             <Menu.RadioGroup
               value={i18n.resolvedLanguage || "en"}
@@ -105,7 +113,9 @@ export function UserMenu() {
               onClick={() => logout()}
             >
               <LogOut className="size-3.5 shrink-0" />
-              {isPending ? "Signing out…" : "Sign out"}
+              {isPending
+                ? t("components.userMenu.signingOut", "Signing out…")
+                : t("components.userMenu.signOut", "Sign out")}
             </Menu.Item>
           </Menu.Popup>
         </Menu.Positioner>

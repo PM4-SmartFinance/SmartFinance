@@ -5,6 +5,7 @@ import { useCategories } from "../lib/queries/categories";
 import { useBudgets, type CategorySpending } from "../lib/queries/budgets";
 import { formatCurrency } from "../lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { useTranslation } from "react-i18next";
 
 const OUTER_COLORS = {
   spent: "hsl(var(--primary))",
@@ -78,6 +79,7 @@ export function BudgetProgressWidget() {
   const yearly = useBudgets({ period: "YEARLY" });
   const categoriesQuery = useCategories();
   const loggedMissingCategoryIdsRef = useRef<Set<string>>(new Set());
+  const { t } = useTranslation();
 
   const categoryNames = useMemo(() => {
     const map = new Map<string, string>();
@@ -90,11 +92,11 @@ export function BudgetProgressWidget() {
   const periodErrors = useMemo(
     () =>
       [
-        { label: "Daily", error: daily.error },
-        { label: "Monthly", error: monthly.error },
-        { label: "Yearly", error: yearly.error },
+        { label: t("budgets.periods.daily", "Daily"), error: daily.error },
+        { label: t("budgets.periods.monthly", "Monthly"), error: monthly.error },
+        { label: t("budgets.periods.yearly", "Yearly"), error: yearly.error },
       ].filter((entry) => entry.error != null),
-    [daily.error, monthly.error, yearly.error],
+    [daily.error, monthly.error, yearly.error, t],
   );
 
   const isLoading = daily.isLoading || monthly.isLoading || yearly.isLoading;
@@ -102,11 +104,16 @@ export function BudgetProgressWidget() {
 
   const snapshots = useMemo(
     () => [
-      buildSnapshot("Daily", daily.data?.categorySpending),
-      buildSnapshot("Monthly", monthly.data?.categorySpending),
-      buildSnapshot("Yearly", yearly.data?.categorySpending),
+      buildSnapshot(t("budgets.periods.daily", "Daily"), daily.data?.categorySpending),
+      buildSnapshot(t("budgets.periods.monthly", "Monthly"), monthly.data?.categorySpending),
+      buildSnapshot(t("budgets.periods.yearly", "Yearly"), yearly.data?.categorySpending),
     ],
-    [daily.data?.categorySpending, monthly.data?.categorySpending, yearly.data?.categorySpending],
+    [
+      daily.data?.categorySpending,
+      monthly.data?.categorySpending,
+      yearly.data?.categorySpending,
+      t,
+    ],
   );
 
   const hasInvalidData = snapshots.some((s) => s.hasInvalidValue);
@@ -131,7 +138,7 @@ export function BudgetProgressWidget() {
   }, [missingCategoryIds]);
 
   function getCategoryLabel(categoryId: string): string {
-    return categoryNames.get(categoryId) ?? "Unknown";
+    return categoryNames.get(categoryId) ?? t("common.unknown", "Unknown");
   }
 
   if (error) {
@@ -139,15 +146,18 @@ export function BudgetProgressWidget() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-xs font-semibold uppercase tracking-wider">
-            Budget Progress
+            {t("components.budgetProgress.title", "Budget Progress")}
           </CardTitle>
           <Link to="/budgets" className="text-xs font-medium text-primary hover:underline">
-            View all budgets
+            {t("components.budgetProgress.viewAll", "View all budgets")}
           </Link>
         </CardHeader>
         <CardContent>
           <div className="rounded border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
-            Failed to load budget progress. Please try again.
+            {t(
+              "components.budgetProgress.error",
+              "Failed to load budget progress. Please try again.",
+            )}
           </div>
         </CardContent>
       </Card>
@@ -159,15 +169,17 @@ export function BudgetProgressWidget() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-xs font-semibold uppercase tracking-wider">
-            Budget Progress
+            {t("components.budgetProgress.title", "Budget Progress")}
           </CardTitle>
           <Link to="/budgets" className="text-xs font-medium text-primary hover:underline">
-            View all budgets
+            {t("components.budgetProgress.viewAll", "View all budgets")}
           </Link>
         </CardHeader>
         <CardContent>
           <div className="flex min-h-72 items-center justify-center rounded bg-muted/30">
-            <p className="text-sm text-muted-foreground">Loading budget progress...</p>
+            <p className="text-sm text-muted-foreground">
+              {t("components.budgetProgress.loading", "Loading budget progress...")}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -181,18 +193,24 @@ export function BudgetProgressWidget() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-xs font-semibold uppercase tracking-wider">
-            Budget Progress
+            {t("components.budgetProgress.title", "Budget Progress")}
           </CardTitle>
           <Link to="/budgets" className="text-xs font-medium text-primary hover:underline">
-            View all budgets
+            {t("components.budgetProgress.viewAll", "View all budgets")}
           </Link>
         </CardHeader>
         <CardContent>
           <div className="flex min-h-72 flex-col items-center justify-center gap-2 rounded bg-muted/30 px-4 py-8 text-center">
             <p className="text-sm text-muted-foreground">
               {hasInvalidData
-                ? "Some budget values could not be parsed. Please refresh — if the problem persists, contact support."
-                : "No tracked budget totals yet. Create budgets and import transactions to populate these charts."}
+                ? t(
+                    "components.budgetProgress.parseError",
+                    "Some budget values could not be parsed. Please refresh — if the problem persists, contact support.",
+                  )
+                : t(
+                    "components.budgetProgress.empty",
+                    "No tracked budget totals yet. Create budgets and import transactions to populate these charts.",
+                  )}
             </p>
           </div>
         </CardContent>
@@ -204,10 +222,10 @@ export function BudgetProgressWidget() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle className="text-xs font-semibold uppercase tracking-wider">
-          Budget Progress
+          {t("components.budgetProgress.title", "Budget Progress")}
         </CardTitle>
         <Link to="/budgets" className="text-xs font-medium text-primary hover:underline">
-          View all budgets
+          {t("components.budgetProgress.viewAll", "View all budgets")}
         </Link>
       </CardHeader>
       <CardContent>
@@ -216,16 +234,33 @@ export function BudgetProgressWidget() {
             role="alert"
             className="mb-4 rounded border border-destructive bg-destructive/10 p-2 text-xs text-destructive"
           >
-            Some budget values could not be parsed and were excluded from the totals below.
+            {t(
+              "components.budgetProgress.excludedWarning",
+              "Some budget values could not be parsed and were excluded from the totals below.",
+            )}
           </p>
         )}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {snapshots.map((snapshot) => {
             const outerData = [
-              { name: "Spent", value: snapshot.spentWithinLimit, fill: OUTER_COLORS.spent },
-              { name: "Remaining", value: snapshot.remaining, fill: OUTER_COLORS.remaining },
+              {
+                name: t("components.budgetProgress.chart.spent", "Spent"),
+                value: snapshot.spentWithinLimit,
+                fill: OUTER_COLORS.spent,
+              },
+              {
+                name: t("components.budgetProgress.chart.remaining", "Remaining"),
+                value: snapshot.remaining,
+                fill: OUTER_COLORS.remaining,
+              },
               ...(snapshot.overBudget > 0
-                ? [{ name: "Over", value: snapshot.overBudget, fill: OUTER_COLORS.over }]
+                ? [
+                    {
+                      name: t("components.budgetProgress.chart.over", "Over"),
+                      value: snapshot.overBudget,
+                      fill: OUTER_COLORS.over,
+                    },
+                  ]
                 : []),
             ].filter((d) => d.value > 0);
 
@@ -236,7 +271,13 @@ export function BudgetProgressWidget() {
                     value: c.spending,
                     fill: getCategoryColor(index),
                   }))
-                : [{ name: "No category spending", value: 1, fill: "hsl(var(--muted))" }];
+                : [
+                    {
+                      name: t("components.budgetProgress.chart.noSpending", "No category spending"),
+                      value: 1,
+                      fill: "hsl(var(--muted))",
+                    },
+                  ];
 
             return (
               <div key={snapshot.label} className="rounded border border-border p-4">
@@ -296,20 +337,29 @@ export function BudgetProgressWidget() {
                     ))}
                   </ul>
                 ) : (
-                  <p className="mt-3 text-xs text-muted-foreground">No category spending yet.</p>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    {" "}
+                    {t("components.budgetProgress.noCategorySpending", "No category spending yet.")}
+                  </p>
                 )}
 
                 <div className="mt-3 flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Spent</span>
+                  <span className="text-muted-foreground">
+                    {t("components.budgetProgress.spent", "Spent")}
+                  </span>
                   <span className="font-medium">{formatCurrency(snapshot.totalSpent)}</span>
                 </div>
                 <div className="mt-1 flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Tracked total</span>
+                  <span className="text-muted-foreground">
+                    {t("components.budgetProgress.trackedTotal", "Tracked total")}
+                  </span>
                   <span className="font-medium">{formatCurrency(snapshot.totalLimit)}</span>
                 </div>
                 {snapshot.overBudget > 0 && (
                   <div className="mt-1 flex items-center justify-between text-xs">
-                    <span className="text-destructive">Over budget</span>
+                    <span className="text-destructive">
+                      {t("components.budgetProgress.overBudget", "Over budget")}
+                    </span>
                     <span className="font-medium text-destructive">
                       - {formatCurrency(snapshot.overBudget)}
                     </span>

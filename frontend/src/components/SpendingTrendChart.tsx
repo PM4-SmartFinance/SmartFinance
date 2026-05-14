@@ -15,6 +15,8 @@ import { useDashboardTrends, type TrendDataPoint } from "../lib/queries/dashboar
 import { useAppStore } from "../store/appStore";
 import { formatCurrency } from "../lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 const INCOME_COLOR = "hsl(142 71% 45%)";
 const EXPENSES_COLOR = "hsl(0 72% 51%)";
@@ -152,37 +154,60 @@ export const ARIA_LABEL_BUCKET_CAP = 12;
 /** Build a screen-reader description summarizing the displayed trend data. */
 export function buildChartAriaLabel(
   points: TrendDataPoint[],
+  t: TFunction<"translation", undefined>,
   formatter: (date: string) => string = formatMonthLabel,
 ): string {
-  if (points.length === 0) return "Income and expenses chart, no data.";
+  if (points.length === 0)
+    return t("components.spendingTrendChart.aria.empty", "Income and expenses chart, no data.");
 
   const describe = (p: TrendDataPoint) =>
-    `${formatter(p.date)}: income ${formatCurrency(p.income)}, expenses ${formatCurrency(p.expenses)}`;
+    t(
+      "components.spendingTrendChart.aria.describe",
+      "{{date}}: income {{income}}, expenses {{expenses}}",
+      {
+        date: formatter(p.date),
+        income: formatCurrency(p.income),
+        expenses: formatCurrency(p.expenses),
+      },
+    );
 
   if (points.length <= ARIA_LABEL_BUCKET_CAP) {
-    return `Income and expenses chart. ${points.map(describe).join(". ")}.`;
+    return t(
+      "components.spendingTrendChart.aria.short",
+      "Income and expenses chart. {{details}}.",
+      { details: points.map(describe).join(". ") },
+    );
   }
 
   const head = points.slice(0, ARIA_LABEL_BUCKET_CAP / 2).map(describe);
   const tail = points.slice(-ARIA_LABEL_BUCKET_CAP / 2).map(describe);
   const skipped = points.length - head.length - tail.length;
-  return `Income and expenses chart with ${points.length} periods. ${head.join(". ")}. … ${skipped} periods omitted. ${tail.join(". ")}.`;
+  return t(
+    "components.spendingTrendChart.aria.long",
+    "Income and expenses chart with {{total}} periods. {{head}}. … {{skipped}} periods omitted. {{tail}}.",
+    { total: points.length, head: head.join(". "), skipped, tail: tail.join(". ") },
+  );
 }
 
-const TITLE = "Monthly Income vs. Expenses";
 const CARD_CLASSES = "col-span-1 sm:col-span-2 lg:col-span-3";
 
 function ChartTitle() {
-  return <CardTitle className="text-xs font-semibold uppercase tracking-wider">{TITLE}</CardTitle>;
+  const { t } = useTranslation();
+  return (
+    <CardTitle className="text-xs font-semibold uppercase tracking-wider">
+      {t("components.spendingTrendChart.title", "Monthly Income vs. Expenses")}
+    </CardTitle>
+  );
 }
 
 function ViewTransactionsLink({ href }: { href: string }) {
+  const { t } = useTranslation();
   return (
     <Link
       to={href}
       className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
-      View transactions →
+      {t("components.spendingTrendChart.viewTransactions", "View transactions →")}
     </Link>
   );
 }
@@ -263,6 +288,7 @@ export function SpendingTrendChart() {
   const [chartStyle, setChartStyle] = useState<ChartStyle>("line");
   const [labelCount, setLabelCount] = useState<LabelCount>(15);
   const [granularity, setGranularity] = useState<Granularity>("auto");
+  const { t } = useTranslation();
 
   if (import.meta.env.DEV && data !== undefined && !Array.isArray(data)) {
     console.error("SpendingTrendChart: expected array from useDashboardTrends, got", typeof data);
@@ -280,7 +306,10 @@ export function SpendingTrendChart() {
         role="alert"
         className="col-span-1 sm:col-span-2 lg:col-span-3 rounded border border-destructive bg-destructive/10 p-4 text-sm text-destructive"
       >
-        Failed to load spending trend data. Please try again.
+        {t(
+          "components.spendingTrendChart.states.error",
+          "Failed to load spending trend data. Please try again.",
+        )}
       </div>
     );
   }
@@ -293,7 +322,9 @@ export function SpendingTrendChart() {
         </CardHeader>
         <CardContent>
           <div className="flex h-80 items-center justify-center rounded bg-muted/30">
-            <div className="text-sm text-muted-foreground">Loading chart…</div>
+            <div className="text-sm text-muted-foreground">
+              {t("components.spendingTrendChart.states.loading", "Loading chart…")}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -309,8 +340,10 @@ export function SpendingTrendChart() {
         <CardContent>
           <div className="flex h-80 items-center justify-center rounded bg-muted/30 p-8 text-center">
             <p className="text-sm text-muted-foreground">
-              No spending data for the selected period. Adjust the date range or import
-              transactions.
+              {t(
+                "components.spendingTrendChart.states.empty",
+                "No spending data for the selected period. Adjust the date range or import transactions.",
+              )}
             </p>
           </div>
           <div className="mt-4 flex justify-end">
@@ -353,13 +386,20 @@ export function SpendingTrendChart() {
               {xAxisFormatter(only.date)}
             </p>
             <dl className="grid grid-cols-2 gap-x-8 gap-y-1">
-              <dt className="text-sm text-muted-foreground">Income</dt>
+              <dt className="text-sm text-muted-foreground">
+                {t("components.spendingTrendChart.income", "Income")}
+              </dt>
               <dd className="text-sm font-medium tabular-nums">{formatCurrency(only.income)}</dd>
-              <dt className="text-sm text-muted-foreground">Expenses</dt>
+              <dt className="text-sm text-muted-foreground">
+                {t("components.spendingTrendChart.expenses", "Expenses")}
+              </dt>
               <dd className="text-sm font-medium tabular-nums">{formatCurrency(only.expenses)}</dd>
             </dl>
             <p className="mt-2 text-xs text-muted-foreground">
-              Adjust the date range or pick a finer granularity to see a trend.
+              {t(
+                "components.spendingTrendChart.singleBucketHelp",
+                "Adjust the date range or pick a finer granularity to see a trend.",
+              )}
             </p>
           </div>
           <div className="mt-4 flex justify-end">
@@ -377,25 +417,47 @@ export function SpendingTrendChart() {
           <ChartTitle />
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-1 text-xs text-muted-foreground">
-              <span className="sr-only sm:not-sr-only">Bucket</span>
+              <span className="sr-only sm:not-sr-only">
+                {t("components.spendingTrendChart.controls.bucket", "Bucket")}
+              </span>
               <select
-                aria-label="Granularity"
+                aria-label={t(
+                  "components.spendingTrendChart.controls.granularityAria",
+                  "Granularity",
+                )}
                 value={granularity}
                 onChange={(e) => setGranularity(e.target.value as Granularity)}
                 className="rounded border border-border bg-background px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
-                <option value="auto">Auto</option>
-                <option value="day">Day</option>
-                <option value="week">Week</option>
-                <option value="month">Month</option>
-                <option value="quarter">Quarter</option>
-                <option value="year">Year</option>
+                <option value="auto">
+                  {t("components.spendingTrendChart.controls.options.auto", "Auto")}
+                </option>
+                <option value="day">
+                  {t("components.spendingTrendChart.controls.options.day", "Day")}
+                </option>
+                <option value="week">
+                  {t("components.spendingTrendChart.controls.options.week", "Week")}
+                </option>
+                <option value="month">
+                  {t("components.spendingTrendChart.controls.options.month", "Month")}
+                </option>
+                <option value="quarter">
+                  {t("components.spendingTrendChart.controls.options.quarter", "Quarter")}
+                </option>
+                <option value="year">
+                  {t("components.spendingTrendChart.controls.options.year", "Year")}
+                </option>
               </select>
             </label>
             <label className="flex items-center gap-1 text-xs text-muted-foreground">
-              <span className="sr-only sm:not-sr-only">Labels</span>
+              <span className="sr-only sm:not-sr-only">
+                {t("components.spendingTrendChart.controls.labels", "Labels")}
+              </span>
               <select
-                aria-label="Number of axis labels"
+                aria-label={t(
+                  "components.spendingTrendChart.controls.labelsAria",
+                  "Number of axis labels",
+                )}
                 value={labelCount}
                 onChange={(e) => setLabelCount(Number(e.target.value) as LabelCount)}
                 className="rounded border border-border bg-background px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -408,33 +470,40 @@ export function SpendingTrendChart() {
               </select>
             </label>
             <fieldset
-              aria-label="Chart style"
+              aria-label={t("components.spendingTrendChart.controls.chartStyleAria", "Chart style")}
               className="inline-flex items-center gap-0.5 rounded border border-border p-0.5"
             >
               <StyleOption
-                label="Line"
+                label={t("components.spendingTrendChart.controls.line", "Line")}
                 name="chart-style"
                 value="line"
                 active={chartStyle === "line"}
                 onChange={(v) => setChartStyle(v as ChartStyle)}
               />
               <StyleOption
-                label="Bar"
+                label={t("components.spendingTrendChart.controls.bar", "Bar")}
                 name="chart-style"
                 value="bar"
                 active={chartStyle === "bar"}
                 onChange={(v) => setChartStyle(v as ChartStyle)}
               />
             </fieldset>
-            <div role="group" aria-label="Toggle chart series" className="flex items-center gap-1">
+            <div
+              role="group"
+              aria-label={t(
+                "components.spendingTrendChart.controls.toggleSeriesAria",
+                "Toggle chart series",
+              )}
+              className="flex items-center gap-1"
+            >
               <SeriesToggle
-                label="Income"
+                label={t("components.spendingTrendChart.income", "Income")}
                 color={INCOME_COLOR}
                 active={visible.income}
                 onClick={() => toggle("income")}
               />
               <SeriesToggle
-                label="Expenses"
+                label={t("components.spendingTrendChart.expenses", "Expenses")}
                 color={EXPENSES_COLOR}
                 active={visible.expenses}
                 onClick={() => toggle("expenses")}
@@ -446,7 +515,7 @@ export function SpendingTrendChart() {
       <CardContent>
         <figure
           role="img"
-          aria-label={buildChartAriaLabel(buckets, xAxisFormatter)}
+          aria-label={buildChartAriaLabel(buckets, t, xAxisFormatter)}
           className="h-80 w-full"
         >
           <ResponsiveContainer width="100%" height="100%">
@@ -495,7 +564,7 @@ export function SpendingTrendChart() {
                 <Line
                   type="linear"
                   dataKey="income"
-                  name="Income"
+                  name={t("components.spendingTrendChart.income", "Income")}
                   hide={!visible.income}
                   stroke={INCOME_COLOR}
                   strokeWidth={2}
@@ -506,7 +575,7 @@ export function SpendingTrendChart() {
                 <Line
                   type="linear"
                   dataKey="expenses"
-                  name="Expenses"
+                  name={t("components.spendingTrendChart.expenses", "Expenses")}
                   hide={!visible.expenses}
                   stroke={EXPENSES_COLOR}
                   strokeWidth={2}
@@ -559,7 +628,7 @@ export function SpendingTrendChart() {
                 />
                 <Bar
                   dataKey="income"
-                  name="Income"
+                  name={t("components.spendingTrendChart.income", "Income")}
                   hide={!visible.income}
                   fill={INCOME_COLOR}
                   radius={[3, 3, 0, 0]}
@@ -567,7 +636,7 @@ export function SpendingTrendChart() {
                 />
                 <Bar
                   dataKey="expenses"
-                  name="Expenses"
+                  name={t("components.spendingTrendChart.expenses", "Expenses")}
                   hide={!visible.expenses}
                   fill={EXPENSES_COLOR}
                   radius={[3, 3, 0, 0]}
@@ -579,8 +648,17 @@ export function SpendingTrendChart() {
         </figure>
         <div className="mt-4 flex items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground">
-            Showing {buckets.length} {effectiveGranularity}
-            {buckets.length !== 1 ? "s" : ""} of income and expenses.
+            {t(
+              "components.spendingTrendChart.footerSummary",
+              "Showing {{count}} {{granularity}} of income and expenses.",
+              {
+                count: buckets.length,
+                granularity: t(
+                  `components.spendingTrendChart.granularities.${effectiveGranularity}`,
+                  { count: buckets.length },
+                ),
+              },
+            )}
           </p>
           <ViewTransactionsLink href={transactionsHref} />
         </div>
