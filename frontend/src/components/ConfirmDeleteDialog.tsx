@@ -45,15 +45,10 @@ export function ConfirmDeleteDialog({
       )}
 
       <div className="flex gap-2">
-        <Button
-          variant="destructive"
-          disabled={isDeleting}
-          onClick={onConfirm}
-          className="flex-1"
-        >
+        <Button variant="destructive" disabled={isDeleting} onClick={onConfirm} className="flex-1">
           {isDeleting
             ? t("common.deleting", "Deleting…")
-            : (confirmLabel || t("common.delete", "Delete"))}
+            : confirmLabel || t("common.delete", "Delete")}
         </Button>
         <Button
           type="button"
