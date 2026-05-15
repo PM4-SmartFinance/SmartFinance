@@ -186,8 +186,7 @@ describe("BudgetsPage", () => {
     const showModalMock = vi.mocked(window.HTMLDialogElement.prototype.showModal);
     const callsBefore = showModalMock.mock.calls.length;
 
-    const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: "Create Budget" }));
+    screen.getByRole("button", { name: "Create Budget" }).click();
 
     await waitFor(() => expect(showModalMock.mock.calls.length).toBeGreaterThan(callsBefore));
   });

@@ -145,9 +145,6 @@ describe("CategoriesPage", () => {
       if (path === "/category-rules") {
         return Promise.resolve({ rules });
       }
-      if (path.startsWith("/category-rules/overlap")) {
-        return Promise.resolve({ conflicts: [] });
-      }
       return Promise.resolve({});
     });
 
