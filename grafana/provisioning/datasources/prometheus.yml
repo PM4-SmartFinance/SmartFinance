@@ -1,0 +1,19 @@
+# uid is the contract between this datasource and dashboards under
+# grafana/dashboards/. Dashboards reference it as `datasource.name`
+# in the v2 schema. When committing a dashboard exported from the
+# Grafana UI, replace its auto-generated datasource UID with
+# `prometheus` (see scripts/check-grafana-dashboards.sh).
+apiVersion: 1
+deleteDatasources:
+  # Remove pre-uid-pin entry from any persistent grafana_data volume
+  # before re-creating with the stable uid below. Safe no-op on fresh installs.
+  - name: Prometheus
+    orgId: 1
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
