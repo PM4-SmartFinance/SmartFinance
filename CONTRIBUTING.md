@@ -73,6 +73,44 @@ Format: `<type>(<scope>)?: [<JIRA-ID>] <subject>`
 
 Use this template for all PR descriptions:
 
+````
+
+## Architecture Decision Records (ADRs)
+
+We use a small set of MADR-style ADRs stored in `docs/adr/` to capture important, long-lived architectural decisions (examples: auth model, layered architecture, transaction boundaries).
+
+When to create an ADR
+
+- For decisions that affect multiple components, are hard to reverse, or require team alignment (e.g. switching auth model, changing DB schema conventions).
+- For trade-offs where the reasoning will help future maintainers.
+
+How to create an ADR
+
+1. Copy an existing ADR in `docs/adr/` and give it the next number (e.g. `0007-my-decision.md`).
+2. Fill the sections: `Status`, `Date`, `Context`, `Decision`, `Consequences`, `Related ADRs`, and link to relevant code paths.
+3. Open a PR against `develop` with the ADR. Add reviewers and the relevant Jira ticket if applicable.
+4. After review, merge the ADR. Keep the status updated (e.g. `Accepted`, `Superseded`).
+
+ADR Template (use as a starting point)
+
+```markdown
+# 000X — Short Title
+
+Status: Proposed | Accepted | Superseded
+
+Date: YYYY-MM-DD
+
+Context
+
+Decision
+
+Consequences
+
+Related code (link to files)
+
+Related ADRs
+````
+
 ```markdown
 ## Summary
 

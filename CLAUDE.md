@@ -30,7 +30,7 @@ Layered client-server architecture with clear separation of concerns:
 4. **Data Access Layer** — Repository pattern abstracting ORM, enforces transactional boundaries
 5. **Persistence Layer** — PostgreSQL
 
-All database access goes through the repository layer. No direct SQL from services or extensions. All write operations use explicit database transactions.
+All database access goes through the repository layer. No direct SQL from services or extensions. All write operations use explicit database transactions. See the ADR: [0003 — Repository Pattern with Transactions](docs/adr/0003-repository-pattern-with-transactions.md).
 
 ## Key Design Decisions
 
@@ -39,6 +39,7 @@ All database access goes through the repository layer. No direct SQL from servic
 - **Backend-side filtering/aggregation/pagination** — never load full datasets into the frontend
 - **Extension architecture:** Modules register via defined interfaces, cannot access repository layer directly, cannot modify DB schema. Extensions use namespace-isolated JSON storage
 - **Import pipeline:** CSV upload → importer selection → parsing → validation → normalization → categorization → persistence (all-or-nothing within DB transaction)
+  See ADRs: [0001 — Layered Architecture](docs/adr/0001-layered-architecture.md), [0002 — Cookie-based Authentication](docs/adr/0002-cookie-based-authentication.md), [0004 — Extension Isolation](docs/adr/0004-extension-isolation.md).
 
 ## API Endpoints
 
