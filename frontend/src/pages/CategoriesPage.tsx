@@ -265,7 +265,6 @@ export function CategoriesPage() {
 
   async function handleSaveRule(
     rule: CategoryRule,
-<<<<<<< HEAD
     draft: { pattern: string; matchType: "exact" | "contains" | "regex"; priority: number },
   ): Promise<boolean> {
     if (!draft.pattern.trim()) {
