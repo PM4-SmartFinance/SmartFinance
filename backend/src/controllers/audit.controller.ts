@@ -20,11 +20,11 @@ const listAuditLogsSchema = {
 interface AuditLogQuery {
   page: number;
   limit: number;
-  userId?: string;
-  action?: string;
-  transactionId?: string;
-  startDate?: string;
-  endDate?: string;
+  userId?: string | undefined;
+  action?: string | undefined;
+  transactionId?: string | undefined;
+  startDate?: string | undefined;
+  endDate?: string | undefined;
 }
 
 export async function auditRoutes(app: FastifyInstance): Promise<void> {

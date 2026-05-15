@@ -37,7 +37,11 @@ export async function updateProfile(
     throw err;
   }
 
-  void auditService.logEvent("PROFILE_UPDATED", userId, { fields: Object.keys(updateData) });
+  void auditService.logEvent({
+    action: "PROFILE_UPDATED",
+    userId,
+    changedValues: { fields: Object.keys(updateData) },
+  });
 
   return updated;
 }
@@ -52,7 +56,7 @@ export async function changePassword(userId: string, currentPassword: string, ne
   const hashed = await argon2.hash(newPassword);
   await userRepository.updatePassword(userId, hashed);
 
-  void auditService.logEvent("PASSWORD_CHANGED", userId);
+  void auditService.logEvent({ action: "PASSWORD_CHANGED", userId });
 }
 
 export async function resetUserPassword(
@@ -75,8 +79,10 @@ export async function resetUserPassword(
   const hashed = await argon2.hash(newPassword);
   await userRepository.updatePassword(targetUserId, hashed);
 
-  void auditService.logEvent("PASSWORD_RESET", requestingUser.id, {
-    targetUserId,
+  void auditService.logEvent({
+    action: "PASSWORD_RESET",
+    userId: requestingUser.id,
+    changedValues: { targetUserId },
   });
 }
 
@@ -120,11 +126,15 @@ export async function onboardUser(
     throw err;
   }
 
-  void auditService.logEvent("USER_CREATED", requestingUser?.id ?? null, {
-    targetUserId: user.id,
-    email: user.email,
-    role: user.role,
-    isBootstrap: requestingUser === null,
+  void auditService.logEvent({
+    action: "USER_CREATED",
+    userId: requestingUser?.id ?? null,
+    changedValues: {
+      targetUserId: user.id,
+      email: user.email,
+      role: user.role,
+      isBootstrap: requestingUser === null,
+    },
   });
 
   return user;
@@ -200,10 +210,12 @@ export async function updateUser(
 
   // Emit ROLE_CHANGED audit event if role changed
   if (data.role !== undefined && data.role !== oldRole) {
-    void logEvent("ROLE_CHANGED", requestingUser.id, {
-      targetUserId: id,
-      oldRole,
-      newRole: data.role,
+    void logEvent({
+      action: "ROLE_CHANGED",
+      userId: requestingUser.id,
+      previousValues: { role: oldRole },
+      changedValues: { role: data.role },
+      reason: `Target User: ${id}`,
     });
   }
   return updated;
@@ -226,9 +238,13 @@ export async function deleteUser(requestingUser: { id: string; role: string } | 
 
   await userRepository.updateUserById(id, { active: false });
 
-  void logEvent("USER_DELETED", requestingUser.id, {
-    targetUserId: id,
-    email: existing.email,
+  void logEvent({
+    action: "USER_DELETED",
+    userId: requestingUser.id,
+    changedValues: {
+      targetUserId: id,
+      email: existing.email,
+    },
   });
 
   return;

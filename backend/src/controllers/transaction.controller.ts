@@ -172,7 +172,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
     "/transactions/:id",
     {
       schema: deleteTransactionSchema,
-      preHandler: requireRole(["USER", "ADMIN"]),
+      preHandler: requireRole("USER"),
     },
     async (request, reply) => {
       const { id } = request.params;

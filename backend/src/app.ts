@@ -30,7 +30,8 @@ export async function buildApp(options: BuildAppOptions = {}) {
   const finalSecret =
     sessionSecret.length >= 32 ? sessionSecret : "dev_secret_do_not_use_in_prod_32";
 
-  await app.register(secureSession, {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await app.register(secureSession as any, {
     key: Buffer.from(finalSecret).subarray(0, 32),
     cookie: {
       path: "/",

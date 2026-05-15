@@ -10,3 +10,9 @@ declare module "@fastify/secure-session" {
     };
   }
 }
+
+declare module "fastify" {
+  interface FastifyRequest {
+    session: import("@fastify/secure-session").Session;
+  }
+}

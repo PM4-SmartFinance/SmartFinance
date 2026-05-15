@@ -2,11 +2,11 @@ import * as auditRepository from "../repositories/audit.repository.js";
 
 export async function logEvent(params: {
   action: string;
-  userId?: string | null;
-  transactionId?: string | null;
-  previousValues?: Record<string, unknown> | null;
-  changedValues?: Record<string, unknown> | null;
-  reason?: string | null;
+  userId?: string | null | undefined;
+  transactionId?: string | null | undefined;
+  previousValues?: Record<string, unknown> | null | undefined;
+  changedValues?: Record<string, unknown> | null | undefined;
+  reason?: string | null | undefined;
 }) {
   return auditRepository.createAuditLog(params);
 }
@@ -14,11 +14,11 @@ export async function logEvent(params: {
 export async function getAuditLogs(params: {
   page: number;
   limit: number;
-  userId?: string;
-  action?: string;
-  transactionId?: string;
-  startDate?: string;
-  endDate?: string;
+  userId?: string | undefined;
+  action?: string | undefined;
+  transactionId?: string | undefined;
+  startDate?: string | undefined;
+  endDate?: string | undefined;
 }) {
   const { page, limit, userId, action, transactionId, startDate, endDate } = params;
 
