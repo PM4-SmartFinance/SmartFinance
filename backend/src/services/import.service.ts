@@ -76,6 +76,7 @@ export async function importTransactions({
 
     return { imported, categorized };
   } catch (err) {
+    // we keep it like this outcome failed for SLO tracking
     importOperations.inc({ format, outcome: "failed" });
     throw err;
   }
