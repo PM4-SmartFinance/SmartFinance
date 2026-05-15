@@ -105,7 +105,9 @@ describe("verifySession", () => {
 
     await expect(verifySession(req)).rejects.toMatchObject({ statusCode: 401 });
     expect(getDeleteSpy(req)).toHaveBeenCalledOnce();
-    expect(logEvent).toHaveBeenCalledWith("SESSION_INVALIDATED", "ghost", {
+    expect(logEvent).toHaveBeenCalledWith({
+      action: "SESSION_INVALIDATED",
+      userId: "ghost",
       reason: "user_missing",
     });
   });
@@ -125,7 +127,9 @@ describe("verifySession", () => {
 
     await expect(verifySession(req)).rejects.toMatchObject({ statusCode: 401 });
     expect(getDeleteSpy(req)).toHaveBeenCalledOnce();
-    expect(logEvent).toHaveBeenCalledWith("SESSION_INVALIDATED", "u-2", {
+    expect(logEvent).toHaveBeenCalledWith({
+      action: "SESSION_INVALIDATED",
+      userId: "u-2",
       reason: "user_inactive",
     });
   });
@@ -141,7 +145,9 @@ describe("verifySession", () => {
 
     await expect(verifySession(req)).rejects.toMatchObject({ statusCode: 401 });
     expect(getDeleteSpy(req)).toHaveBeenCalledOnce();
-    expect(logEvent).toHaveBeenCalledWith("SESSION_INVALIDATED", "u-3", {
+    expect(logEvent).toHaveBeenCalledWith({
+      action: "SESSION_INVALIDATED",
+      userId: "u-3",
       reason: "pwd_version_missing",
     });
   });
@@ -161,7 +167,9 @@ describe("verifySession", () => {
 
     await expect(verifySession(req)).rejects.toMatchObject({ statusCode: 401 });
     expect(getDeleteSpy(req)).toHaveBeenCalledOnce();
-    expect(logEvent).toHaveBeenCalledWith("SESSION_INVALIDATED", "u-4", {
+    expect(logEvent).toHaveBeenCalledWith({
+      action: "SESSION_INVALIDATED",
+      userId: "u-4",
       reason: "pwd_version_mismatch",
     });
   });

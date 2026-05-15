@@ -22,33 +22,32 @@ describe("audit.service", () => {
   });
 
   it("creates an audit log entry via the repository", async () => {
-    await logEvent("USER_CREATED", "user-1", { email: "a@b.com" });
-
-    expect(auditRepo.createAuditLog).toHaveBeenCalledWith({
+    const params = {
       action: "USER_CREATED",
       userId: "user-1",
-      details: JSON.stringify({ email: "a@b.com" }),
-    });
+      changedValues: { email: "a@b.com" },
+    };
+    await logEvent(params);
+
+    expect(auditRepo.createAuditLog).toHaveBeenCalledWith(params);
   });
 
   it("stores null details when none are provided", async () => {
-    await logEvent("LOGOUT", "user-1");
+    const params = { action: "LOGOUT", userId: "user-1" };
+    await logEvent(params);
 
-    expect(auditRepo.createAuditLog).toHaveBeenCalledWith({
-      action: "LOGOUT",
-      userId: "user-1",
-      details: null,
-    });
+    expect(auditRepo.createAuditLog).toHaveBeenCalledWith(params);
   });
 
   it("logs an error instead of throwing when the repository fails", async () => {
     const dbError = new Error("connection refused");
     vi.mocked(auditRepo.createAuditLog).mockRejectedValueOnce(dbError);
 
-    await expect(logEvent("LOGIN_SUCCESS", "user-1")).resolves.toBeUndefined();
+    const params = { action: "LOGIN_SUCCESS", userId: "user-1" };
+    await expect(logEvent(params)).resolves.toBeUndefined();
 
     expect(mockError).toHaveBeenCalledWith(
-      { err: dbError, action: "LOGIN_SUCCESS", userId: "user-1" },
+      { err: dbError, ...params },
       "Failed to write to audit log",
     );
   });

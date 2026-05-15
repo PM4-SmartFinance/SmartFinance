@@ -1,4 +1,5 @@
 import * as auditRepository from "../repositories/audit.repository.js";
+import { getLogger } from "../logger.js";
 
 export async function logEvent(params: {
   action: string;
@@ -8,7 +9,11 @@ export async function logEvent(params: {
   changedValues?: Record<string, unknown> | null | undefined;
   reason?: string | null | undefined;
 }) {
-  return auditRepository.createAuditLog(params);
+  try {
+    return await auditRepository.createAuditLog(params);
+  } catch (err) {
+    getLogger().error({ err, ...params }, "Failed to write to audit log");
+  }
 }
 
 export async function getAuditLogs(params: {
