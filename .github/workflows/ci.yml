@@ -71,6 +71,9 @@ jobs:
       - name: Format check
         run: bun run format:check
 
+      - name: Validate Grafana dashboard datasource refs
+        run: bash scripts/check-grafana-dashboards.sh
+
   test-frontend:
     name: Frontend Tests
     runs-on: ubuntu-24.04
@@ -219,6 +222,7 @@ jobs:
           ACME_EMAIL: "test@example.com"
           POSTGRES_PASSWORD: "dummy_password"
           SESSION_SECRET: "dummy_secret"
+          GRAFANA_ADMIN_PASSWORD: "dummy_password"
         run: |
           echo "Testing Docker infrastructure..."
           docker compose build
