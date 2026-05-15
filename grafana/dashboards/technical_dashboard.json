@@ -63,7 +63,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "dfm19xd5iyzuoa"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -182,7 +182,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "dfm19xd5iyzuoa"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -301,7 +301,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "dfm19xd5iyzuoa"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -420,7 +420,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "dfm19xd5iyzuoa"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -441,7 +441,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "dfm19xd5iyzuoa"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -463,7 +463,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "dfm19xd5iyzuoa"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
@@ -583,7 +583,7 @@
                       "group": "prometheus",
                       "version": "v0",
                       "datasource": {
-                        "name": "dfm19xd5iyzuoa"
+                        "name": "prometheus"
                       },
                       "spec": {
                         "editorMode": "code",
