@@ -178,7 +178,7 @@ export function TransactionsPage() {
 
                 {/* Category */}
                 <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
+                  <Label htmlFor="category">Filter by Category</Label>
                   <NativeSelect
                     id="category"
                     value={tempCategoryId}
