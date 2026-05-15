@@ -16,3 +16,6 @@ CREATE INDEX "ModuleData_moduleName_userId_idx" ON "ModuleData"("moduleName", "u
 
 -- CreateUniqueIndex
 CREATE UNIQUE INDEX "ModuleData_moduleName_userId_key_key" ON "ModuleData"("moduleName", "userId", "key");
+
+-- AddForeignKey
+ALTER TABLE "ModuleData" ADD CONSTRAINT "ModuleData_userId_fkey" FOREIGN KEY ("userId") REFERENCES "DimUser"("id") ON DELETE CASCADE ON UPDATE CASCADE;

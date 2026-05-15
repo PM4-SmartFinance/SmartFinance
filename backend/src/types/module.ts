@@ -8,8 +8,13 @@ export interface ModuleStorageAdapter {
   list(userId: string): Promise<Array<{ key: string; value: unknown }>>;
 }
 
+export type RouteRegistrar = Pick<
+  FastifyInstance,
+  "get" | "post" | "put" | "patch" | "delete" | "head" | "options"
+>;
+
 export interface ModuleContext {
-  app: FastifyInstance;
+  app: RouteRegistrar;
   storage: ModuleStorageAdapter;
   logger: FastifyBaseLogger;
 }

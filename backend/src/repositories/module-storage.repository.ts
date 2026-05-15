@@ -1,6 +1,8 @@
 import { prisma } from "../prisma.js";
 import type { ModuleStorageAdapter } from "../types/module.js";
 
+const MAX_VALUE_BYTES = 65_536;
+
 function safeParseJson(raw: string): unknown {
   try {
     return JSON.parse(raw) as unknown;
@@ -23,10 +25,14 @@ export async function setData(
   key: string,
   value: unknown,
 ): Promise<void> {
+  const serialized = JSON.stringify(value);
+  if (Buffer.byteLength(serialized, "utf8") > MAX_VALUE_BYTES) {
+    throw new Error(`module storage value exceeds maximum size of ${MAX_VALUE_BYTES} bytes`);
+  }
   await prisma.moduleData.upsert({
     where: { moduleName_userId_key: { moduleName, userId, key } },
-    create: { moduleName, userId, key, value: JSON.stringify(value) },
-    update: { value: JSON.stringify(value) },
+    create: { moduleName, userId, key, value: serialized },
+    update: { value: serialized },
   });
 }
 

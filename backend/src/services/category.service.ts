@@ -9,15 +9,7 @@ export async function getAllCategories(userId: string) {
 
 export async function createCategory(categoryName: string, userId: string) {
   const category = await categoryRepository.create({ categoryName, userId });
-  try {
-    await fireCategoryAdded({
-      userId,
-      categoryId: category.id,
-      categoryName: category.categoryName,
-    });
-  } catch {
-    // Best-effort: module hook errors must not fail core category creation
-  }
+  await fireCategoryAdded({ userId, categoryId: category.id, categoryName: category.categoryName });
   return category;
 }
 

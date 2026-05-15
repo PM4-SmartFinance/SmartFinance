@@ -89,11 +89,7 @@ export async function createBudget(
     limitAmount,
   });
 
-  try {
-    await fireBudgetCreated({ userId, budgetId: budget.id, categoryId: budget.categoryId });
-  } catch {
-    // Best-effort: module hook errors must not fail core budget creation
-  }
+  await fireBudgetCreated({ userId, budgetId: budget.id, categoryId: budget.categoryId });
 
   return {
     ...budget,

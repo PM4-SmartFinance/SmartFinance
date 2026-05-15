@@ -146,6 +146,7 @@ model DimUser {
   accounts      DimAccount[]
   budgets       DimBudget[]
   categoryRules CategoryRule[]
+  moduleData    ModuleData[]
 }
 
 model DimDate {
@@ -207,6 +208,7 @@ model ModuleData {
   id         String   @id @default(uuid())
   moduleName String
   userId     String
+  user       DimUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
   key        String
   value      String
   createdAt  DateTime @default(now())
