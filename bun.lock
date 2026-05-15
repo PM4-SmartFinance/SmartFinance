@@ -4,9 +4,6 @@
   "workspaces": {
     "": {
       "name": "smartfinance",
-      "dependencies": {
-        "prom-client": "^15.1.3",
-      },
       "devDependencies": {
         "@eslint-react/eslint-plugin": "^2.13.0",
         "@eslint/js": "^10.0.1",
@@ -42,6 +39,7 @@
         "fastify-metrics": "^13.2.0",
         "pg": "^8.20.0",
         "prisma": "^7.5.0",
+        "prom-client": "^15.1.3",
       },
       "devDependencies": {
         "@types/node": "^22.0.0",

@@ -16,7 +16,7 @@ services:
       timeout: 3s
       retries: 5
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.4.0
     restart: unless-stopped
     ports:
       - "9091:9090"
@@ -26,14 +26,20 @@ services:
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
+    # Linux hosts: `host.docker.internal` does not resolve by default.
+    # `host-gateway` maps it to the host so Prometheus can scrape the
+    # backend running on the developer's machine. No-op on macOS/Windows
+    # Docker Desktop, where the name already resolves natively.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:13.0.1
     restart: unless-stopped
     ports:
       - "3002:3000"
     environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
     volumes:
       - grafana_test_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro

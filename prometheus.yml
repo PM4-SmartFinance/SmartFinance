@@ -1,7 +1,23 @@
+# Dev / test scrape config.
+#
+# Target uses `host.docker.internal` because the backend in dev/test runs on
+# the developer's host machine (via `bun run dev` / vitest), not inside the
+# compose stack. `host.docker.internal` resolves to the host on macOS and
+# Windows Docker Desktop natively.
+#
+# On Linux hosts, `host.docker.internal` does not resolve by default. Add the
+# following to the `prometheus` service in the relevant compose file to enable
+# it:
+#   extra_hosts:
+#     - "host.docker.internal:host-gateway"
+#
+# Prod uses a separate file (`prometheus.prod.yml`) with target `backend:3000`
+# because the prod backend runs as a compose service named `backend` on the
+# `internal` network alongside Prometheus.
 global:
   scrape_interval: 15s
 
 scrape_configs:
   - job_name: "smartfinance"
     static_configs:
-      - targets: ["backend:3000"]
+      - targets: ["host.docker.internal:3000"]

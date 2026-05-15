@@ -99,6 +99,27 @@ On Windows, this workflow currently assumes WSL2 because the scripts and tooling
 
 For the complete local setup, test database workflow, and troubleshooting guidance, use [Chapter 11: Installation (Deployment)](https://github.com/PM4-SmartFinance/SmartFinance/wiki/11.-Installation-Deployment) and [Chapter 12: Operation and Support](https://github.com/PM4-SmartFinance/SmartFinance/wiki/12.-Operation-and-Support).
 
+### Observability (Prometheus + Grafana)
+
+The dev and test compose stacks ship a Prometheus + Grafana pair so technical
+(`fastify-metrics`) and business (`smartfinance_*`) series are visible locally.
+
+| Stack | Grafana                          | Prometheus              | Default credentials |
+| ----- | -------------------------------- | ----------------------- | ------------------- |
+| dev   | <http://localhost:3001>          | <http://localhost:9090> | `admin` / `admin`   |
+| test  | <http://localhost:3002>          | <http://localhost:9091> | `admin` / `admin`   |
+| prod  | `https://<DOMAIN>/grafana`       | internal only           | from `.env`         |
+
+Dev/test credentials can be overridden via `GRAFANA_ADMIN_USER` /
+`GRAFANA_ADMIN_PASSWORD` in `.env`. Prod requires both to be set explicitly.
+The Prometheus container scrapes the backend on `host.docker.internal:3000`
+in dev/test (the backend runs on the host via `bun run dev`); on Linux this
+is mapped through `extra_hosts: host-gateway` in the compose files.
+
+The backend exposes `/metrics` (Prometheus exposition format). In prod Traefik
+only routes `PathPrefix(/api)`, so `/metrics` is reachable only from the
+`internal` Docker network — not from the public internet.
+
 ### Testing
 
 Use these scripts from the repository root:

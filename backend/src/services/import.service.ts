@@ -53,11 +53,6 @@ export async function importTransactions({
       throw new ServiceError(400, `Unsupported import format: ${format}`);
     }
 
-    if (parsed.length === 0) {
-      importOperations.inc({ format, outcome: "empty" });
-      return { imported: 0, categorized: 0 };
-    }
-
     const imported = await transactionRepository.bulkImport(parsed, userId, accountId);
     transactionsImported.inc({ format }, imported);
     importOperations.inc({ format, outcome: "success" });
@@ -76,8 +71,12 @@ export async function importTransactions({
 
     return { imported, categorized };
   } catch (err) {
-    // we keep it like this outcome failed for SLO tracking
-    importOperations.inc({ format, outcome: "failed" });
+    // Split user-input failures (4xx ServiceError) from system failures so the
+    // SLO error budget tracks the latter only. Bad account IDs or unsupported
+    // formats are client errors, not operational regressions.
+    const outcome =
+      err instanceof ServiceError && err.statusCode < 500 ? "failed_user" : "failed_system";
+    importOperations.inc({ format, outcome });
     throw err;
   }
 }

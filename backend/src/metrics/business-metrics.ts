@@ -15,5 +15,5 @@ export const transactionsImported = new Counter({
 export const importOperations = new Counter({
   name: "smartfinance_import_operations_total",
   help: "Total CSV import operations",
-  labelNames: ["format", "outcome"] as const, // outcome: "success" | "empty" | "failed"
+  labelNames: ["format", "outcome"] as const, // outcome: "success" | "failed_user" | "failed_system"
 });
