@@ -6,9 +6,26 @@ import { parseUBSCSV } from "./importers/ubs.parser.js";
 import * as transactionRepository from "../repositories/transaction.repository.js";
 import { autoCategorize } from "./categorization.service.js";
 import { importOperations, transactionsImported } from "../metrics/business-metrics.js";
+import { fireTransactionImported } from "./module-registry.service.js";
+import { getImporter } from "./importer-registry.service.js";
 
 export const SUPPORTED_FORMATS = ["neon", "zkb", "wise", "ubs"] as const;
 export type ImportFormat = (typeof SUPPORTED_FORMATS)[number];
+
+const FORMAT_ENCODING: Record<ImportFormat, string> = {
+  neon: "utf-8",
+  zkb: "utf-8",
+  wise: "utf-8",
+  ubs: "iso-8859-1",
+};
+
+export function resolveImportEncoding(format: string): string {
+  if ((SUPPORTED_FORMATS as readonly string[]).includes(format)) {
+    return FORMAT_ENCODING[format as ImportFormat];
+  }
+  const plugin = getImporter(format);
+  return plugin?.encoding ?? "utf-8";
+}
 
 /**
  * Minimal structured logger interface used by the import service.
@@ -21,7 +38,7 @@ export interface ImportLogger {
 
 interface ImportParams {
   csvText: string;
-  format: ImportFormat;
+  format: string;
   accountId: string;
   userId: string;
   logger: ImportLogger;
@@ -50,12 +67,25 @@ export async function importTransactions({
     } else if (format === "ubs") {
       parsed = parseUBSCSV(csvText);
     } else {
-      throw new ServiceError(400, `Unsupported import format: ${format}`);
+      const plugin = getImporter(format);
+      if (!plugin) throw new ServiceError(400, `Unsupported import format: ${format}`);
+      parsed = plugin.parse(csvText);
+    }
+
+    if (parsed.length === 0) {
+      return { imported: 0, categorized: 0 };
     }
 
     const imported = await transactionRepository.bulkImport(parsed, userId, accountId);
     transactionsImported.inc({ format }, imported);
     importOperations.inc({ format, outcome: "success" });
+
+    // Best-effort: the import is committed; hook failures must not surface as import errors.
+    try {
+      await fireTransactionImported({ userId, accountId, imported });
+    } catch (err) {
+      logger.warn({ err, userId, accountId }, "post-import fireTransactionImported failed");
+    }
 
     // Best-effort: the import transaction has already committed, so a categorization
     // failure here must not be reported as an import failure. Errors are logged via

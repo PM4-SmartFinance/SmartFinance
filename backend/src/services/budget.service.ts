@@ -1,6 +1,7 @@
 import { Prisma, BudgetType } from "@prisma/client";
 import { ServiceError } from "../errors.js";
 import * as budgetRepository from "../repositories/budget.repository.js";
+import { fireBudgetCreated } from "./module-registry.service.js";
 
 export function calculateBudgetStatus(
   currentSpending: Prisma.Decimal,
@@ -87,6 +88,13 @@ export async function createBudget(
     year: resolvedYear,
     limitAmount,
   });
+
+  try {
+    await fireBudgetCreated({ userId, budgetId: budget.id, categoryId: budget.categoryId });
+  } catch {
+    // Best-effort: module hook errors must not fail core budget creation
+  }
+
   return {
     ...budget,
     ...calculateBudgetStatus(budget.currentSpending, budget.limitAmount),

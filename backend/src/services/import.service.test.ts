@@ -11,8 +11,13 @@ vi.mock("./categorization.service.js", () => ({
   autoCategorize: vi.fn().mockResolvedValue({ categorized: 0 }),
 }));
 
+vi.mock("./module-registry.service.js", () => ({
+  fireTransactionImported: vi.fn().mockResolvedValue(undefined),
+}));
+
 import * as repo from "../repositories/transaction.repository.js";
 import * as categorizationService from "./categorization.service.js";
+import * as moduleRegistry from "./module-registry.service.js";
 
 // Spy-able no-op logger that satisfies the ImportLogger interface.
 const logger = { warn: vi.fn() };
@@ -27,6 +32,7 @@ beforeEach(() => {
   mockRepo.findAccountByIdAndUser.mockResolvedValue({ id: "acc-1" } as never);
   mockRepo.bulkImport.mockImplementation((parsed: unknown[]) => Promise.resolve(parsed.length));
   vi.mocked(categorizationService.autoCategorize).mockResolvedValue({ categorized: 0 });
+  vi.mocked(moduleRegistry.fireTransactionImported).mockResolvedValue(undefined);
 });
 
 describe("importTransactions", () => {
@@ -185,5 +191,24 @@ describe("importTransactions", () => {
     });
 
     expect(result).toEqual({ imported: 1, categorized: 0 });
+  });
+
+  it("fires the onTransactionImported lifecycle hook after bulkImport", async () => {
+    mockRepo.bulkImport.mockResolvedValue(2);
+    const csv = [NEON_HEADER, NEON_ROW, NEON_ROW].join("\n");
+
+    await importTransactions({
+      csvText: csv,
+      format: "neon",
+      accountId: "acc-1",
+      userId: "user-1",
+      logger,
+    });
+
+    expect(vi.mocked(moduleRegistry.fireTransactionImported)).toHaveBeenCalledExactlyOnceWith({
+      userId: "user-1",
+      accountId: "acc-1",
+      imported: 2,
+    });
   });
 });

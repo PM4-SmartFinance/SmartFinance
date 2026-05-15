@@ -203,6 +203,19 @@ model CategoryRule {
   @@index([categoryId])
 }
 
+model ModuleData {
+  id         String   @id @default(uuid())
+  moduleName String
+  userId     String
+  key        String
+  value      String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([moduleName, userId, key])
+  @@index([moduleName, userId])
+}
+
 enum BudgetType {
   DAILY
   MONTHLY

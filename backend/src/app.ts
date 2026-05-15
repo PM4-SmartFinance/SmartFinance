@@ -16,6 +16,13 @@ import { categoryRuleRoutes } from "./controllers/category-rule.controller.js";
 import { dashboardRoutes } from "./controllers/dashboard.controller.js";
 import { categoryRoutes } from "./controllers/category.controller.js";
 import { auditRoutes } from "./controllers/audit.controller.js";
+import { moduleRoutes } from "./controllers/modules.controller.js";
+import { registerModule, clearRegistry } from "./services/module-registry.service.js";
+import { registerImporter, clearImporterRegistry } from "./services/importer-registry.service.js";
+import { registerNavItem, clearNavItemRegistry } from "./services/nav-item-registry.service.js";
+import { registerWidget, clearWidgetRegistry } from "./services/widget-registry.service.js";
+import { createStorageAdapter } from "./repositories/module-storage.repository.js";
+import { ACTIVE_MODULES } from "./modules/index.js";
 
 export interface BuildAppOptions {
   /** Register the rate limiter even under NODE_ENV=test / VITEST. */
@@ -87,6 +94,48 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(categoryRuleRoutes, { prefix: "/api/v1" });
   await app.register(categoryRoutes, { prefix: "/api/v1" });
   await app.register(auditRoutes, { prefix: "/api/v1" });
+
+  // Reset all module singletons so multiple buildApp() calls (e.g. across test
+  // files) start with a clean slate and don't see stale or duplicate registrations.
+  clearRegistry();
+  clearImporterRegistry();
+  clearNavItemRegistry();
+  clearWidgetRegistry();
+
+  const MODULE_ID_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
+  for (const mod of ACTIVE_MODULES) {
+    if (!MODULE_ID_RE.test(mod.id)) {
+      app.log.error(
+        { moduleId: mod.id },
+        "module skipped — id must match /^[a-z0-9][a-z0-9-]{0,63}$/",
+      );
+      continue;
+    }
+    const storage = createStorageAdapter(mod.id);
+    await app.register(
+      async (scopedApp) => {
+        try {
+          await mod.init({
+            app: scopedApp,
+            storage,
+            logger: scopedApp.log,
+            registerImporter,
+            registerNavItem: (item) => registerNavItem(mod.id, item),
+            registerWidget: (widget) => registerWidget(mod.id, widget),
+          });
+          registerModule(mod);
+        } catch (err) {
+          scopedApp.log.error(
+            { err, moduleId: mod.id },
+            "module init failed — module not registered",
+          );
+        }
+      },
+      { prefix: `/api/v1/modules/${mod.id}` },
+    );
+  }
+
+  await app.register(moduleRoutes, { prefix: "/api/v1" });
 
   return app;
 }
