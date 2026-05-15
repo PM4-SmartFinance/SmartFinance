@@ -12,6 +12,7 @@ import { accountRoutes } from "./controllers/account.controller.js";
 import { categoryRuleRoutes } from "./controllers/category-rule.controller.js";
 import { dashboardRoutes } from "./controllers/dashboard.controller.js";
 import { categoryRoutes } from "./controllers/category.controller.js";
+import { auditRoutes } from "./controllers/audit.controller.js";
 
 export interface BuildAppOptions {
   /** Register the rate limiter even under NODE_ENV=test / VITEST. */
@@ -67,6 +68,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(accountRoutes, { prefix: "/api/v1" });
   await app.register(categoryRuleRoutes, { prefix: "/api/v1" });
   await app.register(categoryRoutes, { prefix: "/api/v1" });
+  await app.register(auditRoutes, { prefix: "/api/v1" });
 
   return app;
 }

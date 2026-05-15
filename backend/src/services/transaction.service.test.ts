@@ -5,7 +5,13 @@ import {
   updateTransaction,
   deleteTransaction,
 } from "./transaction.service.js";
+import * as transactionRepository from "../repositories/transaction.repository.js";
 import { ServiceError } from "../errors.js";
+import { logEvent } from "./audit.service.js";
+
+vi.mock("./audit.service.js", () => ({
+  logEvent: vi.fn(),
+}));
 
 vi.mock("../repositories/transaction.repository.js", () => ({
   listTransactions: vi.fn(),
@@ -14,9 +20,7 @@ vi.mock("../repositories/transaction.repository.js", () => ({
   deleteById: vi.fn(),
 }));
 
-import * as repo from "../repositories/transaction.repository.js";
-
-const mockRepo = vi.mocked(repo);
+const mockRepo = vi.mocked(transactionRepository);
 
 function makeRow(
   overrides: Partial<{
@@ -53,9 +57,20 @@ const DEFAULT_PARAMS = {
   sortOrder: "desc" as const,
 };
 
+const mockTx = {
+  id: "tx-1",
+  amount: "10.50",
+  dateId: 20260101,
+  merchant: { name: "Merchant" },
+  categoryId: "cat-1",
+  notes: "old",
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockRepo.listTransactions.mockResolvedValue([[makeRow()], 1]);
+  // @ts-expect-error -- partial mock for testing
+  mockRepo.findByIdForUser.mockResolvedValue(mockTx);
 });
 
 describe("listTransactions", () => {
@@ -156,12 +171,10 @@ describe("listTransactions", () => {
       expect(where.amount).toEqual({ lte: 200 });
     });
 
-    it("categoryId builds nested merchant mappings filter with userId guard", async () => {
+    it("categoryId builds filter directly in where", async () => {
       await listTransactions({ ...DEFAULT_PARAMS, categoryId: "cat-1" });
       const { where } = mockRepo.listTransactions.mock.calls[0]![0];
-      expect(where.merchant).toEqual({
-        mappings: { some: { userId: "user-1", categoryId: "cat-1" } },
-      });
+      expect(where.categoryId).toBe("cat-1");
     });
 
     it("all filters applied simultaneously", async () => {
@@ -177,9 +190,7 @@ describe("listTransactions", () => {
       expect(where.userId).toBe("user-1");
       expect(where.dateId).toEqual({ gte: 20250101, lte: 20250630 });
       expect(where.amount).toEqual({ gte: 5, lte: 500 });
-      expect(where.merchant).toEqual({
-        mappings: { some: { userId: "user-1", categoryId: "cat-2" } },
-      });
+      expect(where.categoryId).toBe("cat-2");
     });
 
     it("throws ServiceError 400 when minAmount exceeds maxAmount", async () => {
@@ -213,8 +224,8 @@ describe("listTransactions", () => {
       const { where } = mockRepo.listTransactions.mock.calls[0]![0];
       expect(where.merchant).toEqual({
         name: { contains: "Coop", mode: "insensitive" },
-        mappings: { some: { userId: "user-1", categoryId: "cat-1" } },
       });
+      expect(where.categoryId).toBe("cat-1");
     });
   });
 
@@ -304,26 +315,51 @@ describe("updateTransaction", () => {
 
   it("does not add manualOverride when only notes is provided", async () => {
     await updateTransaction("tx-1", "user-1", { notes: "hello" });
-    expect(mockRepo.updateById).toHaveBeenCalledExactlyOnceWith("tx-1", "user-1", {
-      notes: "hello",
+    expect(mockRepo.updateById).toHaveBeenCalledExactlyOnceWith(
+      "tx-1",
+      "user-1",
+      {
+        notes: "hello",
+      },
+      false,
+    );
+  });
+
+  it("calls the repository with manualOverride: true when categoryId is provided", async () => {
+    await updateTransaction("tx-1", "user-1", { categoryId: "new-cat" });
+    expect(transactionRepository.updateById).toHaveBeenCalledWith(
+      "tx-1",
+      "user-1",
+      expect.objectContaining({ categoryId: "new-cat", manualOverride: true }),
+      false,
+    );
+  });
+
+  it("calls logEvent when changes are made", async () => {
+    await updateTransaction("tx-1", "user-1", { notes: "new", reason: "test reason" });
+    expect(logEvent).toHaveBeenCalledWith({
+      action: "TRANSACTION_EDIT",
+      userId: "user-1",
+      transactionId: "tx-1",
+      previousValues: { notes: "old" },
+      changedValues: { notes: "new" },
+      reason: "test reason",
     });
   });
 
-  it("adds manualOverride: true when categoryId is provided", async () => {
-    await updateTransaction("tx-1", "user-1", { categoryId: "cat-1" });
-    expect(mockRepo.updateById).toHaveBeenCalledExactlyOnceWith("tx-1", "user-1", {
-      categoryId: "cat-1",
-      manualOverride: true,
-    });
-  });
-
-  it("adds manualOverride: true when both categoryId and notes are provided", async () => {
-    await updateTransaction("tx-1", "user-1", { categoryId: "cat-1", notes: "memo" });
-    expect(mockRepo.updateById).toHaveBeenCalledExactlyOnceWith("tx-1", "user-1", {
-      categoryId: "cat-1",
-      notes: "memo",
-      manualOverride: true,
-    });
+  it("supports date and amount updates with audit logging", async () => {
+    await updateTransaction("tx-1", "user-1", { date: "2026-02-02", amount: 99.99 });
+    expect(transactionRepository.updateById).toHaveBeenCalledWith(
+      "tx-1",
+      "user-1",
+      expect.objectContaining({ dateId: 20260202, amount: 99.99 }),
+      false,
+    );
+    expect(logEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        changedValues: { date: "2026-02-02", amount: 99.99 },
+      }),
+    );
   });
 
   it("returns the repository result unchanged", async () => {
@@ -345,9 +381,20 @@ describe("deleteTransaction", () => {
     mockRepo.deleteById.mockResolvedValue(undefined);
   });
 
-  it("delegates to deleteById with the given id and userId", async () => {
+  it("calls the repository with the given id and session user id", async () => {
     await deleteTransaction("tx-1", "user-1");
-    expect(mockRepo.deleteById).toHaveBeenCalledExactlyOnceWith("tx-1", "user-1");
+    expect(transactionRepository.deleteById).toHaveBeenCalledWith("tx-1", "user-1", false);
+  });
+
+  it("calls logEvent on deletion", async () => {
+    await deleteTransaction("tx-1", "user-1", "oops");
+    expect(logEvent).toHaveBeenCalledWith({
+      action: "TRANSACTION_DELETE",
+      userId: "user-1",
+      transactionId: "tx-1",
+      previousValues: expect.objectContaining({ merchant: "Merchant" }),
+      reason: "oops",
+    });
   });
 
   it("propagates ServiceError from the repository", async () => {

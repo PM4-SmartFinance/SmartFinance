@@ -29,6 +29,7 @@ model FactTransactions {
   category       DimCategory? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   notes          String?
   manualOverride Boolean      @default(false)
+  isDeleted      Boolean      @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -162,14 +163,18 @@ model DimDate {
 // --- AUDIT LOG ---
 
 model AuditLog {
-  id        String   @id @default(uuid())
-  action    String
-  userId    String?
-  details   String? // JSON string
-  createdAt DateTime @default(now())
+  id             String   @id @default(uuid())
+  action         String
+  userId         String?
+  transactionId  String?
+  previousValues Json?
+  changedValues  Json?
+  reason         String?
+  createdAt      DateTime @default(now())
 
   @@index([userId])
   @@index([action])
+  @@index([transactionId])
 }
 
 model CategoryRule {

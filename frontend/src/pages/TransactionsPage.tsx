@@ -13,7 +13,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { BackToDashboardLink } from "@/components/BackToDashboardLink";
 import { UserMenu } from "@/components/UserMenu";
 import { SortableColumnHeader } from "@/components/SortableColumnHeader";
-import { AlertCircle } from "lucide-react";
+import { EditTransactionDialog } from "@/components/EditTransactionDialog";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import {
+  useUpdateTransaction,
+  useDeleteTransaction,
+  type Transaction,
+} from "../lib/queries/transactions";
+import { AlertCircle, Edit2, Trash2 } from "lucide-react";
 
 export function TransactionsPage() {
   const page = useTransactionsStore((s) => s.page);
@@ -36,6 +43,12 @@ export function TransactionsPage() {
   const [tempEndDate, setTempEndDate] = useState(endDate || getDefaultEndDate());
   const [tempCategoryId, setTempCategoryId] = useState(categoryId || "");
   const [tempSearch, setTempSearch] = useState(search || "");
+
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
+
+  const { mutate: updateTx, isPending: isUpdating, error: updateError } = useUpdateTransaction();
+  const { mutate: deleteTx, isPending: isDeleting, error: deleteError } = useDeleteTransaction();
 
   const { data: categoriesData, error: categoriesError } = useCategories();
   const categories = categoriesData ?? [];
@@ -77,6 +90,29 @@ export function TransactionsPage() {
     setSortBy(field);
   };
 
+  const handleEditSave = (data: {
+    id: string;
+    date: string;
+    amount: number;
+    categoryId: string;
+    notes: string;
+    reason: string;
+  }) => {
+    updateTx(data, {
+      onSuccess: () => setEditingTransaction(null),
+    });
+  };
+
+  const handleDeleteConfirm = (reason: string) => {
+    if (!deletingTransaction) return;
+    deleteTx(
+      { id: deletingTransaction.id, reason },
+      {
+        onSuccess: () => setDeletingTransaction(null),
+      },
+    );
+  };
+
   if (error) {
     return (
       <main className="min-h-screen bg-background">
@@ -100,209 +136,281 @@ export function TransactionsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background">
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <header className="mb-6 flex items-start justify-between">
-          <div>
-            <h1 className="text-4xl font-bold text-foreground">Transactions</h1>
-            <BackToDashboardLink className="mt-2" />
-          </div>
-          <UserMenu />
-        </header>
-        {/* Filters */}
-        <Card className="mt-6 p-4">
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Filters</h2>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {/* Start Date */}
-              <div className="space-y-2">
-                <Label htmlFor="start-date">Start Date</Label>
-                <Input
-                  id="start-date"
-                  type="date"
-                  value={tempStartDate}
-                  onChange={(e) => setTempStartDate(e.target.value)}
-                  disabled={isLoading}
-                />
-              </div>
-
-              {/* End Date */}
-              <div className="space-y-2">
-                <Label htmlFor="end-date">End Date</Label>
-                <Input
-                  id="end-date"
-                  type="date"
-                  value={tempEndDate}
-                  onChange={(e) => setTempEndDate(e.target.value)}
-                  disabled={isLoading}
-                />
-              </div>
-
-              {/* Category */}
-              <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
-                <NativeSelect
-                  id="category"
-                  value={tempCategoryId}
-                  onChange={(e) => setTempCategoryId(e.target.value)}
-                  disabled={isLoading}
-                >
-                  <option value="">
-                    {categoriesError ? "Failed to load categories" : "All Categories"}
-                  </option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.categoryName}
-                    </option>
-                  ))}
-                </NativeSelect>
-              </div>
+    <>
+      <main className="min-h-screen bg-background">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          <header className="mb-6 flex items-start justify-between">
+            <div>
+              <h1 className="text-4xl font-bold text-foreground">Transactions</h1>
+              <BackToDashboardLink className="mt-2" />
             </div>
+            <UserMenu />
+          </header>
+          {/* Filters */}
+          <Card className="mt-6 p-4">
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold text-foreground">Filters</h2>
 
-            {/* Search */}
-            <div className="space-y-2">
-              <Label htmlFor="search">Search</Label>
-              <Input
-                id="search"
-                type="text"
-                value={tempSearch}
-                onChange={(e) => setTempSearch(e.target.value)}
-                placeholder="Search by merchant name..."
-                disabled={isLoading}
-              />
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center gap-2">
-              <Button onClick={handleApplyFilters} disabled={isLoading} size="sm">
-                Apply
-              </Button>
-              <Button onClick={handleClearFilters} variant="outline" disabled={isLoading} size="sm">
-                Clear
-              </Button>
-            </div>
-          </div>
-        </Card>
-
-        {/* Table */}
-        <Card className="mt-6 overflow-hidden">
-          {isLoading ? (
-            <div className="space-y-4 p-6">
-              {Array.from({ length: 5 }).map((_, i) => (
-                // eslint-disable-next-line @eslint-react/no-array-index-key
-                <div key={`loading-${i}`} className="h-12 animate-pulse rounded bg-muted" />
-              ))}
-            </div>
-          ) : transactions.length === 0 ? (
-            <div className="p-6 text-center text-muted-foreground">
-              No transactions found. Try adjusting your filters.
-            </div>
-          ) : (
-            <>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="border-b border-border bg-muted">
-                    <tr>
-                      <SortableColumnHeader
-                        column="date"
-                        label="Date"
-                        sortBy={sortBy}
-                        sortOrder={sortOrder}
-                        onSort={handleColumnSort}
-                      />
-                      <th scope="col" className="px-6 py-3 text-left font-semibold text-foreground">
-                        Description
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left font-semibold text-foreground">
-                        Category
-                      </th>
-                      <SortableColumnHeader
-                        column="amount"
-                        label="Amount"
-                        sortBy={sortBy}
-                        sortOrder={sortOrder}
-                        onSort={handleColumnSort}
-                        align="right"
-                      />
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {transactions.map((tx) => (
-                      <tr key={tx.id} className="hover:bg-muted/50">
-                        <td className="whitespace-nowrap px-6 py-3 text-sm text-foreground">
-                          {formatTransactionDate(tx.date)}
-                        </td>
-                        <td className="px-6 py-3 text-sm text-foreground">{tx.merchant}</td>
-                        <td className="px-6 py-3 text-sm text-muted-foreground">
-                          {tx.categoryName || "—"}
-                        </td>
-                        <td className="px-6 py-3 text-right text-sm font-medium text-foreground">
-                          {formatAmount(tx.amount)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination */}
-              {meta && meta.totalPages > 1 && (
-                <div className="flex items-center justify-between border-t border-border bg-muted/50 px-6 py-4">
-                  <div className="text-sm text-muted-foreground">
-                    Page {meta.page} of {meta.totalPages} ({meta.totalCount} total)
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => setPage(Math.max(1, meta.page - 1))}
-                      disabled={meta.page === 1 || isLoading}
-                      variant="outline"
-                      size="sm"
-                    >
-                      Previous
-                    </Button>
-
-                    {/* Page Numbers — sliding window */}
-                    <div className="flex gap-1">
-                      {(() => {
-                        const maxVisible = 5;
-                        const half = Math.floor(maxVisible / 2);
-                        let start = Math.max(1, meta.page - half);
-                        const end = Math.min(meta.totalPages, start + maxVisible - 1);
-                        start = Math.max(1, end - maxVisible + 1);
-
-                        return Array.from({ length: end - start + 1 }, (_, i) => {
-                          const pageNum = start + i;
-                          return (
-                            <Button
-                              key={pageNum}
-                              onClick={() => setPage(pageNum)}
-                              disabled={isLoading}
-                              variant={meta.page === pageNum ? "default" : "outline"}
-                              size="sm"
-                            >
-                              {pageNum}
-                            </Button>
-                          );
-                        });
-                      })()}
-                    </div>
-
-                    <Button
-                      onClick={() => setPage(meta.page + 1)}
-                      disabled={meta.page === meta.totalPages || isLoading}
-                      variant="outline"
-                      size="sm"
-                    >
-                      Next
-                    </Button>
-                  </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {/* Start Date */}
+                <div className="space-y-2">
+                  <Label htmlFor="start-date">Start Date</Label>
+                  <Input
+                    id="start-date"
+                    type="date"
+                    value={tempStartDate}
+                    onChange={(e) => setTempStartDate(e.target.value)}
+                    disabled={isLoading}
+                  />
                 </div>
-              )}
+
+                {/* End Date */}
+                <div className="space-y-2">
+                  <Label htmlFor="end-date">End Date</Label>
+                  <Input
+                    id="end-date"
+                    type="date"
+                    value={tempEndDate}
+                    onChange={(e) => setTempEndDate(e.target.value)}
+                    disabled={isLoading}
+                  />
+                </div>
+
+                {/* Category */}
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category</Label>
+                  <NativeSelect
+                    id="category"
+                    value={tempCategoryId}
+                    onChange={(e) => setTempCategoryId(e.target.value)}
+                    disabled={isLoading}
+                  >
+                    <option value="">
+                      {categoriesError ? "Failed to load categories" : "All Categories"}
+                    </option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.categoryName}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                </div>
+              </div>
+
+              {/* Search */}
+              <div className="space-y-2">
+                <Label htmlFor="search">Search</Label>
+                <Input
+                  id="search"
+                  type="text"
+                  value={tempSearch}
+                  onChange={(e) => setTempSearch(e.target.value)}
+                  placeholder="Search by merchant name..."
+                  disabled={isLoading}
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2">
+                <Button onClick={handleApplyFilters} disabled={isLoading} size="sm">
+                  Apply
+                </Button>
+                <Button
+                  onClick={handleClearFilters}
+                  variant="outline"
+                  disabled={isLoading}
+                  size="sm"
+                >
+                  Clear
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          {/* Table */}
+          <Card className="mt-6 overflow-hidden">
+            {isLoading ? (
+              <div className="space-y-4 p-6">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  // eslint-disable-next-line @eslint-react/no-array-index-key
+                  <div key={`loading-${i}`} className="h-12 animate-pulse rounded bg-muted" />
+                ))}
+              </div>
+            ) : transactions.length === 0 ? (
+              <div className="p-6 text-center text-muted-foreground">
+                No transactions found. Try adjusting your filters.
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="border-b border-border bg-muted">
+                      <tr>
+                        <SortableColumnHeader
+                          column="date"
+                          label="Date"
+                          sortBy={sortBy}
+                          sortOrder={sortOrder}
+                          onSort={handleColumnSort}
+                        />
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left font-semibold text-foreground"
+                        >
+                          Description
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-left font-semibold text-foreground"
+                        >
+                          Category
+                        </th>
+                        <SortableColumnHeader
+                          column="amount"
+                          label="Amount"
+                          sortBy={sortBy}
+                          sortOrder={sortOrder}
+                          onSort={handleColumnSort}
+                          align="right"
+                        />
+                        <th
+                          scope="col"
+                          className="px-6 py-3 text-right font-semibold text-foreground"
+                        >
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {transactions.map((tx) => (
+                        <tr key={tx.id} className="hover:bg-muted/50">
+                          <td className="whitespace-nowrap px-6 py-3 text-sm text-foreground">
+                            {formatTransactionDate(tx.date)}
+                          </td>
+                          <td className="px-6 py-3 text-sm text-foreground">{tx.merchant}</td>
+                          <td className="px-6 py-3 text-sm text-muted-foreground">
+                            {tx.categoryName || "—"}
+                          </td>
+                          <td className="px-6 py-3 text-right text-sm font-medium text-foreground">
+                            {formatAmount(tx.amount)}
+                          </td>
+                          <td className="px-6 py-3 text-right text-sm font-medium">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setEditingTransaction(tx)}
+                                className="size-8 p-0"
+                                title="Edit"
+                              >
+                                <Edit2 className="size-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setDeletingTransaction(tx)}
+                                className="size-8 p-0 text-destructive hover:bg-destructive/10"
+                                title="Delete"
+                              >
+                                <Trash2 className="size-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                {meta && meta.totalPages > 1 && (
+                  <div className="flex items-center justify-between border-t border-border bg-muted/50 px-6 py-4">
+                    <div className="text-sm text-muted-foreground">
+                      Page {meta.page} of {meta.totalPages} ({meta.totalCount} total)
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => setPage(Math.max(1, meta.page - 1))}
+                        disabled={meta.page === 1 || isLoading}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Previous
+                      </Button>
+
+                      {/* Page Numbers — sliding window */}
+                      <div className="flex gap-1">
+                        {(() => {
+                          const maxVisible = 5;
+                          const half = Math.floor(maxVisible / 2);
+                          let start = Math.max(1, meta.page - half);
+                          const end = Math.min(meta.totalPages, start + maxVisible - 1);
+                          start = Math.max(1, end - maxVisible + 1);
+
+                          return Array.from({ length: end - start + 1 }, (_, i) => {
+                            const pageNum = start + i;
+                            return (
+                              <Button
+                                key={pageNum}
+                                onClick={() => setPage(pageNum)}
+                                disabled={isLoading}
+                                variant={meta.page === pageNum ? "default" : "outline"}
+                                size="sm"
+                              >
+                                {pageNum}
+                              </Button>
+                            );
+                          });
+                        })()}
+                      </div>
+
+                      <Button
+                        onClick={() => setPage(meta.page + 1)}
+                        disabled={meta.page === meta.totalPages || isLoading}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </Card>
+        </div>
+      </main>
+
+      <EditTransactionDialog
+        isOpen={!!editingTransaction}
+        transaction={editingTransaction}
+        categories={categories}
+        isUpdating={isUpdating}
+        error={updateError?.message || null}
+        onSave={handleEditSave}
+        onClose={() => setEditingTransaction(null)}
+      />
+
+      <ConfirmDeleteDialog
+        isOpen={!!deletingTransaction}
+        title="Delete Transaction"
+        description={
+          deletingTransaction ? (
+            <>
+              Are you sure you want to delete the transaction with{" "}
+              <strong>{deletingTransaction.merchant}</strong> on{" "}
+              <strong>{formatTransactionDate(deletingTransaction.date)}</strong> for{" "}
+              <strong>{formatAmount(deletingTransaction.amount)}</strong>?
+              <br />
+              This action can be undone by an administrator if needed.
             </>
-          )}
-        </Card>
-      </div>
-    </main>
+          ) : null
+        }
+        isDeleting={isDeleting}
+        error={deleteError?.message || null}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeletingTransaction(null)}
+      />
+    </>
   );
 }
