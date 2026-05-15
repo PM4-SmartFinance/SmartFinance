@@ -18,17 +18,6 @@ import {
 } from "./SpendingTrendChart";
 import { useAppStore } from "../store/appStore";
 
-// Allow LineChart and its children to render in jsdom without a real layout engine.
-vi.mock("recharts", async () => {
-  const Recharts = await vi.importActual<typeof import("recharts")>("recharts");
-  return {
-    ...Recharts,
-    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
-      <div style={{ width: 800, height: 400 }}>{children}</div>
-    ),
-  };
-});
-
 // Pin the appStore date range to a deterministic 3-day window aligned with the mock data.
 beforeEach(() => {
   useAppStore.setState({ startDate: "2026-01-01", endDate: "2026-01-03" });
