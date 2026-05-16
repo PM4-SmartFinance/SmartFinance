@@ -67,6 +67,16 @@ let rules: CategoryRule[] = [
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
+  {
+    id: "rule-2",
+    userId: "user-1",
+    categoryId: "cat-1",
+    pattern: "netflix",
+    matchType: "exact" as const,
+    priority: 2,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
 ];
 
 const mockGet = api.get as ReturnType<typeof vi.fn>;
@@ -115,6 +125,16 @@ describe("CategoriesPage", () => {
         pattern: "coop",
         matchType: "contains",
         priority: 1,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: "rule-2",
+        userId: "user-1",
+        categoryId: "cat-1",
+        pattern: "netflix",
+        matchType: "exact",
+        priority: 2,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -669,6 +689,14 @@ describe("CategoriesPage", () => {
               categoryId: "cat-2",
               categoryName: "Rent",
             },
+            {
+              id: "rule-another",
+              pattern: "coop supercenter",
+              matchType: "exact",
+              priority: 6,
+              categoryId: "cat-2",
+              categoryName: "Rent",
+            },
           ],
         });
       }
@@ -686,7 +714,7 @@ describe("CategoriesPage", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Pattern overlaps with 1 existing rule\./i)).toBeInTheDocument();
+      expect(screen.getByText(/Pattern overlaps with 2/i)).toBeInTheDocument();
     });
   });
 
