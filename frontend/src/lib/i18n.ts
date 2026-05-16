@@ -10,6 +10,20 @@ i18n
   .init({
     fallbackLng: "en",
     supportedLngs: ["en", "de", "fr", "it", "rm"],
+    load: "languageOnly",
+
+    react: {
+      useSuspense: true,
+    },
+
+    saveMissing: true,
+    missingKeyHandler: (lngs, ns, key) => {
+      if (import.meta.env.DEV) {
+        console.warn(
+          `[i18n] Missing translation key: "${key}" in namespace "${ns}" for language "${lngs.join(", ")}"`,
+        );
+      }
+    },
 
     backend: {
       loadPath: "/locales/{{lng}}/translation.json",
@@ -24,6 +38,9 @@ i18n
     interpolation: {
       escapeValue: false,
     },
+  })
+  .catch((error) => {
+    console.error("i18next initialization failed:", error);
   });
 
 export default i18n;
