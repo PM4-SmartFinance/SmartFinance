@@ -29,10 +29,9 @@ const LANGUAGE_OPTIONS = [
 export function UserMenu() {
   const { user } = useAuth();
   const { mutate: logout, isPending } = useLogout();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const theme = useAppStore((s) => s.theme);
   const setTheme = useAppStore((s) => s.setTheme);
-  const { t } = useTranslation();
 
   if (!user) return null;
 

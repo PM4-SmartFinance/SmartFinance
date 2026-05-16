@@ -88,4 +88,29 @@ describe("UserMenu", () => {
     await user.click(signOut);
     expect(logoutState.mutate).not.toHaveBeenCalled();
   });
+
+  it("displays all supported language options in the menu", async () => {
+    const user = userEvent.setup();
+    render(<UserMenu />);
+
+    await user.click(screen.getByRole("button", { name: "User menu" }));
+
+    expect(await screen.findByText(/English|en/i)).toBeInTheDocument();
+    expect(screen.getByText(/Deutsch|German|de/i)).toBeInTheDocument();
+    expect(screen.getByText(/Français|French|fr/i)).toBeInTheDocument();
+    expect(screen.getByText(/Italiano|Italian|it/i)).toBeInTheDocument();
+    expect(screen.getByText(/Rumantsch|Romansh|rm/i)).toBeInTheDocument();
+  });
+
+  it("handles clicking a language option without errors", async () => {
+    const user = userEvent.setup();
+    render(<UserMenu />);
+
+    await user.click(screen.getByRole("button", { name: "User menu" }));
+
+    const germanOption = await screen.findByText(/Deutsch|German/i);
+    await user.click(germanOption);
+
+    expect(germanOption).toBeInTheDocument();
+  });
 });
