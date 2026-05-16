@@ -3,9 +3,10 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { Link } from "react-router";
 import { useCategories } from "../lib/queries/categories";
 import { useBudgets, type CategorySpending } from "../lib/queries/budgets";
-import { formatCurrency } from "../lib/utils";
+import { formatAmount } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n";
 
 const OUTER_COLORS = {
   spent: "hsl(var(--primary))",
@@ -332,7 +333,9 @@ export function BudgetProgressWidget() {
                           />
                           {getCategoryLabel(cat.categoryId)}
                         </span>
-                        <span className="font-medium">{formatCurrency(cat.spending)}</span>
+                        <span className="font-medium">
+                          {formatAmount(cat.spending, i18n.resolvedLanguage)}
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -347,13 +350,17 @@ export function BudgetProgressWidget() {
                   <span className="text-muted-foreground">
                     {t("components.budgetProgress.spent", "Spent")}
                   </span>
-                  <span className="font-medium">{formatCurrency(snapshot.totalSpent)}</span>
+                  <span className="font-medium">
+                    {formatAmount(snapshot.totalSpent, i18n.resolvedLanguage)}
+                  </span>
                 </div>
                 <div className="mt-1 flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">
                     {t("components.budgetProgress.trackedTotal", "Tracked total")}
                   </span>
-                  <span className="font-medium">{formatCurrency(snapshot.totalLimit)}</span>
+                  <span className="font-medium">
+                    {formatAmount(snapshot.totalLimit, i18n.resolvedLanguage)}
+                  </span>
                 </div>
                 {snapshot.overBudget > 0 && (
                   <div className="mt-1 flex items-center justify-between text-xs">
@@ -361,7 +368,7 @@ export function BudgetProgressWidget() {
                       {t("components.budgetProgress.overBudget", "Over budget")}
                     </span>
                     <span className="font-medium text-destructive">
-                      - {formatCurrency(snapshot.overBudget)}
+                      - {formatAmount(snapshot.overBudget, i18n.resolvedLanguage)}
                     </span>
                   </div>
                 )}

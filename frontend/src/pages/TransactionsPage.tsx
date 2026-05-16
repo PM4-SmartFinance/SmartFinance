@@ -15,6 +15,7 @@ import { UserMenu } from "@/components/UserMenu";
 import { SortableColumnHeader } from "@/components/SortableColumnHeader";
 import { AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n";
 
 export function TransactionsPage() {
   const page = useTransactionsStore((s) => s.page);
@@ -255,7 +256,7 @@ export function TransactionsPage() {
                           {tx.categoryName || "—"}
                         </td>
                         <td className="px-6 py-3 text-right text-sm font-medium text-foreground">
-                          {formatAmount(tx.amount)}
+                          {formatAmount(tx.amount, i18n.resolvedLanguage)}
                         </td>
                       </tr>
                     ))}

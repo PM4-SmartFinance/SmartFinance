@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DashboardTileLink } from "./DashboardTileLink";
 import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n";
 
 export function RecentTransactionsWidget() {
   const { data, isLoading, isError, error, refetch } = useTransactions({
@@ -12,7 +13,7 @@ export function RecentTransactionsWidget() {
     limit: 5,
   });
 
-  const { t } = useTranslation("dashboard");
+  const { t } = useTranslation();
 
   const COLUMNS = [
     t("transactions.table.date", "Date"),
@@ -94,13 +95,15 @@ export function RecentTransactionsWidget() {
               <tbody className="divide-y divide-border">
                 {transactions.map((tx) => (
                   <tr key={tx.id}>
-                    <td className="py-2.5 text-sm text-muted-foreground">{formatDate(tx.date)}</td>
+                    <td className="py-2.5 text-sm text-muted-foreground">
+                      {formatDate(tx.date, i18n.resolvedLanguage)}
+                    </td>
                     <td className="px-4 py-2.5 text-sm text-foreground">{tx.merchant}</td>
                     <td className="px-4 py-2.5 text-sm text-muted-foreground">
                       {tx.categoryName ?? FALLBACK}
                     </td>
                     <td className="py-2.5 text-right text-sm font-medium text-foreground">
-                      {formatAmount(tx.amount)}
+                      {formatAmount(tx.amount, i18n.resolvedLanguage)}
                     </td>
                   </tr>
                 ))}

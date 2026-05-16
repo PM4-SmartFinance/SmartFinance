@@ -10,10 +10,11 @@ import {
 } from "recharts";
 import { ApiError } from "../lib/api";
 import { useDashboardCategories } from "../lib/queries/dashboard";
-import { formatCurrency } from "../lib/utils";
+import { formatAmount } from "@/lib/format";
 import { CardContent, CardHeader, CardTitle } from "./ui/card";
 import { DashboardTileLink } from "./DashboardTileLink";
 import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n";
 
 function CategoryHeader() {
   const { t } = useTranslation();
@@ -119,7 +120,7 @@ export function CategoryBreakdownChart() {
                 }}
                 labelStyle={{ color: "var(--foreground)" }}
                 formatter={(value) => [
-                  formatCurrency(Number(value)),
+                  formatAmount(Number(value), i18n.resolvedLanguage),
                   t("components.categoryBreakdownChart.tooltipSpent", "Spent"),
                 ]}
               />

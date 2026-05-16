@@ -1,8 +1,9 @@
 import { Link } from "react-router";
 import { useDashboardSummary } from "../lib/queries/dashboard";
-import { formatCurrency } from "../lib/utils";
+import { formatAmount } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n";
 
 // SummaryMetricsWidget is a Link wrapping a 3-up grid of MetricCards.
 // Unlike other dashboard tiles (Card-shaped), this one is a grid layout, so
@@ -63,17 +64,17 @@ export function SummaryMetricsWidget() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <MetricCard
           title={t("components.summaryMetricsWidget.netBalance", "Net Balance")}
-          value={data ? formatCurrency(data.netBalance) : "—"}
+          value={data ? formatAmount(data.netBalance, i18n.resolvedLanguage) : "—"}
           isLoading={isLoading}
         />
         <MetricCard
           title={t("components.summaryMetricsWidget.totalExpenses", "Total Expenses")}
-          value={data ? formatCurrency(Math.abs(data.totalExpenses)) : "—"}
+          value={data ? formatAmount(Math.abs(data.totalExpenses), i18n.resolvedLanguage) : "—"}
           isLoading={isLoading}
         />
         <MetricCard
           title={t("components.summaryMetricsWidget.totalIncome", "Total Income")}
-          value={data ? formatCurrency(data.totalIncome) : "—"}
+          value={data ? formatAmount(data.totalIncome, i18n.resolvedLanguage) : "—"}
           isLoading={isLoading}
         />
       </div>

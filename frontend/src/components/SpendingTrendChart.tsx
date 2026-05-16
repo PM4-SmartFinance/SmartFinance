@@ -13,11 +13,11 @@ import { Link } from "react-router";
 import { useState } from "react";
 import { useDashboardTrends, type TrendDataPoint } from "../lib/queries/dashboard";
 import { useAppStore } from "../store/appStore";
-import { formatCurrency } from "../lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { useTranslation } from "react-i18next";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatAmount } from "@/lib/format";
 import type { TFunction } from "i18next";
+import i18n from "@/lib/i18n";
 
 const INCOME_COLOR = "hsl(142 71% 45%)";
 const EXPENSES_COLOR = "hsl(0 72% 51%)";
@@ -167,8 +167,8 @@ export function buildChartAriaLabel(
       "{{date}}: income {{income}}, expenses {{expenses}}",
       {
         date: formatter(p.date),
-        income: formatCurrency(p.income),
-        expenses: formatCurrency(p.expenses),
+        income: formatAmount(p.income, i18n.resolvedLanguage),
+        expenses: formatAmount(p.expenses, i18n.resolvedLanguage),
       },
     );
 
@@ -390,11 +390,15 @@ export function SpendingTrendChart() {
               <dt className="text-sm text-muted-foreground">
                 {t("components.spendingTrendChart.income", "Income")}
               </dt>
-              <dd className="text-sm font-medium tabular-nums">{formatCurrency(only.income)}</dd>
+              <dd className="text-sm font-medium tabular-nums">
+                {formatAmount(only.income, i18n.resolvedLanguage)}
+              </dd>
               <dt className="text-sm text-muted-foreground">
                 {t("components.spendingTrendChart.expenses", "Expenses")}
               </dt>
-              <dd className="text-sm font-medium tabular-nums">{formatCurrency(only.expenses)}</dd>
+              <dd className="text-sm font-medium tabular-nums">
+                {formatAmount(only.expenses, i18n.resolvedLanguage)}
+              </dd>
             </dl>
             <p className="mt-2 text-xs text-muted-foreground">
               {t(
@@ -558,7 +562,7 @@ export function SpendingTrendChart() {
                   labelStyle={{ color: "var(--foreground)" }}
                   formatter={(value, name) => {
                     const num = Number(value);
-                    return [isFinite(num) ? formatCurrency(num) : "—", name];
+                    return [isFinite(num) ? formatAmount(num, i18n.resolvedLanguage) : "—", name];
                   }}
                   cursor={{ stroke: "hsl(0 0% 50% / 0.4)" }}
                 />
@@ -623,7 +627,7 @@ export function SpendingTrendChart() {
                   labelStyle={{ color: "var(--foreground)" }}
                   formatter={(value, name) => {
                     const num = Number(value);
-                    return [isFinite(num) ? formatCurrency(num) : "—", name];
+                    return [isFinite(num) ? formatAmount(num, i18n.resolvedLanguage) : "—", name];
                   }}
                   cursor={{ fill: "hsl(0 0% 50% / 0.1)" }}
                 />
