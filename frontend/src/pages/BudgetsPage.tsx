@@ -17,6 +17,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { BackToDashboardLink } from "@/components/BackToDashboardLink";
 import { UserMenu } from "@/components/UserMenu";
 import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n";
 
 export function BudgetsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -81,7 +82,13 @@ export function BudgetsPage() {
     setBudgetToDelete({
       id: budget.id,
       categoryName: getCategoryName(budget.categoryId),
-      budgetLabel: getBudgetTypeLabel(budget.type, budget.month, budget.year),
+      budgetLabel: getBudgetTypeLabel(
+        budget.type,
+        budget.month,
+        budget.year,
+        t,
+        i18n.resolvedLanguage,
+      ),
     });
     setDeleteDialogOpen(true);
   };

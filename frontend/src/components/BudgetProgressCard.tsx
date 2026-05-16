@@ -1,10 +1,11 @@
 import type { Budget, CategorySpending } from "../lib/queries/budgets";
 import { getBudgetTypeLabel, getMostSpecificActiveBudget } from "../lib/queries/budgets";
-import { formatCurrency } from "../lib/utils";
+import { formatAmount } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n";
 
 interface BudgetCategoryGroupProps {
   categoryName: string;
@@ -77,10 +78,11 @@ function PeriodSummary({ categorySpending }: { categorySpending: CategorySpendin
     <div className="rounded-lg bg-muted/50 px-4 py-3" data-testid="category-summary">
       <div className="mb-2 flex items-baseline justify-between">
         <span className="text-lg font-semibold tabular-nums">
-          {formatCurrency(spent)}{" "}
+          {formatAmount(spent, i18n.resolvedLanguage)}{" "}
           {hasLimit && (
             <span className="text-sm font-normal text-muted-foreground">
-              {t("components.budgetCategoryGroup.of", "of")} {formatCurrency(limit)}
+              {t("components.budgetCategoryGroup.of", "of")}{" "}
+              {formatAmount(limit, i18n.resolvedLanguage)}
             </span>
           )}
         </span>
@@ -103,18 +105,19 @@ function PeriodSummary({ categorySpending }: { categorySpending: CategorySpendin
         {hasLimit ? (
           isOverBudget ? (
             <span className="font-semibold text-red-600">
-              {formatCurrency(Math.abs(remaining))}{" "}
+              {formatAmount(Math.abs(remaining), i18n.resolvedLanguage)}{" "}
               {t("components.budgetCategoryGroup.overBudget", "over budget")}
             </span>
           ) : (
             <span>
-              {formatCurrency(remaining)}{" "}
+              {formatAmount(remaining, i18n.resolvedLanguage)}{" "}
               {t("components.budgetCategoryGroup.remaining", "remaining")}
             </span>
           )
         ) : (
           <span>
-            {formatCurrency(spent)} {t("components.budgetCategoryGroup.spent", "spent")}
+            {formatAmount(spent, i18n.resolvedLanguage)}{" "}
+            {t("components.budgetCategoryGroup.spent", "spent")}
           </span>
         )}
       </div>
@@ -127,16 +130,23 @@ function BudgetSummary({ budget }: { budget: Budget }) {
   const limit = parseFloat(budget.limitAmount);
   const remaining = parseFloat(budget.remainingAmount);
   const percentageDisplay = Math.min(budget.percentageUsed, 100);
-  const typeLabel = getBudgetTypeLabel(budget.type, budget.month, budget.year);
   const { t } = useTranslation();
+  const typeLabel = getBudgetTypeLabel(
+    budget.type,
+    budget.month,
+    budget.year,
+    t,
+    i18n.resolvedLanguage,
+  );
 
   return (
     <div className="rounded-lg bg-muted/50 px-4 py-3" data-testid="category-summary">
       <div className="mb-2 flex items-baseline justify-between">
         <span className="text-lg font-semibold tabular-nums">
-          {formatCurrency(spent)}{" "}
+          {formatAmount(spent, i18n.resolvedLanguage)}{" "}
           <span className="text-sm font-normal text-muted-foreground">
-            {t("components.budgetCategoryGroup.of", "of")} {formatCurrency(limit)}
+            {t("components.budgetCategoryGroup.of", "of")}{" "}
+            {formatAmount(limit, i18n.resolvedLanguage)}
           </span>
         </span>
         <span className={`text-sm font-semibold ${getTextColorClass(budget.percentageUsed)}`}>
@@ -153,12 +163,13 @@ function BudgetSummary({ budget }: { budget: Budget }) {
         <span>{typeLabel}</span>
         {budget.isOverBudget ? (
           <span className="font-semibold text-red-600">
-            {formatCurrency(Math.abs(remaining))}{" "}
+            {formatAmount(Math.abs(remaining), i18n.resolvedLanguage)}{" "}
             {t("components.budgetCategoryGroup.overBudget", "over budget")}
           </span>
         ) : (
           <span>
-            {formatCurrency(remaining)} {t("components.budgetCategoryGroup.remaining", "remaining")}
+            {formatAmount(remaining, i18n.resolvedLanguage)}{" "}
+            {t("components.budgetCategoryGroup.remaining", "remaining")}
           </span>
         )}
       </div>
@@ -186,13 +197,19 @@ interface BudgetRowProps {
 }
 
 function BudgetRow({ budget, onEdit, onDelete, isDeleting }: BudgetRowProps) {
-  const typeLabel = getBudgetTypeLabel(budget.type, budget.month, budget.year);
   const percentageDisplay = Math.min(budget.percentageUsed, 100);
   const spent = parseFloat(budget.currentSpending);
   const limit = parseFloat(budget.limitAmount);
   const remaining = parseFloat(budget.remainingAmount);
   const isInactive = !budget.active;
   const { t } = useTranslation();
+  const typeLabel = getBudgetTypeLabel(
+    budget.type,
+    budget.month,
+    budget.year,
+    t,
+    i18n.resolvedLanguage,
+  );
 
   return (
     <div
@@ -250,18 +267,22 @@ function BudgetRow({ budget, onEdit, onDelete, isDeleting }: BudgetRowProps) {
       {/* Spending info */}
       <div className="flex items-baseline justify-between text-xs">
         <span className="tabular-nums text-muted-foreground">
-          <span className="font-medium text-foreground">{formatCurrency(spent)}</span> /{" "}
-          {formatCurrency(limit)}
+          <span className="font-medium text-foreground">
+            {formatAmount(spent, i18n.resolvedLanguage)}
+          </span>{" "}
+          / {formatAmount(limit, i18n.resolvedLanguage)}
         </span>
         <span className={`font-medium ${getTextColorClass(budget.percentageUsed)}`}>
           {budget.isOverBudget ? (
             <>
-              {Math.round(budget.percentageUsed)}% — {formatCurrency(Math.abs(remaining))}{" "}
+              {Math.round(budget.percentageUsed)}% —{" "}
+              {formatAmount(Math.abs(remaining), i18n.resolvedLanguage)}{" "}
               {t("components.budgetCategoryGroup.over", "over")}
             </>
           ) : (
             <>
-              {Math.round(budget.percentageUsed)}% — {formatCurrency(remaining)}{" "}
+              {Math.round(budget.percentageUsed)}% —{" "}
+              {formatAmount(remaining, i18n.resolvedLanguage)}{" "}
               {t("components.budgetCategoryGroup.left", "left")}
             </>
           )}

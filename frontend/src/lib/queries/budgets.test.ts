@@ -11,8 +11,8 @@ import {
   getMostSpecificActiveBudget,
   groupBudgetsByCategory,
   getMostSpecificBudgetsPerCategory,
-  Budget,
 } from "./budgets";
+import type { Budget } from "./budgets";
 
 vi.mock("../api", () => ({
   api: {
@@ -24,6 +24,8 @@ vi.mock("../api", () => ({
 }));
 
 import { api } from "../api";
+import i18n from "../i18n";
+import { useTranslation } from "react-i18next";
 
 const mockApi = {
   get: vi.mocked(api.get),
@@ -171,30 +173,39 @@ describe("useDeleteBudget", () => {
 });
 
 describe("getBudgetTypeLabel", () => {
+  const { t } = useTranslation();
   it("returns 'Daily Budget' for DAILY", () => {
-    expect(getBudgetTypeLabel("DAILY", 0, 0)).toBe("Daily Budget");
+    expect(getBudgetTypeLabel("DAILY", 0, 0, t, i18n.resolvedLanguage)).toBe("Daily Budget");
   });
 
   it("returns 'Monthly Budget' for MONTHLY", () => {
-    expect(getBudgetTypeLabel("MONTHLY", 0, 0)).toBe("Monthly Budget");
+    expect(getBudgetTypeLabel("MONTHLY", 0, 0, t, i18n.resolvedLanguage)).toBe("Monthly Budget");
   });
 
   it("returns 'Yearly Budget' for YEARLY", () => {
-    expect(getBudgetTypeLabel("YEARLY", 0, 0)).toBe("Yearly Budget");
+    expect(getBudgetTypeLabel("YEARLY", 0, 0, t, i18n.resolvedLanguage)).toBe("Yearly Budget");
   });
 
   it("returns month name (recurring) for SPECIFIC_MONTH", () => {
-    expect(getBudgetTypeLabel("SPECIFIC_MONTH", 3, 0)).toBe("March (recurring)");
-    expect(getBudgetTypeLabel("SPECIFIC_MONTH", 12, 0)).toBe("December (recurring)");
+    expect(getBudgetTypeLabel("SPECIFIC_MONTH", 3, 0, t, i18n.resolvedLanguage)).toBe(
+      "March (recurring)",
+    );
+    expect(getBudgetTypeLabel("SPECIFIC_MONTH", 12, 0, t, i18n.resolvedLanguage)).toBe(
+      "December (recurring)",
+    );
   });
 
   it("returns year string for SPECIFIC_YEAR", () => {
-    expect(getBudgetTypeLabel("SPECIFIC_YEAR", 0, 2026)).toBe("2026");
+    expect(getBudgetTypeLabel("SPECIFIC_YEAR", 0, 2026, t, i18n.resolvedLanguage)).toBe("2026");
   });
 
   it("returns month + year for SPECIFIC_MONTH_YEAR", () => {
-    expect(getBudgetTypeLabel("SPECIFIC_MONTH_YEAR", 6, 2026)).toBe("June 2026");
-    expect(getBudgetTypeLabel("SPECIFIC_MONTH_YEAR", 1, 2025)).toBe("January 2025");
+    expect(getBudgetTypeLabel("SPECIFIC_MONTH_YEAR", 6, 2026, t, i18n.resolvedLanguage)).toBe(
+      "June 2026",
+    );
+    expect(getBudgetTypeLabel("SPECIFIC_MONTH_YEAR", 1, 2025, t, i18n.resolvedLanguage)).toBe(
+      "January 2025",
+    );
   });
 });
 

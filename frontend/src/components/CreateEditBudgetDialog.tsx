@@ -11,6 +11,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n";
 
 interface CreateEditBudgetDialogProps {
   isOpen: boolean;
@@ -324,9 +325,12 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
                   {t("components.createEditBudgetDialog.anyMonth", "Any month")}
                 </option>
                 {months.map((m) => {
-                  const monthName = new Date(currentYear, m - 1).toLocaleDateString("en-US", {
-                    month: "long",
-                  });
+                  const monthName = new Date(currentYear, m - 1).toLocaleDateString(
+                    i18n.resolvedLanguage,
+                    {
+                      month: "long",
+                    },
+                  );
                   return (
                     <option key={m} value={m}>
                       {monthName}
