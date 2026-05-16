@@ -137,7 +137,6 @@ export function NewRuleForm({
           className="mt-2 rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400"
         >
           <p className="font-semibold">
-            Pattern overlaps with {conflicts.length} existing rule
             {t(
               "components.newRuleForm.overlapWarning",
               "Pattern overlaps with {{count}} existing rules.",
