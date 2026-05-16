@@ -21,20 +21,6 @@ const localStorageMock = (function () {
 })();
 Object.defineProperty(globalThis, "localStorage", { value: localStorageMock, writable: true });
 
-const originalNumberFormat = Intl.NumberFormat;
-globalThis.Intl.NumberFormat = class extends originalNumberFormat {
-  constructor(locales?: string | string[], options?: Intl.NumberFormatOptions) {
-    super("en-CH", options);
-  }
-} as unknown as typeof Intl.NumberFormat;
-
-const originalDateTimeFormat = Intl.DateTimeFormat;
-globalThis.Intl.DateTimeFormat = class extends originalDateTimeFormat {
-  constructor(locales?: string | string[], options?: Intl.DateTimeFormatOptions) {
-    super("en-CH", options);
-  }
-} as unknown as typeof Intl.DateTimeFormat;
-
 const getTranslation = (key: string) => {
   return key
     .split(".")
@@ -72,8 +58,8 @@ vi.mock("react-i18next", () => ({
       return str as string;
     },
     i18n: {
-      changeLanguage: vi.fn(),
-      resolvedLanguage: "en-CH",
+      changeLanguage: vi.fn(() => Promise.resolve()),
+      resolvedLanguage: "en",
     },
   }),
   initReactI18next: {
@@ -84,8 +70,8 @@ vi.mock("react-i18next", () => ({
 
 vi.mock("@/lib/i18n", () => ({
   default: {
-    resolvedLanguage: "en-CH",
-    changeLanguage: vi.fn(),
+    resolvedLanguage: "en",
+    changeLanguage: vi.fn(() => Promise.resolve()),
   },
 }));
 
