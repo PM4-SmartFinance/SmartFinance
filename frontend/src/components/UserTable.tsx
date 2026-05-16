@@ -1,6 +1,7 @@
 import type { User } from "../lib/queries/users";
 import { Button } from "@/components/ui/button";
 import { SortableColumnHeader } from "./SortableColumnHeader";
+import { formatDate } from "@/lib/format";
 import { useTranslation } from "react-i18next";
 
 interface UserTableProps {
@@ -109,7 +110,7 @@ export function UserTable({
                 </span>
               </td>
               <td className="px-6 py-3 text-sm text-muted-foreground">
-                {new Date(user.createdAt).toLocaleDateString(i18n.resolvedLanguage || undefined)}
+                {formatDate(user.createdAt, i18n.resolvedLanguage)}
               </td>
               <td className="px-6 py-3 text-sm">
                 {user.role === "ADMIN" && user.id !== currentUserId ? (

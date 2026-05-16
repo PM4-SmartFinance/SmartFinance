@@ -19,7 +19,11 @@ export function BudgetWidget() {
 
   if (isLoading) {
     return (
-      <DashboardTileLink to="/budgets" ariaLabel="View budgets" linkClassName="block">
+      <DashboardTileLink
+        to="/budgets"
+        ariaLabel={t("components.budgetWidget.ariaView", "View budgets")}
+        linkClassName="block"
+      >
         <CardHeader>
           <CardTitle className="text-xs font-semibold uppercase tracking-wider">
             {t("components.budgetWidget.title", "Budget Status")}
@@ -48,7 +52,11 @@ export function BudgetWidget() {
   );
 
   return (
-    <DashboardTileLink to="/budgets" ariaLabel="View budgets" linkClassName="block">
+    <DashboardTileLink
+      to="/budgets"
+      ariaLabel={t("components.budgetWidget.ariaView", "View budgets")}
+      linkClassName="block"
+    >
       <CardHeader>
         <CardTitle className="text-xs font-semibold uppercase tracking-wider">
           {t("components.budgetWidget.title", "Budget Status")}

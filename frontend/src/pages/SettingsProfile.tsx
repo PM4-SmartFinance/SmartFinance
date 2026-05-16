@@ -134,7 +134,9 @@ export function SettingsProfile() {
                 </h2>
                 {profile?.role && (
                   <Badge variant="secondary" className="capitalize">
-                    {profile.role.toLowerCase()}
+                    {profile.role === "ADMIN"
+                      ? t("createUserDialog.roles.admin", "Admin")
+                      : t("createUserDialog.roles.user", "User")}
                   </Badge>
                 )}
               </div>

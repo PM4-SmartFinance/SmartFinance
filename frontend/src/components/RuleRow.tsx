@@ -122,8 +122,11 @@ export function RuleRow({
             <ul className="mt-1 list-disc space-y-0.5 pl-4">
               {conflicts.map((c) => (
                 <li key={c.id}>
-                  <span className="font-mono">"{c.pattern}"</span> ({c.matchType}) →{" "}
-                  {c.categoryName}
+                  <span className="font-mono">"{c.pattern}"</span> (
+                  {c.matchType === "exact"
+                    ? t("components.ruleRow.matchTypeExact", "exact")
+                    : t("components.ruleRow.matchTypeContains", "contains")}
+                  ) → {c.categoryName}
                   <span className="text-muted-foreground">
                     {" "}
                     —{" "}
@@ -145,7 +148,13 @@ export function RuleRow({
       <div className="flex flex-col gap-2 md:flex-row md:items-center">
         <span className="text-sm md:flex-1">
           <span className="font-medium">{rule.pattern}</span>
-          <span className="ml-2 text-muted-foreground">({rule.matchType})</span>
+          <span className="ml-2 text-muted-foreground">
+            (
+            {rule.matchType === "exact"
+              ? t("components.ruleRow.matchTypeExact", "exact")
+              : t("components.ruleRow.matchTypeContains", "contains")}
+            )
+          </span>
         </span>
         <span
           className="text-xs text-muted-foreground"
