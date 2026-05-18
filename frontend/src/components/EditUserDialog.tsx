@@ -8,6 +8,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface EditUserDialogProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ interface FormState {
 export function EditUserDialog({ isOpen, user, onClose }: EditUserDialogProps) {
   const updateMutation = useUpdateUser();
   const { user: currentUser } = useAuth();
+  const { t } = useTranslation();
 
   const getInitialFormState = (): FormState => {
     if (!user) {
@@ -60,7 +62,10 @@ export function EditUserDialog({ isOpen, user, onClose }: EditUserDialogProps) {
       }
 
       if (Object.keys(input).length === 0) {
-        setFormState((prev) => ({ ...prev, error: "No changes to save" }));
+        setFormState((prev) => ({
+          ...prev,
+          error: t("components.editUserDialog.errors.noChanges", "No changes to save"),
+        }));
         return;
       }
 
@@ -68,7 +73,10 @@ export function EditUserDialog({ isOpen, user, onClose }: EditUserDialogProps) {
       onClose();
     } catch (err) {
       const message =
-        err instanceof ApiError ? err.message || "Failed to update user" : "Failed to update user";
+        err instanceof ApiError
+          ? err.message ||
+            t("components.editUserDialog.errors.updateFailed", "Failed to update user")
+          : t("components.editUserDialog.errors.updateFailed", "Failed to update user");
       setFormState((prev) => ({ ...prev, error: message }));
     }
   };
@@ -91,7 +99,9 @@ export function EditUserDialog({ isOpen, user, onClose }: EditUserDialogProps) {
 
   return (
     <Dialog key={user.id} isOpen={isOpen} onClose={handleDialogClose}>
-      <h2 className="mb-6 text-xl font-semibold text-foreground">Edit User: {user.email}</h2>
+      <h2 className="mb-6 text-xl font-semibold text-foreground">
+        {t("components.editUserDialog.title", "Edit User: {{email}}", { email: user.email })}
+      </h2>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {formState.error && (
@@ -102,7 +112,7 @@ export function EditUserDialog({ isOpen, user, onClose }: EditUserDialogProps) {
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="role">Role</Label>
+          <Label htmlFor="role">{t("components.editUserDialog.roleLabel", "Role")}</Label>
           <NativeSelect
             id="role"
             value={formState.role}
@@ -111,14 +121,24 @@ export function EditUserDialog({ isOpen, user, onClose }: EditUserDialogProps) {
             }
             disabled={isSubmitting || !canChangeRole}
           >
-            <option value="USER">User</option>
-            <option value="ADMIN">Admin</option>
+            <option value="USER">{t("common.roles.user", "User")}</option>
+            <option value="ADMIN">{t("common.roles.admin", "Admin")}</option>
           </NativeSelect>
           {!canChangeRole && (
-            <p className="text-xs text-muted-foreground">Cannot change role of other admin users</p>
+            <p className="text-xs text-muted-foreground">
+              {t(
+                "components.editUserDialog.warnings.cannotChangeAdmin",
+                "Cannot change role of other admin users",
+              )}
+            </p>
           )}
           {!canSaveDemotion && (
-            <p className="text-xs text-red-600">Cannot demote yourself from admin</p>
+            <p className="text-xs text-red-600">
+              {t(
+                "components.editUserDialog.warnings.cannotDemoteSelf",
+                "Cannot demote yourself from admin",
+              )}
+            </p>
           )}
         </div>
 
@@ -131,13 +151,13 @@ export function EditUserDialog({ isOpen, user, onClose }: EditUserDialogProps) {
               disabled={isSubmitting}
               className="rounded border border-input"
             />
-            <span>Active</span>
+            <span>{t("components.editUserDialog.activeLabel", "Active")}</span>
           </Label>
         </div>
 
         <div className="flex gap-2">
           <Button type="submit" disabled={isSubmitting || !canSaveDemotion} className="flex-1">
-            {isSubmitting ? "Saving…" : "Save Changes"}
+            {isSubmitting ? t("common.saving", "Saving…") : t("common.saveChanges", "Save Changes")}
           </Button>
           <Button
             type="button"
@@ -145,7 +165,7 @@ export function EditUserDialog({ isOpen, user, onClose }: EditUserDialogProps) {
             onClick={handleDialogClose}
             disabled={isSubmitting}
           >
-            Cancel
+            {t("common.cancel", "Cancel")}
           </Button>
         </div>
       </form>

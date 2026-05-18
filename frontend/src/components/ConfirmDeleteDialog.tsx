@@ -4,6 +4,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface ConfirmDeleteDialogProps {
   isOpen: boolean;
@@ -24,12 +25,13 @@ export function ConfirmDeleteDialog({
   description,
   error,
   isDeleting = false,
-  confirmLabel = "Delete",
-  cancelLabel = "Cancel",
+  confirmLabel,
+  cancelLabel,
   size,
   onConfirm,
   onCancel,
 }: ConfirmDeleteDialogProps) {
+  const { t } = useTranslation();
   const [reason, setReason] = useState("");
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
 
@@ -71,7 +73,9 @@ export function ConfirmDeleteDialog({
           onClick={() => onConfirm(reason)}
           className="flex-1"
         >
-          {isDeleting ? "Deleting…" : confirmLabel}
+          {isDeleting
+            ? t("common.deleting", "Deleting…")
+            : confirmLabel || t("common.delete", "Delete")}
         </Button>
         <Button
           type="button"
@@ -80,7 +84,7 @@ export function ConfirmDeleteDialog({
           onClick={onCancel}
           className="flex-1"
         >
-          {cancelLabel}
+          {cancelLabel || t("common.cancel", "Cancel")}
         </Button>
       </div>
     </Dialog>

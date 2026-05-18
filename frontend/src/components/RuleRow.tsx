@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { useRuleOverlap, type CategoryRule } from "../lib/queries/categories";
+import { useTranslation } from "react-i18next";
 
 interface RuleEditorState {
   pattern: string;
@@ -33,6 +34,8 @@ export function RuleRow({
     rule.id,
   );
 
+  const { t } = useTranslation();
+
   async function handleSave() {
     if (!editor) return;
     const ok = await onSave(editor);
@@ -44,25 +47,34 @@ export function RuleRow({
       <li className="rounded border p-3">
         <div className="flex flex-col gap-2 md:flex-row md:items-center">
           <Input
-            aria-label={`Rule pattern ${rule.id}`}
+            aria-label={t("components.ruleRow.ariaPattern", "Rule pattern {{id}}", { id: rule.id })}
             className="md:flex-1"
             value={editor.pattern}
             onChange={(event) => setEditor({ ...editor, pattern: event.target.value })}
           />
           <NativeSelect
-            aria-label={`Rule match type ${rule.id}`}
+            aria-label={t("components.ruleRow.ariaMatchType", "Rule match type {{id}}", {
+              id: rule.id,
+            })}
             className="w-auto"
             value={editor.matchType}
             onChange={(event) =>
               setEditor({ ...editor, matchType: event.target.value as "exact" | "contains" })
             }
           >
-            <option value="contains">contains</option>
-            <option value="exact">exact</option>
+            <option value="contains">
+              {t("components.ruleRow.matchTypeContains", "contains")}
+            </option>
+            <option value="exact">{t("components.ruleRow.matchTypeExact", "exact")}</option>
           </NativeSelect>
           <Input
-            aria-label={`Rule priority ${rule.id}`}
-            title="Higher priority rules are evaluated first"
+            aria-label={t("components.ruleRow.ariaPriority", "Rule priority {{id}}", {
+              id: rule.id,
+            })}
+            title={t(
+              "components.ruleRow.priorityTitle",
+              "Higher priority rules are evaluated first",
+            )}
             type="number"
             min={0}
             max={1000}
@@ -74,15 +86,15 @@ export function RuleRow({
           />
           <div className="flex gap-2">
             <Button
-              aria-label={`Save rule ${rule.id}`}
+              aria-label={t("components.ruleRow.ariaSave", "Save rule {{id}}", { id: rule.id })}
               size="sm"
               onClick={handleSave}
               disabled={isSaving}
             >
-              Save
+              {t("common.save", "Save")}
             </Button>
             <Button size="sm" variant="outline" onClick={() => setEditor(null)}>
-              Cancel
+              {t("common.cancel", "Cancel")}
             </Button>
           </div>
         </div>
@@ -92,7 +104,7 @@ export function RuleRow({
             className="mt-2 text-xs text-muted-foreground"
             data-testid={`overlap-degraded-${rule.id}`}
           >
-            Conflict check unavailable.
+            {t("components.ruleRow.conflictUnavailable", "Conflict check unavailable.")}
           </p>
         )}
         {conflicts.length > 0 && (
@@ -101,15 +113,27 @@ export function RuleRow({
             className="mt-2 rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400"
           >
             <p className="font-semibold">
-              Pattern overlaps with {conflicts.length} other rule{conflicts.length === 1 ? "" : "s"}
-              .
+              {t(
+                "components.ruleRow.overlapWarning",
+                "Pattern overlaps with {{count}} other rule.",
+                { count: conflicts.length },
+              )}
             </p>
             <ul className="mt-1 list-disc space-y-0.5 pl-4">
               {conflicts.map((c) => (
                 <li key={c.id}>
-                  <span className="font-mono">"{c.pattern}"</span> ({c.matchType}) →{" "}
-                  {c.categoryName}
-                  <span className="text-muted-foreground"> — priority {c.priority}</span>
+                  <span className="font-mono">"{c.pattern}"</span> (
+                  {c.matchType === "exact"
+                    ? t("components.ruleRow.matchTypeExact", "exact")
+                    : t("components.ruleRow.matchTypeContains", "contains")}
+                  ) → {c.categoryName}
+                  <span className="text-muted-foreground">
+                    {" "}
+                    —{" "}
+                    {t("components.ruleRow.priorityLabel", "priority {{priority}}", {
+                      priority: c.priority,
+                    })}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -124,17 +148,25 @@ export function RuleRow({
       <div className="flex flex-col gap-2 md:flex-row md:items-center">
         <span className="text-sm md:flex-1">
           <span className="font-medium">{rule.pattern}</span>
-          <span className="ml-2 text-muted-foreground">({rule.matchType})</span>
+          <span className="ml-2 text-muted-foreground">
+            (
+            {rule.matchType === "exact"
+              ? t("components.ruleRow.matchTypeExact", "exact")
+              : t("components.ruleRow.matchTypeContains", "contains")}
+            )
+          </span>
         </span>
         <span
           className="text-xs text-muted-foreground"
-          title="Higher priority rules are evaluated first"
+          title={t("components.ruleRow.priorityTitle", "Higher priority rules are evaluated first")}
         >
-          Priority: {rule.priority}
+          {t("components.ruleRow.priorityDisplay", "Priority: {{priority}}", {
+            priority: rule.priority,
+          })}
         </span>
         <div className="flex gap-2">
           <Button
-            aria-label={`Edit rule ${rule.id}`}
+            aria-label={t("components.ruleRow.ariaEdit", "Edit rule {{id}}", { id: rule.id })}
             size="sm"
             variant="outline"
             onClick={() =>
@@ -145,16 +177,16 @@ export function RuleRow({
               })
             }
           >
-            Edit
+            {t("common.edit", "Edit")}
           </Button>
           <Button
-            aria-label={`Delete rule ${rule.id}`}
+            aria-label={t("components.ruleRow.ariaDelete", "Delete rule {{id}}", { id: rule.id })}
             size="sm"
             variant="outline"
             onClick={onDelete}
             disabled={isDeleting}
           >
-            Delete
+            {t("common.delete", "Delete")}
           </Button>
         </div>
       </div>

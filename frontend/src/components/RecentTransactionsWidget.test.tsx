@@ -152,7 +152,7 @@ describe("RecentTransactionsWidget", () => {
       mockGet.mockResolvedValue({ data: [negativeTx], meta: { ...META, totalCount: 1 } });
       renderWidget();
       await waitFor(() => expect(screen.getByText("Migros")).toBeInTheDocument());
-      expect(screen.getByText("−CHF 42.50")).toBeInTheDocument();
+      expect(screen.getByText("CHF-42.50")).toBeInTheDocument();
     });
 
     it("renders positive amounts without a sign", async () => {
@@ -162,7 +162,7 @@ describe("RecentTransactionsWidget", () => {
       });
       renderWidget();
       await waitFor(() => expect(screen.getByText("Salary")).toBeInTheDocument());
-      expect(screen.getByText("CHF 1250.00")).toBeInTheDocument();
+      expect(screen.getByText("CHF 1'250.00")).toBeInTheDocument();
     });
 
     it("renders a fallback for null categoryName", async () => {

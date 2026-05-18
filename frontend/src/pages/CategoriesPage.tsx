@@ -23,6 +23,8 @@ import { RuleRow } from "@/components/RuleRow";
 import { NewRuleForm } from "@/components/NewRuleForm";
 import { BackToDashboardLink } from "@/components/BackToDashboardLink";
 import { UserMenu } from "@/components/UserMenu";
+import { formatDateId, formatAmount } from "@/lib/format";
+import { useTranslation } from "react-i18next";
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof ApiError) {
@@ -30,13 +32,6 @@ function getErrorMessage(error: unknown, fallback: string) {
     return fallback;
   }
   return fallback;
-}
-
-export function formatDateId(dateId: number): string {
-  const year = Math.trunc(dateId / 10000);
-  const month = Math.trunc((dateId % 10000) / 100) - 1;
-  const day = dateId % 100;
-  return new Date(Date.UTC(year, month, day)).toLocaleDateString("de-CH");
 }
 
 export function CategoriesPage() {
@@ -61,6 +56,7 @@ export function CategoriesPage() {
   );
   const [actionResult, setActionResult] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const { t, i18n } = useTranslation();
 
   const {
     data: categories = [],
@@ -84,7 +80,7 @@ export function CategoriesPage() {
     return rules.reduce<Record<string, CategoryRule[]>>((acc, rule) => {
       const list = acc[rule.categoryId] ?? [];
       list.push(rule);
-      acc[rule.categoryId] = list.sort((a, b) => a.priority - b.priority);
+      acc[rule.categoryId] = list.toSorted((a, b) => a.priority - b.priority);
       return acc;
     }, {});
   }, [rules]);
@@ -100,18 +96,18 @@ export function CategoriesPage() {
     return [
       {
         id: "personal",
-        title: "Your Categories",
-        description: "Editable categories you created.",
+        title: t("categories.personalTitle", "Your Categories"),
+        description: t("categories.personalDesc", "Editable categories you created."),
         categories: personal,
       },
       {
         id: "global",
-        title: "Global Categories",
-        description: "Shared defaults available to all users.",
+        title: t("categories.globalTitle", "Global Categories"),
+        description: t("categories.globalDesc", "Shared defaults available to all users."),
         categories: global,
       },
     ];
-  }, [categories]);
+  }, [categories, t]);
 
   function setCategoryError(categoryId: string, message: string | null) {
     setErrorByCategory((prev) => {
@@ -126,7 +122,7 @@ export function CategoriesPage() {
 
   async function handleCreateCategory() {
     if (!newCategoryName.trim()) {
-      setCreateCategoryError("Category name is required.");
+      setCreateCategoryError(t("categories.errors.nameRequired", "Category name is required."));
       return;
     }
 
@@ -135,7 +131,9 @@ export function CategoriesPage() {
       await createCategory.mutateAsync(newCategoryName.trim());
       setNewCategoryName("");
     } catch (error) {
-      setCreateCategoryError(getErrorMessage(error, "Failed to create category."));
+      setCreateCategoryError(
+        getErrorMessage(error, t("categories.errors.createFailed", "Failed to create category.")),
+      );
     }
   }
 
@@ -147,7 +145,10 @@ export function CategoriesPage() {
 
   async function handleSaveCategoryEdit(categoryId: string) {
     if (!editingCategoryName.trim()) {
-      setCategoryError(categoryId, "Category name is required.");
+      setCategoryError(
+        categoryId,
+        t("categories.errors.nameRequired", "Category name is required."),
+      );
       return;
     }
 
@@ -160,7 +161,10 @@ export function CategoriesPage() {
       setEditingCategoryId(null);
       setEditingCategoryName("");
     } catch (error) {
-      setCategoryError(categoryId, getErrorMessage(error, "Failed to update category."));
+      setCategoryError(
+        categoryId,
+        getErrorMessage(error, t("categories.errors.updateFailed", "Failed to update category.")),
+      );
     }
   }
 
@@ -174,7 +178,10 @@ export function CategoriesPage() {
         return next;
       });
     } catch (error) {
-      setCategoryError(categoryId, getErrorMessage(error, "Failed to delete category."));
+      setCategoryError(
+        categoryId,
+        getErrorMessage(error, t("categories.errors.deleteFailed", "Failed to delete category.")),
+      );
     }
   }
 
@@ -183,7 +190,10 @@ export function CategoriesPage() {
     draft: { pattern: string; matchType: "exact" | "contains"; priority: number },
   ): Promise<boolean> {
     if (!draft.pattern.trim()) {
-      setCategoryError(categoryId, "Rule pattern is required.");
+      setCategoryError(
+        categoryId,
+        t("categories.errors.rulePatternRequired", "Rule pattern is required."),
+      );
       return false;
     }
 
@@ -204,7 +214,10 @@ export function CategoriesPage() {
       });
       return true;
     } catch (error) {
-      setCategoryError(categoryId, getErrorMessage(error, "Failed to create rule."));
+      setCategoryError(
+        categoryId,
+        getErrorMessage(error, t("categories.errors.createRuleFailed", "Failed to create rule.")),
+      );
       return false;
     }
   }
@@ -241,13 +254,13 @@ export function CategoriesPage() {
       }>("/category-rules/preview", payload);
 
       const lines = (response.matchedTransactions ?? []).map((tx) => {
-        const amount = `${tx.amount < 0 ? "−" : ""}CHF ${Math.abs(tx.amount).toFixed(2)}`;
-        return `${tx.merchantName} · ${formatDateId(tx.dateId)} · ${amount}`;
+        const amount = formatAmount(tx.amount, i18n.resolvedLanguage);
+        return `${tx.merchantName} · ${formatDateId(tx.dateId, i18n.resolvedLanguage)} · ${amount}`;
       });
       setPreviewByCategory((prev) => ({
         ...prev,
         [categoryId]: {
-          summary: `${response.matchCount} existing transaction${response.matchCount === 1 ? "" : "s"} would match.`,
+          summary: t("categories.matchCount", { count: response.matchCount }),
           lines,
         },
       }));
@@ -255,7 +268,7 @@ export function CategoriesPage() {
       const msg =
         error instanceof ApiError && error.status >= 400 && error.status < 500
           ? error.message
-          : "Failed to preview rule matches.";
+          : t("categories.errors.previewFailed", "Failed to preview rule matches.");
       setPreviewByCategory((prev) => ({
         ...prev,
         [categoryId]: { summary: msg, lines: [] },
@@ -268,7 +281,10 @@ export function CategoriesPage() {
     draft: { pattern: string; matchType: "exact" | "contains"; priority: number },
   ): Promise<boolean> {
     if (!draft.pattern.trim()) {
-      setCategoryError(rule.categoryId, "Rule pattern is required.");
+      setCategoryError(
+        rule.categoryId,
+        t("categories.errors.rulePatternRequired", "Rule pattern is required."),
+      );
       return false;
     }
 
@@ -286,7 +302,10 @@ export function CategoriesPage() {
       });
       return true;
     } catch (error) {
-      setCategoryError(rule.categoryId, getErrorMessage(error, "Failed to update rule."));
+      setCategoryError(
+        rule.categoryId,
+        getErrorMessage(error, t("categories.errors.updateRuleFailed", "Failed to update rule.")),
+      );
       return false;
     } finally {
       setPendingRuleSaveId(null);
@@ -299,7 +318,10 @@ export function CategoriesPage() {
     try {
       await deleteRule.mutateAsync(ruleId);
     } catch (error) {
-      setCategoryError(categoryId, getErrorMessage(error, "Failed to delete rule."));
+      setCategoryError(
+        categoryId,
+        getErrorMessage(error, t("categories.errors.deleteRuleFailed", "Failed to delete rule.")),
+      );
     } finally {
       setPendingRuleDeleteId(null);
     }
@@ -312,11 +334,16 @@ export function CategoriesPage() {
       const { categorized } = await autoCategorize.mutateAsync();
       setActionResult(
         categorized === 0
-          ? "No uncategorized transactions matched any rule."
-          : `Categorized ${categorized} transaction${categorized === 1 ? "" : "s"}.`,
+          ? t("categories.autoCategorizeNone", "No uncategorized transactions matched any rule.")
+          : t("categories.autoCategorizeSuccess", { count: categorized }),
       );
     } catch (error) {
-      setActionError(getErrorMessage(error, "Failed to run auto-categorization."));
+      setActionError(
+        getErrorMessage(
+          error,
+          t("categories.errors.autoCategorizeFailed", "Failed to run auto-categorization."),
+        ),
+      );
     }
   }
 
@@ -324,7 +351,7 @@ export function CategoriesPage() {
     setActionError(null);
     setActionResult(null);
     if (recategorizeStart > recategorizeEnd) {
-      setActionError("Start date must not be after end date.");
+      setActionError(t("errors.invalidDateRange", "Start date must not be after end date."));
       return;
     }
     try {
@@ -335,22 +362,31 @@ export function CategoriesPage() {
       setRecategorizeOpen(false);
       setActionResult(
         recategorized === 0
-          ? "No transactions changed in the selected range."
-          : `Recategorized ${recategorized} transaction${recategorized === 1 ? "" : "s"}.`,
+          ? t("categories.recategorizeNone", "No transactions changed in the selected range.")
+          : t("categories.recategorizeSuccess", { count: recategorized }),
       );
     } catch (error) {
-      setActionError(getErrorMessage(error, "Failed to recategorize the selected range."));
+      setActionError(
+        getErrorMessage(
+          error,
+          t("categories.errors.recategorizeFailed", "Failed to recategorize the selected range."),
+        ),
+      );
     }
   }
 
   if (isCategoriesLoading || isRulesLoading) {
-    return <main className="min-h-screen bg-background p-6">Loading categories and rules…</main>;
+    return (
+      <main className="min-h-screen bg-background p-6">
+        {t("categories.loading", "Loading categories and rules…")}
+      </main>
+    );
   }
 
   if (categoriesLoadError || rulesLoadError) {
     return (
       <main className="min-h-screen bg-background p-6">
-        Failed to load categories or rules. Please refresh.
+        {t("categories.loadingError", "Failed to load categories or rules. Please refresh.")}
       </main>
     );
   }
@@ -360,9 +396,14 @@ export function CategoriesPage() {
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <header className="mb-8 flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Categories & Rules</h1>
+            <h1 className="text-3xl font-bold text-foreground">
+              {t("categories.title", "Categories & Rules")}
+            </h1>
             <p className="text-sm text-muted-foreground">
-              Manage your categories and auto-categorization rules in one place.
+              {t(
+                "categories.description",
+                "Manage your categories and auto-categorization rules in one place.",
+              )}
             </p>
             <BackToDashboardLink className="mt-2" />
           </div>
@@ -374,45 +415,48 @@ export function CategoriesPage() {
             role="alert"
             className="mb-4 rounded border border-destructive bg-destructive/10 px-3 py-2 text-xs text-destructive"
           >
-            Saved, but the dashboard may need a manual refresh.
+            {t("categories.refreshHint", "Saved, but the dashboard may need a manual refresh.")}
             <button type="button" className="ml-2 underline" onClick={() => setRefreshHint(false)}>
-              Dismiss
+              {t("common.dismiss", "Dismiss")}
             </button>
           </div>
         )}
 
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Create Category</CardTitle>
+            <CardTitle>{t("categories.createCategoryTitle", "Create Category")}</CardTitle>
           </CardHeader>
           <CardContent className="flex items-end gap-3">
             <div className="flex-1">
-              <Label htmlFor="new-category">Name</Label>
+              <Label htmlFor="new-category">{t("common.name", "Name")}</Label>
               <Input
                 id="new-category"
                 value={newCategoryName}
                 onChange={(event) => setNewCategoryName(event.target.value)}
-                placeholder="e.g. Subscriptions"
+                placeholder={t("categories.newCategoryPlaceholder", "e.g. Subscriptions")}
               />
             </div>
             <Button onClick={handleCreateCategory} disabled={createCategory.isPending}>
-              Add
+              {t("common.add", "Add")}
             </Button>
           </CardContent>
         </Card>
 
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Apply Rules</CardTitle>
+            <CardTitle>{t("categories.applyRulesTitle", "Apply Rules")}</CardTitle>
             <p className="text-xs text-muted-foreground">
-              Auto-categorize processes uncategorized transactions only. Recategorize re-applies
-              every rule (highest priority first) to all non-manually-edited transactions in the
-              selected range, overwriting prior auto-categorizations.
+              {t(
+                "categories.applyRulesDescription",
+                "Auto-categorize processes uncategorized transactions only. Recategorize re-applies every rule (highest priority first) to all non-manually-edited transactions in the selected range, overwriting prior auto-categorizations.",
+              )}
             </p>
           </CardHeader>
           <CardContent className="flex flex-wrap items-end gap-3">
             <Button onClick={handleAutoCategorize} disabled={autoCategorize.isPending}>
-              {autoCategorize.isPending ? "Auto-categorizing…" : "Auto-categorize uncategorized"}
+              {autoCategorize.isPending
+                ? t("categories.autoCategorizing", "Auto-categorizing…")
+                : t("categories.autoCategorizeBtn", "Auto-categorize uncategorized")}
             </Button>
             <Button
               variant="outline"
@@ -422,14 +466,16 @@ export function CategoriesPage() {
                 setRecategorizeOpen((open) => !open);
               }}
             >
-              {recategorizeOpen ? "Cancel" : "Recategorize date range…"}
+              {recategorizeOpen
+                ? t("common.cancel", "Cancel")
+                : t("categories.recategorizeBtn", "Recategorize date range…")}
             </Button>
           </CardContent>
           {recategorizeOpen && (
             <CardContent className="flex flex-wrap items-end gap-3 border-t pt-4">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="recategorize-start" className="text-xs text-muted-foreground">
-                  From
+                  {t("categories.recategorizeFrom", "From")}
                 </Label>
                 <Input
                   id="recategorize-start"
@@ -441,7 +487,7 @@ export function CategoriesPage() {
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="recategorize-end" className="text-xs text-muted-foreground">
-                  To
+                  {t("categories.recategorizeTo", "To")}
                 </Label>
                 <Input
                   id="recategorize-end"
@@ -452,7 +498,9 @@ export function CategoriesPage() {
                 />
               </div>
               <Button onClick={handleRecategorize} disabled={recategorize.isPending}>
-                {recategorize.isPending ? "Recategorizing…" : "Run"}
+                {recategorize.isPending
+                  ? t("categories.recategorizing", "Recategorizing…")
+                  : t("common.run", "Run")}
               </Button>
             </CardContent>
           )}
@@ -487,7 +535,9 @@ export function CategoriesPage() {
               {section.categories.length === 0 ? (
                 <Card>
                   <CardContent className="pt-6">
-                    <p className="text-sm text-muted-foreground">No categories in this section.</p>
+                    <p className="text-sm text-muted-foreground">
+                      {t("categories.noCategories", "No categories in this section.")}
+                    </p>
                   </CardContent>
                 </Card>
               ) : (
@@ -502,16 +552,24 @@ export function CategoriesPage() {
                           {editingCategoryId === category.id ? (
                             <div className="flex w-full items-center gap-2">
                               <Input
-                                aria-label={`Edit category ${category.categoryName}`}
+                                aria-label={t(
+                                  "categories.aria.editCategory",
+                                  "Edit category {{name}}",
+                                  { name: category.categoryName },
+                                )}
                                 value={editingCategoryName}
                                 onChange={(event) => setEditingCategoryName(event.target.value)}
                               />
                               <Button
-                                aria-label={`Save category ${category.categoryName}`}
+                                aria-label={t(
+                                  "categories.aria.saveCategory",
+                                  "Save category {{name}}",
+                                  { name: category.categoryName },
+                                )}
                                 onClick={() => handleSaveCategoryEdit(category.id)}
                                 size="sm"
                               >
-                                Save
+                                {t("common.save", "Save")}
                               </Button>
                               <Button
                                 variant="outline"
@@ -521,7 +579,7 @@ export function CategoriesPage() {
                                   setEditingCategoryName("");
                                 }}
                               >
-                                Cancel
+                                {t("common.cancel", "Cancel")}
                               </Button>
                             </div>
                           ) : (
@@ -530,28 +588,39 @@ export function CategoriesPage() {
                                 <CardTitle className="text-base">{category.categoryName}</CardTitle>
                                 {isGlobal && (
                                   <p className="text-xs text-muted-foreground">
-                                    Global category (read-only)
+                                    {t(
+                                      "categories.globalCategoryReadOnly",
+                                      "Global category (read-only)",
+                                    )}
                                   </p>
                                 )}
                               </div>
                               {!isGlobal && (
                                 <div className="flex items-center gap-2">
                                   <Button
-                                    aria-label={`Edit category ${category.categoryName}`}
+                                    aria-label={t(
+                                      "categories.aria.editCategory",
+                                      "Edit category {{name}}",
+                                      { name: category.categoryName },
+                                    )}
                                     variant="outline"
                                     size="sm"
                                     onClick={() => handleStartCategoryEdit(category)}
                                   >
-                                    Edit
+                                    {t("common.edit", "Edit")}
                                   </Button>
                                   <Button
-                                    aria-label={`Delete category ${category.categoryName}`}
+                                    aria-label={t(
+                                      "categories.aria.deleteCategory",
+                                      "Delete category {{name}}",
+                                      { name: category.categoryName },
+                                    )}
                                     variant="outline"
                                     size="sm"
                                     onClick={() => handleDeleteCategory(category.id)}
                                     disabled={deleteCategory.isPending}
                                   >
-                                    Delete
+                                    {t("common.delete", "Delete")}
                                   </Button>
                                 </div>
                               )}
@@ -575,9 +644,13 @@ export function CategoriesPage() {
                           />
 
                           <div className="space-y-2">
-                            <h3 className="text-sm font-semibold">Existing Rules</h3>
+                            <h3 className="text-sm font-semibold">
+                              {t("categories.existingRules", "Existing Rules")}
+                            </h3>
                             {categoryRules.length === 0 ? (
-                              <p className="text-sm text-muted-foreground">No rules yet.</p>
+                              <p className="text-sm text-muted-foreground">
+                                {t("categories.noRules", "No rules yet.")}
+                              </p>
                             ) : (
                               <ul className="space-y-2">
                                 {categoryRules.map((rule) => (

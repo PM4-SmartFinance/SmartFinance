@@ -1,6 +1,9 @@
 import Fastify from "fastify";
+import type { FastifyPluginAsync } from "fastify";
 import secureSession from "@fastify/secure-session";
 import rateLimit from "@fastify/rate-limit";
+import fastifyMetricsModule from "fastify-metrics";
+import type { IMetricsPluginOptions } from "fastify-metrics";
 import { errorHandler } from "./middleware/error-handler.js";
 import { healthRoutes } from "./controllers/health.controller.js";
 import { authRoutes } from "./controllers/auth.controller.js";
@@ -18,6 +21,12 @@ export interface BuildAppOptions {
   /** Register the rate limiter even under NODE_ENV=test / VITEST. */
   forceRateLimit?: boolean;
 }
+
+// fastify-metrics is published as CJS with `exports.default = plugin`. Under
+// NodeNext ESM resolution the default import resolves to the module namespace
+// rather than the inner default, so we unwrap it explicitly.
+const fastifyMetrics = ((fastifyMetricsModule as unknown as { default?: unknown }).default ??
+  fastifyMetricsModule) as FastifyPluginAsync<Partial<IMetricsPluginOptions>>;
 
 export async function buildApp(options: BuildAppOptions = {}) {
   const app = Fastify({ logger: true });
@@ -59,6 +68,14 @@ export async function buildApp(options: BuildAppOptions = {}) {
   }
 
   app.setErrorHandler(errorHandler);
+
+  await app.register(fastifyMetrics, {
+    endpoint: "/metrics",
+    routeMetrics: {
+      enabled: true,
+      groupStatusCodes: true,
+    },
+  });
 
   await app.register(healthRoutes, { prefix: "/api/v1" });
   await app.register(authRoutes, { prefix: "/api/v1" });

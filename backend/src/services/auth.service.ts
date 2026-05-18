@@ -2,11 +2,13 @@ import argon2 from "argon2";
 import { ServiceError } from "../errors.js";
 import * as userRepository from "../repositories/user.repository.js";
 import * as auditService from "./audit.service.js";
+import { loginAttempts } from "../metrics/business-metrics.js";
 
 export async function login(email: string, password: string) {
   const user = await userRepository.findByEmailWithPassword(email);
   if (!user) {
     void auditService.logEvent({ action: "LOGIN_FAILED", changedValues: { email } });
+    loginAttempts.inc({ outcome: "failure" });
     throw new ServiceError(401, "Invalid credentials");
   }
 
@@ -18,12 +20,14 @@ export async function login(email: string, password: string) {
       changedValues: { email },
       reason: "Account deactivated",
     });
+    loginAttempts.inc({ outcome: "failure" });
     throw new ServiceError(403, "Account deactivated");
   }
 
   const valid = await argon2.verify(user.password, password);
   if (!valid) {
     void auditService.logEvent({ action: "LOGIN_FAILED", changedValues: { email } });
+    loginAttempts.inc({ outcome: "failure" });
     throw new ServiceError(401, "Invalid credentials");
   }
 
@@ -32,6 +36,7 @@ export async function login(email: string, password: string) {
     userId: user.id,
     changedValues: { email },
   });
+  loginAttempts.inc({ outcome: "success" });
 
   return {
     id: user.id,

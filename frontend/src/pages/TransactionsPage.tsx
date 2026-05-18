@@ -21,6 +21,7 @@ import {
   type Transaction,
 } from "../lib/queries/transactions";
 import { AlertCircle, Edit2, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function TransactionsPage() {
   const page = useTransactionsStore((s) => s.page);
@@ -67,6 +68,8 @@ export function TransactionsPage() {
     categoryId: categoryId || undefined,
     search: search || undefined,
   });
+
+  const { t, i18n } = useTranslation();
 
   const transactions = transactionsData?.data ?? [];
   const meta = transactionsData?.meta;
@@ -119,7 +122,9 @@ export function TransactionsPage() {
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <header className="mb-6 flex items-start justify-between">
             <div>
-              <h1 className="text-4xl font-bold text-foreground">Transactions</h1>
+              <h1 className="text-4xl font-bold text-foreground">
+                {t("transactions.heading", "Transactions")}
+              </h1>
               <BackToDashboardLink className="mt-2" />
             </div>
             <UserMenu />
@@ -127,7 +132,10 @@ export function TransactionsPage() {
           <Alert variant="destructive" className="mt-8">
             <AlertCircle className="size-4" />
             <AlertDescription>
-              Failed to load transactions. Please try again later.
+              {t(
+                "transactions.errors.loadFailed",
+                "Failed to load transactions. Please try again later.",
+              )}
             </AlertDescription>
           </Alert>
         </div>
@@ -141,7 +149,9 @@ export function TransactionsPage() {
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <header className="mb-6 flex items-start justify-between">
             <div>
-              <h1 className="text-4xl font-bold text-foreground">Transactions</h1>
+              <h1 className="text-4xl font-bold text-foreground">
+                {t("transactions.heading", "Transactions")}
+              </h1>
               <BackToDashboardLink className="mt-2" />
             </div>
             <UserMenu />
@@ -149,12 +159,14 @@ export function TransactionsPage() {
           {/* Filters */}
           <Card className="mt-6 p-4">
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-foreground">Filters</h2>
+              <h2 className="text-lg font-semibold text-foreground">
+                {t("transactions.filters.heading", "Filters")}
+              </h2>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {/* Start Date */}
                 <div className="space-y-2">
-                  <Label htmlFor="start-date">Start Date</Label>
+                  <Label htmlFor="start-date">{t("common.startDate", "Start Date")}</Label>
                   <Input
                     id="start-date"
                     type="date"
@@ -166,7 +178,7 @@ export function TransactionsPage() {
 
                 {/* End Date */}
                 <div className="space-y-2">
-                  <Label htmlFor="end-date">End Date</Label>
+                  <Label htmlFor="end-date">{t("common.endDate", "End Date")}</Label>
                   <Input
                     id="end-date"
                     type="date"
@@ -178,7 +190,9 @@ export function TransactionsPage() {
 
                 {/* Category */}
                 <div className="space-y-2">
-                  <Label htmlFor="category">Filter by Category</Label>
+                  <Label htmlFor="category">
+                    {t("transactions.filters.category", "Filter by Category")}
+                  </Label>
                   <NativeSelect
                     id="category"
                     value={tempCategoryId}
@@ -186,7 +200,9 @@ export function TransactionsPage() {
                     disabled={isLoading}
                   >
                     <option value="">
-                      {categoriesError ? "Failed to load categories" : "All Categories"}
+                      {categoriesError
+                        ? t("errors.loadCategories", "Failed to load categories")
+                        : t("transactions.filters.allCategories", "All Categories")}
                     </option>
                     {categories.map((cat) => (
                       <option key={cat.id} value={cat.id}>
@@ -199,13 +215,16 @@ export function TransactionsPage() {
 
               {/* Search */}
               <div className="space-y-2">
-                <Label htmlFor="search">Search</Label>
+                <Label htmlFor="search">{t("common.search", "Search")}</Label>
                 <Input
                   id="search"
                   type="text"
                   value={tempSearch}
                   onChange={(e) => setTempSearch(e.target.value)}
-                  placeholder="Search by merchant name..."
+                  placeholder={t(
+                    "transactions.filters.searchPlaceholder",
+                    "Search by merchant name...",
+                  )}
                   disabled={isLoading}
                 />
               </div>
@@ -213,7 +232,7 @@ export function TransactionsPage() {
               {/* Action Buttons */}
               <div className="flex items-center gap-2">
                 <Button onClick={handleApplyFilters} disabled={isLoading} size="sm">
-                  Apply
+                  {t("common.apply", "Apply")}
                 </Button>
                 <Button
                   onClick={handleClearFilters}
@@ -221,7 +240,7 @@ export function TransactionsPage() {
                   disabled={isLoading}
                   size="sm"
                 >
-                  Clear
+                  {t("common.clear", "Clear")}
                 </Button>
               </div>
             </div>
@@ -238,7 +257,7 @@ export function TransactionsPage() {
               </div>
             ) : transactions.length === 0 ? (
               <div className="p-6 text-center text-muted-foreground">
-                No transactions found. Try adjusting your filters.
+                {t("transactions.emptyState", "No transactions found. Try adjusting your filters.")}
               </div>
             ) : (
               <>
@@ -248,7 +267,7 @@ export function TransactionsPage() {
                       <tr>
                         <SortableColumnHeader
                           column="date"
-                          label="Date"
+                          label={t("transactions.table.date", "Date")}
                           sortBy={sortBy}
                           sortOrder={sortOrder}
                           onSort={handleColumnSort}
@@ -257,17 +276,17 @@ export function TransactionsPage() {
                           scope="col"
                           className="px-6 py-3 text-left font-semibold text-foreground"
                         >
-                          Description
+                          {t("transactions.table.description", "Description")}
                         </th>
                         <th
                           scope="col"
                           className="px-6 py-3 text-left font-semibold text-foreground"
                         >
-                          Category
+                          {t("transactions.table.category", "Category")}
                         </th>
                         <SortableColumnHeader
                           column="amount"
-                          label="Amount"
+                          label={t("transactions.table.amount", "Amount")}
                           sortBy={sortBy}
                           sortOrder={sortOrder}
                           onSort={handleColumnSort}
@@ -277,7 +296,7 @@ export function TransactionsPage() {
                           scope="col"
                           className="px-6 py-3 text-right font-semibold text-foreground"
                         >
-                          Actions
+                          {t("transactions.table.actions", "Actions")}
                         </th>
                       </tr>
                     </thead>
@@ -285,14 +304,14 @@ export function TransactionsPage() {
                       {transactions.map((tx) => (
                         <tr key={tx.id} className="hover:bg-muted/50">
                           <td className="whitespace-nowrap px-6 py-3 text-sm text-foreground">
-                            {formatTransactionDate(tx.date)}
+                            {formatTransactionDate(tx.date, i18n.resolvedLanguage)}
                           </td>
                           <td className="px-6 py-3 text-sm text-foreground">{tx.merchant}</td>
                           <td className="px-6 py-3 text-sm text-muted-foreground">
                             {tx.categoryName || "—"}
                           </td>
                           <td className="px-6 py-3 text-right text-sm font-medium text-foreground">
-                            {formatAmount(tx.amount)}
+                            {formatAmount(tx.amount, i18n.resolvedLanguage)}
                           </td>
                           <td className="px-6 py-3 text-right text-sm font-medium">
                             <div className="flex justify-end gap-2">
@@ -301,7 +320,7 @@ export function TransactionsPage() {
                                 size="sm"
                                 onClick={() => setEditingTransaction(tx)}
                                 className="size-8 p-0"
-                                title="Edit"
+                                title={t("common.edit", "Edit")}
                               >
                                 <Edit2 className="size-4" />
                               </Button>
@@ -310,7 +329,7 @@ export function TransactionsPage() {
                                 size="sm"
                                 onClick={() => setDeletingTransaction(tx)}
                                 className="size-8 p-0 text-destructive hover:bg-destructive/10"
-                                title="Delete"
+                                title={t("common.delete", "Delete")}
                               >
                                 <Trash2 className="size-4" />
                               </Button>
@@ -326,7 +345,15 @@ export function TransactionsPage() {
                 {meta && meta.totalPages > 1 && (
                   <div className="flex items-center justify-between border-t border-border bg-muted/50 px-6 py-4">
                     <div className="text-sm text-muted-foreground">
-                      Page {meta.page} of {meta.totalPages} ({meta.totalCount} total)
+                      {t(
+                        "transactions.pagination.info",
+                        "Page {{page}} of {{totalPages}} ({{totalCount}} total)",
+                        {
+                          page: meta.page,
+                          totalPages: meta.totalPages,
+                          totalCount: meta.totalCount,
+                        },
+                      )}
                     </div>
                     <div className="flex gap-2">
                       <Button
@@ -335,7 +362,7 @@ export function TransactionsPage() {
                         variant="outline"
                         size="sm"
                       >
-                        Previous
+                        {t("common.previous", "Previous")}
                       </Button>
 
                       {/* Page Numbers — sliding window */}
@@ -370,7 +397,7 @@ export function TransactionsPage() {
                         variant="outline"
                         size="sm"
                       >
-                        Next
+                        {t("common.next", "Next")}
                       </Button>
                     </div>
                   </div>
@@ -393,14 +420,17 @@ export function TransactionsPage() {
 
       <ConfirmDeleteDialog
         isOpen={!!deletingTransaction}
-        title="Delete Transaction"
+        title={t("transactions.delete.title", "Delete Transaction")}
         description={
           deletingTransaction ? (
             <>
               Are you sure you want to delete the transaction with{" "}
               <strong>{deletingTransaction.merchant}</strong> on{" "}
-              <strong>{formatTransactionDate(deletingTransaction.date)}</strong> for{" "}
-              <strong>{formatAmount(deletingTransaction.amount)}</strong>?
+              <strong>
+                {formatTransactionDate(deletingTransaction.date, i18n.resolvedLanguage)}
+              </strong>{" "}
+              for <strong>{formatAmount(deletingTransaction.amount, i18n.resolvedLanguage)}</strong>
+              ?
               <br />
               This action can be undone by an administrator if needed.
             </>
