@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
+import { type TFunction } from "i18next";
 
 export type BudgetType =
   | "DAILY"
@@ -164,26 +165,35 @@ export function getMostSpecificBudgetsPerCategory(budgets: Budget[]): Budget[] {
 }
 
 /** Human-readable label for a budget type + month/year combo */
-export function getBudgetTypeLabel(type: BudgetType, month: number, year: number): string {
+export function getBudgetTypeLabel(
+  type: BudgetType,
+  month: number,
+  year: number,
+  t: TFunction,
+  lng?: string,
+): string {
+  const locale = lng || "en";
+
   switch (type) {
     case "DAILY":
-      return "Daily Budget";
+      return t("budgets.types.daily", "Daily Budget");
     case "MONTHLY":
-      return "Monthly Budget";
+      return t("budgets.types.monthly", "Monthly Budget");
     case "YEARLY":
-      return "Yearly Budget";
+      return t("budgets.types.yearly", "Yearly Budget");
     case "SPECIFIC_MONTH": {
-      const name = new Date(2000, month - 1).toLocaleDateString("en-US", { month: "long" });
-      return `${name} (recurring)`;
+      const monthName = new Intl.DateTimeFormat(locale, { month: "long" }).format(
+        new Date(2000, month - 1),
+      );
+      return t("budgets.types.specificMonth", "{{month}} (recurring)", { month: monthName });
     }
     case "SPECIFIC_YEAR":
       return `${year}`;
     case "SPECIFIC_MONTH_YEAR": {
-      const name = new Date(year, month - 1).toLocaleDateString("en-US", {
+      return new Intl.DateTimeFormat(locale, {
         month: "long",
         year: "numeric",
-      });
-      return name;
+      }).format(new Date(year, month - 1));
     }
   }
 }

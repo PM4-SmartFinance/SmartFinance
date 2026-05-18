@@ -9,33 +9,32 @@ import { CategoryBreakdownChart } from "../components/CategoryBreakdownChart";
 import { CsvImportCard } from "../components/CsvImportCard";
 import { RecentTransactionsWidget } from "../components/RecentTransactionsWidget";
 import { UserMenu } from "../components/UserMenu";
-
-const TEXT = {
-  heading: "Dashboard",
-  subtitle: "View your financial overview at a glance",
-  greeting: "Welcome back",
-} as const;
+import { useTranslation } from "react-i18next";
 
 export function DashboardPage() {
   const { user } = useAuth();
-
+  const { t } = useTranslation();
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* ── Page Header ── */}
         <header className="mb-8 flex items-center justify-between">
           <div className="flex flex-col gap-2">
-            <h1 className="text-4xl font-bold text-foreground">{TEXT.heading}</h1>
+            <h1 className="text-4xl font-bold text-foreground">
+              {t("dashboard.heading", "Dashboard")}
+            </h1>
             <p className="text-sm text-muted-foreground">
-              {user ? `${TEXT.greeting}, ${user.email}` : TEXT.subtitle}
+              {user
+                ? t("dashboard.greeting", "Welcome back, {{email}}", { email: user.email })
+                : t("dashboard.subtitle", "View your financial overview at a glance")}
             </p>
           </div>
           <nav className="flex items-center gap-1">
             {[
-              { to: "/transactions", label: "Transactions" },
-              { to: "/budgets", label: "Budgets" },
-              { to: "/categories", label: "Categories" },
-              { to: "/settings", label: "Settings" },
+              { to: "/transactions", label: t("nav.transactions", "Transactions") },
+              { to: "/budgets", label: t("nav.budgets", "Budgets") },
+              { to: "/categories", label: t("nav.categories", "Categories") },
+              { to: "/settings", label: t("nav.settings", "Settings") },
             ].map(({ to, label }) => (
               <Link
                 key={to}

@@ -25,7 +25,7 @@ describe("AdminRoute", () => {
         </Routes>
       </MemoryRouter>,
     );
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByText("Loading…")).toBeInTheDocument();
   });
 
   it("redirects to home when user is not authenticated", () => {

@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, AlertCircle, User, Lock } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface ProfileData {
   id: string;
@@ -33,6 +34,8 @@ export function SettingsProfile() {
   const profile = data?.user;
 
   const [profileSuccess, setProfileSuccess] = useState(false);
+
+  const { t } = useTranslation();
 
   const {
     mutate: saveProfile,
@@ -87,7 +90,7 @@ export function SettingsProfile() {
     setConfirmError(null);
     setPasswordSuccess(false);
     if (newPassword !== confirmPassword) {
-      setConfirmError("New passwords do not match.");
+      setConfirmError(t("settingsProfile.errors.passwordsMismatch", "New passwords do not match."));
       return;
     }
     changePassword({ currentPassword, newPassword });
@@ -97,14 +100,14 @@ export function SettingsProfile() {
     profileError instanceof ApiError
       ? profileError.message
       : profileError
-        ? "Something went wrong. Please try again."
+        ? t("errors.generic", "Something went wrong. Please try again.")
         : null;
 
   const passwordErrorMessage =
     passwordError instanceof ApiError
       ? passwordError.message
       : passwordError
-        ? "Something went wrong. Please try again."
+        ? t("errors.generic", "Something went wrong. Please try again.")
         : null;
 
   return (
@@ -119,17 +122,21 @@ export function SettingsProfile() {
             </div>
           </>
         ) : isProfileError ? (
-          <h2 className="text-4xl font-bold text-foreground">Profile</h2>
+          <h2 className="text-4xl font-bold text-foreground">
+            {t("settingsProfile.heading", "Profile")}
+          </h2>
         ) : (
           <>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-4xl font-bold text-foreground">
-                  {profile?.name ?? profile?.email ?? "Profile"}
+                  {profile?.name ?? profile?.email ?? t("settingsProfile.heading", "Profile")}
                 </h2>
                 {profile?.role && (
                   <Badge variant="secondary" className="capitalize">
-                    {profile.role.toLowerCase()}
+                    {profile.role === "ADMIN"
+                      ? t("common.roles.admin", "Admin")
+                      : t("common.roles.user", "User")}
                   </Badge>
                 )}
               </div>
@@ -144,9 +151,16 @@ export function SettingsProfile() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <User className="size-4 text-muted-foreground" />
-              <CardTitle className="text-base">Account information</CardTitle>
+              <CardTitle className="text-base">
+                {t("settingsProfile.account.title", "Account information")}
+              </CardTitle>
             </div>
-            <CardDescription>Update your display name and email address.</CardDescription>
+            <CardDescription>
+              {t(
+                "settingsProfile.account.description",
+                "Update your display name and email address.",
+              )}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {isProfileLoading ? (
@@ -165,7 +179,10 @@ export function SettingsProfile() {
               <Alert variant="destructive">
                 <AlertCircle className="size-4" />
                 <AlertDescription>
-                  Failed to load your profile. Please refresh the page.
+                  {t(
+                    "settingsProfile.account.loadFailed",
+                    "Failed to load your profile. Please refresh the page.",
+                  )}
                 </AlertDescription>
               </Alert>
             ) : (
@@ -175,20 +192,24 @@ export function SettingsProfile() {
                 className="flex flex-col gap-4"
               >
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="display-name">Display name</Label>
+                  <Label htmlFor="display-name">
+                    {t("settingsProfile.account.displayNameLabel", "Display name")}
+                  </Label>
                   <Input
                     id="display-name"
                     name="displayName"
                     type="text"
                     defaultValue={profile?.name ?? ""}
-                    placeholder="Your name"
+                    placeholder={t("settingsProfile.account.displayNamePlaceholder", "Your name")}
                     autoComplete="name"
                     onChange={() => setProfileSuccess(false)}
                   />
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="profile-email">Email address</Label>
+                  <Label htmlFor="profile-email">
+                    {t("settingsProfile.account.emailLabel", "Email address")}
+                  </Label>
                   <Input
                     id="profile-email"
                     name="email"
@@ -209,12 +230,16 @@ export function SettingsProfile() {
                 {profileSuccess && (
                   <Alert variant="success" role="status">
                     <CheckCircle2 className="size-4" />
-                    <AlertDescription>Profile updated successfully.</AlertDescription>
+                    <AlertDescription>
+                      {t("settingsProfile.account.success", "Profile updated successfully.")}
+                    </AlertDescription>
                   </Alert>
                 )}
 
                 <Button type="submit" disabled={isSaving} className="self-start">
-                  {isSaving ? "Saving\u2026" : "Save changes"}
+                  {isSaving
+                    ? t("settingsProfile.account.saving", "Saving…")
+                    : t("settingsProfile.account.saveBtn", "Save changes")}
                 </Button>
               </form>
             )}
@@ -225,17 +250,23 @@ export function SettingsProfile() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Lock className="size-4 text-muted-foreground" />
-              <CardTitle className="text-base">Change password</CardTitle>
+              <CardTitle className="text-base">
+                {t("settingsProfile.password.title", "Change password")}
+              </CardTitle>
             </div>
             <CardDescription>
-              Enter your current password before setting a new one. You will be signed out after a
-              successful change.
+              {t(
+                "settingsProfile.password.description",
+                "Enter your current password before setting a new one. You will be signed out after a successful change.",
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handlePasswordSubmit} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="current-password">Current password</Label>
+                <Label htmlFor="current-password">
+                  {t("settingsProfile.password.currentLabel", "Current password")}
+                </Label>
                 <Input
                   id="current-password"
                   type="password"
@@ -247,7 +278,9 @@ export function SettingsProfile() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="new-password">New password</Label>
+                <Label htmlFor="new-password">
+                  {t("settingsProfile.password.newLabel", "New password")}
+                </Label>
                 <Input
                   id="new-password"
                   type="password"
@@ -260,7 +293,9 @@ export function SettingsProfile() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="confirm-password">Confirm new password</Label>
+                <Label htmlFor="confirm-password">
+                  {t("settingsProfile.password.confirmLabel", "Confirm new password")}
+                </Label>
                 <Input
                   id="confirm-password"
                   type="password"
@@ -283,12 +318,19 @@ export function SettingsProfile() {
               {passwordSuccess && (
                 <Alert variant="success" role="status">
                   <CheckCircle2 className="size-4" />
-                  <AlertDescription>Password changed. Please sign in again.</AlertDescription>
+                  <AlertDescription>
+                    {t(
+                      "settingsProfile.password.success",
+                      "Password changed. Please sign in again.",
+                    )}
+                  </AlertDescription>
                 </Alert>
               )}
 
               <Button type="submit" variant="outline" disabled={isChanging} className="self-start">
-                {isChanging ? "Changing\u2026" : "Change password"}
+                {isChanging
+                  ? t("settingsProfile.password.changing", "Changing…")
+                  : t("settingsProfile.password.changeBtn", "Change password")}
               </Button>
             </form>
           </CardContent>

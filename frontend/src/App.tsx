@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from "react-router";
+import { Suspense } from "react";
 import "./wireframes/wireframe.css";
 
 const VIEWS = [
@@ -20,7 +21,10 @@ export function WireframesLayout() {
           </NavLink>
         ))}
       </div>
-      <Outlet />
+
+      <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading...</div>}>
+        <Outlet />
+      </Suspense>
     </>
   );
 }

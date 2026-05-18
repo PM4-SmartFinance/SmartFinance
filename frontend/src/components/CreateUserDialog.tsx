@@ -8,6 +8,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface CreateUserDialogProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ export function CreateUserDialog({ isOpen, onClose }: CreateUserDialogProps) {
     error: "",
   });
   const createMutation = useCreateUser();
+  const { t } = useTranslation();
 
   const handleDialogClose = () => {
     onClose();
@@ -41,17 +43,29 @@ export function CreateUserDialog({ isOpen, onClose }: CreateUserDialogProps) {
     setFormState((prev) => ({ ...prev, error: "" }));
 
     if (!formState.email) {
-      setFormState((prev) => ({ ...prev, error: "Email is required" }));
+      setFormState((prev) => ({
+        ...prev,
+        error: t("components.createUserDialog.errors.emailRequired", "Email is required"),
+      }));
       return;
     }
 
     if (!formState.password) {
-      setFormState((prev) => ({ ...prev, error: "Password is required" }));
+      setFormState((prev) => ({
+        ...prev,
+        error: t("components.createUserDialog.errors.passwordRequired", "Password is required"),
+      }));
       return;
     }
 
     if (formState.password.length < 8) {
-      setFormState((prev) => ({ ...prev, error: "Password must be at least 8 characters" }));
+      setFormState((prev) => ({
+        ...prev,
+        error: t(
+          "components.createUserDialog.errors.passwordLength",
+          "Password must be at least 8 characters",
+        ),
+      }));
       return;
     }
 
@@ -78,10 +92,16 @@ export function CreateUserDialog({ isOpen, onClose }: CreateUserDialogProps) {
     } catch (err) {
       if (err instanceof ApiError) {
         const message =
-          err.status === 409 ? "Email already exists" : err.message || "Failed to create user";
+          err.status === 409
+            ? t("components.createUserDialog.errors.emailExists", "Email already exists")
+            : err.message ||
+              t("components.createUserDialog.errors.createFailed", "Failed to create user");
         setFormState((prev) => ({ ...prev, error: message }));
       } else {
-        setFormState((prev) => ({ ...prev, error: "Failed to create user" }));
+        setFormState((prev) => ({
+          ...prev,
+          error: t("components.createUserDialog.errors.createFailed", "Failed to create user"),
+        }));
       }
     }
   };
@@ -90,7 +110,9 @@ export function CreateUserDialog({ isOpen, onClose }: CreateUserDialogProps) {
 
   return (
     <Dialog isOpen={isOpen} onClose={handleDialogClose}>
-      <h2 className="mb-6 text-xl font-semibold text-foreground">Create New User</h2>
+      <h2 className="mb-6 text-xl font-semibold text-foreground">
+        {t("components.createUserDialog.title", "Create New User")}
+      </h2>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {formState.error && (
@@ -101,7 +123,7 @@ export function CreateUserDialog({ isOpen, onClose }: CreateUserDialogProps) {
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t("components.createUserDialog.emailLabel", "Email")}</Label>
           <Input
             id="email"
             type="email"
@@ -113,31 +135,41 @@ export function CreateUserDialog({ isOpen, onClose }: CreateUserDialogProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">
+            {t("components.createUserDialog.passwordLabel", "Password")}
+          </Label>
           <Input
             id="password"
             type="password"
             value={formState.password}
             onChange={(e) => setFormState((prev) => ({ ...prev, password: e.target.value }))}
-            placeholder="Minimum 8 characters"
+            placeholder={t(
+              "components.createUserDialog.placeholders.password",
+              "Minimum 8 characters",
+            )}
             disabled={isSubmitting}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="displayName">Display Name</Label>
+          <Label htmlFor="displayName">
+            {t("components.createUserDialog.displayNameLabel", "Display Name")}
+          </Label>
           <Input
             id="displayName"
             type="text"
             value={formState.displayName}
             onChange={(e) => setFormState((prev) => ({ ...prev, displayName: e.target.value }))}
-            placeholder="John Doe (optional)"
+            placeholder={t(
+              "components.createUserDialog.placeholders.displayName",
+              "John Doe (optional)",
+            )}
             disabled={isSubmitting}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="role">Role</Label>
+          <Label htmlFor="role">{t("components.createUserDialog.roleLabel", "Role")}</Label>
           <NativeSelect
             id="role"
             value={formState.role}
@@ -146,14 +178,16 @@ export function CreateUserDialog({ isOpen, onClose }: CreateUserDialogProps) {
             }
             disabled={isSubmitting}
           >
-            <option value="USER">User</option>
-            <option value="ADMIN">Admin</option>
+            <option value="USER">{t("common.roles.user", "User")}</option>
+            <option value="ADMIN">{t("common.roles.admin", "Admin")}</option>
           </NativeSelect>
         </div>
 
         <div className="flex gap-2">
           <Button type="submit" disabled={isSubmitting} className="flex-1">
-            {isSubmitting ? "Creating…" : "Create User"}
+            {isSubmitting
+              ? t("common.creating", "Creating…")
+              : t("components.createUserDialog.createBtn", "Create User")}
           </Button>
           <Button
             type="button"
@@ -161,7 +195,7 @@ export function CreateUserDialog({ isOpen, onClose }: CreateUserDialogProps) {
             onClick={handleDialogClose}
             disabled={isSubmitting}
           >
-            Cancel
+            {t("common.cancel", "Cancel")}
           </Button>
         </div>
       </form>

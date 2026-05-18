@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog } from "@/components/ui/dialog";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface ResetPasswordDialogProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export function ResetPasswordDialog({ isOpen, user, onClose }: ResetPasswordDial
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { t } = useTranslation();
 
   const {
     mutate: resetPassword,
@@ -56,7 +58,9 @@ export function ResetPasswordDialog({ isOpen, user, onClose }: ResetPasswordDial
     setSuccess(false);
 
     if (newPassword !== confirmPassword) {
-      setConfirmError("Passwords do not match.");
+      setConfirmError(
+        t("components.resetPasswordDialog.errors.passwordMismatch", "Passwords do not match."),
+      );
       return;
     }
 
@@ -79,19 +83,30 @@ export function ResetPasswordDialog({ isOpen, user, onClose }: ResetPasswordDial
   };
 
   const errorMessage =
-    error instanceof ApiError ? error.message : error ? "Failed to reset password." : null;
+    error instanceof ApiError
+      ? error.message
+      : error
+        ? t("components.resetPasswordDialog.errors.resetFailed", "Failed to reset password.")
+        : null;
 
   return (
     <Dialog isOpen={isOpen} onClose={handleClose}>
-      <h2 className="mb-2 text-xl font-semibold text-foreground">Reset Password</h2>
+      <h2 className="mb-2 text-xl font-semibold text-foreground">
+        {t("components.resetPasswordDialog.title", "Reset Password")}
+      </h2>
       <p className="mb-6 text-sm text-muted-foreground">
-        Enter a new password for {user?.email}. They will need to use the new password the next time
-        they sign in.
+        {t(
+          "components.resetPasswordDialog.description",
+          "Enter a new password for {{email}}. They will need to use the new password the next time they sign in.",
+          { email: user?.email },
+        )}
       </p>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="reset-new-password">New password</Label>
+          <Label htmlFor="reset-new-password">
+            {t("components.resetPasswordDialog.newPasswordLabel", "New password")}
+          </Label>
           <Input
             id="reset-new-password"
             type="password"
@@ -105,7 +120,9 @@ export function ResetPasswordDialog({ isOpen, user, onClose }: ResetPasswordDial
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="reset-confirm-password">Confirm new password</Label>
+          <Label htmlFor="reset-confirm-password">
+            {t("components.resetPasswordDialog.confirmPasswordLabel", "Confirm new password")}
+          </Label>
           <Input
             id="reset-confirm-password"
             type="password"
@@ -130,13 +147,17 @@ export function ResetPasswordDialog({ isOpen, user, onClose }: ResetPasswordDial
         {success && (
           <Alert variant="success" role="status">
             <CheckCircle2 className="size-4" />
-            <AlertDescription>Password reset successfully.</AlertDescription>
+            <AlertDescription>
+              {t("components.resetPasswordDialog.successMessage", "Password reset successfully.")}
+            </AlertDescription>
           </Alert>
         )}
 
         <div className="flex gap-2 mt-2">
           <Button type="submit" disabled={isPending || success} className="flex-1">
-            {isPending ? "Resetting…" : "Reset Password"}
+            {isPending
+              ? t("components.resetPasswordDialog.resettingBtn", "Resetting…")
+              : t("components.resetPasswordDialog.resetBtn", "Reset Password")}
           </Button>
           <Button
             type="button"
@@ -145,7 +166,7 @@ export function ResetPasswordDialog({ isOpen, user, onClose }: ResetPasswordDial
             disabled={isPending || success}
             className="flex-1"
           >
-            Cancel
+            {t("common.cancel", "Cancel")}
           </Button>
         </div>
       </form>

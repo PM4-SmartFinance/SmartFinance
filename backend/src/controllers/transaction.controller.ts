@@ -21,13 +21,12 @@ interface ListTransactionsQuery {
   search?: string;
 }
 
-interface TransactionParams {
-  id: string;
-}
-
-interface PatchTransactionBody {
+interface UpdateTransactionBody {
   categoryId?: string;
   notes?: string;
+  date?: string;
+  amount?: number;
+  reason?: string;
 }
 
 const FORMAT_ENCODING: Record<ImportFormat, string> = {
@@ -37,22 +36,39 @@ const FORMAT_ENCODING: Record<ImportFormat, string> = {
   ubs: "iso-8859-1",
 };
 
-const transactionParamsSchema = {
-  type: "object",
-  required: ["id"],
-  properties: {
-    id: { type: "string", format: "uuid" },
+const updateTransactionSchema = {
+  params: {
+    type: "object",
+    properties: { id: { type: "string", format: "uuid" } },
+    required: ["id"],
+  },
+  body: {
+    type: "object",
+    properties: {
+      categoryId: { type: "string", format: "uuid" },
+      notes: { type: "string", maxLength: 10000 },
+      date: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+      amount: { type: "number" },
+      reason: { type: "string", maxLength: 1000 },
+    },
+    minProperties: 1,
+    additionalProperties: false,
   },
 } as const;
 
-const patchTransactionBodySchema = {
-  type: "object",
-  properties: {
-    categoryId: { type: "string", format: "uuid" },
-    notes: { type: "string", maxLength: 10000 },
+const deleteTransactionSchema = {
+  params: {
+    type: "object",
+    properties: { id: { type: "string", format: "uuid" } },
+    required: ["id"],
   },
-  minProperties: 1,
-  additionalProperties: false,
+  body: {
+    type: ["object", "null"],
+    properties: {
+      reason: { type: "string", maxLength: 1000 },
+    },
+    additionalProperties: false,
+  },
 } as const;
 
 const listTransactionsSchema = {
@@ -149,11 +165,17 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.get<{ Params: TransactionParams }>(
+  app.get<{ Params: { id: string } }>(
     "/transactions/:id",
     {
       preHandler: requireRole("USER"),
-      schema: { params: transactionParamsSchema },
+      schema: {
+        params: {
+          type: "object",
+          properties: { id: { type: "string", format: "uuid" } },
+          required: ["id"],
+        },
+      },
     },
     async (request, reply) => {
       const user = getSessionUser(request);
@@ -162,32 +184,38 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.patch<{ Params: TransactionParams; Body: PatchTransactionBody }>(
+  app.patch<{ Params: { id: string }; Body: UpdateTransactionBody }>(
     "/transactions/:id",
     {
       preHandler: requireRole("USER"),
-      schema: { params: transactionParamsSchema, body: patchTransactionBodySchema },
+      schema: updateTransactionSchema,
     },
     async (request, reply) => {
+      const { id } = request.params;
       const user = getSessionUser(request);
+      const isAdmin = user.role === "ADMIN";
       const transaction = await transactionService.updateTransaction(
-        request.params.id,
+        id,
         user.id,
         request.body,
+        isAdmin,
       );
       return reply.send({ transaction });
     },
   );
 
-  app.delete<{ Params: TransactionParams }>(
+  app.delete<{ Params: { id: string }; Body: { reason?: string } | null }>(
     "/transactions/:id",
     {
+      schema: deleteTransactionSchema,
       preHandler: requireRole("USER"),
-      schema: { params: transactionParamsSchema },
     },
     async (request, reply) => {
+      const { id } = request.params;
+      const reason = request.body?.reason;
       const user = getSessionUser(request);
-      await transactionService.deleteTransaction(request.params.id, user.id);
+      const isAdmin = user.role === "ADMIN";
+      await transactionService.deleteTransaction(id, user.id, reason, isAdmin);
       return reply.status(204).send();
     },
   );

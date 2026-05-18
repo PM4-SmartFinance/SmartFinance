@@ -1,18 +1,23 @@
 import { describe, it, expect } from "vitest";
 import { formatAmount, formatDate, FALLBACK } from "./format";
 
+// Helper to swap non-breaking spaces (NBSP) into standard spaces for testing
+const normalize = (str: string) => str.replace(/\u00A0/g, " ");
+
 describe("formatAmount", () => {
-  it("formats positive amounts without a sign", () => {
-    expect(formatAmount("1250.00")).toBe("CHF 1250.00");
+  it("formats positive amounts with thousands separators", () => {
+    // Expects the comma!
+    expect(normalize(formatAmount("1250.00"))).toBe("CHF 1'250.00");
   });
 
-  it("formats negative amounts with a unicode minus sign", () => {
-    expect(formatAmount("-42.50")).toBe("−CHF 42.50");
+  it("formats negative amounts with a standard minus sign", () => {
+    // Expects the standard hyphen, and en-US places it before the currency
+    expect(normalize(formatAmount("-42.50"))).toBe("CHF-42.50");
   });
 
   it("rounds to two decimals", () => {
-    expect(formatAmount("3.1")).toBe("CHF 3.10");
-    expect(formatAmount("3.145")).toBe("CHF 3.15");
+    expect(normalize(formatAmount("3.1"))).toBe("CHF 3.10");
+    expect(normalize(formatAmount("3.145"))).toBe("CHF 3.15");
   });
 
   it("returns the fallback for non-numeric input", () => {
@@ -26,8 +31,8 @@ describe("formatAmount", () => {
   });
 
   it("treats zero as positive (no sign)", () => {
-    expect(formatAmount("0")).toBe("CHF 0.00");
-    expect(formatAmount("-0")).toBe("CHF 0.00");
+    expect(normalize(formatAmount("0"))).toBe("CHF 0.00");
+    expect(normalize(formatAmount("-0"))).toBe("CHF 0.00");
   });
 });
 

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
 
 export interface Transaction {
@@ -60,4 +60,44 @@ export const transactionsQueryConfig = (filters: TransactionsFilters = {}) => ({
 
 export function useTransactions(filters: TransactionsFilters = {}) {
   return useQuery(transactionsQueryConfig(filters));
+}
+
+export function useUpdateTransaction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      id: string;
+      categoryId?: string;
+      notes?: string;
+      date?: string;
+      amount?: number;
+      reason?: string;
+    }) => {
+      const { id, ...update } = data;
+      return api.patch(`/transactions/${id}`, update);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      // Dashboard and budget aggregates depend on the transaction set.
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["budgets"] });
+    },
+  });
+}
+
+export function useDeleteTransaction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason?: string }) => {
+      // Reason travels in the request body, not the querystring, to keep
+      // free-text out of Pino/reverse-proxy access logs.
+      return api.delete(`/transactions/${id}`, reason ? { reason } : undefined);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      // Dashboard and budget aggregates depend on the transaction set.
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["budgets"] });
+    },
+  });
 }

@@ -37,8 +37,12 @@ describe("auth.service audit events", () => {
 
     await login("test@example.com", "Password123!");
 
-    expect(auditService.logEvent).toHaveBeenCalledWith("LOGIN_SUCCESS", "user-1", {
-      email: "test@example.com",
+    expect(auditService.logEvent).toHaveBeenCalledWith({
+      action: "LOGIN_SUCCESS",
+      userId: "user-1",
+      changedValues: {
+        email: "test@example.com",
+      },
     });
   });
 
@@ -64,8 +68,11 @@ describe("auth.service audit events", () => {
 
     await expect(login("ghost@example.com", "Password123!")).rejects.toThrow();
 
-    expect(auditService.logEvent).toHaveBeenCalledWith("LOGIN_FAILED", null, {
-      email: "ghost@example.com",
+    expect(auditService.logEvent).toHaveBeenCalledWith({
+      action: "LOGIN_FAILED",
+      changedValues: {
+        email: "ghost@example.com",
+      },
     });
   });
 
@@ -76,15 +83,21 @@ describe("auth.service audit events", () => {
 
     await expect(login("test@example.com", "WrongPass!")).rejects.toThrow();
 
-    expect(auditService.logEvent).toHaveBeenCalledWith("LOGIN_FAILED", null, {
-      email: "test@example.com",
+    expect(auditService.logEvent).toHaveBeenCalledWith({
+      action: "LOGIN_FAILED",
+      changedValues: {
+        email: "test@example.com",
+      },
     });
   });
 
   it("fires LOGOUT when userId is provided", async () => {
     await recordLogout("user-1");
 
-    expect(auditService.logEvent).toHaveBeenCalledWith("LOGOUT", "user-1");
+    expect(auditService.logEvent).toHaveBeenCalledWith({
+      action: "LOGOUT",
+      userId: "user-1",
+    });
   });
 
   it("does not fire LOGOUT when userId is null", async () => {

@@ -34,15 +34,25 @@ export async function getSummary(userId: string, startDate: string, endDate: str
 
   const [incomeAgg, expenseAgg, transactionCount] = await Promise.all([
     prisma.factTransactions.aggregate({
-      where: { userId, dateId: { gte: startId, lte: endId }, amount: { gt: 0 } },
+      where: {
+        userId,
+        isDeleted: false,
+        dateId: { gte: startId, lte: endId },
+        amount: { gt: 0 },
+      },
       _sum: { amount: true },
     }),
     prisma.factTransactions.aggregate({
-      where: { userId, dateId: { gte: startId, lte: endId }, amount: { lt: 0 } },
+      where: {
+        userId,
+        isDeleted: false,
+        dateId: { gte: startId, lte: endId },
+        amount: { lt: 0 },
+      },
       _sum: { amount: true },
     }),
     prisma.factTransactions.count({
-      where: { userId, dateId: { gte: startId, lte: endId } },
+      where: { userId, isDeleted: false, dateId: { gte: startId, lte: endId } },
     }),
   ]);
 
@@ -90,6 +100,7 @@ export async function listDailyTrends(args: ListDailyTrendsArgs): Promise<DailyT
     FROM "FactTransactions" t
     INNER JOIN "DimDate" d ON d.id = t."dateId"
     WHERE t."userId" = ${userId}
+      AND t."isDeleted" = FALSE
       AND d.id >= ${startDateId}
       AND d.id <= ${endDateId}
     GROUP BY d.id
@@ -145,6 +156,7 @@ export async function getCategoryTotals(
     LEFT JOIN "FactTransactions" t
       ON t."categoryId" = c.id
       AND t."userId" = ${userId}
+      AND t."isDeleted" = FALSE
       AND t."dateId" >= ${startId}
       AND t."dateId" <= ${endId}
       AND t.amount < 0
@@ -160,6 +172,7 @@ export async function getCategoryTotals(
       TRUE AS "isUncategorized"
     FROM "FactTransactions"
     WHERE "userId" = ${userId}
+      AND "isDeleted" = FALSE
       AND "categoryId" IS NULL
       AND "dateId" >= ${startId}
       AND "dateId" <= ${endId}

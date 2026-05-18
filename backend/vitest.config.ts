@@ -11,6 +11,7 @@ export default defineConfig({
     include: ["src/**/*.test.ts", "test/**/*.spec.ts"],
     exclude: ["**/*.stress.spec.ts", "**/node_modules/**"],
     globalSetup: ["test/global-setup.ts"],
+    setupFiles: ["test/setup-prom-registry.ts"],
     typecheck: {
       tsconfig: "./tsconfig.test.json",
     },
