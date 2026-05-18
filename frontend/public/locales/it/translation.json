@@ -5,6 +5,10 @@
     "cancel": "Annulla",
     "clear": "Cancella",
     "delete": "Elimina",
+    "deleteReason": {
+      "label": "Motivo dell'eliminazione (Registro di audit - Opzionale)",
+      "placeholder": "es. Duplicato"
+    },
     "dismiss": "Chiudi",
     "edit": "Modifica",
     "name": "Nome",
@@ -201,7 +205,7 @@
     "emptyState": "Nessuna transazione trovata. Prova a regolare i filtri.",
     "filters": {
       "heading": "Filtri",
-      "category": "Categoria",
+      "category": "Filtra per categoria",
       "allCategories": "Tutte le Categorie",
       "searchPlaceholder": "Cerca per nome commerciante..."
     },
@@ -209,10 +213,28 @@
       "date": "Data",
       "description": "Descrizione",
       "category": "Categoria",
-      "amount": "Importo"
+      "amount": "Importo",
+      "actions": "Azioni"
     },
     "pagination": {
       "info": "Pagina {{page}} di {{totalPages}} ({{totalCount}} in totale)"
+    },
+    "delete": {
+      "title": "Elimina transazione",
+      "body": "Sei sicuro di voler eliminare la transazione con <1>{{merchant}}</1> del <3>{{date}}</3> per <5>{{amount}}</5>?<7/>Questa azione può essere annullata da un amministratore se necessario."
+    },
+    "edit": {
+      "title": "Modifica transazione",
+      "dateLabel": "Data",
+      "amountLabel": "Importo",
+      "categoryLabel": "Categoria",
+      "noCategory": "Nessuna categoria",
+      "notesLabel": "Note",
+      "notesPlaceholder": "Aggiungi note…",
+      "reasonLabel": "Motivo della modifica (Registro di audit)",
+      "reasonPlaceholder": "es. Data corretta",
+      "saving": "Salvataggio…",
+      "save": "Salva modifiche"
     },
     "errors": {
       "loadFailed": "Impossibile caricare le transazioni. Riprova più tardi."

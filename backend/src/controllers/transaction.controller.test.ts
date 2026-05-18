@@ -386,9 +386,14 @@ describe("PATCH /api/v1/transactions/:id", () => {
       url: `/api/v1/transactions/${VALID_TX_ID}`,
       payload: { notes: "hello" },
     });
-    expect(mockUpdateTransaction).toHaveBeenCalledExactlyOnceWith(VALID_TX_ID, "user-42", {
-      notes: "hello",
-    });
+    expect(mockUpdateTransaction).toHaveBeenCalledExactlyOnceWith(
+      VALID_TX_ID,
+      "user-42",
+      {
+        notes: "hello",
+      },
+      false,
+    );
   });
 
   it("accepts a body containing only categoryId (the other accepted field)", async () => {
@@ -398,9 +403,14 @@ describe("PATCH /api/v1/transactions/:id", () => {
       url: `/api/v1/transactions/${VALID_TX_ID}`,
       payload: { categoryId },
     });
-    expect(mockUpdateTransaction).toHaveBeenCalledExactlyOnceWith(VALID_TX_ID, "user-1", {
-      categoryId,
-    });
+    expect(mockUpdateTransaction).toHaveBeenCalledExactlyOnceWith(
+      VALID_TX_ID,
+      "user-1",
+      {
+        categoryId,
+      },
+      false,
+    );
   });
 
   it("returns 400 when categoryId is not a valid UUID (schema rejection)", async () => {
@@ -434,9 +444,14 @@ describe("PATCH /api/v1/transactions/:id", () => {
       url: `/api/v1/transactions/${VALID_TX_ID}`,
       payload: { notes: "ok", unknownField: "no" },
     });
-    expect(mockUpdateTransaction).toHaveBeenCalledExactlyOnceWith(VALID_TX_ID, "user-1", {
-      notes: "ok",
-    });
+    expect(mockUpdateTransaction).toHaveBeenCalledExactlyOnceWith(
+      VALID_TX_ID,
+      "user-1",
+      {
+        notes: "ok",
+      },
+      false,
+    );
   });
 
   it("returns 400 when body has no recognized fields (minProperties: 1 violation)", async () => {
@@ -489,9 +504,14 @@ describe("PATCH /api/v1/transactions/:id", () => {
       payload: { notes: "admin edit" },
     });
     expect(response.statusCode).toBe(200);
-    expect(mockUpdateTransaction).toHaveBeenCalledExactlyOnceWith(VALID_TX_ID, "admin-1", {
-      notes: "admin edit",
-    });
+    expect(mockUpdateTransaction).toHaveBeenCalledExactlyOnceWith(
+      VALID_TX_ID,
+      "admin-1",
+      {
+        notes: "admin edit",
+      },
+      true,
+    );
   });
 
   it("returns 404 when service throws ServiceError 404", async () => {
@@ -555,7 +575,38 @@ describe("DELETE /api/v1/transactions/:id", () => {
       pwdVersion: "1234567890",
     };
     await app.inject({ method: "DELETE", url: `/api/v1/transactions/${VALID_TX_ID}` });
-    expect(mockDeleteTransaction).toHaveBeenCalledExactlyOnceWith(VALID_TX_ID, "user-42");
+    expect(mockDeleteTransaction).toHaveBeenCalledExactlyOnceWith(
+      VALID_TX_ID,
+      "user-42",
+      undefined,
+      false,
+    );
+  });
+
+  it("forwards reason from the request body to the service (not the querystring)", async () => {
+    // Reason MUST come from the JSON body; the controller previously accepted
+    // ?reason= on the URL, which leaked PII into Pino access logs.
+    await app.inject({
+      method: "DELETE",
+      url: `/api/v1/transactions/${VALID_TX_ID}`,
+      payload: { reason: "duplicate import" },
+    });
+    expect(mockDeleteTransaction).toHaveBeenCalledExactlyOnceWith(
+      VALID_TX_ID,
+      "user-1",
+      "duplicate import",
+      false,
+    );
+  });
+
+  it("returns 400 when reason exceeds the maxLength (schema rejection)", async () => {
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/api/v1/transactions/${VALID_TX_ID}`,
+      payload: { reason: "x".repeat(1001) },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(mockDeleteTransaction).not.toHaveBeenCalled();
   });
 
   it("returns 401 when there is no authenticated session", async () => {
@@ -595,7 +646,12 @@ describe("DELETE /api/v1/transactions/:id", () => {
       url: `/api/v1/transactions/${VALID_TX_ID}`,
     });
     expect(response.statusCode).toBe(204);
-    expect(mockDeleteTransaction).toHaveBeenCalledExactlyOnceWith(VALID_TX_ID, "admin-1");
+    expect(mockDeleteTransaction).toHaveBeenCalledExactlyOnceWith(
+      VALID_TX_ID,
+      "admin-1",
+      undefined,
+      true,
+    );
   });
 
   it("returns 404 when service throws ServiceError 404", async () => {

@@ -5,6 +5,10 @@
     "cancel": "Anullar",
     "clear": "Stizzar",
     "delete": "Stizzar",
+    "deleteReason": {
+      "label": "Motiv da la stizzada (Audit-Log - Opziunal)",
+      "placeholder": "p.ex. Endataziun duplicada"
+    },
     "dismiss": "Serrar",
     "edit": "Elavurar",
     "name": "Num",
@@ -201,7 +205,7 @@
     "emptyState": "Naginas transacziuns chattadas. Empruvai d'adattar ils filters.",
     "filters": {
       "heading": "Filters",
-      "category": "Categoria",
+      "category": "Filtrar tenor categoria",
       "allCategories": "Tut las Categorias",
       "searchPlaceholder": "Tschertgar per num dal vendider..."
     },
@@ -209,10 +213,28 @@
       "date": "Data",
       "description": "Descripziun",
       "category": "Categoria",
-      "amount": "Suma"
+      "amount": "Suma",
+      "actions": "Acziuns"
     },
     "pagination": {
       "info": "Pagina {{page}} da {{totalPages}} ({{totalCount}} en tut)"
+    },
+    "delete": {
+      "title": "Stizzar la transacziun",
+      "body": "Vulais Vus propi stizzar la transacziun cun <1>{{merchant}}</1> dals <3>{{date}}</3> per <5>{{amount}}</5>?<7/>Questa acziun po vegnir revocada d'in administratur sche necessari."
+    },
+    "edit": {
+      "title": "Modifitgar la transacziun",
+      "dateLabel": "Data",
+      "amountLabel": "Suma",
+      "categoryLabel": "Categoria",
+      "noCategory": "Nagina categoria",
+      "notesLabel": "Notizias",
+      "notesPlaceholder": "Agiuntar notizias…",
+      "reasonLabel": "Motiv da la midada (Audit-Log)",
+      "reasonPlaceholder": "p.ex. Data correggida",
+      "saving": "Vegn memorisà…",
+      "save": "Memorisar las midadas"
     },
     "errors": {
       "loadFailed": "Betg pussaivel da chargiar las transacziuns. Empruvai pli tard."

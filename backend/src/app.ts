@@ -15,6 +15,7 @@ import { accountRoutes } from "./controllers/account.controller.js";
 import { categoryRuleRoutes } from "./controllers/category-rule.controller.js";
 import { dashboardRoutes } from "./controllers/dashboard.controller.js";
 import { categoryRoutes } from "./controllers/category.controller.js";
+import { auditRoutes } from "./controllers/audit.controller.js";
 
 export interface BuildAppOptions {
   /** Register the rate limiter even under NODE_ENV=test / VITEST. */
@@ -38,7 +39,8 @@ export async function buildApp(options: BuildAppOptions = {}) {
   const finalSecret =
     sessionSecret.length >= 32 ? sessionSecret : "dev_secret_do_not_use_in_prod_32";
 
-  await app.register(secureSession, {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await app.register(secureSession as any, {
     key: Buffer.from(finalSecret).subarray(0, 32),
     cookie: {
       path: "/",
@@ -84,6 +86,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(accountRoutes, { prefix: "/api/v1" });
   await app.register(categoryRuleRoutes, { prefix: "/api/v1" });
   await app.register(categoryRoutes, { prefix: "/api/v1" });
+  await app.register(auditRoutes, { prefix: "/api/v1" });
 
   return app;
 }

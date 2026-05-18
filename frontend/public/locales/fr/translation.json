@@ -5,6 +5,10 @@
     "cancel": "Annuler",
     "clear": "Effacer",
     "delete": "Supprimer",
+    "deleteReason": {
+      "label": "Raison de la suppression (Journal d'audit - Optionnel)",
+      "placeholder": "ex. Doublon"
+    },
     "dismiss": "Fermer",
     "edit": "Modifier",
     "name": "Nom",
@@ -201,7 +205,7 @@
     "emptyState": "Aucune transaction trouvée. Essayez d'ajuster vos filtres.",
     "filters": {
       "heading": "Filtres",
-      "category": "Catégorie",
+      "category": "Filtrer par catégorie",
       "allCategories": "Toutes les Catégories",
       "searchPlaceholder": "Rechercher par nom de commerçant..."
     },
@@ -209,10 +213,28 @@
       "date": "Date",
       "description": "Description",
       "category": "Catégorie",
-      "amount": "Montant"
+      "amount": "Montant",
+      "actions": "Actions"
     },
     "pagination": {
       "info": "Page {{page}} sur {{totalPages}} ({{totalCount}} au total)"
+    },
+    "delete": {
+      "title": "Supprimer la transaction",
+      "body": "Êtes-vous sûr de vouloir supprimer la transaction avec <1>{{merchant}}</1> du <3>{{date}}</3> d'un montant de <5>{{amount}}</5> ?<7/>Cette action peut être annulée par un administrateur si nécessaire."
+    },
+    "edit": {
+      "title": "Modifier la transaction",
+      "dateLabel": "Date",
+      "amountLabel": "Montant",
+      "categoryLabel": "Catégorie",
+      "noCategory": "Aucune catégorie",
+      "notesLabel": "Notes",
+      "notesPlaceholder": "Ajouter des notes…",
+      "reasonLabel": "Raison du changement (Journal d'audit)",
+      "reasonPlaceholder": "ex. Date corrigée",
+      "saving": "Enregistrement…",
+      "save": "Enregistrer les modifications"
     },
     "errors": {
       "loadFailed": "Échec du chargement des transactions. Veuillez réessayer plus tard."

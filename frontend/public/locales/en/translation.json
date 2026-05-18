@@ -5,6 +5,10 @@
     "cancel": "Cancel",
     "clear": "Clear",
     "delete": "Delete",
+    "deleteReason": {
+      "label": "Reason for deletion (Audit Log - Optional)",
+      "placeholder": "e.g., Duplicate entry"
+    },
     "dismiss": "Dismiss",
     "edit": "Edit",
     "name": "Name",
@@ -201,7 +205,7 @@
     "emptyState": "No transactions found. Try adjusting your filters.",
     "filters": {
       "heading": "Filters",
-      "category": "Category",
+      "category": "Filter by Category",
       "allCategories": "All Categories",
       "searchPlaceholder": "Search by merchant name…"
     },
@@ -209,10 +213,28 @@
       "date": "Date",
       "description": "Description",
       "category": "Category",
-      "amount": "Amount"
+      "amount": "Amount",
+      "actions": "Actions"
     },
     "pagination": {
       "info": "Page {{page}} of {{totalPages}} ({{totalCount}} total)"
+    },
+    "delete": {
+      "title": "Delete Transaction",
+      "body": "Are you sure you want to delete the transaction with <1>{{merchant}}</1> on <3>{{date}}</3> for <5>{{amount}}</5>?<7/>This action can be undone by an administrator if needed."
+    },
+    "edit": {
+      "title": "Edit Transaction",
+      "dateLabel": "Date",
+      "amountLabel": "Amount",
+      "categoryLabel": "Category",
+      "noCategory": "No Category",
+      "notesLabel": "Notes",
+      "notesPlaceholder": "Add some notes…",
+      "reasonLabel": "Reason for Change (Audit Log)",
+      "reasonPlaceholder": "e.g., Corrected date",
+      "saving": "Saving…",
+      "save": "Save Changes"
     },
     "errors": {
       "loadFailed": "Failed to load transactions. Please try again later."

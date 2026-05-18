@@ -109,7 +109,7 @@ describe("TransactionsPage", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Filters" })).toBeInTheDocument();
     expect(screen.getByLabelText("Start Date")).toBeInTheDocument();
     expect(screen.getByLabelText("End Date")).toBeInTheDocument();
-    expect(screen.getByLabelText("Category")).toBeInTheDocument();
+    expect(screen.getByLabelText("Filter by Category")).toBeInTheDocument();
   });
 
   it("renders the table with transaction data", async () => {
@@ -200,7 +200,7 @@ describe("TransactionsPage", () => {
       expect(screen.getByText("Migros")).toBeInTheDocument();
     });
 
-    const categorySelect = screen.getByLabelText("Category") as HTMLSelectElement;
+    const categorySelect = screen.getByLabelText("Filter by Category") as HTMLSelectElement;
     await userEvent.selectOptions(categorySelect, "cat-1");
 
     const applyButton = screen.getByRole("button", { name: "Apply" });

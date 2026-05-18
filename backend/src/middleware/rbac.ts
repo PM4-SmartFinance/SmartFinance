@@ -77,13 +77,21 @@ export async function verifySession(request: FastifyRequest): Promise<SessionUse
   });
 
   if (!dbUser) {
-    void auditService.logEvent("SESSION_INVALIDATED", user.id, { reason: "user_missing" });
+    void auditService.logEvent({
+      action: "SESSION_INVALIDATED",
+      userId: user.id,
+      reason: "user_missing",
+    });
     request.session.delete();
     throw new ServiceError(401, "Unauthorized");
   }
 
   if (!dbUser.active) {
-    void auditService.logEvent("SESSION_INVALIDATED", user.id, { reason: "user_inactive" });
+    void auditService.logEvent({
+      action: "SESSION_INVALIDATED",
+      userId: user.id,
+      reason: "user_inactive",
+    });
     request.session.delete();
     throw new ServiceError(401, "Unauthorized");
   }
@@ -91,7 +99,9 @@ export async function verifySession(request: FastifyRequest): Promise<SessionUse
   // Fail closed: a session without `pwdVersion` predates this feature and
   // cannot be revalidated against the current password — force re-login.
   if (!user.pwdVersion || user.pwdVersion !== dbUser.password.slice(-PWD_VERSION_LENGTH)) {
-    void auditService.logEvent("SESSION_INVALIDATED", user.id, {
+    void auditService.logEvent({
+      action: "SESSION_INVALIDATED",
+      userId: user.id,
       reason: user.pwdVersion ? "pwd_version_mismatch" : "pwd_version_missing",
     });
     request.session.delete();

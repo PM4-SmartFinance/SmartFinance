@@ -128,8 +128,12 @@ describe("user.service", () => {
       await updateProfile("user-1", { displayName: "New Name" });
 
       await vi.waitFor(() => {
-        expect(auditService.logEvent).toHaveBeenCalledWith("PROFILE_UPDATED", "user-1", {
-          fields: ["name"],
+        expect(auditService.logEvent).toHaveBeenCalledWith({
+          action: "PROFILE_UPDATED",
+          userId: "user-1",
+          changedValues: {
+            fields: ["name"],
+          },
         });
       });
     });
@@ -194,7 +198,10 @@ describe("user.service", () => {
       await changePassword("user-1", "current-password", "new-password");
 
       await vi.waitFor(() => {
-        expect(auditService.logEvent).toHaveBeenCalledWith("PASSWORD_CHANGED", "user-1");
+        expect(auditService.logEvent).toHaveBeenCalledWith({
+          action: "PASSWORD_CHANGED",
+          userId: "user-1",
+        });
       });
     });
   });
@@ -282,9 +289,13 @@ describe("deleteUser", () => {
     await deleteUser(adminUser, regularUser.id);
 
     await vi.waitFor(() => {
-      expect(auditService.logEvent).toHaveBeenCalledWith("USER_DELETED", adminUser.id, {
-        targetUserId: regularUser.id,
-        email: regularUser.email,
+      expect(auditService.logEvent).toHaveBeenCalledWith({
+        action: "USER_DELETED",
+        userId: adminUser.id,
+        changedValues: {
+          targetUserId: regularUser.id,
+          email: regularUser.email,
+        },
       });
     });
   });
@@ -384,8 +395,12 @@ describe("resetUserPassword", () => {
 
     await resetUserPassword(adminUser, targetUser.id, "NewPass1!");
     await vi.waitFor(() => {
-      expect(auditService.logEvent).toHaveBeenCalledWith("PASSWORD_RESET", adminUser.id, {
-        targetUserId: targetUser.id,
+      expect(auditService.logEvent).toHaveBeenCalledWith({
+        action: "PASSWORD_RESET",
+        userId: adminUser.id,
+        changedValues: {
+          targetUserId: targetUser.id,
+        },
       });
     });
   });
