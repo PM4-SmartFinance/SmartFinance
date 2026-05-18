@@ -201,7 +201,7 @@
     "emptyState": "Aucune transaction trouvée. Essayez d'ajuster vos filtres.",
     "filters": {
       "heading": "Filtres",
-      "category": "Catégorie",
+      "category": "Filtrer par catégorie",
       "allCategories": "Toutes les Catégories",
       "searchPlaceholder": "Rechercher par nom de commerçant..."
     },
@@ -209,10 +209,14 @@
       "date": "Date",
       "description": "Description",
       "category": "Catégorie",
-      "amount": "Montant"
+      "amount": "Montant",
+      "actions": "Actions"
     },
     "pagination": {
       "info": "Page {{page}} sur {{totalPages}} ({{totalCount}} au total)"
+    },
+    "delete": {
+      "title": "Supprimer la transaction"
     },
     "errors": {
       "loadFailed": "Échec du chargement des transactions. Veuillez réessayer plus tard."

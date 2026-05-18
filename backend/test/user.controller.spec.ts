@@ -245,7 +245,9 @@ describe("User management endpoints", () => {
     expect(body.user).not.toHaveProperty("password");
 
     expect(spy).toHaveBeenCalled();
-    const calledWith = spy.mock.calls.find((c) => c[0] === "ROLE_CHANGED");
+    const calledWith = spy.mock.calls.find(
+      (c) => (c[0] as { action: string }).action === "ROLE_CHANGED",
+    );
     expect(calledWith).toBeDefined();
 
     // cleanup spy
@@ -305,7 +307,9 @@ describe("User management endpoints", () => {
     });
     expect(res.statusCode).toBe(204);
     expect(spy).toHaveBeenCalled();
-    const calledWith = spy.mock.calls.find((c) => c[0] === "USER_DELETED");
+    const calledWith = spy.mock.calls.find(
+      (c) => (c[0] as { action: string }).action === "USER_DELETED",
+    );
     expect(calledWith).toBeDefined();
 
     spy.mockRestore();

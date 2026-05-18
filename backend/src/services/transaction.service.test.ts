@@ -171,10 +171,16 @@ describe("listTransactions", () => {
       expect(where.amount).toEqual({ lte: 200 });
     });
 
-    it("categoryId builds filter directly in where", async () => {
+    it("categoryId builds OR filter matching direct categoryId or merchant mapping", async () => {
       await listTransactions({ ...DEFAULT_PARAMS, categoryId: "cat-1" });
       const { where } = mockRepo.listTransactions.mock.calls[0]![0];
-      expect(where.categoryId).toBe("cat-1");
+      expect(where.OR).toEqual([
+        { categoryId: "cat-1" },
+        {
+          categoryId: null,
+          merchant: { mappings: { some: { userId: "user-1", categoryId: "cat-1" } } },
+        },
+      ]);
     });
 
     it("all filters applied simultaneously", async () => {
@@ -190,7 +196,13 @@ describe("listTransactions", () => {
       expect(where.userId).toBe("user-1");
       expect(where.dateId).toEqual({ gte: 20250101, lte: 20250630 });
       expect(where.amount).toEqual({ gte: 5, lte: 500 });
-      expect(where.categoryId).toBe("cat-2");
+      expect(where.OR).toEqual([
+        { categoryId: "cat-2" },
+        {
+          categoryId: null,
+          merchant: { mappings: { some: { userId: "user-1", categoryId: "cat-2" } } },
+        },
+      ]);
     });
 
     it("throws ServiceError 400 when minAmount exceeds maxAmount", async () => {
@@ -219,13 +231,19 @@ describe("listTransactions", () => {
       });
     });
 
-    it("search combined with categoryId builds both merchant filters", async () => {
+    it("search combined with categoryId keeps merchant name filter and adds categoryId OR", async () => {
       await listTransactions({ ...DEFAULT_PARAMS, search: "Coop", categoryId: "cat-1" });
       const { where } = mockRepo.listTransactions.mock.calls[0]![0];
       expect(where.merchant).toEqual({
         name: { contains: "Coop", mode: "insensitive" },
       });
-      expect(where.categoryId).toBe("cat-1");
+      expect(where.OR).toEqual([
+        { categoryId: "cat-1" },
+        {
+          categoryId: null,
+          merchant: { mappings: { some: { userId: "user-1", categoryId: "cat-1" } } },
+        },
+      ]);
     });
   });
 

@@ -201,7 +201,7 @@
     "emptyState": "Nessuna transazione trovata. Prova a regolare i filtri.",
     "filters": {
       "heading": "Filtri",
-      "category": "Categoria",
+      "category": "Filtra per categoria",
       "allCategories": "Tutte le Categorie",
       "searchPlaceholder": "Cerca per nome commerciante..."
     },
@@ -209,10 +209,14 @@
       "date": "Data",
       "description": "Descrizione",
       "category": "Categoria",
-      "amount": "Importo"
+      "amount": "Importo",
+      "actions": "Azioni"
     },
     "pagination": {
       "info": "Pagina {{page}} di {{totalPages}} ({{totalCount}} in totale)"
+    },
+    "delete": {
+      "title": "Elimina transazione"
     },
     "errors": {
       "loadFailed": "Impossibile caricare le transazioni. Riprova più tardi."

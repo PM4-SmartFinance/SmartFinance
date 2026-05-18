@@ -201,7 +201,7 @@
     "emptyState": "No transactions found. Try adjusting your filters.",
     "filters": {
       "heading": "Filters",
-      "category": "Category",
+      "category": "Filter by Category",
       "allCategories": "All Categories",
       "searchPlaceholder": "Search by merchant name…"
     },
@@ -209,10 +209,14 @@
       "date": "Date",
       "description": "Description",
       "category": "Category",
-      "amount": "Amount"
+      "amount": "Amount",
+      "actions": "Actions"
     },
     "pagination": {
       "info": "Page {{page}} of {{totalPages}} ({{totalCount}} total)"
+    },
+    "delete": {
+      "title": "Delete Transaction"
     },
     "errors": {
       "loadFailed": "Failed to load transactions. Please try again later."

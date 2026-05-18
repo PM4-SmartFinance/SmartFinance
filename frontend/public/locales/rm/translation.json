@@ -201,7 +201,7 @@
     "emptyState": "Naginas transacziuns chattadas. Empruvai d'adattar ils filters.",
     "filters": {
       "heading": "Filters",
-      "category": "Categoria",
+      "category": "Filtrar tenor categoria",
       "allCategories": "Tut las Categorias",
       "searchPlaceholder": "Tschertgar per num dal vendider..."
     },
@@ -209,10 +209,14 @@
       "date": "Data",
       "description": "Descripziun",
       "category": "Categoria",
-      "amount": "Suma"
+      "amount": "Suma",
+      "actions": "Acziuns"
     },
     "pagination": {
       "info": "Pagina {{page}} da {{totalPages}} ({{totalCount}} en tut)"
+    },
+    "delete": {
+      "title": "Stizzar la transacziun"
     },
     "errors": {
       "loadFailed": "Betg pussaivel da chargiar las transacziuns. Empruvai pli tard."

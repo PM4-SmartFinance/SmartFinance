@@ -28,13 +28,19 @@ describe("audit repository — database writes", () => {
     const entry = await auditRepo.createAuditLog({
       action: "TEST_ACTION",
       userId: "test-user-id",
-      details: JSON.stringify({ key: "value" }),
+      transactionId: "test-tx-id",
+      previousValues: { foo: "old" },
+      changedValues: { foo: "new" },
+      reason: "Correction",
     });
 
     expect(entry).toMatchObject({
       action: "TEST_ACTION",
       userId: "test-user-id",
-      details: '{"key":"value"}',
+      transactionId: "test-tx-id",
+      previousValues: { foo: "old" },
+      changedValues: { foo: "new" },
+      reason: "Correction",
     });
     expect(entry.id).toBeDefined();
     expect(entry.createdAt).toBeInstanceOf(Date);
@@ -48,7 +54,10 @@ describe("audit repository — database writes", () => {
     expect(entry).toMatchObject({
       action: "TEST_NULL_FIELDS",
       userId: null,
-      details: null,
+      transactionId: null,
+      previousValues: null,
+      changedValues: null,
+      reason: null,
     });
   });
 
@@ -56,7 +65,7 @@ describe("audit repository — database writes", () => {
     await auditRepo.createAuditLog({
       action: "TEST_QUERY",
       userId: "query-user",
-      details: JSON.stringify({ found: true }),
+      changedValues: { found: true },
     });
 
     const found = await prisma.auditLog.findFirst({
@@ -64,6 +73,6 @@ describe("audit repository — database writes", () => {
     });
 
     expect(found).toBeTruthy();
-    expect(found?.details).toBe('{"found":true}');
+    expect(found?.changedValues).toEqual({ found: true });
   });
 });

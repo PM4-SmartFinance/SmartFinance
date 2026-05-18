@@ -129,6 +129,41 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
+  app.post<{ Body: { startDate: string; endDate: string } }>(
+    "/transactions/recategorize",
+    {
+      preHandler: requireRole("USER"),
+      schema: {
+        body: {
+          type: "object",
+          required: ["startDate", "endDate"],
+          properties: {
+            startDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+            endDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+          },
+          additionalProperties: false,
+        },
+        response: {
+          200: {
+            type: "object",
+            properties: { recategorized: { type: "integer" } },
+            required: ["recategorized"],
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const user = getSessionUser(request);
+      const { startDate, endDate } = request.body;
+      const result = await transactionService.recategorizeTransactionsInRange(
+        user.id,
+        startDate,
+        endDate,
+      );
+      return reply.send(result);
+    },
+  );
+
   app.get<{ Params: { id: string } }>(
     "/transactions/:id",
     {

@@ -201,7 +201,7 @@
     "emptyState": "Keine Transaktionen gefunden. Versuchen Sie, Ihre Filter anzupassen.",
     "filters": {
       "heading": "Filter",
-      "category": "Kategorie",
+      "category": "Nach Kategorie filtern",
       "allCategories": "Alle Kategorien",
       "searchPlaceholder": "Suche nach Händlername..."
     },
@@ -209,10 +209,14 @@
       "date": "Datum",
       "description": "Beschreibung",
       "category": "Kategorie",
-      "amount": "Betrag"
+      "amount": "Betrag",
+      "actions": "Aktionen"
     },
     "pagination": {
       "info": "Seite {{page}} von {{totalPages}} ({{totalCount}} gesamt)"
+    },
+    "delete": {
+      "title": "Transaktion löschen"
     },
     "errors": {
       "loadFailed": "Transaktionen konnten nicht geladen werden. Bitte versuchen Sie es später erneut."

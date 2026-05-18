@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { ServiceError } from "../errors.js";
 import * as transactionRepository from "../repositories/transaction.repository.js";
-import { autoCategorize } from "./categorization.service.js";
+import { autoCategorize, recategorizeRange } from "./categorization.service.js";
 import { logEvent } from "./audit.service.js";
 
 export async function getTransaction(id: string, userId: string) {
@@ -133,6 +133,14 @@ export async function autoCategorizeTransactions(userId: string): Promise<{ cate
   return autoCategorize(userId);
 }
 
+export async function recategorizeTransactionsInRange(
+  userId: string,
+  startDate: string,
+  endDate: string,
+): Promise<{ recategorized: number }> {
+  return recategorizeRange(userId, startDate, endDate);
+}
+
 export async function listTransactions(params: ListTransactionsParams) {
   const {
     userId,
@@ -168,13 +176,19 @@ export async function listTransactions(params: ListTransactionsParams) {
     };
   }
 
-  if (categoryId || search) {
-    if (search) {
-      where.merchant = { name: { contains: search, mode: "insensitive" as const } };
-    }
-    if (categoryId) {
-      where.categoryId = categoryId;
-    }
+  if (search) {
+    where.merchant = { name: { contains: search, mode: "insensitive" as const } };
+  }
+
+  // A transaction is "in" a category either directly (explicit / manual override
+  // on FactTransactions.categoryId) or implicitly via the user's merchant→category
+  // mapping. Match both so the filter is consistent with how the response
+  // resolves `categoryName` (see `data.map` below).
+  if (categoryId) {
+    where.OR = [
+      { categoryId },
+      { categoryId: null, merchant: { mappings: { some: { userId, categoryId } } } },
+    ];
   }
 
   const orderBy: Prisma.FactTransactionsOrderByWithRelationInput =
