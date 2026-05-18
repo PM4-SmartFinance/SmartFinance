@@ -86,4 +86,27 @@ describe("i18n callsite coverage", () => {
       expect(enKeys.has(`budgets.periods.${p}`)).toBe(true);
     }
   });
+
+  it("i18n.ts configures localStorage as a detection cache (persistence contract)", () => {
+    // Locks in the cross-session language-persistence contract. The runtime
+    // assertion is impractical because the test setup mocks i18n without
+    // LanguageDetector, so write to localStorage never fires in unit tests.
+    // Pin the config at the source level instead — removing the cache would
+    // silently break persistence in production.
+    const i18nSrc = readFileSync(join(SRC, "lib/i18n.ts"), "utf8");
+    expect(i18nSrc).toMatch(/caches:\s*\[\s*["']localStorage["']\s*\]/);
+    expect(i18nSrc).toMatch(/lookupLocalStorage:\s*["']i18nextLng["']/);
+  });
+
+  it("every spendingTrendChart.granularities.<key> referenced by Granularity exists in en", () => {
+    // Mirror of `Granularity` in SpendingTrendChart.tsx — keep in sync.
+    // The template literal `t(\`...granularities.${effectiveGranularity}\`)`
+    // bypasses the static-key regex, so enumerate the enum here.
+    // Pluralized via _one / _other suffixes.
+    const granularities = ["auto", "day", "week", "month", "quarter", "year"] as const;
+    for (const g of granularities) {
+      expect(enKeys.has(`components.spendingTrendChart.granularities.${g}_one`)).toBe(true);
+      expect(enKeys.has(`components.spendingTrendChart.granularities.${g}_other`)).toBe(true);
+    }
+  });
 });

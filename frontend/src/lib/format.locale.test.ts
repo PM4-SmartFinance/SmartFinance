@@ -150,5 +150,23 @@ describe("Swiss Locale Formatting", () => {
       const out = i18n.t("components.csvImportCard.resultSuccess", { count: 2 });
       expect(out).toMatch(/\b2 transactions importées\b/);
     });
+
+    it("renders the _one variant when count is 1 in Romansh", async () => {
+      await i18n.changeLanguage("rm");
+      const out = i18n.t("components.csvImportCard.resultSuccess", { count: 1 });
+      expect(out).toMatch(/\b1 transacziun\b/);
+    });
+
+    it("renders the _other variant when count is 0 in Romansh", async () => {
+      await i18n.changeLanguage("rm");
+      const out = i18n.t("components.csvImportCard.resultSuccess", { count: 0 });
+      expect(out).toMatch(/\b0 transacziuns\b/);
+    });
+
+    it("renders the _other variant when count is 2 in Romansh", async () => {
+      await i18n.changeLanguage("rm");
+      const out = i18n.t("components.csvImportCard.resultSuccess", { count: 2 });
+      expect(out).toMatch(/\b2 transacziuns\b/);
+    });
   });
 });

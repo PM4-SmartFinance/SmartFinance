@@ -1,5 +1,9 @@
 import { Component, type ReactNode } from "react";
 
+// React requires a class for error boundaries — `componentDidCatch` and
+// `getDerivedStateFromError` have no hooks equivalent. CLAUDE.md's
+// "function components only" rule does not apply here.
+
 interface Props {
   children: ReactNode;
 }

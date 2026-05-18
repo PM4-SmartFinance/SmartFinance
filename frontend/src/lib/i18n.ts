@@ -23,16 +23,15 @@ const initPromise = i18n
       useSuspense: true,
     },
 
-    saveMissing: true,
+    // DEV-only: triggers `missingKeyHandler` for visibility while authoring.
+    // In prod, missing keys are caught by CI (`i18n.callsites.test.ts`,
+    // `i18n.keys.test.ts`) — no need to POST 404s at the static asset server.
+    saveMissing: import.meta.env.DEV,
     missingKeyHandler: (lngs, ns, key) => {
-      const message = `[i18n] Missing translation key: "${key}" in namespace "${ns}" for language "${lngs.join(", ")}"`;
-      if (import.meta.env.DEV) {
-        console.warn(message);
-      } else {
-        // Prod: surface to console.error so missing keys are visible in user-side
-        // devtools and any error-reporting hook that listens on console.error.
-        console.error(message);
-      }
+      if (!import.meta.env.DEV) return;
+      console.warn(
+        `[i18n] Missing translation key: "${key}" in namespace "${ns}" for language "${lngs.join(", ")}"`,
+      );
     },
 
     // Inline English fallbacks at every callsite — t(KEY, ENGLISH_FALLBACK) —

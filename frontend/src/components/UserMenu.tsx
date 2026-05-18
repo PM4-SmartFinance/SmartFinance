@@ -18,6 +18,8 @@ const THEME_OPTIONS: { value: Theme; translationKey: string; label: string; Icon
   },
 ];
 
+// Labels are the language's own native name and are intentionally not
+// translated — a French speaker scanning the menu still recognises "Deutsch".
 const LANGUAGE_OPTIONS = [
   { value: "en", label: "English" },
   { value: "de", label: "Deutsch" },
