@@ -3,12 +3,14 @@ import { formatLocalDate } from "../lib/date";
 import { PRESETS } from "../lib/datePresets";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
+import { useTranslation } from "react-i18next";
 
 export function DateRangePicker() {
   const startDate = useAppStore((s) => s.startDate);
   const endDate = useAppStore((s) => s.endDate);
   const activePresetKey = useAppStore((s) => s.activePresetKey);
   const setDateRange = useAppStore((s) => s.setDateRange);
+  const { t } = useTranslation();
 
   const handlePreset = (preset: (typeof PRESETS)[number]) => {
     if (preset.start === null) {
@@ -40,7 +42,7 @@ export function DateRangePicker() {
               aria-pressed={activePresetKey === preset.key}
               onClick={() => handlePreset(preset)}
             >
-              {preset.label}
+              {t(preset.translationKey, preset.label)}
             </Button>
           ))}
         </div>
@@ -49,7 +51,7 @@ export function DateRangePicker() {
           <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-4">
             <div className="flex flex-col gap-2">
               <label htmlFor="start-date" className="text-sm font-medium">
-                Start Date
+                {t("common.startDate", "Start Date")}
               </label>
               <input
                 id="start-date"
@@ -62,7 +64,7 @@ export function DateRangePicker() {
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="end-date" className="text-sm font-medium">
-                End Date
+                {t("common.endDate", "End Date")}
               </label>
               <input
                 id="end-date"

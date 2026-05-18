@@ -10,6 +10,8 @@ import { Dialog } from "@/components/ui/dialog";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { getSwissLocale } from "@/lib/format";
 
 interface CreateEditBudgetDialogProps {
   isOpen: boolean;
@@ -70,6 +72,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
   const [formState, setFormState] = useState<FormState>(initialFormState);
   const [prevInitialFormState, setPrevInitialFormState] = useState(initialFormState);
   const [isDirty, setIsDirty] = useState(false);
+  const { t, i18n } = useTranslation();
 
   if (prevInitialFormState !== initialFormState) {
     setPrevInitialFormState(initialFormState);
@@ -111,19 +114,34 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
     setFormState((prev) => ({ ...prev, error: "" }));
 
     if (!formState.limitAmount || parseFloat(formState.limitAmount) <= 0) {
-      setFormState((prev) => ({ ...prev, error: "Please enter a valid limit amount" }));
+      setFormState((prev) => ({
+        ...prev,
+        error: t(
+          "components.createEditBudgetDialog.errors.invalidLimit",
+          "Please enter a valid limit amount",
+        ),
+      }));
       return;
     }
 
     if (!formState.categoryId) {
-      setFormState((prev) => ({ ...prev, error: "Please select a category" }));
+      setFormState((prev) => ({
+        ...prev,
+        error: t(
+          "components.createEditBudgetDialog.errors.missingCategory",
+          "Please select a category",
+        ),
+      }));
       return;
     }
 
     if (formState.entryMode === "specific" && !formState.specificMonth && !formState.specificYear) {
       setFormState((prev) => ({
         ...prev,
-        error: "Please select at least a month or year for specific budgets",
+        error: t(
+          "components.createEditBudgetDialog.errors.missingMonthYear",
+          "Please select at least a month or year for specific budgets",
+        ),
       }));
       return;
     }
@@ -151,7 +169,12 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
         onClose();
       } catch (err) {
         if (err instanceof ApiError) {
-          setFormState((prev) => ({ ...prev, error: err.message || "Failed to update budget" }));
+          setFormState((prev) => ({
+            ...prev,
+            error:
+              err.message ||
+              t("components.createEditBudgetDialog.errors.updateFailed", "Failed to update budget"),
+          }));
         } else {
           throw err;
         }
@@ -173,7 +196,12 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
         onClose();
       } catch (err) {
         if (err instanceof ApiError) {
-          setFormState((prev) => ({ ...prev, error: err.message || "Failed to create budget" }));
+          setFormState((prev) => ({
+            ...prev,
+            error:
+              err.message ||
+              t("components.createEditBudgetDialog.errors.updateFailed", "Failed to update budget"),
+          }));
         } else {
           throw err;
         }
@@ -190,7 +218,9 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
   return (
     <Dialog isOpen={isOpen} onClose={handleDialogClose}>
       <h2 className="mb-6 text-xl font-semibold text-foreground">
-        {budget ? "Edit Budget" : "Create Budget"}
+        {budget
+          ? t("components.createEditBudgetDialog.titleEdit", "Edit Budget")
+          : t("components.createEditBudgetDialog.titleCreate", "Create Budget")}
       </h2>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -203,14 +233,16 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
 
         {/* Category Select — shown for both create and edit */}
         <div className="space-y-2">
-          <Label htmlFor="category">Category</Label>
+          <Label htmlFor="category">{t("common.category", "Category")}</Label>
           <NativeSelect
             id="category"
             value={formState.categoryId}
             onChange={(e) => updateFormState((prev) => ({ ...prev, categoryId: e.target.value }))}
             disabled={isSubmitting || categoriesLoading}
           >
-            <option value="">Select a category…</option>
+            <option value="">
+              {t("components.createEditBudgetDialog.selectCategory", "Select a category…")}
+            </option>
             {categories.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.categoryName}
@@ -221,7 +253,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
 
         {/* Entry Mode Toggle */}
         <div className="space-y-2">
-          <Label>Budget Type</Label>
+          <Label>{t("components.createEditBudgetDialog.budgetType", "Budget Type")}</Label>
           <div className="flex gap-2">
             <button
               type="button"
@@ -233,7 +265,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
               onClick={() => updateFormState((prev) => ({ ...prev, entryMode: "general" }))}
               disabled={isSubmitting}
             >
-              General
+              {t("components.createEditBudgetDialog.general", "General")}
             </button>
             <button
               type="button"
@@ -245,7 +277,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
               onClick={() => updateFormState((prev) => ({ ...prev, entryMode: "specific" }))}
               disabled={isSubmitting}
             >
-              Specific
+              {t("components.createEditBudgetDialog.specific", "Specific")}
             </button>
           </div>
         </div>
@@ -253,7 +285,9 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
         {/* General Mode: Period Dropdown */}
         {formState.entryMode === "general" && (
           <div className="space-y-2">
-            <Label htmlFor="period">Period</Label>
+            <Label htmlFor="period">
+              {t("components.createEditBudgetDialog.period", "Period")}
+            </Label>
             <NativeSelect
               id="period"
               value={formState.generalType}
@@ -265,9 +299,9 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
               }
               disabled={isSubmitting}
             >
-              <option value="DAILY">Daily</option>
-              <option value="MONTHLY">Monthly</option>
-              <option value="YEARLY">Yearly</option>
+              <option value="DAILY">{t("budgets.periods.daily", "Daily")}</option>
+              <option value="MONTHLY">{t("budgets.periods.monthly", "Monthly")}</option>
+              <option value="YEARLY">{t("budgets.periods.yearly", "Yearly")}</option>
             </NativeSelect>
           </div>
         )}
@@ -276,7 +310,9 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
         {formState.entryMode === "specific" && (
           <>
             <div className="space-y-2">
-              <Label htmlFor="specific-month">Month (optional)</Label>
+              <Label htmlFor="specific-month">
+                {t("components.createEditBudgetDialog.monthOptional", "Month (optional)")}
+              </Label>
               <NativeSelect
                 id="specific-month"
                 value={formState.specificMonth}
@@ -285,11 +321,16 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
                 }
                 disabled={isSubmitting}
               >
-                <option value="">Any month</option>
+                <option value="">
+                  {t("components.createEditBudgetDialog.anyMonth", "Any month")}
+                </option>
                 {months.map((m) => {
-                  const monthName = new Date(currentYear, m - 1).toLocaleDateString("en-US", {
-                    month: "long",
-                  });
+                  const monthName = new Date(currentYear, m - 1).toLocaleDateString(
+                    getSwissLocale(i18n.resolvedLanguage),
+                    {
+                      month: "long",
+                    },
+                  );
                   return (
                     <option key={m} value={m}>
                       {monthName}
@@ -299,7 +340,9 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
               </NativeSelect>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="specific-year">Year (optional)</Label>
+              <Label htmlFor="specific-year">
+                {t("components.createEditBudgetDialog.yearOptional", "Year (optional)")}
+              </Label>
               <NativeSelect
                 id="specific-year"
                 value={formState.specificYear}
@@ -308,7 +351,9 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
                 }
                 disabled={isSubmitting}
               >
-                <option value="">Any year</option>
+                <option value="">
+                  {t("components.createEditBudgetDialog.anyYear", "Any year")}
+                </option>
                 {years.map((y) => (
                   <option key={y} value={y}>
                     {y}
@@ -321,14 +366,19 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
 
         {/* Spending Limit */}
         <div className="space-y-2">
-          <Label htmlFor="limit-amount">Spending Limit</Label>
+          <Label htmlFor="limit-amount">
+            {t("components.createEditBudgetDialog.spendingLimit", "Spending Limit")}
+          </Label>
           <Input
             id="limit-amount"
             type="number"
             step="0.01"
             value={formState.limitAmount}
             onChange={(e) => updateFormState((prev) => ({ ...prev, limitAmount: e.target.value }))}
-            placeholder="Enter limit amount"
+            placeholder={t(
+              "components.createEditBudgetDialog.limitPlaceholder",
+              "Enter limit amount",
+            )}
             disabled={isSubmitting}
           />
         </div>
@@ -337,7 +387,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
         {budget && (
           <div className="flex items-center gap-3">
             <Label htmlFor="active-toggle" className="cursor-pointer">
-              Active
+              {t("components.createEditBudgetDialog.active", "Active")}
             </Label>
             <button
               id="active-toggle"
@@ -364,11 +414,11 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
           <Button type="submit" disabled={isSubmitting} className="flex-1">
             {isSubmitting
               ? budget
-                ? "Saving…"
-                : "Creating…"
+                ? t("common.saving", "Saving…")
+                : t("common.creating", "Creating…")
               : budget
-                ? "Save Changes"
-                : "Create Budget"}
+                ? t("common.saveChanges", "Save Changes")
+                : t("components.createEditBudgetDialog.createBtn", "Create Budget")}
           </Button>
           <Button
             type="button"
@@ -376,7 +426,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
             onClick={handleDialogClose}
             disabled={isSubmitting}
           >
-            Cancel
+            {t("common.cancel", "Cancel")}
           </Button>
         </div>
       </form>

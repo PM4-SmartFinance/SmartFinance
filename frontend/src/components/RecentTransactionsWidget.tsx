@@ -3,16 +3,7 @@ import { formatAmount, formatDate, FALLBACK } from "../lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DashboardTileLink } from "./DashboardTileLink";
-
-const TEXT = {
-  title: "Recent Transactions",
-  navLabel: "View transactions",
-  empty: "No transactions yet.",
-  error: "Failed to load recent transactions.",
-  retry: "Retry",
-} as const;
-
-const COLUMNS = ["Date", "Merchant", "Category", "Amount"] as const;
+import { useTranslation } from "react-i18next";
 
 export function RecentTransactionsWidget() {
   const { data, isLoading, isError, error, refetch } = useTransactions({
@@ -21,11 +12,20 @@ export function RecentTransactionsWidget() {
     limit: 5,
   });
 
-  if (import.meta.env.DEV && data !== undefined && !Array.isArray(data.data)) {
+  const { t, i18n } = useTranslation();
+
+  const COLUMNS = [
+    t("transactions.table.date", "Date"),
+    t("components.recentTransactionsWidget.merchant", "Merchant"),
+    t("transactions.table.category", "Category"),
+    t("transactions.table.amount", "Amount"),
+  ];
+
+  if (data !== undefined && !Array.isArray(data.data)) {
     console.warn("RecentTransactionsWidget: unexpected response shape", data);
   }
 
-  if (isError && import.meta.env.DEV) {
+  if (isError) {
     console.warn("RecentTransactionsWidget: query failed", error);
   }
 
@@ -33,7 +33,9 @@ export function RecentTransactionsWidget() {
 
   const header = (
     <CardHeader>
-      <CardTitle className="text-xs font-semibold uppercase tracking-wider">{TEXT.title}</CardTitle>
+      <CardTitle className="text-xs font-semibold uppercase tracking-wider">
+        {t("components.recentTransactionsWidget.title", "Recent Transactions")}
+      </CardTitle>
     </CardHeader>
   );
 
@@ -44,10 +46,13 @@ export function RecentTransactionsWidget() {
         <CardContent>
           <div className="flex flex-col items-center gap-2 py-4">
             <p role="alert" className="text-sm text-destructive">
-              {TEXT.error}
+              {t(
+                "components.recentTransactionsWidget.error",
+                "Failed to load recent transactions.",
+              )}
             </p>
             <Button variant="outline" size="sm" onClick={() => void refetch()}>
-              {TEXT.retry}
+              {t("common.retry", "Retry")}
             </Button>
           </div>
         </CardContent>
@@ -56,7 +61,10 @@ export function RecentTransactionsWidget() {
   }
 
   return (
-    <DashboardTileLink to="/transactions" ariaLabel={TEXT.navLabel}>
+    <DashboardTileLink
+      to="/transactions"
+      ariaLabel={t("components.recentTransactionsWidget.navLabel", "View transactions")}
+    >
       {header}
       <CardContent>
         {isLoading ? (
@@ -67,7 +75,9 @@ export function RecentTransactionsWidget() {
           </div>
         ) : transactions.length === 0 ? (
           <div className="flex min-h-24 items-center justify-center">
-            <p className="text-sm text-muted-foreground">{TEXT.empty}</p>
+            <p className="text-sm text-muted-foreground">
+              {t("components.recentTransactionsWidget.empty", "No transactions yet.")}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -84,13 +94,15 @@ export function RecentTransactionsWidget() {
               <tbody className="divide-y divide-border">
                 {transactions.map((tx) => (
                   <tr key={tx.id}>
-                    <td className="py-2.5 text-sm text-muted-foreground">{formatDate(tx.date)}</td>
+                    <td className="py-2.5 text-sm text-muted-foreground">
+                      {formatDate(tx.date, i18n.resolvedLanguage)}
+                    </td>
                     <td className="px-4 py-2.5 text-sm text-foreground">{tx.merchant}</td>
                     <td className="px-4 py-2.5 text-sm text-muted-foreground">
                       {tx.categoryName ?? FALLBACK}
                     </td>
                     <td className="py-2.5 text-right text-sm font-medium text-foreground">
-                      {formatAmount(tx.amount)}
+                      {formatAmount(tx.amount, i18n.resolvedLanguage)}
                     </td>
                   </tr>
                 ))}

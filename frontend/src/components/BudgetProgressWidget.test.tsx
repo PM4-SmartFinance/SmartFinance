@@ -63,7 +63,7 @@ describe("BudgetProgressWidget", () => {
       DAILY: { isLoading: true, error: null, data: undefined },
     });
     renderWidget();
-    expect(screen.getByText("Loading budget progress...")).toBeInTheDocument();
+    expect(screen.getByText("Loading budget progress…")).toBeInTheDocument();
   });
 
   it("shows error state when the daily query fails", () => {

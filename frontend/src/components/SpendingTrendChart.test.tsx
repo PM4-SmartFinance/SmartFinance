@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
+import type { TFunction } from "i18next";
 
 import {
   SpendingTrendChart,
@@ -166,17 +167,29 @@ describe("formatYAxisValue", () => {
 // ── buildChartAriaLabel ───────────────────────────────────────────────────────
 
 describe("buildChartAriaLabel", () => {
+  const tMock = ((key: string, fallback: string, options?: Record<string, string | number>) => {
+    let res = fallback || key;
+    if (options) {
+      Object.keys(options).forEach((k) => {
+        res = res.replace(`{{${k}}}`, String(options[k]));
+      });
+    }
+    return res;
+  }) as unknown as TFunction;
+
   it("describes empty data", () => {
-    expect(buildChartAriaLabel([])).toBe("Income and expenses chart, no data.");
+    expect(buildChartAriaLabel([], tMock)).toBe("Income and expenses chart, no data.");
   });
 
   it("summarizes each data point with both series", () => {
-    const label = buildChartAriaLabel([
+    const data = [
       { date: "2026-01-01", income: 5000, expenses: 2500 },
       { date: "2026-02-01", income: 6000, expenses: 3000 },
-    ]);
-    expect(label).toContain("Jan 2026");
-    expect(label).toContain("Feb 2026");
+    ];
+    const label = buildChartAriaLabel(data, tMock);
+
+    expect(label).toContain("1 Jan 2026");
+    expect(label).toContain("1 Feb 2026");
     expect(label).toContain("income");
     expect(label).toContain("expenses");
   });
@@ -188,12 +201,14 @@ describe("buildChartAriaLabel", () => {
       income: i,
       expenses: i,
     }));
-    const label = buildChartAriaLabel(longRange);
+
+    const label = buildChartAriaLabel(longRange, tMock);
+
     expect(label).toContain("30 periods");
     expect(label).toContain("periods omitted");
     // Head and tail should be present.
-    expect(label).toMatch(/2026-01-01|Jan 2026/);
-    expect(label).toMatch(/2026-01-30|Jan 2026/);
+    expect(label).toMatch(/1 Jan 2026/);
+    expect(label).toMatch(/30 Jan 2026/);
   });
 });
 

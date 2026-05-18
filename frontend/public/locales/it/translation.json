@@ -1,0 +1,495 @@
+{
+  "common": {
+    "add": "Aggiungi",
+    "apply": "Applica",
+    "cancel": "Annulla",
+    "clear": "Cancella",
+    "delete": "Elimina",
+    "dismiss": "Chiudi",
+    "edit": "Modifica",
+    "name": "Nome",
+    "next": "Avanti",
+    "previous": "Precedente",
+    "run": "Esegui",
+    "save": "Salva",
+    "search": "Cerca",
+    "startDate": "Data Inizio",
+    "endDate": "Data Fine",
+    "loading": "Caricamento…",
+    "backToDashboard": "Torna alla Dashboard",
+    "deleting": "Eliminazione…",
+    "inactive": "Inattivo",
+    "unknown": "Sconosciuto",
+    "category": "Categoria",
+    "saving": "Salvataggio…",
+    "creating": "Creazione…",
+    "saveChanges": "Salva le modifiche",
+    "retry": "Riprova",
+    "roles": {
+      "user": "Utente",
+      "admin": "Amministratore"
+    },
+    "presets": {
+      "last7days": "Ultimi 7 giorni",
+      "last30days": "Ultimi 30 giorni",
+      "last3months": "Ultimi 3 mesi",
+      "lastYear": "Anno scorso",
+      "custom": "Personalizzato"
+    }
+  },
+  "errors": {
+    "generic": "Qualcosa è andato storto. Riprova.",
+    "loadCategories": "Impossibile caricare le categorie",
+    "invalidDateRange": "La data di inizio non può essere successiva alla data di fine."
+  },
+  "categories": {
+    "title": "Categorie & Regole",
+    "description": "Gestisci le tue categorie e le regole di categorizzazione automatica in un unico posto.",
+    "loading": "Caricamento categorie e regole…",
+    "loadingError": "Impossibile caricare categorie o regole. Ricarica la pagina.",
+    "refreshHint": "Salvato, ma la dashboard potrebbe richiedere un aggiornamento manuale.",
+    "personalTitle": "Le Tue Categorie",
+    "personalDesc": "Categorie modificabili che hai creato.",
+    "globalTitle": "Categorie Globali",
+    "globalDesc": "Impostazioni predefinite condivise disponibili per tutti gli utenti.",
+    "globalCategoryReadOnly": "Categoria globale (sola lettura)",
+    "noCategories": "Nessuna categoria in questa sezione.",
+    "createCategoryTitle": "Crea Categoria",
+    "newCategoryPlaceholder": "es. Abbonamenti",
+    "applyRulesTitle": "Applica Regole",
+    "applyRulesDescription": "La categorizzazione automatica elabora solo le transazioni non categorizzate. Ricategorizza riapplica ogni regola (prima la priorità più alta) a tutte le transazioni non modificate manualmente nell'intervallo selezionato, sovrascrivendo le categorizzazioni automatiche precedenti.",
+    "autoCategorizeBtn": "Categorizza automaticamente non categorizzate",
+    "autoCategorizing": "Categorizzazione automatica in corso…",
+    "recategorizeBtn": "Ricategorizza intervallo di date…",
+    "recategorizing": "Ricategorizzazione in corso…",
+    "recategorizeFrom": "Da",
+    "recategorizeTo": "A",
+    "existingRules": "Regole Esistenti",
+    "noRules": "Nessuna regola per ora.",
+    "matchCount_one": "{{count}} transazione esistente corrisponderebbe.",
+    "matchCount_other": "{{count}} transazioni esistenti corrisponderebbero.",
+    "autoCategorizeNone": "Nessuna transazione non categorizzata corrispondeva a una regola.",
+    "autoCategorizeSuccess_one": "Categorizzata {{count}} transazione.",
+    "autoCategorizeSuccess_other": "Categorizzate {{count}} transazioni.",
+    "recategorizeNone": "Nessuna transazione modificata nell'intervallo selezionato.",
+    "recategorizeSuccess_one": "Ricategorizzata {{count}} transazione.",
+    "recategorizeSuccess_other": "Ricategorizzate {{count}} transazioni.",
+    "errors": {
+      "nameRequired": "Il nome della categoria è obbligatorio.",
+      "createFailed": "Impossibile creare la categoria.",
+      "updateFailed": "Impossibile aggiornare la categoria.",
+      "deleteFailed": "Impossibile eliminare la categoria.",
+      "rulePatternRequired": "Il modello della regola è obbligatorio.",
+      "createRuleFailed": "Impossibile creare la regola.",
+      "previewFailed": "Impossibile visualizzare in anteprima le corrispondenze della regola.",
+      "updateRuleFailed": "Impossibile aggiornare la regola.",
+      "deleteRuleFailed": "Impossibile eliminare la regola.",
+      "autoCategorizeFailed": "Impossibile eseguire la categorizzazione automatica.",
+      "recategorizeFailed": "Impossibile ricategorizzare l'intervallo selezionato."
+    },
+    "aria": {
+      "editCategory": "Modifica la categoria {{name}}",
+      "saveCategory": "Salva la categoria {{name}}",
+      "deleteCategory": "Elimina la categoria {{name}}"
+    }
+  },
+  "nav": {
+    "transactions": "Transazioni",
+    "budgets": "Budget",
+    "categories": "Categorie",
+    "settings": "Impostazioni"
+  },
+  "dashboard": {
+    "heading": "Dashboard",
+    "subtitle": "Visualizza la tua panoramica finanziaria a colpo d'occhio",
+    "greeting": "Bentornato, {{email}}"
+  },
+  "login": {
+    "brand": "⬡ SmartFinance",
+    "title": "Accedi",
+    "description": "Inserisci le tue credenziali per accedere al tuo account",
+    "submit": "Accedi",
+    "submitting": "Accesso in corso…",
+    "emailLabel": "E-mail",
+    "passwordLabel": "Password"
+  },
+  "404": {
+    "title": "404 - Pagina non trovata",
+    "homepage": "Vai alla homepage"
+  },
+  "settings": {
+    "heading": "Impostazioni",
+    "description": "Gestisci il tuo account e le impostazioni della piattaforma.",
+    "nav": {
+      "profile": "Profilo",
+      "userManagement": "Gestione Utenti"
+    }
+  },
+  "settingsUsers": {
+    "heading": "Utenti",
+    "description": "Gestisci gli utenti della piattaforma e gli accessi",
+    "createUserBtn": "Crea Utente",
+    "deleteDialog": {
+      "title": "Eliminare Utente?",
+      "body": "Eliminare definitivamente <1>{{email}}</1>? Questa azione non può essere annullata."
+    },
+    "errors": {
+      "deactivateFailed": "Impossibile disattivare l'utente",
+      "deleteFailed": "Impossibile eliminare l'utente",
+      "loadFailed": "Impossibile caricare gli utenti. Riprova."
+    }
+  },
+  "budgets": {
+    "heading": "Budget",
+    "description": "Imposta limiti di spesa per categoria e monitora i progressi",
+    "loading": "Caricamento budget…",
+    "createBtn": "Crea Budget",
+    "emptyState": "Ancora nessun budget. Creane uno per iniziare.",
+    "types": {
+      "daily": "Budget giornaliero",
+      "monthly": "Budget mensile",
+      "yearly": "Budget annuale",
+      "specificMonth": "{{month}} (ricorrente)"
+    },
+    "periods": {
+      "daily": "Giornaliero",
+      "monthly": "Mensile",
+      "yearly": "Annuale",
+      "dateRange": "Intervallo di date"
+    },
+    "filters": {
+      "viewPeriod": "Visualizza Periodo"
+    },
+    "deleteDialog": {
+      "title": "Eliminare Budget?",
+      "body": "Sei sicuro di voler eliminare il budget <1>{{type}}</1> per <3>{{name}}</3>? Questa azione non può essere annullata."
+    },
+    "errors": {
+      "deleteFailed": "Impossibile eliminare il budget. Riprova.",
+      "loadFailed": "Impossibile caricare i budget"
+    }
+  },
+  "settingsProfile": {
+    "heading": "Profilo",
+    "errors": {
+      "passwordsMismatch": "Le nuove password non corrispondono."
+    },
+    "account": {
+      "title": "Informazioni sull'account",
+      "description": "Aggiorna il tuo nome visualizzato e l'indirizzo email.",
+      "loadFailed": "Impossibile caricare il tuo profilo. Ricarica la pagina.",
+      "displayNameLabel": "Nome visualizzato",
+      "displayNamePlaceholder": "Il tuo nome",
+      "emailLabel": "Indirizzo email",
+      "success": "Profilo aggiornato con successo.",
+      "saving": "Salvataggio…",
+      "saveBtn": "Salva le modifiche"
+    },
+    "password": {
+      "title": "Cambia password",
+      "description": "Inserisci la tua password attuale prima di impostarne una nuova. Verrai disconnesso dopo una modifica riuscita.",
+      "currentLabel": "Password attuale",
+      "newLabel": "Nuova password",
+      "confirmLabel": "Conferma nuova password",
+      "success": "Password modificata. Accedi di nuovo.",
+      "changing": "Modifica…",
+      "changeBtn": "Cambia password"
+    }
+  },
+  "transactions": {
+    "heading": "Transazioni",
+    "emptyState": "Nessuna transazione trovata. Prova a regolare i filtri.",
+    "filters": {
+      "heading": "Filtri",
+      "category": "Categoria",
+      "allCategories": "Tutte le Categorie",
+      "searchPlaceholder": "Cerca per nome commerciante..."
+    },
+    "table": {
+      "date": "Data",
+      "description": "Descrizione",
+      "category": "Categoria",
+      "amount": "Importo"
+    },
+    "pagination": {
+      "info": "Pagina {{page}} di {{totalPages}} ({{totalCount}} in totale)"
+    },
+    "errors": {
+      "loadFailed": "Impossibile caricare le transazioni. Riprova più tardi."
+    }
+  },
+  "components": {
+    "budgetWidget": {
+      "error": "Impossibile caricare i dati del budget. Riprova.",
+      "title": "Stato del Budget",
+      "empty": "Nessun budget attivo. Clicca per crearne uno.",
+      "statusSummary": "{{onTrack}} in linea, {{approaching}} vicini al limite, {{exceeded}} superati",
+      "activeCount_one": "{{count}} budget attivo",
+      "activeCount_other": "{{count}} budget attivi",
+      "ariaView": "Visualizza budget"
+    },
+    "budgetCategoryGroup": {
+      "basedOn": "Basato sul budget {{type}}",
+      "noBudget": "Nessun budget impostato",
+      "of": "di",
+      "overBudget": "fuori budget",
+      "remaining": "rimanenti",
+      "spent": "spesi",
+      "editAria": "Modifica {{type}}",
+      "deleteAria": "Elimina {{type}}",
+      "over": "oltre",
+      "left": "rimasti"
+    },
+    "budgetProgress": {
+      "title": "Progresso del Budget",
+      "viewAll": "Visualizza tutti i budget",
+      "error": "Impossibile caricare i progressi del budget. Riprova.",
+      "loading": "Caricamento dei progressi del budget...",
+      "parseError": "Alcuni valori del budget non sono stati elaborati. Ricarica, se il problema persiste contatta il supporto.",
+      "empty": "Ancora nessun totale del budget tracciato. Crea budget e importa transazioni per popolare questi grafici.",
+      "excludedWarning": "Alcuni valori del budget non sono stati elaborati e sono stati esclusi dai totali sottostanti.",
+      "chart": {
+        "spent": "Speso",
+        "remaining": "Rimanente",
+        "over": "Oltre",
+        "noSpending": "Nessuna spesa di categoria"
+      },
+      "noCategorySpending": "Ancora nessuna spesa di categoria.",
+      "spent": "Spesi",
+      "trackedTotal": "Totale tracciato",
+      "overBudget": "Fuori budget"
+    },
+    "categoryBreakdownChart": {
+      "title": "Spese per Categoria",
+      "error": "Impossibile caricare i dati di ripartizione per categoria. Riprova.",
+      "loading": "Caricamento grafico…",
+      "empty": "Nessuna ripartizione per categoria per ora. Importa le transazioni per vedere le spese per categoria.",
+      "viewCategoriesAria": "Visualizza categorie",
+      "tooltipSpent": "Spesi"
+    },
+    "createEditBudgetDialog": {
+      "titleCreate": "Crea Budget",
+      "titleEdit": "Modifica Budget",
+      "selectCategory": "Seleziona una categoria…",
+      "budgetType": "Tipo di Budget",
+      "general": "Generale",
+      "specific": "Specifico",
+      "period": "Periodo",
+      "monthOptional": "Mese (opzionale)",
+      "anyMonth": "Qualsiasi mese",
+      "yearOptional": "Anno (opzionale)",
+      "anyYear": "Qualsiasi anno",
+      "spendingLimit": "Limite di Spesa",
+      "limitPlaceholder": "Inserisci l'importo limite",
+      "active": "Attivo",
+      "createBtn": "Crea Budget",
+      "errors": {
+        "invalidLimit": "Inserisci un importo limite valido",
+        "missingCategory": "Seleziona una categoria",
+        "missingMonthYear": "Seleziona almeno un mese o un anno per i budget specifici",
+        "updateFailed": "Impossibile aggiornare il budget",
+        "createFailed": "Impossibile creare il budget"
+      }
+    },
+    "createUserDialog": {
+      "title": "Crea Nuovo Utente",
+      "emailLabel": "Email",
+      "passwordLabel": "Password",
+      "displayNameLabel": "Nome Visualizzato",
+      "roleLabel": "Ruolo",
+      "createBtn": "Crea Utente",
+      "placeholders": {
+        "email": "utente@esempio.com",
+        "password": "Minimo 8 caratteri",
+        "displayName": "Mario Rossi (opzionale)"
+      },
+      "errors": {
+        "emailRequired": "L'email è obbligatoria",
+        "passwordRequired": "La password è obbligatoria",
+        "passwordLength": "La password deve contenere almeno 8 caratteri",
+        "emailExists": "L'email esiste già",
+        "createFailed": "Impossibile creare l'utente"
+      }
+    },
+    "csvImportCard": {
+      "title": "Importa Transazioni",
+      "dropZoneIdle": "Trascina qui un file CSV o fai clic per sfogliare",
+      "dropZoneActive": "Rilascia per selezionare il file",
+      "dropZoneSelected": "Selezionato: {{name}}",
+      "dropZoneAria": "Area di rilascio file",
+      "dropZoneSubtext": "Solo file .csv · max 10 MB",
+      "formatLabel": "Formato bancario",
+      "accountLabel": "Account",
+      "uploadBtn": "Carica",
+      "uploading": "Caricamento…",
+      "resultSuccess_one": "{{count}} transazione importata con successo.",
+      "resultSuccess_other": "{{count}} transazioni importate con successo.",
+      "resultZero": "Nessuna nuova transazione trovata (tutte le righe potrebbero essere duplicate).",
+      "resetBtn": "Importa un altro file",
+      "refreshHint": "Importato, ma la dashboard potrebbe richiedere un aggiornamento manuale.",
+      "errors": {
+        "fileTooLarge": "Il file supera il limite di dimensioni di 10 MB.",
+        "noAccounts": "Nessun account trovato. Crea prima un account.",
+        "accountsError": "Impossibile caricare gli account. Riprova.",
+        "invalidType": "Sono accettati solo i file .csv.",
+        "uploadFailed": "Caricamento non riuscito."
+      }
+    },
+    "editUserDialog": {
+      "title": "Modifica Utente: {{email}}",
+      "roleLabel": "Ruolo",
+      "activeLabel": "Attivo",
+      "warnings": {
+        "cannotChangeAdmin": "Impossibile modificare il ruolo di altri utenti amministratori",
+        "cannotDemoteSelf": "Non puoi degradarti dal ruolo di amministratore"
+      },
+      "errors": {
+        "noChanges": "Nessuna modifica da salvare",
+        "updateFailed": "Impossibile aggiornare l'utente"
+      }
+    },
+    "newRuleForm": {
+      "title": "Nuova Regola",
+      "ariaPattern": "Nuovo modello di regola per {{category}}",
+      "patternPlaceholder": "Modello",
+      "ariaMatchType": "Nuovo tipo di corrispondenza regola per {{category}}",
+      "matchTypeContains": "contiene",
+      "matchTypeExact": "esatto",
+      "ariaPriority": "Priorità della nuova regola per {{category}}",
+      "priorityTitle": "Le regole con priorità più alta vengono valutate per prime",
+      "addRuleBtn": "Aggiungi Regola",
+      "conflictUnavailable": "Controllo dei conflitti non disponibile.",
+      "overlapWarning_one": "Il modello si sovrappone a {{count}} regola esistente.",
+      "overlapWarning_other": "Il modello si sovrappone a {{count}} regole esistenti.",
+      "overlapSubtext": "Le regole a priorità più alta prevalgono quando entrambe corrispondono. Puoi salvare comunque.",
+      "priorityLabel": "priorità {{priority}}"
+    },
+    "recentTransactionsWidget": {
+      "title": "Transazioni Recenti",
+      "navLabel": "Visualizza transazioni",
+      "empty": "Ancora nessuna transazione.",
+      "error": "Impossibile caricare le transazioni recenti.",
+      "merchant": "Commerciante"
+    },
+    "resetPasswordDialog": {
+      "title": "Reimposta Password",
+      "description": "Inserisci una nuova password per {{email}}. Dovrà utilizzare questa nuova password al prossimo accesso.",
+      "newPasswordLabel": "Nuova password",
+      "confirmPasswordLabel": "Conferma nuova password",
+      "successMessage": "Password reimpostata con successo.",
+      "resettingBtn": "Reimpostazione…",
+      "resetBtn": "Reimposta Password",
+      "errors": {
+        "passwordMismatch": "Le password non corrispondono.",
+        "resetFailed": "Impossibile reimpostare la password."
+      }
+    },
+    "ruleRow": {
+      "ariaPattern": "Modello di regola {{id}}",
+      "ariaMatchType": "Tipo di corrispondenza della regola {{id}}",
+      "matchTypeContains": "contiene",
+      "matchTypeExact": "esatto",
+      "ariaPriority": "Priorità della regola {{id}}",
+      "priorityTitle": "Le regole con priorità più alta vengono valutate per prime",
+      "ariaSave": "Salva la regola {{id}}",
+      "conflictUnavailable": "Controllo dei conflitti non disponibile.",
+      "overlapWarning_one": "Il modello si sovrappone a {{count}} altra regola.",
+      "overlapWarning_other": "Il modello si sovrappone a {{count}} altre regole.",
+      "priorityLabel": "priorità {{priority}}",
+      "priorityDisplay": "Priorità: {{priority}}",
+      "ariaEdit": "Modifica regola {{id}}",
+      "ariaDelete": "Elimina regola {{id}}"
+    },
+    "spendingTrendChart": {
+      "title": "Entrate vs Spese Mensili",
+      "viewTransactions": "Visualizza transazioni →",
+      "income": "Entrate",
+      "expenses": "Spese",
+      "singleBucketHelp": "Regola l'intervallo di date o scegli una granularità più fine per vedere una tendenza.",
+      "footerSummary": "Visualizzazione di {{count}} {{granularity}} di entrate e spese.",
+      "aria": {
+        "empty": "Grafico delle entrate e delle spese, nessun dato.",
+        "describe": "{{date}}: entrate {{income}}, spese {{expenses}}",
+        "short": "Grafico delle entrate e delle spese. {{details}}.",
+        "long": "Grafico delle entrate e delle spese con {{total}} periodi. {{head}}. … {{skipped}} periodi omessi. {{tail}}."
+      },
+      "states": {
+        "error": "Impossibile caricare i dati sull'andamento delle spese. Riprova.",
+        "loading": "Caricamento grafico…",
+        "empty": "Nessun dato di spesa per il periodo selezionato. Regola l'intervallo di date o importa le transazioni."
+      },
+      "controls": {
+        "bucket": "Periodo",
+        "granularityAria": "Granularità",
+        "labels": "Etichette",
+        "labelsAria": "Numero di etichette sull'asse",
+        "chartStyleAria": "Stile del grafico",
+        "line": "Linea",
+        "bar": "Barre",
+        "toggleSeriesAria": "Attiva/disattiva le serie del grafico",
+        "options": {
+          "auto": "Auto",
+          "day": "Giorno",
+          "week": "Settimana",
+          "month": "Mese",
+          "quarter": "Trimestre",
+          "year": "Anno"
+        }
+      },
+      "granularities": {
+        "auto_one": "auto",
+        "auto_other": "auto",
+        "day_one": "giorno",
+        "day_other": "giorni",
+        "week_one": "settimana",
+        "week_other": "settimane",
+        "month_one": "mese",
+        "month_other": "mesi",
+        "quarter_one": "trimestre",
+        "quarter_other": "trimestri",
+        "year_one": "anno",
+        "year_other": "anni"
+      }
+    },
+    "summaryMetricsWidget": {
+      "fromSelectedPeriod": "Dal periodo selezionato",
+      "error": "Impossibile caricare i dati di riepilogo. Riprova.",
+      "viewTransactionsAria": "Visualizza transazioni",
+      "netBalance": "Saldo Netto",
+      "totalExpenses": "Spese Totali",
+      "totalIncome": "Entrate Totali"
+    },
+    "userMenu": {
+      "ariaLabel": "Menu utente",
+      "theme": "Tema",
+      "language": "Lingua",
+      "signingOut": "Disconnessione…",
+      "signOut": "Esci",
+      "themes": {
+        "light": "Chiaro",
+        "dark": "Scuro",
+        "system": "Sistema"
+      }
+    },
+    "userTable": {
+      "empty": "Nessun utente trovato. Crea il tuo primo utente per iniziare.",
+      "noActions": "Nessuna azione disponibile",
+      "headers": {
+        "email": "Email",
+        "name": "Nome",
+        "role": "Ruolo",
+        "status": "Stato",
+        "created": "Creato il",
+        "actions": "Azioni"
+      },
+      "status": {
+        "active": "Attivo",
+        "deactivated": "Disattivato"
+      },
+      "actions": {
+        "resetPassword": "Reimposta Password",
+        "deactivate": "Disattiva"
+      }
+    }
+  }
+}

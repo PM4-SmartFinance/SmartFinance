@@ -120,8 +120,8 @@ describe("TransactionsPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Migros")).toBeInTheDocument();
       expect(screen.getByText("Bus")).toBeInTheDocument();
-      expect(screen.getByText("−CHF 42.50")).toBeInTheDocument();
-      expect(screen.getByText("−CHF 15.00")).toBeInTheDocument();
+      expect(screen.getByText("CHF-42.50")).toBeInTheDocument();
+      expect(screen.getByText("CHF-15.00")).toBeInTheDocument();
     });
   });
 
@@ -350,8 +350,8 @@ describe("TransactionsPage", () => {
     renderTransactionsPage();
 
     await waitFor(() => {
-      expect(screen.getByText("−CHF 42.50")).toBeInTheDocument();
-      expect(screen.getByText("−CHF 15.00")).toBeInTheDocument();
+      expect(screen.getByText("CHF-42.50")).toBeInTheDocument();
+      expect(screen.getByText("CHF-15.00")).toBeInTheDocument();
     });
   });
 

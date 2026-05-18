@@ -1,0 +1,495 @@
+{
+  "common": {
+    "add": "Agiuntar",
+    "apply": "Applitgar",
+    "cancel": "Anullar",
+    "clear": "Stizzar",
+    "delete": "Stizzar",
+    "dismiss": "Serrar",
+    "edit": "Elavurar",
+    "name": "Num",
+    "next": "Enavant",
+    "previous": "Enavos",
+    "run": "Exequir",
+    "save": "Memorisar",
+    "search": "Tschertgar",
+    "startDate": "Data d'entschatta",
+    "endDate": "Data da fin",
+    "loading": "Chargiar…",
+    "backToDashboard": "Enavos al Dashboard",
+    "deleting": "Stizzar…",
+    "inactive": "Inactiv",
+    "unknown": "Nunenconuschent",
+    "category": "Categoria",
+    "saving": "Memorisar…",
+    "creating": "Crear…",
+    "saveChanges": "Memorisar las midadas",
+    "retry": "Emprovar anc ina giada",
+    "roles": {
+      "user": "Utilisader",
+      "admin": "Administratur"
+    },
+    "presets": {
+      "last7days": "Ils ultims 7 dis",
+      "last30days": "Ils ultims 30 dis",
+      "last3months": "Ils ultims 3 mais",
+      "lastYear": "L'onn passà",
+      "custom": "Persunalisà"
+    }
+  },
+  "errors": {
+    "generic": "In sbagl è capità. Per plaschair empruvai anc ina giada.",
+    "loadCategories": "Betg pussaivel da chargiar las categorias",
+    "invalidDateRange": "La data d'entschatta na dastga betg esser suenter la data da fin."
+  },
+  "categories": {
+    "title": "Categorias & Reglas",
+    "description": "Administrai vossas categorias e reglas da categorisaziun automatica en in lieu.",
+    "loading": "Chargiar las categorias e reglas…",
+    "loadingError": "Betg pussaivel da chargiar las categorias u las reglas. Retschertgai la pagina.",
+    "refreshHint": "Memorisà, ma i pudess esser ch'il dashboard sto vegnir actualisà manualmain.",
+    "personalTitle": "Vossas Categorias",
+    "personalDesc": "Categorias elavurablas che vus avais stgaffì.",
+    "globalTitle": "Categorias Globalas",
+    "globalDesc": "Standardisaziuns spartidas che stattan a disposiziun a tut ils utilisaders.",
+    "globalCategoryReadOnly": "Categoria globala (be per leger)",
+    "noCategories": "Naginas categorias en questa secziun.",
+    "createCategoryTitle": "Crear Categoria",
+    "newCategoryPlaceholder": "p.ex. Abunaments",
+    "applyRulesTitle": "Applitgar Reglas",
+    "applyRulesDescription": "La categorisaziun automatica elavura be transacziuns betg categorisadas. Recategorisar applitgescha puspè mintga regla (la pli auta prioritad l'emprim) a tut las transacziuns betg modifitgadas manualmain en l'interval tschernì, ed editescha categorisaziuns automaticas precedentas.",
+    "autoCategorizeBtn": "Categorisar automaticamain las nun-categorisadas",
+    "autoCategorizing": "Categorisar automaticamain…",
+    "recategorizeBtn": "Recategorisar l'interval da data…",
+    "recategorizing": "Recategorisar…",
+    "recategorizeFrom": "Da",
+    "recategorizeTo": "A",
+    "existingRules": "Reglas Existentas",
+    "noRules": "Anc naginas reglas.",
+    "matchCount_one": "{{count}} transacziun existenta correspundess.",
+    "matchCount_other": "{{count}} transacziuns existentas correspundessan.",
+    "autoCategorizeNone": "Naginas transacziuns betg categorisadas na correspundan ad ina regla.",
+    "autoCategorizeSuccess_one": "Categorisà {{count}} transacziun.",
+    "autoCategorizeSuccess_other": "Categorisà {{count}} transacziuns.",
+    "recategorizeNone": "Naginas transacziuns èn vegnidas midadas en l'interval tschernì.",
+    "recategorizeSuccess_one": "Recategorisà {{count}} transacziun.",
+    "recategorizeSuccess_other": "Recategorisà {{count}} transacziuns.",
+    "errors": {
+      "nameRequired": "Il num da la categoria è necessari.",
+      "createFailed": "Betg pussaivel da crear la categoria.",
+      "updateFailed": "Betg pussaivel d'actualisar la categoria.",
+      "deleteFailed": "Betg pussaivel da stizzar la categoria.",
+      "rulePatternRequired": "Il muster da la regla è necessari.",
+      "createRuleFailed": "Betg pussaivel da crear la regla.",
+      "previewFailed": "Betg pussaivel da visualisar las correspundenzas da la regla.",
+      "updateRuleFailed": "Betg pussaivel d'actualisar la regla.",
+      "deleteRuleFailed": "Betg pussaivel da stizzar la regla.",
+      "autoCategorizeFailed": "Betg pussaivel d'exequir la categorisaziun automatica.",
+      "recategorizeFailed": "Betg pussaivel da recategorisar l'interval tschernì."
+    },
+    "aria": {
+      "editCategory": "Elavurar la categoria {{name}}",
+      "saveCategory": "Memorisar la categoria {{name}}",
+      "deleteCategory": "Stizzar la categoria {{name}}"
+    }
+  },
+  "nav": {
+    "transactions": "Transacziuns",
+    "budgets": "Budgets",
+    "categories": "Categorias",
+    "settings": "Preferenzas"
+  },
+  "dashboard": {
+    "heading": "Dashboard",
+    "subtitle": "Guardai vossa survista finanziala d'in sulet egl",
+    "greeting": "Bainvegni enavos, {{email}}"
+  },
+  "login": {
+    "brand": "⬡ SmartFinance",
+    "title": "S'annunziar",
+    "description": "Endatai vossas credenzialas per acceder a voss conto",
+    "submit": "S'annunziar",
+    "submitting": "S'annunzia…",
+    "emailLabel": "E-mail",
+    "passwordLabel": "Pled-clav"
+  },
+  "404": {
+    "title": "404 - Pagina betg chattada",
+    "homepage": "Ir a la pagina d'entschatta"
+  },
+  "settings": {
+    "heading": "Preferenzas",
+    "description": "Administrai voss conto e las preferenzas da la plattafurma.",
+    "nav": {
+      "profile": "Profil",
+      "userManagement": "Administraziun d'utilisaders"
+    }
+  },
+  "settingsUsers": {
+    "heading": "Utilisaders",
+    "description": "Administrai ils utilisaders da la plattafurma ed ils access",
+    "createUserBtn": "Crear Utilisader",
+    "deleteDialog": {
+      "title": "Stizzar l'utilisader?",
+      "body": "Stizzar definitivamain <1>{{email}}</1>? Questa acziun na po betg vegnir annullada."
+    },
+    "errors": {
+      "deactivateFailed": "Betg pussaivel da deactivar l'utilisader",
+      "deleteFailed": "Betg pussaivel da stizzar l'utilisader",
+      "loadFailed": "Betg pussaivel da chargiar ils utilisaders. Empruvai anc ina giada."
+    }
+  },
+  "budgets": {
+    "heading": "Budgets",
+    "description": "Fixai limits da spendas per categoria e controllai il progress",
+    "loading": "Chargiar ils budgets…",
+    "createBtn": "Crear Budget",
+    "emptyState": "Anc nagins budgets. Creai in per entschaiver.",
+    "types": {
+      "daily": "Budget mintga di",
+      "monthly": "Budget mintga mais",
+      "yearly": "Budget mintga onn",
+      "specificMonth": "{{month}} (recurrent)"
+    },
+    "periods": {
+      "daily": "Di per di",
+      "monthly": "Mensil",
+      "yearly": "Annul",
+      "dateRange": "Interval da data"
+    },
+    "filters": {
+      "viewPeriod": "Mussar la perioda"
+    },
+    "deleteDialog": {
+      "title": "Stizzar il Budget?",
+      "body": "Eis Vus segir che Vus vulais stizzar il budget <1>{{type}}</1> per <3>{{name}}</3>? Questa acziun na po betg vegnir annullada."
+    },
+    "errors": {
+      "deleteFailed": "Betg pussaivel da stizzar il budget. Empruvai anc ina giada.",
+      "loadFailed": "Betg pussaivel da chargiar ils budgets"
+    }
+  },
+  "settingsProfile": {
+    "heading": "Profil",
+    "errors": {
+      "passwordsMismatch": "Ils novs pleds-clav na correspundan betg."
+    },
+    "account": {
+      "title": "Infurmaziuns dal conto",
+      "description": "Actualisai voss num da visualisaziun e vossa adressa d'e-mail.",
+      "loadFailed": "Betg pussaivel da chargiar voss profil. Retschertgai la pagina.",
+      "displayNameLabel": "Num da visualisaziun",
+      "displayNamePlaceholder": "Voss num",
+      "emailLabel": "Adressa d'e-mail",
+      "success": "Profil actualisà cun success.",
+      "saving": "Memorisar…",
+      "saveBtn": "Memorisar las midadas"
+    },
+    "password": {
+      "title": "Midar il pled-clav",
+      "description": "Endatai voss pled-clav actual avant che Vus fixais in nov. Suenter la midada vegnis Vus deconnectà automaticamain.",
+      "currentLabel": "Pled-clav actual",
+      "newLabel": "Nov pled-clav",
+      "confirmLabel": "Confirmar il nov pled-clav",
+      "success": "Pled-clav midad. Per plaschair s'annunziai da nov.",
+      "changing": "Midar…",
+      "changeBtn": "Midar il pled-clav"
+    }
+  },
+  "transactions": {
+    "heading": "Transacziuns",
+    "emptyState": "Naginas transacziuns chattadas. Empruvai d'adattar ils filters.",
+    "filters": {
+      "heading": "Filters",
+      "category": "Categoria",
+      "allCategories": "Tut las Categorias",
+      "searchPlaceholder": "Tschertgar per num dal vendider..."
+    },
+    "table": {
+      "date": "Data",
+      "description": "Descripziun",
+      "category": "Categoria",
+      "amount": "Suma"
+    },
+    "pagination": {
+      "info": "Pagina {{page}} da {{totalPages}} ({{totalCount}} en tut)"
+    },
+    "errors": {
+      "loadFailed": "Betg pussaivel da chargiar las transacziuns. Empruvai pli tard."
+    }
+  },
+  "components": {
+    "budgetWidget": {
+      "error": "Betg pussaivel da chargiar las datas dal budget. Empruvai anc ina giada.",
+      "title": "Status dal Budget",
+      "empty": "Nagins budgets activs. Cliccai per crear in.",
+      "statusSummary": "{{onTrack}} sin buna via, {{approaching}} datiers dal limit, {{exceeded}} surpassads",
+      "activeCount_one": "{{count}} budget activ",
+      "activeCount_other": "{{count}} budgets activs",
+      "ariaView": "Mussar ils budgets"
+    },
+    "budgetCategoryGroup": {
+      "basedOn": "Basà sin il budget {{type}}",
+      "noBudget": "Nagin budget fixà",
+      "of": "da",
+      "overBudget": "sur il budget",
+      "remaining": "restant",
+      "spent": "dapendì",
+      "editAria": "Elavurar {{type}}",
+      "deleteAria": "Stizzar {{type}}",
+      "over": "sur",
+      "left": "restant"
+    },
+    "budgetProgress": {
+      "title": "Progress dal Budget",
+      "viewAll": "Mussar tut ils budgets",
+      "error": "Betg pussaivel da chargiar il progress dal budget. Empruvai anc ina giada.",
+      "loading": "Chargiar il progress dal budget...",
+      "parseError": "Intginas valurs dal budget na pon betg vegnir evaluadas. Actualisai la pagina — sche il problem persista, contactai il support.",
+      "empty": "Anc naginas summas da budget persequitadas. Creai budgets ed importai transacziuns per emplenir quests grafics.",
+      "excludedWarning": "Intginas valurs dal budget n'han betg pudì vegnir evaluadas e n'èn betg cumpigliadas en las summas sutvart.",
+      "chart": {
+        "spent": "Dapendì",
+        "remaining": "Restant",
+        "over": "Sur",
+        "noSpending": "Naginas expensas da la categoria"
+      },
+      "noCategorySpending": "Anc naginas expensas da la categoria.",
+      "spent": "Dapendì",
+      "trackedTotal": "Total persequità",
+      "overBudget": "Sur il budget"
+    },
+    "categoryBreakdownChart": {
+      "title": "Spendas per Categoria",
+      "error": "Betg pussaivel da chargiar las datas da repartiziun per categoria. Empruvai anc ina giada.",
+      "loading": "Chargiar il grafic…",
+      "empty": "Anc nagina repartiziun da categorias. Importai transacziuns per vesair las spendas per categoria.",
+      "viewCategoriesAria": "Mussar las categorias",
+      "tooltipSpent": "Dapendì"
+    },
+    "createEditBudgetDialog": {
+      "titleCreate": "Crear Budget",
+      "titleEdit": "Elavurar Budget",
+      "selectCategory": "Tschernir ina categoria…",
+      "budgetType": "Tip da Budget",
+      "general": "General",
+      "specific": "Specific",
+      "period": "Perioda",
+      "monthOptional": "Mais (opziunal)",
+      "anyMonth": "Mintga mais",
+      "yearOptional": "Onn (opziunal)",
+      "anyYear": "Mintga onn",
+      "spendingLimit": "Limit da Spendas",
+      "limitPlaceholder": "Endatai l'import dal limit",
+      "active": "Activ",
+      "createBtn": "Crear Budget",
+      "errors": {
+        "invalidLimit": "Per plaschair endatai in import da limit valid",
+        "missingCategory": "Per plaschair tscherni ina categoria",
+        "missingMonthYear": "Per plaschair tscherni almain in mais ni in onn per budgets specifics",
+        "updateFailed": "Betg pussaivel d'actualisar il budget",
+        "createFailed": "Betg pussaivel da crear il budget"
+      }
+    },
+    "createUserDialog": {
+      "title": "Crear Nov Utilisader",
+      "emailLabel": "E-mail",
+      "passwordLabel": "Pled-clav",
+      "displayNameLabel": "Num da Visualisaziun",
+      "roleLabel": "Rolla",
+      "createBtn": "Crear Utilisader",
+      "placeholders": {
+        "email": "utilisader@exempel.com",
+        "password": "Almain 8 caracters",
+        "displayName": "Gion Casanova (opziunal)"
+      },
+      "errors": {
+        "emailRequired": "L'e-mail è necessari",
+        "passwordRequired": "Il pled-clav è necessari",
+        "passwordLength": "Il pled-clav sto avair almain 8 caracters",
+        "emailExists": "L'e-mail exista gia",
+        "createFailed": "Betg pussaivel da crear l'utilisader"
+      }
+    },
+    "csvImportCard": {
+      "title": "Importar Transacziuns",
+      "dropZoneIdle": "Laschai crudar qua in datoteca CSV, ni cliccai per percurrer",
+      "dropZoneActive": "Lassar ir per tschernir la datoteca",
+      "dropZoneSelected": "Tschernì: {{name}}",
+      "dropZoneAria": "Zona da depona da datotecas",
+      "dropZoneSubtext": "Sulet datotecas .csv · max 10 MB",
+      "formatLabel": "Format da banca",
+      "accountLabel": "Conto",
+      "uploadBtn": "Chargiar si",
+      "uploading": "Chargiar si…",
+      "resultSuccess_one": "Importà {{count}} transacziun cun success.",
+      "resultSuccess_other": "Importà {{count}} transacziuns cun success.",
+      "resultZero": "Chattà naginas transacziuns novas (tut las retschas pudessan esser duplicats).",
+      "resetBtn": "Importar ina autra datoteca",
+      "refreshHint": "Importà, ma il dashboard sto probabelmaint vegnir actualisà manualmain.",
+      "errors": {
+        "fileTooLarge": "La datoteca surpassa il limit da grondezza da 10 MB.",
+        "noAccounts": "Nagins contos chattads. Creai l'emprim in conto.",
+        "accountsError": "Betg pussaivel da chargiar ils contos. Empruvai anc ina giada.",
+        "invalidType": "Sulet datotecas .csv vegnan acceptadas.",
+        "uploadFailed": "La chariga n'è betg reussida."
+      }
+    },
+    "editUserDialog": {
+      "title": "Elavurar l'Utilisader: {{email}}",
+      "roleLabel": "Rolla",
+      "activeLabel": "Activ",
+      "warnings": {
+        "cannotChangeAdmin": "N'è betg pussaivel da midar la rolla d'auters utilisaders administraturs",
+        "cannotDemoteSelf": "Vus na pudais betg revocar a Vus sez il status d'administratur"
+      },
+      "errors": {
+        "noChanges": "Naginas midadas per memorisar",
+        "updateFailed": "Betg pussaivel d'actualisar l'utilisader"
+      }
+    },
+    "newRuleForm": {
+      "title": "Nova Regla",
+      "ariaPattern": "Nov muster da regla per {{category}}",
+      "patternPlaceholder": "Muster",
+      "ariaMatchType": "Nov tip da correspundenza da regla per {{category}}",
+      "matchTypeContains": "cuntegna",
+      "matchTypeExact": "exact",
+      "ariaPriority": "Nova prioritad da regla per {{category}}",
+      "priorityTitle": "Reglas cun ina prioritad pli auta vegnan evaluadas sco emprimas",
+      "addRuleBtn": "Agiuntar Regla",
+      "conflictUnavailable": "La controlla da conflicts n'è betg disponibla.",
+      "overlapWarning_one": "Il muster encrucha cun {{count}} regla existenta.",
+      "overlapWarning_other": "Il muster encrucha cun {{count}} reglas existentas.",
+      "overlapSubtext": "Reglas cun pli auta prioritad prevalan sche omaduas correspundan. Vus pudais tuttavia memorisar.",
+      "priorityLabel": "prioritad {{priority}}"
+    },
+    "recentTransactionsWidget": {
+      "title": "Transacziuns Recentas",
+      "navLabel": "Mussar las transacziuns",
+      "empty": "Anc naginas transacziuns.",
+      "error": "Betg pussaivel da chargiar las transacziuns recentas.",
+      "merchant": "Vendider"
+    },
+    "resetPasswordDialog": {
+      "title": "Restituir il Pled-clav",
+      "description": "Endatai in nov pled-clav per {{email}}. El sto duvrar quest nov pled-clav a la proxima annunzia.",
+      "newPasswordLabel": "Nov pled-clav",
+      "confirmPasswordLabel": "Confirmar il nov pled-clav",
+      "successMessage": "Pled-clav restituì cun success.",
+      "resettingBtn": "Restituir…",
+      "resetBtn": "Restituir il Pled-clav",
+      "errors": {
+        "passwordMismatch": "Ils pleds-clav na correspundan betg.",
+        "resetFailed": "Betg pussaivel da restituir il pled-clav."
+      }
+    },
+    "ruleRow": {
+      "ariaPattern": "Muster da regla {{id}}",
+      "ariaMatchType": "Tip da correspundenza da regla {{id}}",
+      "matchTypeContains": "cuntegna",
+      "matchTypeExact": "exact",
+      "ariaPriority": "Prioritad da regla {{id}}",
+      "priorityTitle": "Reglas cun ina prioritad pli auta vegnan evaluadas sco emprimas",
+      "ariaSave": "Memorisar la regla {{id}}",
+      "conflictUnavailable": "La controlla da conflicts n'è betg disponibla.",
+      "overlapWarning_one": "Il muster encrucha cun {{count}} autra regla.",
+      "overlapWarning_other": "Il muster encrucha cun {{count}} autras reglas.",
+      "priorityLabel": "prioritad {{priority}}",
+      "priorityDisplay": "Prioritad: {{priority}}",
+      "ariaEdit": "Elavurar la regla {{id}}",
+      "ariaDelete": "Stizzar la regla {{id}}"
+    },
+    "spendingTrendChart": {
+      "title": "Entradas vs Spendas Mensilas",
+      "viewTransactions": "Mussar las transacziuns →",
+      "income": "Entradas",
+      "expenses": "Spendas",
+      "singleBucketHelp": "Adattai l'interval da data u tscherni ina granularitad pli fina per vesair ina tendenza.",
+      "footerSummary": "Mussa {{count}} {{granularity}} d'entradas e spendas.",
+      "aria": {
+        "empty": "Grafic dad entradas e spendas, naginas datas.",
+        "describe": "{{date}}: entradas {{income}}, spendas {{expenses}}",
+        "short": "Grafic dad entradas e spendas. {{details}}.",
+        "long": "Grafic dad entradas e spendas cun {{total}} periodas. {{head}}. … {{skipped}} periodas omessas. {{tail}}."
+      },
+      "states": {
+        "error": "Betg pussaivel da chargiar las datas dal svilup da las spendas. Empruvai anc ina giada.",
+        "loading": "Chargiar il grafic…",
+        "empty": "Naginas datas da spendas per la perioda tschernida. Adattai l'interval da data u importai transacziuns."
+      },
+      "controls": {
+        "bucket": "Perioda",
+        "granularityAria": "Granularitad",
+        "labels": "Etichettas",
+        "labelsAria": "Dumber d'etichettas per axa",
+        "chartStyleAria": "Stil dal grafic",
+        "line": "Lingia",
+        "bar": "Bara",
+        "toggleSeriesAria": "Activar/Deactivar retschas dal grafic",
+        "options": {
+          "auto": "Auto",
+          "day": "Di",
+          "week": "Emna",
+          "month": "Mais",
+          "quarter": "Quartal",
+          "year": "Onn"
+        }
+      },
+      "granularities": {
+        "auto_one": "auto",
+        "auto_other": "auto",
+        "day_one": "di",
+        "day_other": "dis",
+        "week_one": "emna",
+        "week_other": "emnas",
+        "month_one": "mais",
+        "month_other": "mais",
+        "quarter_one": "quartal",
+        "quarter_other": "quartals",
+        "year_one": "onn",
+        "year_other": "onns"
+      }
+    },
+    "summaryMetricsWidget": {
+      "fromSelectedPeriod": "Da la perioda tschernida",
+      "error": "Betg pussaivel da chargiar las datas da resumaziun. Empruvai anc ina giada.",
+      "viewTransactionsAria": "Mussar las transacziuns",
+      "netBalance": "Salda Netta",
+      "totalExpenses": "Total Spendas",
+      "totalIncome": "Total Entradas"
+    },
+    "userMenu": {
+      "ariaLabel": "Menu da l'utilisader",
+      "theme": "Tema",
+      "language": "Lingua",
+      "signingOut": "Sa deconnectar…",
+      "signOut": "Sa deconnectar",
+      "themes": {
+        "light": "Cler",
+        "dark": "Stgir",
+        "system": "Sistem"
+      }
+    },
+    "userTable": {
+      "empty": "Nagins utilisaders chattads. Creai voss emprim utilisader per entschaiver.",
+      "noActions": "Naginas acziuns disponiblas",
+      "headers": {
+        "email": "E-mail",
+        "name": "Num",
+        "role": "Rolla",
+        "status": "Status",
+        "created": "Creà",
+        "actions": "Acziuns"
+      },
+      "status": {
+        "active": "Activ",
+        "deactivated": "Deactivà"
+      },
+      "actions": {
+        "resetPassword": "Restituir Pled-clav",
+        "deactivate": "Deactivar"
+      }
+    }
+  }
+}
