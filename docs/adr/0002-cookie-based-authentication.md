@@ -10,18 +10,20 @@ Authentication can be implemented with stateless JWTs or server-managed sessions
 
 Decision
 
-Use httpOnly cookie-based server sessions (secure, sameSite where applicable) and store minimal session user data server-side via signed cookies. Store password version stamps in the session to allow forced re-login on password rotation. Passwords are hashed with Argon2.
+Use httpOnly, encrypted, same-site cookies as the session transport via `@fastify/secure-session`. Session payload (user id, role, password-version stamp) lives entirely in the encrypted cookie — no server-side session store. Forced re-login on password rotation is achieved by comparing the cookie's password-version stamp against the current stamp on `dimUser` inside the RBAC middleware on every request. Passwords are hashed with Argon2.
 
 Rationale
 
-- httpOnly cookies prevent JavaScript from reading tokens, mitigating XSS token theft.
-- Server sessions make immediate revocation (logout, account deactivation, password rotation) straightforward (see `backend/src/middleware/rbac.ts`).
-- Simpler for the single-tenant deployment model and integrates well with Fastify's `secure-session` plugin.
+- httpOnly cookies prevent JavaScript from reading the session, mitigating XSS token theft.
+- Encrypted-cookie sessions keep the backend stateless — no session table, no Redis — which fits the single-tenant self-hosted deployment model.
+- Immediate revocation (logout, account deactivation, password rotation) works by bumping the password-version stamp on `dimUser`; the next request from a stale cookie fails the version check in `backend/src/middleware/rbac.ts` and is rejected.
+- Integrates cleanly with Fastify's `@fastify/secure-session` plugin and avoids JWT pitfalls (revocation, key rotation, library footprint).
 
 Consequences
 
-- Requires `credentials: include` from the frontend API client and cookie configuration on deploy.
-- Slightly more server state (session data) but we keep sessions small and stateless in terms of server storage (signed cookies). See `backend/src/services/auth.service.ts` for password-version logic.
+- Requires `credentials: "include"` from the frontend API client (see `frontend/src/lib/api.ts`) and correct cookie attributes (`Secure`, `SameSite`, domain) on deploy.
+- Session size is bounded by cookie limits — keep the payload minimal.
+- Revocation latency is one request: clients hold a stale cookie until they hit the API and get a 401. Acceptable for this deployment model. See `backend/src/services/auth.service.ts` for password-version logic.
 
 Related code
 
@@ -30,4 +32,4 @@ Related code
 
 Related ADRs
 
-- 0006-api-versioning-strategy.md
+- 0003-repository-pattern-with-transactions.md

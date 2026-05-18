@@ -153,4 +153,4 @@ The README stays intentionally short. The wiki is the source of truth for archit
 - [Operations](https://github.com/PM4-SmartFinance/SmartFinance/wiki/12.-Operation-and-Support)
 - [Decision log](https://github.com/PM4-SmartFinance/SmartFinance/wiki/13.-Decision-Log)
 - [Contributing guide](CONTRIBUTING.md)
- - [Architecture Decision Records (ADRs)](docs/adr/README.md)
+- [Architecture Decision Records (ADRs)](docs/adr/README.md)

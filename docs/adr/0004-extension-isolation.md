@@ -25,7 +25,7 @@ Consequences
 
 Related code
 
-- Extension notes: [SmartFinance/CLAUDE.md](../../CLAUDE.md#extension-architecture)
+- Extension notes: [SmartFinance/CLAUDE.md](../../CLAUDE.md#key-design-decisions)
 - Planned extension endpoint pattern: `GET /modules/:moduleName/...` (see CLAUDE.md)
 
 Related ADRs
