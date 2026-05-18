@@ -57,7 +57,9 @@ function keyExists(key: string): boolean {
 describe("i18n callsite coverage", () => {
   it('every t("…") static key references a key that exists in en/translation.json', () => {
     const missing: string[] = [];
+    let scanned = 0;
     for (const file of walk(SRC)) {
+      scanned++;
       const content = readFileSync(file, "utf8");
       let match: RegExpExecArray | null;
       while ((match = KEY_RE.exec(content))) {
@@ -68,5 +70,20 @@ describe("i18n callsite coverage", () => {
       }
     }
     expect(missing).toEqual([]);
+    // Fail loudly if the walker silently stops finding source files.
+    expect(scanned).toBeGreaterThan(20);
+  });
+
+  // Dynamic callsites (template literals with ${…}) bypass the regex above.
+  // Enumerate the known dynamic key spaces here so a renamed JSON key or a
+  // new enum variant without a matching translation is caught at PR time.
+  it("every budgets.periods.<key> referenced by BUDGET_PERIOD_KEY exists in en", () => {
+    // Mirror of BUDGET_PERIOD_KEY in BudgetProgressCard.tsx — keep in sync.
+    // Importing the component map would require pulling React into this test,
+    // so we duplicate the value set instead.
+    const periods = ["daily", "monthly", "yearly"] as const;
+    for (const p of periods) {
+      expect(enKeys.has(`budgets.periods.${p}`)).toBe(true);
+    }
   });
 });

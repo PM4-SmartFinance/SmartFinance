@@ -25,6 +25,10 @@
     "creating": "Création…",
     "saveChanges": "Enregistrer les modifications",
     "retry": "Réessayer",
+    "roles": {
+      "user": "Utilisateur",
+      "admin": "Administrateur"
+    },
     "presets": {
       "last7days": "Les 7 derniers jours",
       "last30days": "Les 30 derniers jours",
@@ -127,8 +131,7 @@
     "createUserBtn": "Créer un Utilisateur",
     "deleteDialog": {
       "title": "Supprimer l'Utilisateur ?",
-      "descStart": "Supprimer définitivement",
-      "descEnd": "? Cette action est irréversible."
+      "body": "Supprimer définitivement <1>{{email}}</1> ? Cette action est irréversible."
     },
     "errors": {
       "deactivateFailed": "Échec de la désactivation de l'utilisateur",
@@ -159,9 +162,7 @@
     },
     "deleteDialog": {
       "title": "Supprimer le Budget ?",
-      "descStart": "Êtes-vous sûr de vouloir supprimer le budget ",
-      "descMiddle": " pour ",
-      "descEnd": " ? Cette action est irréversible."
+      "body": "Êtes-vous sûr de vouloir supprimer le budget <1>{{type}}</1> pour <3>{{name}}</3> ? Cette action est irréversible."
     },
     "errors": {
       "deleteFailed": "Échec de la suppression du budget. Veuillez réessayer.",
@@ -301,10 +302,6 @@
         "email": "utilisateur@exemple.com",
         "password": "Minimum 8 caractères",
         "displayName": "Jean Dupont (optionnel)"
-      },
-      "roles": {
-        "user": "Utilisateur",
-        "admin": "Administrateur"
       },
       "errors": {
         "emailRequired": "L'e-mail est requis",

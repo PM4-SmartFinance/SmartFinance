@@ -11,7 +11,7 @@ import { ResetPasswordDialog } from "../components/ResetPasswordDialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 
 type SortColumn = "email" | "role" | "createdAt";
 
@@ -170,11 +170,11 @@ export function SettingsUsers() {
           isOpen={isDeleteDialogOpen}
           title={t("settingsUsers.deleteDialog.title", "Delete User?")}
           description={
-            <>
-              {t("settingsUsers.deleteDialog.descStart", "Permanently delete")}{" "}
-              <span className="font-medium">{selectedUser.email}</span>
-              {t("settingsUsers.deleteDialog.descEnd", "? This action cannot be undone.")}
-            </>
+            <Trans
+              i18nKey="settingsUsers.deleteDialog.body"
+              values={{ email: selectedUser.email }}
+              components={{ 1: <span className="font-medium" /> }}
+            />
           }
           error={deleteErrorMessage}
           isDeleting={deleteMutation.isPending}

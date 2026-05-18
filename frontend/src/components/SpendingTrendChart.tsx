@@ -15,9 +15,8 @@ import { useDashboardTrends, type TrendDataPoint } from "../lib/queries/dashboar
 import { useAppStore } from "../store/appStore";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { useTranslation } from "react-i18next";
-import { formatDate, formatAmount, getSwissLocale } from "@/lib/format";
+import { formatDate, formatAmount, getSwissLocale, FALLBACK } from "@/lib/format";
 import type { TFunction } from "i18next";
-import i18n from "@/lib/i18n";
 
 const INCOME_COLOR = "hsl(142 71% 45%)";
 const EXPENSES_COLOR = "hsl(0 72% 51%)";
@@ -60,9 +59,7 @@ export function bucketize(
   for (const p of points) {
     const d = new Date(`${p.date}T00:00:00Z`);
     if (isNaN(d.getTime())) {
-      if (import.meta.env.DEV) {
-        console.error(`bucketize: skipping point with unparseable date "${p.date}"`);
-      }
+      console.error(`bucketize: skipping point with unparseable date "${p.date}"`);
       continue;
     }
 
@@ -166,6 +163,7 @@ export function buildChartAriaLabel(
   points: TrendDataPoint[],
   t: TFunction<"translation", undefined>,
   formatter: (date: string) => string = formatDate,
+  lng?: string,
 ): string {
   if (points.length === 0)
     return t("components.spendingTrendChart.aria.empty", "Income and expenses chart, no data.");
@@ -176,8 +174,8 @@ export function buildChartAriaLabel(
       "{{date}}: income {{income}}, expenses {{expenses}}",
       {
         date: formatter(p.date),
-        income: formatAmount(p.income, i18n.resolvedLanguage),
-        expenses: formatAmount(p.expenses, i18n.resolvedLanguage),
+        income: formatAmount(p.income, lng),
+        expenses: formatAmount(p.expenses, lng),
       },
     );
 
@@ -298,9 +296,9 @@ export function SpendingTrendChart() {
   const [chartStyle, setChartStyle] = useState<ChartStyle>("line");
   const [labelCount, setLabelCount] = useState<LabelCount>(15);
   const [granularity, setGranularity] = useState<Granularity>("auto");
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
-  if (import.meta.env.DEV && data !== undefined && !Array.isArray(data)) {
+  if (data !== undefined && !Array.isArray(data)) {
     console.error("SpendingTrendChart: expected array from useDashboardTrends, got", typeof data);
   }
   const chartData = Array.isArray(data) ? data : [];
@@ -308,9 +306,7 @@ export function SpendingTrendChart() {
   const transactionsHref = `/transactions?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
 
   if (error) {
-    if (import.meta.env.DEV) {
-      console.error("SpendingTrendChart: failed to load trends", error);
-    }
+    console.error("SpendingTrendChart: failed to load trends", error);
     return (
       <div
         role="alert"
@@ -401,14 +397,12 @@ export function SpendingTrendChart() {
               <dt className="text-sm text-muted-foreground">
                 {t("components.spendingTrendChart.income", "Income")}
               </dt>
-              <dd className="text-sm font-medium tabular-nums">
-                {formatAmount(only.income, i18n.resolvedLanguage)}
-              </dd>
+              <dd className="text-sm font-medium tabular-nums">{formatAmount(only.income, lng)}</dd>
               <dt className="text-sm text-muted-foreground">
                 {t("components.spendingTrendChart.expenses", "Expenses")}
               </dt>
               <dd className="text-sm font-medium tabular-nums">
-                {formatAmount(only.expenses, i18n.resolvedLanguage)}
+                {formatAmount(only.expenses, lng)}
               </dd>
             </dl>
             <p className="mt-2 text-xs text-muted-foreground">
@@ -531,7 +525,7 @@ export function SpendingTrendChart() {
       <CardContent>
         <figure
           role="img"
-          aria-label={buildChartAriaLabel(buckets, t, xAxisFormatter)}
+          aria-label={buildChartAriaLabel(buckets, t, xAxisFormatter, lng)}
           className="h-80 w-full"
         >
           <ResponsiveContainer width="100%" height="100%">
@@ -573,7 +567,7 @@ export function SpendingTrendChart() {
                   labelStyle={{ color: "var(--foreground)" }}
                   formatter={(value, name) => {
                     const num = Number(value);
-                    return [isFinite(num) ? formatAmount(num, i18n.resolvedLanguage) : "—", name];
+                    return [isFinite(num) ? formatAmount(num, lng) : FALLBACK, name];
                   }}
                   cursor={{ stroke: "hsl(0 0% 50% / 0.4)" }}
                 />
@@ -638,7 +632,7 @@ export function SpendingTrendChart() {
                   labelStyle={{ color: "var(--foreground)" }}
                   formatter={(value, name) => {
                     const num = Number(value);
-                    return [isFinite(num) ? formatAmount(num, i18n.resolvedLanguage) : "—", name];
+                    return [isFinite(num) ? formatAmount(num, lng) : FALLBACK, name];
                   }}
                   cursor={{ fill: "hsl(0 0% 50% / 0.1)" }}
                 />

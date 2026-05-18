@@ -81,7 +81,7 @@ export function BudgetWidget() {
               )}
             </p>
             <p className="text-xs text-muted-foreground">
-              {t("components.budgetWidget.activeCount", "{{count}} active budget", {
+              {t("components.budgetWidget.activeCount", "{{count}} active budgets", {
                 count: activeBudgets.length,
               })}
             </p>

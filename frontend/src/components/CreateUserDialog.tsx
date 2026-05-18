@@ -178,8 +178,8 @@ export function CreateUserDialog({ isOpen, onClose }: CreateUserDialogProps) {
             }
             disabled={isSubmitting}
           >
-            <option value="USER">{t("components.createUserDialog.roles.user", "User")}</option>
-            <option value="ADMIN">{t("components.createUserDialog.roles.admin", "Admin")}</option>
+            <option value="USER">{t("common.roles.user", "User")}</option>
+            <option value="ADMIN">{t("common.roles.admin", "Admin")}</option>
           </NativeSelect>
         </div>
 

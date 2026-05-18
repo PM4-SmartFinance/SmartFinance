@@ -25,6 +25,10 @@
     "creating": "Creazione…",
     "saveChanges": "Salva le modifiche",
     "retry": "Riprova",
+    "roles": {
+      "user": "Utente",
+      "admin": "Amministratore"
+    },
     "presets": {
       "last7days": "Ultimi 7 giorni",
       "last30days": "Ultimi 30 giorni",
@@ -127,8 +131,7 @@
     "createUserBtn": "Crea Utente",
     "deleteDialog": {
       "title": "Eliminare Utente?",
-      "descStart": "Eliminare definitivamente",
-      "descEnd": "? Questa azione non può essere annullata."
+      "body": "Eliminare definitivamente <1>{{email}}</1>? Questa azione non può essere annullata."
     },
     "errors": {
       "deactivateFailed": "Impossibile disattivare l'utente",
@@ -159,9 +162,7 @@
     },
     "deleteDialog": {
       "title": "Eliminare Budget?",
-      "descStart": "Sei sicuro di voler eliminare il budget ",
-      "descMiddle": " per ",
-      "descEnd": "? Questa azione non può essere annullata."
+      "body": "Sei sicuro di voler eliminare il budget <1>{{type}}</1> per <3>{{name}}</3>? Questa azione non può essere annullata."
     },
     "errors": {
       "deleteFailed": "Impossibile eliminare il budget. Riprova.",
@@ -301,10 +302,6 @@
         "email": "utente@esempio.com",
         "password": "Minimo 8 caratteri",
         "displayName": "Mario Rossi (opzionale)"
-      },
-      "roles": {
-        "user": "Utente",
-        "admin": "Amministratore"
       },
       "errors": {
         "emailRequired": "L'email è obbligatoria",

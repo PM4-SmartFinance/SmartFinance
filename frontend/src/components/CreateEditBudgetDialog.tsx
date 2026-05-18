@@ -11,7 +11,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import i18n from "@/lib/i18n";
+import { getSwissLocale } from "@/lib/format";
 
 interface CreateEditBudgetDialogProps {
   isOpen: boolean;
@@ -72,7 +72,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
   const [formState, setFormState] = useState<FormState>(initialFormState);
   const [prevInitialFormState, setPrevInitialFormState] = useState(initialFormState);
   const [isDirty, setIsDirty] = useState(false);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   if (prevInitialFormState !== initialFormState) {
     setPrevInitialFormState(initialFormState);
@@ -326,7 +326,7 @@ export function CreateEditBudgetDialog({ isOpen, budget, onClose }: CreateEditBu
                 </option>
                 {months.map((m) => {
                   const monthName = new Date(currentYear, m - 1).toLocaleDateString(
-                    i18n.resolvedLanguage,
+                    getSwissLocale(i18n.resolvedLanguage),
                     {
                       month: "long",
                     },

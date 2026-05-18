@@ -135,8 +135,8 @@ export function SettingsProfile() {
                 {profile?.role && (
                   <Badge variant="secondary" className="capitalize">
                     {profile.role === "ADMIN"
-                      ? t("components.createUserDialog.roles.admin", "Admin")
-                      : t("components.createUserDialog.roles.user", "User")}
+                      ? t("common.roles.admin", "Admin")
+                      : t("common.roles.user", "User")}
                   </Badge>
                 )}
               </div>

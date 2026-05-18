@@ -15,7 +15,6 @@ import { UserMenu } from "@/components/UserMenu";
 import { SortableColumnHeader } from "@/components/SortableColumnHeader";
 import { AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import i18n from "@/lib/i18n";
 
 export function TransactionsPage() {
   const page = useTransactionsStore((s) => s.page);
@@ -57,7 +56,7 @@ export function TransactionsPage() {
     search: search || undefined,
   });
 
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const transactions = transactionsData?.data ?? [];
   const meta = transactionsData?.meta;

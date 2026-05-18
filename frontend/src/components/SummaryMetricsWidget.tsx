@@ -3,7 +3,6 @@ import { useDashboardSummary } from "../lib/queries/dashboard";
 import { formatAmount } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { useTranslation } from "react-i18next";
-import i18n from "@/lib/i18n";
 
 // SummaryMetricsWidget is a Link wrapping a 3-up grid of MetricCards.
 // Unlike other dashboard tiles (Card-shaped), this one is a grid layout, so
@@ -42,7 +41,7 @@ function MetricCard({
 
 export function SummaryMetricsWidget() {
   const { data, isLoading, error } = useDashboardSummary();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   if (error) {
     return (

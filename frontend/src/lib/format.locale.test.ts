@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import i18n from "./i18n";
 import { formatAmount, formatDate, formatDateId, getSwissLocale } from "./format";
 
@@ -25,6 +25,13 @@ describe("Swiss Locale Formatting", () => {
       expect(formatAmount(1234.56, "de")).toMatch(/['’]234/);
     });
 
+    it("uses a NBSP-class thousands separator for French Swiss formatting", () => {
+      // fr-CH uses a non-breaking space (U+00A0) or narrow NBSP (U+202F).
+      // Accept either to stay tolerant of ICU locale-data versioning.
+      const out = formatAmount(1234.56, "fr");
+      expect(out).toMatch(/[\u00a0\u202f]234/);
+    });
+
     it("produces distinct outputs across locales", () => {
       const outputs = locales.map((lng) => formatAmount(testAmount, lng));
       // Not all locales need differ, but at least one pair must — guards against
@@ -45,6 +52,22 @@ describe("Swiss Locale Formatting", () => {
         dateStyle: "medium",
       }).format(testDate);
       expect(result).toBe(expected);
+    });
+
+    it("uses a numeric date format for de-CH (dd.mm.yyyy)", () => {
+      // de-CH dateStyle:medium is fully numeric (e.g. "14.05.2026"), not
+      // month-name. Asserting the numeric shape catches a silent collapse to
+      // a non-Swiss locale (where the same call would emit "May 14, 2026").
+      expect(formatDate(testDate, "de")).toMatch(/^\d{1,2}\.\d{2}\.\d{4}$/);
+    });
+
+    it("uses the Italian month abbreviation 'mag' for May in it-CH", () => {
+      // ICU emits "mag" (lowercase, no trailing period in medium style).
+      expect(formatDate(testDate, "it").toLowerCase()).toContain("mag");
+    });
+
+    it("uses the French month abbreviation 'mai' for May in fr-CH", () => {
+      expect(formatDate(testDate, "fr").toLowerCase()).toContain("mai");
     });
 
     it("returns FALLBACK em-dash for invalid input", () => {
@@ -93,21 +116,39 @@ describe("Swiss Locale Formatting", () => {
   });
 
   describe("plural rules", () => {
-    it("renders the _one variant when count is 1", () => {
+    afterEach(async () => {
+      if (i18n.resolvedLanguage !== "en") {
+        await i18n.changeLanguage("en");
+      }
+    });
+
+    it("renders the _one variant when count is 1 (en)", () => {
       const out = i18n.t("components.csvImportCard.resultSuccess", { count: 1 });
       expect(out).toContain("1");
-      // English: "1 transaction imported successfully." (singular)
       expect(out).toMatch(/\b1 transaction\b/);
     });
 
-    it("renders the _other variant when count is 0", () => {
+    it("renders the _other variant when count is 0 (en)", () => {
       const out = i18n.t("components.csvImportCard.resultSuccess", { count: 0 });
       expect(out).toMatch(/\b0 transactions\b/);
     });
 
-    it("renders the _other variant when count is 2", () => {
+    it("renders the _other variant when count is 2 (en)", () => {
       const out = i18n.t("components.csvImportCard.resultSuccess", { count: 2 });
       expect(out).toMatch(/\b2 transactions\b/);
+    });
+
+    it("renders the _one variant when count is 0 in French (CLDR 0 → one)", async () => {
+      await i18n.changeLanguage("fr");
+      const out = i18n.t("components.csvImportCard.resultSuccess", { count: 0 });
+      // French JSON: "{{count}} transaction importée avec succès." (singular form)
+      expect(out).toMatch(/\b0 transaction importée\b/);
+    });
+
+    it("renders the _other variant when count is 2 in French", async () => {
+      await i18n.changeLanguage("fr");
+      const out = i18n.t("components.csvImportCard.resultSuccess", { count: 2 });
+      expect(out).toMatch(/\b2 transactions importées\b/);
     });
   });
 });

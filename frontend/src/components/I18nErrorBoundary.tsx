@@ -27,17 +27,27 @@ export class I18nErrorBoundary extends Component<Props, State> {
           role="alert"
           className="mx-auto mt-12 max-w-md rounded border border-destructive bg-destructive/10 p-4 text-sm text-destructive"
         >
+          {/* English-only by design: translations themselves failed to load.
+              Tested by I18nErrorBoundary.test.tsx — keep wording stable. */}
           <p className="mb-2 font-medium">Failed to load translations.</p>
           <p className="mb-3 text-xs">
             {this.state.error?.message ?? "An unexpected error occurred."}
           </p>
-          <button
-            type="button"
-            className="rounded bg-destructive px-3 py-1 text-xs text-destructive-foreground hover:opacity-90"
-            onClick={() => window.location.reload()}
-          >
-            Retry
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="rounded bg-destructive px-3 py-1 text-xs text-destructive-foreground hover:opacity-90"
+              onClick={() => window.location.reload()}
+            >
+              Retry
+            </button>
+            <a
+              href="/"
+              className="rounded border border-destructive px-3 py-1 text-xs hover:bg-destructive/20"
+            >
+              Go to homepage
+            </a>
+          </div>
         </div>
       );
     }

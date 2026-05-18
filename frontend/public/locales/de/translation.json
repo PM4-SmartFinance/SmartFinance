@@ -25,6 +25,10 @@
     "creating": "Wird erstellt…",
     "saveChanges": "Änderungen speichern",
     "retry": "Erneut versuchen",
+    "roles": {
+      "user": "Benutzer",
+      "admin": "Admin"
+    },
     "presets": {
       "last7days": "Letzte 7 Tage",
       "last30days": "Letzte 30 Tage",
@@ -127,8 +131,7 @@
     "createUserBtn": "Benutzer erstellen",
     "deleteDialog": {
       "title": "Benutzer löschen?",
-      "descStart": "Möchten Sie den Benutzer endgültig löschen",
-      "descEnd": "? Diese Aktion kann nicht rückgängig gemacht werden."
+      "body": "Möchten Sie den Benutzer <1>{{email}}</1> endgültig löschen? Diese Aktion kann nicht rückgängig gemacht werden."
     },
     "errors": {
       "deactivateFailed": "Benutzer konnte nicht deaktiviert werden",
@@ -159,9 +162,7 @@
     },
     "deleteDialog": {
       "title": "Budget löschen?",
-      "descStart": "Sind Sie sicher, dass Sie das ",
-      "descMiddle": "-Budget für ",
-      "descEnd": " löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden."
+      "body": "Möchten Sie das <1>{{type}}</1>-Budget für <3>{{name}}</3> wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
     },
     "errors": {
       "deleteFailed": "Budget konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.",
@@ -301,10 +302,6 @@
         "email": "benutzer@beispiel.com",
         "password": "Mindestens 8 Zeichen",
         "displayName": "Max Mustermann (optional)"
-      },
-      "roles": {
-        "user": "Benutzer",
-        "admin": "Admin"
       },
       "errors": {
         "emailRequired": "E-Mail ist erforderlich",

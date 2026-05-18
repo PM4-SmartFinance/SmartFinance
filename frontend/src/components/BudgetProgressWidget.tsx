@@ -6,7 +6,6 @@ import { useBudgets, type CategorySpending } from "../lib/queries/budgets";
 import { formatAmount } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { useTranslation } from "react-i18next";
-import i18n from "@/lib/i18n";
 
 const OUTER_COLORS = {
   spent: "hsl(var(--primary))",
@@ -80,7 +79,7 @@ export function BudgetProgressWidget() {
   const yearly = useBudgets({ period: "YEARLY" });
   const categoriesQuery = useCategories();
   const loggedMissingCategoryIdsRef = useRef<Set<string>>(new Set());
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const categoryNames = useMemo(() => {
     const map = new Map<string, string>();

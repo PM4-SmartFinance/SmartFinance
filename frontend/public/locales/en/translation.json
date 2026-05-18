@@ -25,6 +25,10 @@
     "creating": "Creating…",
     "saveChanges": "Save Changes",
     "retry": "Retry",
+    "roles": {
+      "user": "User",
+      "admin": "Admin"
+    },
     "presets": {
       "last7days": "Last 7 days",
       "last30days": "Last 30 days",
@@ -127,8 +131,7 @@
     "createUserBtn": "Create User",
     "deleteDialog": {
       "title": "Delete User?",
-      "descStart": "Permanently delete",
-      "descEnd": "? This action cannot be undone."
+      "body": "Permanently delete <1>{{email}}</1>? This action cannot be undone."
     },
     "errors": {
       "deactivateFailed": "Failed to deactivate user",
@@ -159,9 +162,7 @@
     },
     "deleteDialog": {
       "title": "Delete Budget?",
-      "descStart": "Are you sure you want to delete the ",
-      "descMiddle": "budget for ",
-      "descEnd": "? This action cannot be undone."
+      "body": "Are you sure you want to delete the <1>{{type}}</1> budget for <3>{{name}}</3>? This action cannot be undone."
     },
     "errors": {
       "deleteFailed": "Failed to delete budget. Please try again.",
@@ -301,10 +302,6 @@
         "email": "user@example.com",
         "password": "Minimum 8 characters",
         "displayName": "John Doe (optional)"
-      },
-      "roles": {
-        "user": "User",
-        "admin": "Admin"
       },
       "errors": {
         "emailRequired": "Email is required",

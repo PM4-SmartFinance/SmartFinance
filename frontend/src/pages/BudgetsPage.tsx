@@ -16,8 +16,7 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { BackToDashboardLink } from "@/components/BackToDashboardLink";
 import { UserMenu } from "@/components/UserMenu";
-import { useTranslation } from "react-i18next";
-import i18n from "@/lib/i18n";
+import { Trans, useTranslation } from "react-i18next";
 
 export function BudgetsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -29,7 +28,7 @@ export function BudgetsPage() {
     categoryName: string;
     budgetLabel: string;
   } | null>(null);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
     { value: "DAILY", label: t("budgets.periods.daily", "Daily") },
@@ -262,13 +261,11 @@ export function BudgetsPage() {
           isOpen={deleteDialogOpen}
           title={t("budgets.deleteDialog.title", "Delete Budget?")}
           description={
-            <>
-              {t("budgets.deleteDialog.descStart", "Are you sure you want to delete the ")}{" "}
-              <strong>{budgetToDelete.budgetLabel}</strong>{" "}
-              {t("budgets.deleteDialog.descMiddle", "budget for ")}{" "}
-              <strong>{budgetToDelete.categoryName}</strong>
-              {t("budgets.deleteDialog.descEnd", "? This action cannot be undone.")}
-            </>
+            <Trans
+              i18nKey="budgets.deleteDialog.body"
+              values={{ type: budgetToDelete.budgetLabel, name: budgetToDelete.categoryName }}
+              components={{ 1: <strong />, 3: <strong /> }}
+            />
           }
           isDeleting={isDeleting}
           error={deleteError || null}

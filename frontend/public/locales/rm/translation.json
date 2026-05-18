@@ -25,6 +25,10 @@
     "creating": "Crear…",
     "saveChanges": "Memorisar las midadas",
     "retry": "Emprovar anc ina giada",
+    "roles": {
+      "user": "Utilisader",
+      "admin": "Administratur"
+    },
     "presets": {
       "last7days": "Ils ultims 7 dis",
       "last30days": "Ils ultims 30 dis",
@@ -127,8 +131,7 @@
     "createUserBtn": "Crear Utilisader",
     "deleteDialog": {
       "title": "Stizzar l'utilisader?",
-      "descStart": "Stizzar definitivamain",
-      "descEnd": "? Questa acziun na po betg vegnir annullada."
+      "body": "Stizzar definitivamain <1>{{email}}</1>? Questa acziun na po betg vegnir annullada."
     },
     "errors": {
       "deactivateFailed": "Betg pussaivel da deactivar l'utilisader",
@@ -159,9 +162,7 @@
     },
     "deleteDialog": {
       "title": "Stizzar il Budget?",
-      "descStart": "Eis Vus segir che Vus vulais stizzar il budget ",
-      "descMiddle": " per ",
-      "descEnd": "? Questa acziun na po betg vegnir annullada."
+      "body": "Eis Vus segir che Vus vulais stizzar il budget <1>{{type}}</1> per <3>{{name}}</3>? Questa acziun na po betg vegnir annullada."
     },
     "errors": {
       "deleteFailed": "Betg pussaivel da stizzar il budget. Empruvai anc ina giada.",
@@ -301,10 +302,6 @@
         "email": "utilisader@exempel.com",
         "password": "Almain 8 caracters",
         "displayName": "Gion Casanova (opziunal)"
-      },
-      "roles": {
-        "user": "Utilisader",
-        "admin": "Administratur"
       },
       "errors": {
         "emailRequired": "L'e-mail è necessari",

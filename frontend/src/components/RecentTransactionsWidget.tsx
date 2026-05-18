@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DashboardTileLink } from "./DashboardTileLink";
 import { useTranslation } from "react-i18next";
-import i18n from "@/lib/i18n";
 
 export function RecentTransactionsWidget() {
   const { data, isLoading, isError, error, refetch } = useTransactions({
@@ -13,7 +12,7 @@ export function RecentTransactionsWidget() {
     limit: 5,
   });
 
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const COLUMNS = [
     t("transactions.table.date", "Date"),
@@ -22,11 +21,11 @@ export function RecentTransactionsWidget() {
     t("transactions.table.amount", "Amount"),
   ];
 
-  if (import.meta.env.DEV && data !== undefined && !Array.isArray(data.data)) {
+  if (data !== undefined && !Array.isArray(data.data)) {
     console.warn("RecentTransactionsWidget: unexpected response shape", data);
   }
 
-  if (isError && import.meta.env.DEV) {
+  if (isError) {
     console.warn("RecentTransactionsWidget: query failed", error);
   }
 

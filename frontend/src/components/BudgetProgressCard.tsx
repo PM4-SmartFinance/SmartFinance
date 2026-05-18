@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Pencil, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import i18n from "@/lib/i18n";
 
 const BUDGET_PERIOD_KEY: Record<BudgetType, "daily" | "monthly" | "yearly"> = {
   DAILY: "daily",
@@ -80,7 +79,7 @@ function PeriodSummary({ categorySpending }: { categorySpending: CategorySpendin
   const percentageUsed = hasLimit && limit > 0 ? (spent / limit) * 100 : 0;
   const percentageDisplay = Math.min(percentageUsed, 100);
   const isOverBudget = hasLimit && spent > limit;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const sourceLabel = categorySpending.sourceBudgetType
     ? t("components.budgetCategoryGroup.basedOn", "Based on {{type}} budget", {
@@ -144,7 +143,7 @@ function BudgetSummary({ budget }: { budget: Budget }) {
   const limit = parseFloat(budget.limitAmount);
   const remaining = parseFloat(budget.remainingAmount);
   const percentageDisplay = Math.min(budget.percentageUsed, 100);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const typeLabel = getBudgetTypeLabel(
     budget.type,
     budget.month,
@@ -216,7 +215,7 @@ function BudgetRow({ budget, onEdit, onDelete, isDeleting }: BudgetRowProps) {
   const limit = parseFloat(budget.limitAmount);
   const remaining = parseFloat(budget.remainingAmount);
   const isInactive = !budget.active;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const typeLabel = getBudgetTypeLabel(
     budget.type,
     budget.month,

@@ -121,8 +121,8 @@ export function EditUserDialog({ isOpen, user, onClose }: EditUserDialogProps) {
             }
             disabled={isSubmitting || !canChangeRole}
           >
-            <option value="USER">{t("components.createUserDialog.roles.user", "User")}</option>
-            <option value="ADMIN">{t("components.createUserDialog.roles.admin", "Admin")}</option>
+            <option value="USER">{t("common.roles.user", "User")}</option>
+            <option value="ADMIN">{t("common.roles.admin", "Admin")}</option>
           </NativeSelect>
           {!canChangeRole && (
             <p className="text-xs text-muted-foreground">

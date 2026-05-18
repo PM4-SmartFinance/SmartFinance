@@ -208,6 +208,29 @@ describe("getBudgetTypeLabel", () => {
       "January 2025",
     );
   });
+
+  describe("locale branches (de/fr/it/rm)", () => {
+    // Months are computed via Intl.DateTimeFormat with the bare 2-letter code
+    // (e.g. "de"). ICU still produces locale-correct names — we assert
+    // recognisable substrings rather than golden strings to stay tolerant of
+    // ICU locale-data versioning.
+    it.each([
+      ["de", /März/],
+      ["fr", /mars/i],
+      ["it", /marzo/i],
+    ])("SPECIFIC_MONTH renders the March name in %s", (lng, re) => {
+      expect(getBudgetTypeLabel("SPECIFIC_MONTH", 3, 0, t, lng)).toMatch(re);
+    });
+
+    it("SPECIFIC_MONTH returns a non-empty string for Romansh", () => {
+      const out = getBudgetTypeLabel("SPECIFIC_MONTH", 3, 0, t, "rm");
+      expect(out.length).toBeGreaterThan(0);
+    });
+
+    it.each(["de", "fr", "it", "rm"])("SPECIFIC_MONTH_YEAR includes the year for %s", (lng) => {
+      expect(getBudgetTypeLabel("SPECIFIC_MONTH_YEAR", 6, 2026, t, lng)).toContain("2026");
+    });
+  });
 });
 
 describe("getMostSpecificActiveBudget", () => {

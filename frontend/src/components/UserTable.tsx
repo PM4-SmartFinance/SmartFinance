@@ -94,8 +94,8 @@ export function UserTable({
               <td className="px-6 py-3 text-sm">
                 <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
                   {user.role === "ADMIN"
-                    ? t("components.createUserDialog.roles.admin", "Admin")
-                    : t("components.createUserDialog.roles.user", "User")}
+                    ? t("common.roles.admin", "Admin")
+                    : t("common.roles.user", "User")}
                 </span>
               </td>
               <td className="px-6 py-3 text-sm">

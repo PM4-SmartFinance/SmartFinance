@@ -14,7 +14,6 @@ import { formatAmount } from "@/lib/format";
 import { CardContent, CardHeader, CardTitle } from "./ui/card";
 import { DashboardTileLink } from "./DashboardTileLink";
 import { useTranslation } from "react-i18next";
-import i18n from "@/lib/i18n";
 
 function CategoryHeader() {
   const { t } = useTranslation();
@@ -35,7 +34,7 @@ export function CategoryBreakdownChart() {
   // i.e. no rows or every row is a zero-spend category with no Uncategorized
   // bucket. Once any spend exists (categorized or not), render the chart.
   const hasAnySpend = chartData.some((row) => row.total > 0);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   if (error && !isNotFoundError) {
     return (
