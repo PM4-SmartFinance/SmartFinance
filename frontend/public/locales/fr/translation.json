@@ -58,6 +58,8 @@
     "autoCategorizing": "Catégorisation automatique en cours…",
     "recategorizeBtn": "Recatégoriser la plage de dates…",
     "recategorizing": "Recatégorisation en cours…",
+    "recategorizeFrom": "De",
+    "recategorizeTo": "À",
     "existingRules": "Règles Existantes",
     "noRules": "Aucune règle pour le moment.",
     "matchCount_one": "{{count}} transaction existante correspondrait.",
@@ -103,7 +105,9 @@
     "title": "Se connecter",
     "description": "Entrez vos identifiants pour accéder à votre compte",
     "submit": "Se connecter",
-    "submitting": "Connexion…"
+    "submitting": "Connexion…",
+    "emailLabel": "E-mail",
+    "passwordLabel": "Mot de passe"
   },
   "404": {
     "title": "404 - Page non trouvée",
@@ -138,6 +142,12 @@
     "loading": "Chargement des budgets…",
     "createBtn": "Créer un Budget",
     "emptyState": "Aucun budget pour le moment. Créez-en un pour commencer.",
+    "types": {
+      "daily": "Budget quotidien",
+      "monthly": "Budget mensuel",
+      "yearly": "Budget annuel",
+      "specificMonth": "{{month}} (récurrent)"
+    },
     "periods": {
       "daily": "Quotidien",
       "monthly": "Mensuel",
@@ -214,7 +224,8 @@
       "empty": "Aucun budget actif. Cliquez pour en créer un.",
       "statusSummary": "{{onTrack}} en bonne voie, {{approaching}} s'approchant de la limite, {{exceeded}} dépassés",
       "activeCount_one": "{{count}} budget actif",
-      "activeCount_other": "{{count}} budgets actifs"
+      "activeCount_other": "{{count}} budgets actifs",
+      "ariaView": "Voir les budgets"
     },
     "budgetCategoryGroup": {
       "basedOn": "Basé sur un budget {{type}}",

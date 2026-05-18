@@ -1,11 +1,25 @@
-import type { Budget, CategorySpending } from "../lib/queries/budgets";
+import type { Budget, BudgetType, CategorySpending } from "../lib/queries/budgets";
 import { getBudgetTypeLabel, getMostSpecificActiveBudget } from "../lib/queries/budgets";
 import { formatAmount } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import i18n from "@/lib/i18n";
+
+const BUDGET_PERIOD_KEY: Record<BudgetType, "daily" | "monthly" | "yearly"> = {
+  DAILY: "daily",
+  MONTHLY: "monthly",
+  YEARLY: "yearly",
+  SPECIFIC_MONTH: "monthly",
+  SPECIFIC_YEAR: "yearly",
+  SPECIFIC_MONTH_YEAR: "monthly",
+};
+
+function translateBudgetPeriod(type: BudgetType, t: TFunction): string {
+  return t(`budgets.periods.${BUDGET_PERIOD_KEY[type]}`);
+}
 
 interface BudgetCategoryGroupProps {
   categoryName: string;
@@ -70,7 +84,7 @@ function PeriodSummary({ categorySpending }: { categorySpending: CategorySpendin
 
   const sourceLabel = categorySpending.sourceBudgetType
     ? t("components.budgetCategoryGroup.basedOn", "Based on {{type}} budget", {
-        type: categorySpending.sourceBudgetType.toLowerCase(),
+        type: translateBudgetPeriod(categorySpending.sourceBudgetType, t),
       })
     : t("components.budgetCategoryGroup.noBudget", "No budget set");
 

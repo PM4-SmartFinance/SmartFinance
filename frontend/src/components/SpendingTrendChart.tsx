@@ -15,7 +15,7 @@ import { useDashboardTrends, type TrendDataPoint } from "../lib/queries/dashboar
 import { useAppStore } from "../store/appStore";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { useTranslation } from "react-i18next";
-import { formatDate, formatAmount } from "@/lib/format";
+import { formatDate, formatAmount, getSwissLocale } from "@/lib/format";
 import type { TFunction } from "i18next";
 import i18n from "@/lib/i18n";
 
@@ -100,23 +100,26 @@ export function bucketize(
 }
 
 /** Format date string (YYYY-MM-DD) to readable month label (Jan 2026) */
-export function formatMonthLabel(dateStr: string): string {
+export function formatMonthLabel(dateStr: string, lng?: string): string {
   if (!dateStr) return "";
   const date = new Date(`${dateStr}T00:00:00Z`);
   if (isNaN(date.getTime())) return "";
-  return date.toLocaleDateString(undefined, { month: "short", year: "numeric" });
+  return new Intl.DateTimeFormat(getSwissLocale(lng), {
+    month: "short",
+    year: "numeric",
+  }).format(date);
 }
 
 /** Format date string (YYYY-MM-DD) to a full date label (1 Jan 2026) */
-export function formatDateLabel(dateStr: string): string {
+export function formatDateLabel(dateStr: string, lng?: string): string {
   if (!dateStr) return "";
   const date = new Date(`${dateStr}T00:00:00Z`);
   if (isNaN(date.getTime())) return "";
-  return date.toLocaleDateString(undefined, {
+  return new Intl.DateTimeFormat(getSwissLocale(lng), {
     day: "numeric",
     month: "short",
     year: "numeric",
-  });
+  }).format(date);
 }
 
 /** Whole-day difference (end − start). Exclusive of the start day. Returns 0 for invalid input or when end < start. */
@@ -128,14 +131,20 @@ export function daysBetween(startDate: string, endDate: string): number {
 }
 
 /** Format Y-axis values as compact CHF amounts (e.g. CHF 1.5k, CHF 500) */
-export function formatYAxisValue(value: number): string {
+export function formatYAxisValue(value: number, lng?: string): string {
   if (!isFinite(value)) return "";
   const abs = Math.abs(value);
   const sign = value < 0 ? "-" : "";
+  const locale = getSwissLocale(lng);
   if (abs >= 1000) {
-    return `${sign}CHF ${(abs / 1000).toFixed(1)}k`;
+    const formatted = new Intl.NumberFormat(locale, {
+      maximumFractionDigits: 1,
+      minimumFractionDigits: 1,
+    }).format(abs / 1000);
+    return `${sign}CHF ${formatted}k`;
   }
-  return `${sign}CHF ${Math.round(abs)}`;
+  const formatted = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(abs);
+  return `${sign}CHF ${formatted}`;
 }
 
 /**
@@ -368,11 +377,13 @@ export function SpendingTrendChart() {
     granularity === "auto" ? pickGranularity(chartData.length) : granularity;
   const buckets = bucketize(chartData, effectiveGranularity);
   const tickInterval = computeTickInterval(buckets.length, labelCount);
+  const lng = i18n.resolvedLanguage;
   // Use full-date format for fine-grained buckets; compact month-only for coarser ones.
   const xAxisFormatter =
     effectiveGranularity === "day" || effectiveGranularity === "week"
-      ? formatDateLabel
-      : formatMonthLabel;
+      ? (dateStr: string) => formatDateLabel(dateStr, lng)
+      : (dateStr: string) => formatMonthLabel(dateStr, lng);
+  const yAxisFormatter = (value: number) => formatYAxisValue(value, lng);
 
   if (buckets.length === 1 && buckets[0]) {
     const only = buckets[0];
@@ -544,7 +555,7 @@ export function SpendingTrendChart() {
                   axisLine={{ stroke: "var(--border)" }}
                 />
                 <YAxis
-                  tickFormatter={formatYAxisValue}
+                  tickFormatter={yAxisFormatter}
                   domain={[0, "auto"]}
                   stroke="var(--border)"
                   style={{ fontSize: "13px" }}
@@ -609,7 +620,7 @@ export function SpendingTrendChart() {
                   axisLine={{ stroke: "var(--border)" }}
                 />
                 <YAxis
-                  tickFormatter={formatYAxisValue}
+                  tickFormatter={yAxisFormatter}
                   domain={[0, "auto"]}
                   stroke="var(--border)"
                   style={{ fontSize: "13px" }}

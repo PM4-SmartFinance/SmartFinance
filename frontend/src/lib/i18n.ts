@@ -18,10 +18,13 @@ i18n
 
     saveMissing: true,
     missingKeyHandler: (lngs, ns, key) => {
+      const message = `[i18n] Missing translation key: "${key}" in namespace "${ns}" for language "${lngs.join(", ")}"`;
       if (import.meta.env.DEV) {
-        console.warn(
-          `[i18n] Missing translation key: "${key}" in namespace "${ns}" for language "${lngs.join(", ")}"`,
-        );
+        console.warn(message);
+      } else {
+        // Prod: surface to console.error so missing keys are visible in user-side
+        // devtools and any error-reporting hook that listens on console.error.
+        console.error(message);
       }
     },
 

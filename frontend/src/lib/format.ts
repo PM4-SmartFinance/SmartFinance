@@ -1,14 +1,23 @@
 export const FALLBACK = "—";
 
-const getSwissLocale = (lng?: string): string => {
-  const localeMap: Record<string, string> = {
-    en: "en-CH",
-    de: "de-CH",
-    fr: "fr-CH",
-    it: "it-CH",
-    rm: "rm-CH",
-  };
-  return localeMap[lng || "en"] || "en-CH";
+const SWISS_LOCALE_MAP: Record<string, string> = {
+  en: "en-CH",
+  de: "de-CH",
+  fr: "fr-CH",
+  it: "it-CH",
+  rm: "rm-CH",
+};
+
+export const getSwissLocale = (lng?: string): string => {
+  const key = lng?.split("-")[0] ?? "en";
+  const mapped = SWISS_LOCALE_MAP[key];
+  if (!mapped) {
+    if (import.meta.env.DEV && lng) {
+      console.warn(`[format] Unsupported locale "${lng}", falling back to en-CH`);
+    }
+    return "en-CH";
+  }
+  return mapped;
 };
 
 export function formatAmount(raw: string | number, currentLanguage?: string): string {

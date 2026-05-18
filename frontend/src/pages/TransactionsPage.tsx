@@ -249,7 +249,7 @@ export function TransactionsPage() {
                     {transactions.map((tx) => (
                       <tr key={tx.id} className="hover:bg-muted/50">
                         <td className="whitespace-nowrap px-6 py-3 text-sm text-foreground">
-                          {formatTransactionDate(tx.date)}
+                          {formatTransactionDate(tx.date, i18n.resolvedLanguage)}
                         </td>
                         <td className="px-6 py-3 text-sm text-foreground">{tx.merchant}</td>
                         <td className="px-6 py-3 text-sm text-muted-foreground">

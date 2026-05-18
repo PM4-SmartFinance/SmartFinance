@@ -1,6 +1,12 @@
 import "@testing-library/jest-dom/vitest";
-import { vi } from "vitest";
+import { vi, afterEach } from "vitest";
+import i18nReal from "i18next";
+import { initReactI18next } from "react-i18next";
 import enTranslations from "../../public/locales/en/translation.json";
+import deTranslations from "../../public/locales/de/translation.json";
+import frTranslations from "../../public/locales/fr/translation.json";
+import itTranslations from "../../public/locales/it/translation.json";
+import rmTranslations from "../../public/locales/rm/translation.json";
 
 const localStorageMock = (function () {
   let store: Record<string, string> = {};
@@ -21,59 +27,32 @@ const localStorageMock = (function () {
 })();
 Object.defineProperty(globalThis, "localStorage", { value: localStorageMock, writable: true });
 
-const getTranslation = (key: string) => {
-  return key
-    .split(".")
-    .reduce((obj: unknown, k) => (obj as Record<string, unknown>)?.[k], enTranslations);
-};
-
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (
-      key: string,
-      fallback?: string | Record<string, unknown>,
-      options?: Record<string, unknown>,
-    ) => {
-      if (key === "components.createUserDialog.roles.admin") return "ADMIN";
-      if (key === "components.createUserDialog.roles.user") return "USER";
-
-      const opts = typeof fallback === "object" ? fallback : options;
-      let str = getTranslation(key);
-
-      if (!str && opts && opts.count !== undefined) {
-        const suffix = opts.count === 1 ? "_one" : "_other";
-        str = getTranslation(`${key}${suffix}`);
-      }
-
-      if (!str) {
-        str = typeof fallback === "string" ? fallback : key.split(".").pop() || key;
-      }
-
-      if (opts && typeof str === "string") {
-        str = Object.keys(opts).reduce((acc, k) => {
-          return acc.replace(`{{${k}}}`, String(opts[k]));
-        }, str);
-      }
-
-      return str as string;
-    },
-    i18n: {
-      changeLanguage: vi.fn(() => Promise.resolve()),
-      resolvedLanguage: "en",
-    },
-  }),
-  initReactI18next: {
-    type: "3rdParty",
-    init: vi.fn(),
+// Real i18next instance preloaded with every locale's bundled JSON. This means
+// `useTranslation()` resolves keys through actual CLDR plural rules, fallback
+// chains, and interpolation — not a hand-rolled mock — and missing keys surface
+// as the raw key string rather than being silently substituted.
+void i18nReal.use(initReactI18next).init({
+  lng: "en",
+  fallbackLng: "en",
+  supportedLngs: ["en", "de", "fr", "it", "rm"],
+  resources: {
+    en: { translation: enTranslations },
+    de: { translation: deTranslations },
+    fr: { translation: frTranslations },
+    it: { translation: itTranslations },
+    rm: { translation: rmTranslations },
   },
-}));
+  interpolation: { escapeValue: false },
+  react: { useSuspense: false },
+});
 
-vi.mock("@/lib/i18n", () => ({
-  default: {
-    resolvedLanguage: "en",
-    changeLanguage: vi.fn(() => Promise.resolve()),
-  },
-}));
+vi.mock("@/lib/i18n", () => ({ default: i18nReal }));
+
+afterEach(async () => {
+  if (i18nReal.resolvedLanguage !== "en") {
+    await i18nReal.changeLanguage("en");
+  }
+});
 
 type MediaListener = (event: MediaQueryListEvent) => void;
 

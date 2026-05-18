@@ -58,6 +58,8 @@
     "autoCategorizing": "Auto-categorizing…",
     "recategorizeBtn": "Recategorize date range…",
     "recategorizing": "Recategorizing…",
+    "recategorizeFrom": "From",
+    "recategorizeTo": "To",
     "existingRules": "Existing Rules",
     "noRules": "No rules yet.",
     "matchCount_one": "{{count}} existing transaction would match.",
@@ -103,7 +105,9 @@
     "title": "Sign in",
     "description": "Enter your credentials to access your account",
     "submit": "Sign in",
-    "submitting": "Signing in…"
+    "submitting": "Signing in…",
+    "emailLabel": "Email",
+    "passwordLabel": "Password"
   },
   "404": {
     "title": "404 - Page Not Found",
@@ -138,6 +142,12 @@
     "loading": "Loading budgets…",
     "createBtn": "Create Budget",
     "emptyState": "No budgets yet. Create one to get started.",
+    "types": {
+      "daily": "Daily Budget",
+      "monthly": "Monthly Budget",
+      "yearly": "Yearly Budget",
+      "specificMonth": "{{month}} (recurring)"
+    },
     "periods": {
       "daily": "Daily",
       "monthly": "Monthly",
@@ -214,7 +224,8 @@
       "empty": "No active budgets. Click to create one.",
       "statusSummary": "{{onTrack}} on track, {{approaching}} approaching limit, {{exceeded}} exceeded",
       "activeCount_one": "{{count}} active budget",
-      "activeCount_other": "{{count}} active budgets"
+      "activeCount_other": "{{count}} active budgets",
+      "ariaView": "View budgets"
     },
     "budgetCategoryGroup": {
       "basedOn": "Based on {{type}} budget",

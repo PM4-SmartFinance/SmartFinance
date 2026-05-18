@@ -87,7 +87,11 @@ export function UserMenu() {
             </div>
             <Menu.RadioGroup
               value={i18n.resolvedLanguage || "en"}
-              onValueChange={(v) => i18n.changeLanguage(v)}
+              onValueChange={(v) => {
+                i18n.changeLanguage(v).catch((err) => {
+                  console.error(`[i18n] failed to switch language to "${v}":`, err);
+                });
+              }}
             >
               {LANGUAGE_OPTIONS.map(({ value, label }) => (
                 <Menu.RadioItem

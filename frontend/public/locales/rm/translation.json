@@ -58,6 +58,8 @@
     "autoCategorizing": "Categorisar automaticamain…",
     "recategorizeBtn": "Recategorisar l'interval da data…",
     "recategorizing": "Recategorisar…",
+    "recategorizeFrom": "Da",
+    "recategorizeTo": "A",
     "existingRules": "Reglas Existentas",
     "noRules": "Anc naginas reglas.",
     "matchCount_one": "{{count}} transacziun existenta correspundess.",
@@ -103,7 +105,9 @@
     "title": "S'annunziar",
     "description": "Endatai vossas credenzialas per acceder a voss conto",
     "submit": "S'annunziar",
-    "submitting": "S'annunzia…"
+    "submitting": "S'annunzia…",
+    "emailLabel": "E-mail",
+    "passwordLabel": "Pled-clav"
   },
   "404": {
     "title": "404 - Pagina betg chattada",
@@ -138,6 +142,12 @@
     "loading": "Chargiar ils budgets…",
     "createBtn": "Crear Budget",
     "emptyState": "Anc nagins budgets. Creai in per entschaiver.",
+    "types": {
+      "daily": "Budget mintga di",
+      "monthly": "Budget mintga mais",
+      "yearly": "Budget mintga onn",
+      "specificMonth": "{{month}} (recurrent)"
+    },
     "periods": {
       "daily": "Di per di",
       "monthly": "Mensil",
@@ -214,7 +224,8 @@
       "empty": "Nagins budgets activs. Cliccai per crear in.",
       "statusSummary": "{{onTrack}} sin buna via, {{approaching}} datiers dal limit, {{exceeded}} surpassads",
       "activeCount_one": "{{count}} budget activ",
-      "activeCount_other": "{{count}} budgets activs"
+      "activeCount_other": "{{count}} budgets activs",
+      "ariaView": "Mussar ils budgets"
     },
     "budgetCategoryGroup": {
       "basedOn": "Basà sin il budget {{type}}",

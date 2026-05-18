@@ -25,7 +25,9 @@ vi.mock("../api", () => ({
 
 import { api } from "../api";
 import i18n from "../i18n";
-import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
+
+const t = i18n.t.bind(i18n) as TFunction;
 
 const mockApi = {
   get: vi.mocked(api.get),
@@ -173,7 +175,6 @@ describe("useDeleteBudget", () => {
 });
 
 describe("getBudgetTypeLabel", () => {
-  const { t } = useTranslation();
   it("returns 'Daily Budget' for DAILY", () => {
     expect(getBudgetTypeLabel("DAILY", 0, 0, t, i18n.resolvedLanguage)).toBe("Daily Budget");
   });
