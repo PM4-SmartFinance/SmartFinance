@@ -78,6 +78,9 @@ export function useUpdateTransaction() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      // Dashboard and budget aggregates depend on the transaction set.
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["budgets"] });
     },
   });
 }
@@ -86,11 +89,15 @@ export function useDeleteTransaction() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, reason }: { id: string; reason?: string }) => {
-      const url = `/transactions/${id}${reason ? `?reason=${encodeURIComponent(reason)}` : ""}`;
-      return api.delete(url);
+      // Reason travels in the request body, not the querystring, to keep
+      // free-text out of Pino/reverse-proxy access logs.
+      return api.delete(`/transactions/${id}`, reason ? { reason } : undefined);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      // Dashboard and budget aggregates depend on the transaction set.
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["budgets"] });
     },
   });
 }

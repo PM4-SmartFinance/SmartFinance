@@ -583,6 +583,32 @@ describe("DELETE /api/v1/transactions/:id", () => {
     );
   });
 
+  it("forwards reason from the request body to the service (not the querystring)", async () => {
+    // Reason MUST come from the JSON body; the controller previously accepted
+    // ?reason= on the URL, which leaked PII into Pino access logs.
+    await app.inject({
+      method: "DELETE",
+      url: `/api/v1/transactions/${VALID_TX_ID}`,
+      payload: { reason: "duplicate import" },
+    });
+    expect(mockDeleteTransaction).toHaveBeenCalledExactlyOnceWith(
+      VALID_TX_ID,
+      "user-1",
+      "duplicate import",
+      false,
+    );
+  });
+
+  it("returns 400 when reason exceeds the maxLength (schema rejection)", async () => {
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/api/v1/transactions/${VALID_TX_ID}`,
+      payload: { reason: "x".repeat(1001) },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(mockDeleteTransaction).not.toHaveBeenCalled();
+  });
+
   it("returns 401 when there is no authenticated session", async () => {
     sessionUser = undefined;
     const response = await app.inject({

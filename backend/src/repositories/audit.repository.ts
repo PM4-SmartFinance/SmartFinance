@@ -1,14 +1,17 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 
-export async function createAuditLog(params: {
-  action: string;
-  userId?: string | null | undefined;
-  transactionId?: string | null | undefined;
-  previousValues?: Record<string, unknown> | null | undefined;
-  changedValues?: Record<string, unknown> | null | undefined;
-  reason?: string | null | undefined;
-}) {
+export async function createAuditLog(
+  params: {
+    action: string;
+    userId?: string | null | undefined;
+    transactionId?: string | null | undefined;
+    previousValues?: Record<string, unknown> | null | undefined;
+    changedValues?: Record<string, unknown> | null | undefined;
+    reason?: string | null | undefined;
+  },
+  tx?: Prisma.TransactionClient,
+) {
   const data: Prisma.AuditLogCreateInput = {
     action: params.action,
     userId: params.userId ?? null,
@@ -17,7 +20,8 @@ export async function createAuditLog(params: {
     changedValues: (params.changedValues ?? null) as Prisma.InputJsonValue,
     reason: params.reason ?? null,
   };
-  return prisma.auditLog.create({ data });
+  const client = tx ?? prisma;
+  return client.auditLog.create({ data });
 }
 
 export async function findAuditLogs(params: {

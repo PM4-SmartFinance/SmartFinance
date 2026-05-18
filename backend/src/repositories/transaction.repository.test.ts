@@ -346,7 +346,7 @@ const baseTxRecord = {
 function makeCrudTx() {
   return {
     factTransactions: {
-      findUnique: vi.fn().mockResolvedValue({ id: TX_ID, userId: USER_ID, isDeleted: false }),
+      findFirst: vi.fn().mockResolvedValue({ id: TX_ID, userId: USER_ID, isDeleted: false }),
       update: vi.fn().mockResolvedValue(baseTxRecord),
     },
     dimCategory: {
@@ -404,14 +404,14 @@ describe("updateById", () => {
   });
 
   it("throws ServiceError 404 when the transaction does not exist", async () => {
-    crudTx.factTransactions.findUnique.mockResolvedValue(null);
+    crudTx.factTransactions.findFirst.mockResolvedValue(null);
     await expect(updateById(TX_ID, USER_ID, { notes: "x" })).rejects.toThrow(
       new ServiceError(404, "Transaction not found"),
     );
   });
 
   it("throws ServiceError 404 when the transaction belongs to a different user (IDOR guard)", async () => {
-    crudTx.factTransactions.findUnique.mockResolvedValue({ id: TX_ID, userId: "other" });
+    crudTx.factTransactions.findFirst.mockResolvedValue({ id: TX_ID, userId: "other" });
     await expect(updateById(TX_ID, USER_ID, { notes: "x" })).rejects.toThrow(
       new ServiceError(404, "Transaction not found"),
     );
@@ -459,14 +459,14 @@ describe("deleteById", () => {
   });
 
   it("throws ServiceError 404 when the transaction does not exist", async () => {
-    crudTx.factTransactions.findUnique.mockResolvedValue(null);
+    crudTx.factTransactions.findFirst.mockResolvedValue(null);
     await expect(deleteById(TX_ID, USER_ID)).rejects.toThrow(
       new ServiceError(404, "Transaction not found"),
     );
   });
 
   it("throws ServiceError 404 when the transaction belongs to a different user (IDOR guard)", async () => {
-    crudTx.factTransactions.findUnique.mockResolvedValue({ id: TX_ID, userId: "other" });
+    crudTx.factTransactions.findFirst.mockResolvedValue({ id: TX_ID, userId: "other" });
     await expect(deleteById(TX_ID, USER_ID)).rejects.toThrow(
       new ServiceError(404, "Transaction not found"),
     );

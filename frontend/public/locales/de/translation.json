@@ -5,6 +5,10 @@
     "cancel": "Abbrechen",
     "clear": "Löschen",
     "delete": "Löschen",
+    "deleteReason": {
+      "label": "Grund für die Löschung (Audit-Log - Optional)",
+      "placeholder": "z.B. Doppelter Eintrag"
+    },
     "dismiss": "Ausblenden",
     "edit": "Bearbeiten",
     "name": "Name",
@@ -216,7 +220,21 @@
       "info": "Seite {{page}} von {{totalPages}} ({{totalCount}} gesamt)"
     },
     "delete": {
-      "title": "Transaktion löschen"
+      "title": "Transaktion löschen",
+      "body": "Möchten Sie die Transaktion mit <1>{{merchant}}</1> vom <3>{{date}}</3> über <5>{{amount}}</5> wirklich löschen?<7/>Diese Aktion kann von einem Administrator rückgängig gemacht werden."
+    },
+    "edit": {
+      "title": "Transaktion bearbeiten",
+      "dateLabel": "Datum",
+      "amountLabel": "Betrag",
+      "categoryLabel": "Kategorie",
+      "noCategory": "Keine Kategorie",
+      "notesLabel": "Notizen",
+      "notesPlaceholder": "Notizen hinzufügen…",
+      "reasonLabel": "Grund für die Änderung (Audit-Log)",
+      "reasonPlaceholder": "z.B. Datum korrigiert",
+      "saving": "Wird gespeichert…",
+      "save": "Änderungen speichern"
     },
     "errors": {
       "loadFailed": "Transaktionen konnten nicht geladen werden. Bitte versuchen Sie es später erneut."

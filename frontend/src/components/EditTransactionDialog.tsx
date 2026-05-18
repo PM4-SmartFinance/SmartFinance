@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ export function EditTransactionDialog({
   onSave,
   onClose,
 }: EditTransactionDialogProps) {
+  const { t } = useTranslation();
   const [date, setDate] = useState("");
   const [amount, setAmount] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -58,10 +60,13 @@ export function EditTransactionDialog({
     e.preventDefault();
     if (!transaction) return;
 
+    const parsedAmount = parseFloat(amount);
+    if (!Number.isFinite(parsedAmount)) return;
+
     onSave({
       id: transaction.id,
       date,
-      amount: parseFloat(amount),
+      amount: parsedAmount,
       categoryId,
       notes,
       reason,
@@ -70,7 +75,9 @@ export function EditTransactionDialog({
 
   return (
     <Dialog isOpen={isOpen} onClose={onClose} size="md">
-      <h2 className="mb-4 text-xl font-semibold text-foreground">Edit Transaction</h2>
+      <h2 className="mb-4 text-xl font-semibold text-foreground">
+        {t("transactions.edit.title", "Edit Transaction")}
+      </h2>
 
       {error && (
         <Alert variant="destructive" className="mb-4">
@@ -82,7 +89,7 @@ export function EditTransactionDialog({
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="edit-date">Date</Label>
+            <Label htmlFor="edit-date">{t("transactions.edit.dateLabel", "Date")}</Label>
             <Input
               id="edit-date"
               type="date"
@@ -94,7 +101,7 @@ export function EditTransactionDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="edit-amount">Amount</Label>
+            <Label htmlFor="edit-amount">{t("transactions.edit.amountLabel", "Amount")}</Label>
             <Input
               id="edit-amount"
               type="number"
@@ -108,14 +115,14 @@ export function EditTransactionDialog({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="edit-category">Category</Label>
+          <Label htmlFor="edit-category">{t("transactions.edit.categoryLabel", "Category")}</Label>
           <NativeSelect
             id="edit-category"
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
             disabled={isUpdating}
           >
-            <option value="">No Category</option>
+            <option value="">{t("transactions.edit.noCategory", "No Category")}</option>
             {categories.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.categoryName}
@@ -125,11 +132,11 @@ export function EditTransactionDialog({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="edit-notes">Notes</Label>
+          <Label htmlFor="edit-notes">{t("transactions.edit.notesLabel", "Notes")}</Label>
           <textarea
             id="edit-notes"
             className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="Add some notes..."
+            placeholder={t("transactions.edit.notesPlaceholder", "Add some notes…")}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             disabled={isUpdating}
@@ -138,10 +145,12 @@ export function EditTransactionDialog({
 
         <div className="border-t border-border pt-4">
           <div className="space-y-2">
-            <Label htmlFor="edit-reason">Reason for Change (Audit Log)</Label>
+            <Label htmlFor="edit-reason">
+              {t("transactions.edit.reasonLabel", "Reason for Change (Audit Log)")}
+            </Label>
             <Input
               id="edit-reason"
-              placeholder="e.g., Corrected date"
+              placeholder={t("transactions.edit.reasonPlaceholder", "e.g., Corrected date")}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               disabled={isUpdating}
@@ -151,7 +160,9 @@ export function EditTransactionDialog({
 
         <div className="flex gap-2 pt-2">
           <Button type="submit" disabled={isUpdating} className="flex-1">
-            {isUpdating ? "Saving..." : "Save Changes"}
+            {isUpdating
+              ? t("transactions.edit.saving", "Saving…")
+              : t("transactions.edit.save", "Save Changes")}
           </Button>
           <Button
             type="button"
@@ -160,7 +171,7 @@ export function EditTransactionDialog({
             onClick={onClose}
             className="flex-1"
           >
-            Cancel
+            {t("common.cancel", "Cancel")}
           </Button>
         </div>
       </form>

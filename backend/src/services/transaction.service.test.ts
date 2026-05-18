@@ -7,11 +7,24 @@ import {
 } from "./transaction.service.js";
 import * as transactionRepository from "../repositories/transaction.repository.js";
 import { ServiceError } from "../errors.js";
-import { logEvent } from "./audit.service.js";
+import { logEventCritical } from "./audit.service.js";
 
 vi.mock("./audit.service.js", () => ({
   logEvent: vi.fn(),
+  logEventCritical: vi.fn(),
 }));
+
+vi.mock("../prisma.js", () => {
+  const tx = Symbol("tx-mock");
+  return {
+    prisma: {
+      // Pass the callback a sentinel `tx` so the service can forward it to the
+      // repo. The repo is fully mocked in this file, so the sentinel is never
+      // dereferenced.
+      $transaction: vi.fn((cb: (tx: unknown) => unknown) => cb(tx)),
+    },
+  };
+});
 
 vi.mock("../repositories/transaction.repository.js", () => ({
   listTransactions: vi.fn(),
@@ -340,6 +353,7 @@ describe("updateTransaction", () => {
         notes: "hello",
       },
       false,
+      expect.anything(),
     );
   });
 
@@ -350,19 +364,23 @@ describe("updateTransaction", () => {
       "user-1",
       expect.objectContaining({ categoryId: "new-cat", manualOverride: true }),
       false,
+      expect.anything(),
     );
   });
 
-  it("calls logEvent when changes are made", async () => {
+  it("calls logEventCritical when changes are made", async () => {
     await updateTransaction("tx-1", "user-1", { notes: "new", reason: "test reason" });
-    expect(logEvent).toHaveBeenCalledWith({
-      action: "TRANSACTION_EDIT",
-      userId: "user-1",
-      transactionId: "tx-1",
-      previousValues: { notes: "old" },
-      changedValues: { notes: "new" },
-      reason: "test reason",
-    });
+    expect(logEventCritical).toHaveBeenCalledWith(
+      {
+        action: "TRANSACTION_EDIT",
+        userId: "user-1",
+        transactionId: "tx-1",
+        previousValues: { notes: "old" },
+        changedValues: { notes: "new" },
+        reason: "test reason",
+      },
+      expect.anything(),
+    );
   });
 
   it("supports date and amount updates with audit logging", async () => {
@@ -372,12 +390,32 @@ describe("updateTransaction", () => {
       "user-1",
       expect.objectContaining({ dateId: 20260202, amount: 99.99 }),
       false,
+      expect.anything(),
     );
-    expect(logEvent).toHaveBeenCalledWith(
+    expect(logEventCritical).toHaveBeenCalledWith(
       expect.objectContaining({
         changedValues: { date: "2026-02-02", amount: 99.99 },
       }),
+      expect.anything(),
     );
+  });
+
+  it("records targetUserId in changedValues when admin edits another user's transaction", async () => {
+    // @ts-expect-error -- partial mock fixture
+    mockRepo.findByIdForUser.mockResolvedValue({ ...mockTx, userId: "owner-9" });
+    await updateTransaction("tx-1", "admin-1", { notes: "fixed" }, true);
+    expect(logEventCritical).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "admin-1",
+        changedValues: expect.objectContaining({ targetUserId: "owner-9" }),
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("emits no audit event when PATCH values match the previous values (no-op)", async () => {
+    await updateTransaction("tx-1", "user-1", { notes: "old" });
+    expect(logEventCritical).not.toHaveBeenCalled();
   });
 
   it("returns the repository result unchanged", async () => {
@@ -401,18 +439,27 @@ describe("deleteTransaction", () => {
 
   it("calls the repository with the given id and session user id", async () => {
     await deleteTransaction("tx-1", "user-1");
-    expect(transactionRepository.deleteById).toHaveBeenCalledWith("tx-1", "user-1", false);
+    expect(transactionRepository.deleteById).toHaveBeenCalledWith(
+      "tx-1",
+      "user-1",
+      false,
+      expect.anything(),
+    );
   });
 
-  it("calls logEvent on deletion", async () => {
+  it("calls logEventCritical on deletion", async () => {
     await deleteTransaction("tx-1", "user-1", "oops");
-    expect(logEvent).toHaveBeenCalledWith({
-      action: "TRANSACTION_DELETE",
-      userId: "user-1",
-      transactionId: "tx-1",
-      previousValues: expect.objectContaining({ merchant: "Merchant" }),
-      reason: "oops",
-    });
+    expect(logEventCritical).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "TRANSACTION_DELETE",
+        userId: "user-1",
+        transactionId: "tx-1",
+        previousValues: expect.objectContaining({ merchant: "Merchant" }),
+        changedValues: expect.objectContaining({ isDeleted: true }),
+        reason: "oops",
+      }),
+      expect.anything(),
+    );
   });
 
   it("propagates ServiceError from the repository", async () => {

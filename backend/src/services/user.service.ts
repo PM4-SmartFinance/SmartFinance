@@ -213,9 +213,8 @@ export async function updateUser(
     void logEvent({
       action: "ROLE_CHANGED",
       userId: requestingUser.id,
-      previousValues: { role: oldRole },
-      changedValues: { role: data.role },
-      reason: `Target User: ${id}`,
+      previousValues: { role: oldRole, targetUserId: id },
+      changedValues: { role: data.role, targetUserId: id },
     });
   }
   return updated;

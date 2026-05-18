@@ -164,6 +164,7 @@ async function computeSpendingSingle(
     _sum: { amount: true },
     where: {
       userId,
+      isDeleted: false,
       merchant: { mappings: { some: { userId, categoryId } } },
       ...dateFilter,
     },
@@ -246,6 +247,7 @@ async function computeSpendingBatch(
   const transactions = await prisma.factTransactions.findMany({
     where: {
       userId,
+      isDeleted: false,
       merchant: { mappings: { some: { userId, categoryId: { in: uniqueCategories } } } },
       OR: dateFilters,
     },
@@ -334,6 +336,7 @@ export async function computeCategorySpendingForPeriod(
   const transactions = await prisma.factTransactions.findMany({
     where: {
       userId,
+      isDeleted: false,
       dateId: { gte: startDateId, lte: endDateId },
     },
     select: { amount: true, merchantId: true },

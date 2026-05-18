@@ -1,8 +1,9 @@
 import type { Prisma } from "@prisma/client";
+import { prisma } from "../prisma.js";
 import { ServiceError } from "../errors.js";
 import * as transactionRepository from "../repositories/transaction.repository.js";
 import { autoCategorize, recategorizeRange } from "./categorization.service.js";
-import { logEvent } from "./audit.service.js";
+import { logEventCritical } from "./audit.service.js";
 
 export async function getTransaction(id: string, userId: string) {
   return transactionRepository.findByIdForUser(id, userId);
@@ -20,54 +21,66 @@ export async function updateTransaction(
   },
   isAdmin = false,
 ) {
-  const previous = await transactionRepository.findByIdForUser(id, userId, isAdmin);
+  return prisma.$transaction(async (tx) => {
+    const previous = await transactionRepository.findByIdForUser(id, userId, isAdmin, tx);
 
-  const updateData: Record<string, unknown> = { ...data };
-  delete updateData.reason;
+    const updateData: Record<string, unknown> = { ...data };
+    delete updateData.reason;
 
-  if (data.categoryId !== undefined) {
-    updateData.manualOverride = true;
-  }
-  if (data.date !== undefined) {
-    updateData.dateId = dateStringToId(data.date);
-    delete updateData.date;
-  }
-
-  const updated = await transactionRepository.updateById(id, userId, updateData, isAdmin);
-
-  const changedValues: Record<string, unknown> = {};
-  if (data.categoryId !== undefined && data.categoryId !== previous.categoryId) {
-    changedValues.categoryId = data.categoryId;
-  }
-  if (data.notes !== undefined && data.notes !== previous.notes) {
-    changedValues.notes = data.notes;
-  }
-  if (data.amount !== undefined && data.amount !== Number(previous.amount)) {
-    changedValues.amount = data.amount;
-  }
-  if (data.date !== undefined && data.date !== dateIdToIso(previous.dateId)) {
-    changedValues.date = data.date;
-  }
-
-  if (Object.keys(changedValues).length > 0) {
-    const previousValues: Record<string, unknown> = {};
-    for (const key of Object.keys(changedValues)) {
-      if (key === "date") previousValues.date = dateIdToIso(previous.dateId);
-      else if (key === "amount") previousValues.amount = Number(previous.amount);
-      else previousValues[key] = (previous as Record<string, unknown>)[key];
+    if (data.categoryId !== undefined) {
+      updateData.manualOverride = true;
+    }
+    if (data.date !== undefined) {
+      updateData.dateId = dateStringToId(data.date);
+      delete updateData.date;
     }
 
-    await logEvent({
-      action: "TRANSACTION_EDIT",
-      userId,
-      transactionId: id,
-      previousValues,
-      changedValues,
-      reason: data.reason,
-    });
-  }
+    const updated = await transactionRepository.updateById(id, userId, updateData, isAdmin, tx);
 
-  return updated;
+    const changedValues: Record<string, unknown> = {};
+    if (data.categoryId !== undefined && data.categoryId !== previous.categoryId) {
+      changedValues.categoryId = data.categoryId;
+    }
+    if (data.notes !== undefined && data.notes !== previous.notes) {
+      changedValues.notes = data.notes;
+    }
+    if (data.amount !== undefined && data.amount !== Number(previous.amount)) {
+      changedValues.amount = data.amount;
+    }
+    if (data.date !== undefined && data.date !== dateIdToIso(previous.dateId)) {
+      changedValues.date = data.date;
+    }
+
+    if (Object.keys(changedValues).length > 0) {
+      const previousValues: Record<string, unknown> = {};
+      for (const key of Object.keys(changedValues)) {
+        if (key === "date") previousValues.date = dateIdToIso(previous.dateId);
+        else if (key === "amount") previousValues.amount = Number(previous.amount);
+        else previousValues[key] = (previous as Record<string, unknown>)[key];
+      }
+
+      // When an admin edits another user's transaction, record the owning
+      // user as `targetUserId` so per-user audit reconstruction does not need
+      // to join the soft-deleted row.
+      if (isAdmin && previous.userId !== userId) {
+        changedValues.targetUserId = previous.userId;
+      }
+
+      await logEventCritical(
+        {
+          action: "TRANSACTION_EDIT",
+          userId,
+          transactionId: id,
+          previousValues,
+          changedValues,
+          reason: data.reason,
+        },
+        tx,
+      );
+    }
+
+    return updated;
+  });
 }
 
 export async function deleteTransaction(
@@ -76,21 +89,33 @@ export async function deleteTransaction(
   reason?: string,
   isAdmin = false,
 ) {
-  const previous = await transactionRepository.findByIdForUser(id, userId, isAdmin);
+  await prisma.$transaction(async (tx) => {
+    const previous = await transactionRepository.findByIdForUser(id, userId, isAdmin, tx);
 
-  await transactionRepository.deleteById(id, userId, isAdmin);
+    await transactionRepository.deleteById(id, userId, isAdmin, tx);
 
-  await logEvent({
-    action: "TRANSACTION_DELETE",
-    userId,
-    transactionId: id,
-    previousValues: {
+    const previousValues: Record<string, unknown> = {
       amount: Number(previous.amount),
       date: dateIdToIso(previous.dateId),
       merchant: previous.merchant.name,
       categoryId: previous.categoryId,
-    },
-    reason,
+    };
+    const changedValues: Record<string, unknown> = { isDeleted: true };
+    if (isAdmin && previous.userId !== userId) {
+      changedValues.targetUserId = previous.userId;
+    }
+
+    await logEventCritical(
+      {
+        action: "TRANSACTION_DELETE",
+        userId,
+        transactionId: id,
+        previousValues,
+        changedValues,
+        reason,
+      },
+      tx,
+    );
   });
 }
 

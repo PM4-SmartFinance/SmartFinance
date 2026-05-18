@@ -21,7 +21,7 @@ import {
   type Transaction,
 } from "../lib/queries/transactions";
 import { AlertCircle, Edit2, Trash2 } from "lucide-react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 
 export function TransactionsPage() {
   const page = useTransactionsStore((s) => s.page);
@@ -423,22 +423,21 @@ export function TransactionsPage() {
         title={t("transactions.delete.title", "Delete Transaction")}
         description={
           deletingTransaction ? (
-            <>
-              Are you sure you want to delete the transaction with{" "}
-              <strong>{deletingTransaction.merchant}</strong> on{" "}
-              <strong>
-                {formatTransactionDate(deletingTransaction.date, i18n.resolvedLanguage)}
-              </strong>{" "}
-              for <strong>{formatAmount(deletingTransaction.amount, i18n.resolvedLanguage)}</strong>
-              ?
-              <br />
-              This action can be undone by an administrator if needed.
-            </>
+            <Trans
+              i18nKey="transactions.delete.body"
+              values={{
+                merchant: deletingTransaction.merchant,
+                date: formatTransactionDate(deletingTransaction.date, i18n.resolvedLanguage),
+                amount: formatAmount(deletingTransaction.amount, i18n.resolvedLanguage),
+              }}
+              components={{ 1: <strong />, 3: <strong />, 5: <strong />, 7: <br /> }}
+            />
           ) : null
         }
         isDeleting={isDeleting}
         error={deleteError?.message || null}
-        onConfirm={handleDeleteConfirm}
+        collectReason
+        onConfirm={(reason) => handleDeleteConfirm(reason ?? "")}
         onCancel={() => setDeletingTransaction(null)}
       />
     </>

@@ -62,11 +62,12 @@ const deleteTransactionSchema = {
     properties: { id: { type: "string", format: "uuid" } },
     required: ["id"],
   },
-  querystring: {
-    type: "object",
+  body: {
+    type: ["object", "null"],
     properties: {
       reason: { type: "string", maxLength: 1000 },
     },
+    additionalProperties: false,
   },
 } as const;
 
@@ -203,7 +204,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.delete<{ Params: { id: string }; Querystring: { reason?: string } }>(
+  app.delete<{ Params: { id: string }; Body: { reason?: string } | null }>(
     "/transactions/:id",
     {
       schema: deleteTransactionSchema,
@@ -211,7 +212,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
     },
     async (request, reply) => {
       const { id } = request.params;
-      const { reason } = request.query;
+      const reason = request.body?.reason;
       const user = getSessionUser(request);
       const isAdmin = user.role === "ADMIN";
       await transactionService.deleteTransaction(id, user.id, reason, isAdmin);

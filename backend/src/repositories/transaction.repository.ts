@@ -23,8 +23,14 @@ const TRANSACTION_SELECT = {
   isDeleted: true,
 } as const;
 
-export async function findByIdForUser(id: string, userId: string, isAdmin = false) {
-  const transaction = await prisma.factTransactions.findFirst({
+export async function findByIdForUser(
+  id: string,
+  userId: string,
+  isAdmin = false,
+  tx?: Prisma.TransactionClient,
+) {
+  const client = tx ?? prisma;
+  const transaction = await client.factTransactions.findFirst({
     where: { id, isDeleted: false },
     select: TRANSACTION_SELECT,
   });
@@ -48,9 +54,13 @@ export async function updateById(
     dateId?: number;
   },
   isAdmin = false,
+  tx?: Prisma.TransactionClient,
 ) {
-  return prisma.$transaction(async (tx) => {
-    const existing = await tx.factTransactions.findUnique({
+  const run = async (client: Prisma.TransactionClient) => {
+    // `findFirst` (not `findUnique`): `isDeleted` is not a unique field, so
+    // `findUnique`'s where input would silently ignore the predicate and
+    // return already-soft-deleted rows. `findFirst` composes the filter.
+    const existing = await client.factTransactions.findFirst({
       where: { id, isDeleted: false },
       select: { id: true, userId: true },
     });
@@ -62,7 +72,7 @@ export async function updateById(
     }
 
     if (data.categoryId !== undefined) {
-      const category = await tx.dimCategory.findFirst({
+      const category = await client.dimCategory.findFirst({
         where: { id: data.categoryId, userId: isAdmin ? existing.userId : userId },
         select: { id: true },
       });
@@ -71,17 +81,23 @@ export async function updateById(
       }
     }
 
-    return tx.factTransactions.update({
+    return client.factTransactions.update({
       where: { id },
       data,
       select: TRANSACTION_SELECT,
     });
-  });
+  };
+  return tx ? run(tx) : prisma.$transaction(run);
 }
 
-export async function deleteById(id: string, userId: string, isAdmin = false) {
-  return prisma.$transaction(async (tx) => {
-    const existing = await tx.factTransactions.findUnique({
+export async function deleteById(
+  id: string,
+  userId: string,
+  isAdmin = false,
+  tx?: Prisma.TransactionClient,
+) {
+  const run = async (client: Prisma.TransactionClient) => {
+    const existing = await client.factTransactions.findFirst({
       where: { id, isDeleted: false },
       select: { id: true, userId: true },
     });
@@ -92,11 +108,14 @@ export async function deleteById(id: string, userId: string, isAdmin = false) {
       throw new ServiceError(404, "Transaction not found");
     }
 
-    await tx.factTransactions.update({
+    await client.factTransactions.update({
       where: { id },
       data: { isDeleted: true },
     });
-  });
+    return existing;
+  };
+  if (tx) await run(tx);
+  else await prisma.$transaction(run);
 }
 
 export async function findAccountByIdAndUser(accountId: string, userId: string) {

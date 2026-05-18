@@ -447,7 +447,9 @@ Returns a single transaction with its associated category, account, merchant, an
 
 ### PATCH /transactions/:id
 
-Updates a transaction's category and/or notes. Setting `categoryId` automatically sets `manualOverride` to `true`. At least one field must be provided.
+Updates a transaction. Setting `categoryId` automatically sets `manualOverride` to `true`. At least one field must be provided.
+
+Admins may edit any user's transaction; regular users may only edit their own (enforced by IDOR guard returning 404 for foreign rows). Every accepted edit emits a `TRANSACTION_EDIT` audit entry containing the previous and new values plus the optional `reason`. The `reason` field is **not** persisted on the transaction row — it lives only on the audit entry. When values do not change (e.g. PATCH `{ notes: "x" }` when notes were already `"x"`), no audit entry is emitted.
 
 **Path Parameters:**
 
@@ -455,16 +457,19 @@ Updates a transaction's category and/or notes. Setting `categoryId` automaticall
 | --------- | ------ | ---------- |
 | `id`      | string | UUID       |
 
-**Request Body:**
+**Request Body:** (at least one of `categoryId`, `notes`, `date`, `amount`, `reason`)
 
-| Field        | Type   | Required | Validation                                            |
-| ------------ | ------ | -------- | ----------------------------------------------------- |
-| `categoryId` | string | no       | UUID; must be a valid category (user-owned or global) |
-| `notes`      | string | no       | Max 10,000 characters                                 |
+| Field        | Type   | Required | Validation                                               |
+| ------------ | ------ | -------- | -------------------------------------------------------- |
+| `categoryId` | string | no       | UUID; must be a category owned by the transaction's user |
+| `notes`      | string | no       | Max 10,000 characters                                    |
+| `date`       | string | no       | `^\d{4}-\d{2}-\d{2}$` (UTC)                              |
+| `amount`     | number | no       | Decimal; stored as `Decimal(12,2)`                       |
+| `reason`     | string | no       | Max 1,000 characters; recorded on the audit entry only   |
 
 **Response 200:** Returns the updated transaction (same shape as GET).
 
-**Response 400:** Invalid input (empty body, invalid UUID, notes too long)
+**Response 400:** Invalid input (empty body, invalid UUID, notes/reason too long, malformed date)
 **Response 401:** Not authenticated
 **Response 404:** Transaction or category not found, or does not belong to the authenticated user
 
@@ -472,7 +477,9 @@ Updates a transaction's category and/or notes. Setting `categoryId` automaticall
 
 ### DELETE /transactions/:id
 
-Permanently deletes a transaction. Only the owner can delete their transactions.
+Soft-deletes a transaction (`isDeleted = true`). The row is excluded from all transaction lists, dashboard aggregates, category breakdowns, and budget spending calculations. Admins may delete any user's transaction; regular users may only delete their own. Every accepted delete emits a `TRANSACTION_DELETE` audit entry containing the previous values plus the optional `reason`.
+
+No restore endpoint exists in this release — soft-deleted rows are retained for audit replay only.
 
 **Path Parameters:**
 
@@ -480,10 +487,68 @@ Permanently deletes a transaction. Only the owner can delete their transactions.
 | --------- | ------ | ---------- |
 | `id`      | string | UUID       |
 
+**Request Body:** (optional)
+
+| Field    | Type   | Required | Validation                                             |
+| -------- | ------ | -------- | ------------------------------------------------------ |
+| `reason` | string | no       | Max 1,000 characters; recorded on the audit entry only |
+
+The `reason` MUST be sent in the request body, not on the querystring — putting free-text in the URL would leak it into Pino/reverse-proxy access logs.
+
 **Response 204:** No content
 
+**Response 400:** `reason` exceeds 1,000 characters
 **Response 401:** Not authenticated
 **Response 404:** Transaction not found or does not belong to the authenticated user
+
+---
+
+### GET /audit-logs
+
+Lists audit log entries with pagination and filtering. **ADMIN-only.**
+
+**Query Parameters:**
+
+| Parameter       | Type    | Required | Validation                                                                                             |
+| --------------- | ------- | -------- | ------------------------------------------------------------------------------------------------------ |
+| `page`          | integer | no       | Min 1, default 1                                                                                       |
+| `limit`         | integer | no       | Min 1, max 100, default 20                                                                             |
+| `userId`        | string  | no       | Filter to entries with this actor `userId`                                                             |
+| `action`        | string  | no       | Filter to entries with this exact `action` (e.g. `TRANSACTION_DELETE`, `LOGIN_FAILED`, `ROLE_CHANGED`) |
+| `transactionId` | string  | no       | Filter to entries tied to this transaction id                                                          |
+| `startDate`     | string  | no       | ISO 8601 date-time; inclusive lower bound on `createdAt`                                               |
+| `endDate`       | string  | no       | ISO 8601 date-time; inclusive upper bound on `createdAt`                                               |
+
+**Response 200:**
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "action": "TRANSACTION_EDIT",
+      "userId": "uuid|null",
+      "transactionId": "uuid|null",
+      "previousValues": { "notes": "old" },
+      "changedValues": { "notes": "new" },
+      "reason": "Corrected description",
+      "createdAt": "2026-05-18T12:34:56.000Z"
+    }
+  ],
+  "meta": {
+    "totalCount": 123,
+    "totalPages": 7,
+    "page": 1,
+    "limit": 20
+  }
+}
+```
+
+Results are ordered by `createdAt DESC`. `previousValues` / `changedValues` are JSON blobs whose shape depends on `action`; for cross-user actions performed by an admin, `changedValues.targetUserId` records the affected user.
+
+**Response 400:** Invalid query (e.g. `limit > 100`, malformed `startDate`/`endDate`)
+**Response 401:** Not authenticated
+**Response 403:** Authenticated but not ADMIN
 
 ---
 
