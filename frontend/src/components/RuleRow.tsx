@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { useRuleOverlap, type CategoryRule } from "../lib/queries/categories";
+import { RegexHelper } from "./RegexHelper";
 
 interface RuleEditorState {
   pattern: string;
@@ -46,6 +47,8 @@ export function RuleRow({
           <Input
             aria-label={`Rule pattern ${rule.id}`}
             className="md:flex-1"
+            placeholder={editor.matchType === "regex" ? "e.g. Migros.*Online" : undefined}
+            maxLength={256}
             value={editor.pattern}
             onChange={(event) => setEditor({ ...editor, pattern: event.target.value })}
           />
@@ -91,12 +94,15 @@ export function RuleRow({
           </div>
         </div>
         {editor.matchType === "regex" && (
-          <p
-            className="mt-2 text-xs text-muted-foreground"
-            data-testid={`overlap-skipped-regex-${rule.id}`}
-          >
-            Overlap detection isn't available for regex rules.
-          </p>
+          <>
+            <RegexHelper pattern={editor.pattern} idSuffix={rule.id} />
+            <p
+              className="mt-2 text-xs text-muted-foreground"
+              data-testid={`overlap-skipped-regex-${rule.id}`}
+            >
+              Overlap detection isn't available for regex rules.
+            </p>
+          </>
         )}
         {editor.matchType !== "regex" && overlapError && !conflicts.length && (
           <p

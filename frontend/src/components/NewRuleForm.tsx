@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { useRuleOverlap } from "../lib/queries/categories";
 import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
+import { RegexHelper } from "./RegexHelper";
 
 interface RuleEditorState {
   pattern: string;
@@ -64,7 +65,8 @@ export function NewRuleForm({
         <Input
           aria-label={`New rule pattern for ${categoryName}`}
           className="md:flex-1"
-          placeholder="Pattern"
+          placeholder={draft.matchType === "regex" ? "e.g. Migros.*Online" : "Pattern"}
+          maxLength={256}
           value={draft.pattern}
           onChange={(event) => setDraft({ ...draft, pattern: event.target.value })}
         />
@@ -96,9 +98,12 @@ export function NewRuleForm({
         </Button>
       </div>
       {draft.matchType === "regex" && (
-        <p className="mt-2 text-xs text-muted-foreground" data-testid="overlap-skipped-regex-new">
-          Overlap detection isn't available for regex rules.
-        </p>
+        <>
+          <RegexHelper pattern={draft.pattern} idSuffix="new" />
+          <p className="mt-2 text-xs text-muted-foreground" data-testid="overlap-skipped-regex-new">
+            Overlap detection isn't available for regex rules.
+          </p>
+        </>
       )}
       {draft.matchType !== "regex" && overlapError && conflicts.length === 0 && (
         <p

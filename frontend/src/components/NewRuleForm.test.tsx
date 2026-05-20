@@ -78,4 +78,28 @@ describe("NewRuleForm", () => {
     const select = screen.getByLabelText("New rule match type for Groceries");
     expect(select).toHaveTextContent("regex");
   });
+
+  it("swaps the pattern placeholder to a regex example when matchType is 'regex'", async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    const pattern = screen.getByLabelText("New rule pattern for Groceries") as HTMLInputElement;
+    expect(pattern.placeholder).toBe("Pattern");
+
+    await user.selectOptions(screen.getByLabelText("New rule match type for Groceries"), "regex");
+
+    expect(pattern.placeholder).toMatch(/Migros\.\*Online/);
+  });
+
+  it("renders the regex helper (syntax caption + test field) when regex is selected", async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    expect(screen.queryByTestId("regex-helper-new")).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("New rule match type for Groceries"), "regex");
+
+    expect(screen.getByTestId("regex-helper-new")).toBeInTheDocument();
+    expect(screen.getByLabelText(/test against/i)).toBeInTheDocument();
+  });
 });
