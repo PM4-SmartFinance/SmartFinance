@@ -38,7 +38,12 @@ jobs:
     outputs:
       skipped: ${{ steps.sync-check.outputs.skipped }}
     steps:
+      # Pin to develop so the sync-release script is loaded from the source of
+      # truth being validated, not the triggering ref (which is the tag's tree
+      # on release events).
       - uses: actions/checkout@v4
+        with:
+          ref: develop
 
       - name: Verify release source and healthy develop
         id: sync-check
@@ -52,7 +57,7 @@ jobs:
               ? {
                   releaseTag: context.payload.inputs.tag,
                   targetCommitish: 'develop',
-                  dryRun: String(context.payload.inputs.dry_run) !== 'false',
+                  dryRun: context.payload.inputs.dry_run !== 'false',
                 }
               : {
                   releaseTag: release.tag_name,
