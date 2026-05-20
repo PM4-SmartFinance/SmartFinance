@@ -64,6 +64,18 @@ describe("UserMenu", () => {
     expect(container.firstChild).toBeNull();
   });
 
+  it("renders two-letter initials for a single-word display name", () => {
+    authState.user = { id: "1", email: "test@example.com", name: "Anna", role: "USER" };
+    render(<UserMenu />);
+    expect(screen.getByText("AN")).toBeInTheDocument();
+  });
+
+  it("falls back to email initials when the display name is whitespace-only", () => {
+    authState.user = { id: "1", email: "test@example.com", name: "   ", role: "USER" };
+    render(<UserMenu />);
+    expect(screen.getByText("TE")).toBeInTheDocument();
+  });
+
   it("opens the menu and shows email, theme options, and Sign out", async () => {
     const user = userEvent.setup();
     render(<UserMenu />);

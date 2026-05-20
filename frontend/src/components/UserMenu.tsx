@@ -38,15 +38,18 @@ export function UserMenu() {
   if (!user) return null;
 
   const displayName = user.name?.trim();
-  const initials = displayName
-    ? displayName
-        .split(/\s+/)
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((part) => part[0])
-        .join("")
-        .toUpperCase() || displayName.slice(0, 2).toUpperCase()
-    : user.email.slice(0, 2).toUpperCase();
+  const initials = (() => {
+    if (!displayName) return user.email.slice(0, 2).toUpperCase();
+    const parts = displayName.split(/\s+/).filter(Boolean);
+    // Single-word names borrow the first two characters so "Anna" → "AN"
+    // matches the visual weight of multi-word initials like "Test User" → "TU".
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return parts
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase();
+  })();
 
   return (
     <Menu.Root>
@@ -99,8 +102,14 @@ export function UserMenu() {
             <Menu.RadioGroup
               value={i18n.resolvedLanguage || "en"}
               onValueChange={(v) => {
+                const prev = i18n.resolvedLanguage;
                 i18n.changeLanguage(v).catch((err) => {
                   console.error(`[i18n] failed to switch language to "${v}":`, err);
+                  // Revert the radio selection so the UI stops claiming a
+                  // language it could not actually load.
+                  if (prev && prev !== v) {
+                    void i18n.changeLanguage(prev);
+                  }
                 });
               }}
             >

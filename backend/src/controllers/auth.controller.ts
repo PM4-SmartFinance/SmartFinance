@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import * as authService from "../services/auth.service.js";
 import * as userService from "../services/user.service.js";
 import { verifySession } from "../middleware/rbac.js";
+import { ServiceError } from "../errors.js";
 
 interface AuthBody {
   email: string;
@@ -45,7 +46,18 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
   app.get("/auth/me", async (request, reply) => {
     const sessionUser = await verifySession(request);
-    const user = await userService.getProfile(sessionUser.id);
-    return reply.send({ user });
+    try {
+      const user = await userService.getProfile(sessionUser.id);
+      return reply.send({ user });
+    } catch (err) {
+      // Race: verifySession passed, but the user row was deleted before
+      // getProfile ran. Mirror the eviction semantics used inside
+      // verifySession so /auth/me returns 401 with a cleared session.
+      if (err instanceof ServiceError && err.statusCode === 404) {
+        request.session.delete();
+        throw new ServiceError(401, "Unauthorized");
+      }
+      throw err;
+    }
   });
 }

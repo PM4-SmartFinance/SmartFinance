@@ -160,6 +160,18 @@ describe("DashboardPage", () => {
     expect(screen.getByText("Welcome back, Test User")).toBeInTheDocument();
   });
 
+  it("falls back to the email greeting when the display name is whitespace-only", () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { ...USER_FIXTURE, name: "   " },
+      isAuthenticated: true,
+      isLoading: false,
+    });
+
+    renderWithProviders();
+
+    expect(screen.getByText("Welcome back, test@example.com")).toBeInTheDocument();
+  });
+
   it("triggers loading states when date range is changed", async () => {
     renderWithProviders();
 

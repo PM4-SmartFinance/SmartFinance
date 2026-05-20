@@ -25,27 +25,26 @@ import * as userService from "../services/user.service.js";
 
 const mockGetProfile = vi.mocked(userService.getProfile);
 
-function buildTestApp() {
-  const app = Fastify({ logger: false });
-  app.decorateRequest("session", null);
-  app.addHook("onRequest", async (request) => {
-    Object.defineProperty(request, "session", {
-      configurable: true,
-      value: {
-        get: () => sessionUser,
-        set: vi.fn(),
-        delete: vi.fn(),
-      },
-    });
-  });
-  return app;
-}
-
 describe("GET /api/v1/auth/me", () => {
   let app: FastifyInstance;
+  // Hoisted so the deleted-user test can assert the race triggers session
+  // eviction (mirrors verifySession's own behaviour).
+  let sessionDeleteSpy: ReturnType<typeof vi.fn>;
 
   beforeAll(async () => {
-    app = buildTestApp();
+    sessionDeleteSpy = vi.fn();
+    app = Fastify({ logger: false });
+    app.decorateRequest("session", null);
+    app.addHook("onRequest", async (request) => {
+      Object.defineProperty(request, "session", {
+        configurable: true,
+        value: {
+          get: () => sessionUser,
+          set: vi.fn(),
+          delete: sessionDeleteSpy,
+        },
+      });
+    });
     await app.register(authRoutes, { prefix: "/api/v1" });
     await app.ready();
   });
@@ -54,6 +53,7 @@ describe("GET /api/v1/auth/me", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionDeleteSpy.mockClear();
     sessionUser = {
       id: "user-1",
       role: "USER",
@@ -83,5 +83,15 @@ describe("GET /api/v1/auth/me", () => {
       },
     });
     expect(mockGetProfile).toHaveBeenCalledWith("user-1");
+  });
+
+  it("returns 401 and clears the session when the user was deleted between verifySession and getProfile", async () => {
+    const { ServiceError } = await import("../errors.js");
+    mockGetProfile.mockRejectedValue(new ServiceError(404, "User not found"));
+
+    const response = await app.inject({ method: "GET", url: "/api/v1/auth/me" });
+
+    expect(response.statusCode).toBe(401);
+    expect(sessionDeleteSpy).toHaveBeenCalledOnce();
   });
 });

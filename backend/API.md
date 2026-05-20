@@ -57,7 +57,7 @@ Ends the current session. No request body required.
 
 ### GET /auth/me
 
-Returns the currently authenticated user. Requires a valid session.
+Returns the currently authenticated user's full profile. Requires a valid session.
 
 **Response 200:**
 
@@ -65,13 +65,18 @@ Returns the currently authenticated user. Requires a valid session.
 {
   "user": {
     "id": "uuid",
+    "email": "user@example.com",
+    "name": "Jane Doe",
     "role": "USER",
-    "email": "user@example.com"
+    "active": true,
+    "createdAt": "2026-01-01T00:00:00.000Z"
   }
 }
 ```
 
-**Response 401:** No valid session
+`name` is `null` when the user has not configured a display name.
+
+**Response 401:** No valid session, or the user record was deleted (the session is cleared in this case).
 
 ---
 
