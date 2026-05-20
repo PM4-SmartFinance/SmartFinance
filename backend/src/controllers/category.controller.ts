@@ -3,7 +3,7 @@ import { requireRole, getSessionUser } from "../middleware/rbac.js";
 import * as categoryService from "../services/category.service.js";
 
 export async function categoryRoutes(app: FastifyInstance): Promise<void> {
-  // GET: List all categories (Global + User-specific)
+  // GET: List all categories for the authenticated user
   app.get("/categories", { preHandler: requireRole("USER") }, async (request, reply) => {
     const user = getSessionUser(request);
 

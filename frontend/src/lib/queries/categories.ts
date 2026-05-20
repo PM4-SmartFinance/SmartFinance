@@ -5,7 +5,7 @@ import { DASHBOARD_QUERY_KEY } from "./dashboard";
 export interface Category {
   id: string;
   categoryName: string;
-  userId: string | null;
+  userId: string;
   createdAt: string;
   updatedAt: string;
 }
