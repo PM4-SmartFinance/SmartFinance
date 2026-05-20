@@ -78,6 +78,11 @@
     "recategorizeNone": "Nessuna transazione modificata nell'intervallo selezionato.",
     "recategorizeSuccess_one": "Ricategorizzata {{count}} transazione.",
     "recategorizeSuccess_other": "Ricategorizzate {{count}} transazioni.",
+    "uncategorizeAllBtn": "Sposta tutto in non categorizzato",
+    "confirmUncategorizeAll": "Rimuovere la categoria da tutte le transazioni attualmente assegnate a ‘{{name}}’? Diventeranno non categorizzate.",
+    "uncategorizeAllNone": "Nessuna transazione era assegnata a ‘{{name}}’.",
+    "uncategorizeAllSuccess_one": "Categoria rimossa da {{count}} transazione in ‘{{name}}’.",
+    "uncategorizeAllSuccess_other": "Categoria rimossa da {{count}} transazioni in ‘{{name}}’.",
     "errors": {
       "nameRequired": "Il nome della categoria è obbligatorio.",
       "createFailed": "Impossibile creare la categoria.",
@@ -89,12 +94,14 @@
       "updateRuleFailed": "Impossibile aggiornare la regola.",
       "deleteRuleFailed": "Impossibile eliminare la regola.",
       "autoCategorizeFailed": "Impossibile eseguire la categorizzazione automatica.",
-      "recategorizeFailed": "Impossibile ricategorizzare l'intervallo selezionato."
+      "recategorizeFailed": "Impossibile ricategorizzare l'intervallo selezionato.",
+      "uncategorizeAllFailed": "Impossibile spostare le transazioni in non categorizzato."
     },
     "aria": {
       "editCategory": "Modifica la categoria {{name}}",
       "saveCategory": "Salva la categoria {{name}}",
-      "deleteCategory": "Elimina la categoria {{name}}"
+      "deleteCategory": "Elimina la categoria {{name}}",
+      "uncategorizeAll": "Sposta tutte le transazioni in {{name}} in non categorizzato"
     }
   },
   "nav": {

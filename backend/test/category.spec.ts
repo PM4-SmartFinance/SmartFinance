@@ -227,6 +227,98 @@ describe("Category CRUD and Authorization Tests", () => {
   });
 });
 
+describe("POST /api/v1/categories/:id/uncategorize-transactions (KAN-156)", () => {
+  let bulkCatId: string;
+  let accountId: string;
+  let merchantId: string;
+  const txIds: string[] = [];
+
+  beforeAll(async () => {
+    const currency = await prisma.dimCurrency.findUniqueOrThrow({ where: { code: "CHF" } });
+    const account = await prisma.dimAccount.create({
+      data: {
+        name: "Test_Bulk_Account",
+        iban: "CH9300762011623852958",
+        userId: userAId,
+        currencyId: currency.id,
+      },
+    });
+    accountId = account.id;
+    const merchant = await prisma.dimMerchant.create({ data: { name: "Test_Bulk_Merchant" } });
+    merchantId = merchant.id;
+    await prisma.dimDate.upsert({
+      where: { id: 20260401 },
+      create: { id: 20260401, dayOfWeek: "Wednesday", month: 4, year: 2026 },
+      update: {},
+    });
+
+    const cat = await prisma.dimCategory.create({
+      data: { categoryName: "Test_BulkUncat", userId: userAId },
+    });
+    bulkCatId = cat.id;
+
+    for (let i = 0; i < 3; i++) {
+      const tx = await prisma.factTransactions.create({
+        data: {
+          amount: 10 + i,
+          userId: userAId,
+          accountId,
+          merchantId,
+          dateId: 20260401,
+          categoryId: bulkCatId,
+          manualOverride: true,
+        },
+      });
+      txIds.push(tx.id);
+    }
+  });
+
+  afterAll(async () => {
+    await prisma.factTransactions.deleteMany({ where: { id: { in: txIds } } });
+    await prisma.dimCategory.deleteMany({ where: { id: bulkCatId } });
+    await prisma.dimAccount.deleteMany({ where: { id: accountId } });
+    await prisma.dimMerchant.deleteMany({ where: { id: merchantId } });
+  });
+
+  it("returns 200 with the count and clears category + manualOverride on every owned row", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/v1/categories/${bulkCatId}/uncategorize-transactions`,
+      cookies: { session: userACookie },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ uncategorized: 3 });
+
+    const rows = await prisma.factTransactions.findMany({
+      where: { id: { in: txIds } },
+      select: { categoryId: true, manualOverride: true },
+    });
+    expect(rows).toHaveLength(3);
+    for (const row of rows) {
+      expect(row.categoryId).toBeNull();
+      expect(row.manualOverride).toBe(false);
+    }
+  });
+
+  it("returns 404 when invoked by a different user (IDOR guard)", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/v1/categories/${bulkCatId}/uncategorize-transactions`,
+      cookies: { session: userBCookie },
+    });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it("returns 401 when unauthenticated", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/v1/categories/${bulkCatId}/uncategorize-transactions`,
+    });
+    expect(res.statusCode).toBe(401);
+  });
+});
+
 describe("Default category onboarding", () => {
   it("creates default categories when a new user is onboarded", async () => {
     const res = await app.inject({

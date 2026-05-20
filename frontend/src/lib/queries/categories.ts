@@ -239,3 +239,23 @@ export function useRecategorizeRange(options?: CategoryMutationOptions) {
       ),
   });
 }
+
+// KAN-156: bulk-clear category from every transaction in a personal category
+// so the user can subsequently delete the category or rerun auto-categorize.
+export function useUncategorizeCategoryTransactions(options?: CategoryMutationOptions) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (categoryId: string) =>
+      api.post<{ uncategorized: number }>(
+        `/categories/${categoryId}/uncategorize-transactions`,
+        null as never,
+      ),
+    onSuccess: () =>
+      invalidateAll(
+        queryClient,
+        [["transactions"], DASHBOARD_QUERY_KEY],
+        options?.onInvalidationFailure,
+      ),
+  });
+}
