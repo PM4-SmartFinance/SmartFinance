@@ -63,6 +63,32 @@ describe("SettingsProfile - Password Change Flow", () => {
     });
   });
 
+  it("clears the cached auth query before redirecting after password change", async () => {
+    const user = userEvent.setup();
+    const removeQueriesSpy = vi.spyOn(QueryClient.prototype, "removeQueries");
+    mockPost.mockResolvedValue({ ok: true });
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Test User")).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByLabelText(/Current password/i), "oldpass123");
+    await user.type(screen.getByLabelText(/^New password/i), "newpass123");
+    await user.type(screen.getByLabelText(/Confirm new password/i), "newpass123");
+    await user.click(screen.getByRole("button", { name: "Change password" }));
+
+    await waitFor(
+      () => {
+        expect(mockNavigate).toHaveBeenCalledExactlyOnceWith("/login");
+      },
+      { timeout: 3000 },
+    );
+
+    expect(removeQueriesSpy).toHaveBeenCalledWith({ queryKey: ["auth", "me"] });
+    removeQueriesSpy.mockRestore();
+  });
+
   it("shows error when new passwords do not match", async () => {
     const user = userEvent.setup();
     renderWithProviders();
