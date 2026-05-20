@@ -187,7 +187,7 @@ export function CategoriesPage() {
 
   async function handleCreateRule(
     categoryId: string,
-    draft: { pattern: string; matchType: "exact" | "contains"; priority: number },
+    draft: { pattern: string; matchType: "exact" | "contains" | "regex"; priority: number },
   ): Promise<boolean> {
     if (!draft.pattern.trim()) {
       setCategoryError(
@@ -224,7 +224,7 @@ export function CategoriesPage() {
 
   async function handlePreviewRule(
     categoryId: string,
-    draft: { pattern: string; matchType: "exact" | "contains"; priority: number },
+    draft: { pattern: string; matchType: "exact" | "contains" | "regex"; priority: number },
   ) {
     if (!draft.pattern.trim()) {
       setPreviewByCategory((prev) => {
@@ -278,7 +278,7 @@ export function CategoriesPage() {
 
   async function handleSaveRule(
     rule: CategoryRule,
-    draft: { pattern: string; matchType: "exact" | "contains"; priority: number },
+    draft: { pattern: string; matchType: "exact" | "contains" | "regex"; priority: number },
   ): Promise<boolean> {
     if (!draft.pattern.trim()) {
       setCategoryError(

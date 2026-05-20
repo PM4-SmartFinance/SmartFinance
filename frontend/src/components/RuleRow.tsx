@@ -1,13 +1,14 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { useRuleOverlap, type CategoryRule } from "../lib/queries/categories";
-import { useTranslation } from "react-i18next";
+import { RegexHelper } from "./RegexHelper";
 
 interface RuleEditorState {
   pattern: string;
-  matchType: "exact" | "contains";
+  matchType: "exact" | "contains" | "regex";
   priority: number;
 }
 
@@ -49,6 +50,12 @@ export function RuleRow({
           <Input
             aria-label={t("components.ruleRow.ariaPattern", "Rule pattern {{id}}", { id: rule.id })}
             className="md:flex-1"
+            placeholder={
+              editor.matchType === "regex"
+                ? t("components.ruleRow.patternPlaceholderRegex", "e.g. Migros.*Online")
+                : undefined
+            }
+            maxLength={256}
             value={editor.pattern}
             onChange={(event) => setEditor({ ...editor, pattern: event.target.value })}
           />
@@ -59,13 +66,17 @@ export function RuleRow({
             className="w-auto"
             value={editor.matchType}
             onChange={(event) =>
-              setEditor({ ...editor, matchType: event.target.value as "exact" | "contains" })
+              setEditor({
+                ...editor,
+                matchType: event.target.value as "exact" | "contains" | "regex",
+              })
             }
           >
             <option value="contains">
               {t("components.ruleRow.matchTypeContains", "contains")}
             </option>
             <option value="exact">{t("components.ruleRow.matchTypeExact", "exact")}</option>
+            <option value="regex">{t("components.ruleRow.matchTypeRegex", "regex")}</option>
           </NativeSelect>
           <Input
             aria-label={t("components.ruleRow.ariaPriority", "Rule priority {{id}}", {
@@ -98,7 +109,21 @@ export function RuleRow({
             </Button>
           </div>
         </div>
-        {overlapError && !conflicts.length && (
+        {editor.matchType === "regex" && (
+          <>
+            <RegexHelper pattern={editor.pattern} idSuffix={rule.id} />
+            <p
+              className="mt-2 text-xs text-muted-foreground"
+              data-testid={`overlap-skipped-regex-${rule.id}`}
+            >
+              {t(
+                "components.ruleRow.overlapSkippedRegex",
+                "Overlap detection isn't available for regex rules.",
+              )}
+            </p>
+          </>
+        )}
+        {editor.matchType !== "regex" && overlapError && !conflicts.length && (
           <p
             role="alert"
             className="mt-2 text-xs text-muted-foreground"
@@ -125,7 +150,9 @@ export function RuleRow({
                   <span className="font-mono">"{c.pattern}"</span> (
                   {c.matchType === "exact"
                     ? t("components.ruleRow.matchTypeExact", "exact")
-                    : t("components.ruleRow.matchTypeContains", "contains")}
+                    : c.matchType === "regex"
+                      ? t("components.ruleRow.matchTypeRegex", "regex")
+                      : t("components.ruleRow.matchTypeContains", "contains")}
                   ) → {c.categoryName}
                   <span className="text-muted-foreground">
                     {" "}
@@ -152,9 +179,20 @@ export function RuleRow({
             (
             {rule.matchType === "exact"
               ? t("components.ruleRow.matchTypeExact", "exact")
-              : t("components.ruleRow.matchTypeContains", "contains")}
+              : rule.matchType === "regex"
+                ? t("components.ruleRow.matchTypeRegex", "regex")
+                : t("components.ruleRow.matchTypeContains", "contains")}
             )
           </span>
+          {rule.isValid === false && (
+            <span
+              className="ml-2 rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-destructive"
+              data-testid={`invalid-rule-badge-${rule.id}`}
+              role="alert"
+            >
+              {t("components.ruleRow.invalidRegexBadge", "Invalid regex — fix the pattern")}
+            </span>
+          )}
         </span>
         <span
           className="text-xs text-muted-foreground"

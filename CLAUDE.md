@@ -30,7 +30,7 @@ Layered client-server architecture with clear separation of concerns:
 4. **Data Access Layer** — Repository pattern abstracting ORM, enforces transactional boundaries
 5. **Persistence Layer** — PostgreSQL
 
-All database access goes through the repository layer. No direct SQL from services or extensions. All write operations use explicit database transactions.
+All database access goes through the repository layer. No direct SQL from services or extensions. All write operations use explicit database transactions. See the ADR: [0003 — Repository Pattern with Transactions](docs/adr/0003-repository-pattern-with-transactions.md).
 
 ## Key Design Decisions
 
@@ -39,6 +39,8 @@ All database access goes through the repository layer. No direct SQL from servic
 - **Backend-side filtering/aggregation/pagination** — never load full datasets into the frontend
 - **Extension architecture:** Modules register via defined interfaces, cannot access repository layer directly, cannot modify DB schema. Extensions use namespace-isolated JSON storage
 - **Import pipeline:** CSV upload → importer selection → parsing → validation → normalization → categorization → persistence (all-or-nothing within DB transaction)
+
+See ADRs: [0001 — Layered Architecture](docs/adr/0001-layered-architecture.md), [0002 — Cookie-based Authentication](docs/adr/0002-cookie-based-authentication.md), [0004 — Extension Isolation](docs/adr/0004-extension-isolation.md).
 
 ## API Endpoints
 
@@ -195,7 +197,7 @@ See `README.md` for two setup paths: **Quick Start (Docker)** for running from p
 
 Two permanent branches:
 
-- **`main`** (Production) — stable, release-only. Never commit directly. Updated only via release PRs from `develop` at end of sprint.
+- **`main`** (Production) — stable, release-only. Never commit directly. Updated automatically by the `sync-release` CD job when a GitHub Release is published from `develop` at end of sprint.
 - **`develop`** (Pre-Production) — active integration branch. All feature/bugfix PRs target `develop`.
 
 ### Branch Rules
@@ -214,7 +216,7 @@ Two permanent branches:
 
 ### Pull Requests
 
-- PRs target `develop` (not `main`). Release PRs from `develop` → `main` happen at end of sprint.
+- PRs target `develop` (not `main`). Promotion to `main` happens automatically when a release is published from `develop` at end of sprint (see Releases).
 - Include Jira ID in title (e.g., `[KAN-23] Define branching strategy`), squash and merge, delete branch after merge.
 - **Deadline:** No new PRs on Friday mornings. Cutoff for PR creation is **Thursday 20:00**.
 - **Approval:** Every PR requires explicit approval from the Project Owner.
@@ -244,8 +246,17 @@ Two permanent branches:
 
 ### Releases
 
-- At sprint end, create a release PR from `develop` → `main`.
-- After merging, create a version tag (e.g., `v2.0.0`) via GitHub Releases pointing to `main`.
+Two deployment paths:
+
+- **Test environment (`develop`)** — the `docker-test` + `deploy-test` jobs in `.github/workflows/cd.yml` run on a nightly schedule (02:00 UTC), building and deploying `develop` to the test environment automatically. No manual action required.
+- **Production (`main`)** — at sprint end, create a GitHub Release with a new version tag (e.g., `v2.0.0`) **targeting `develop`** (not `main`). The `sync-release` CD job then:
+  1. Verifies the release targets `develop`.
+  2. Verifies a successful `ci.yml` run exists for the release commit (preferred) or the `develop` tip.
+  3. Verifies the release tag SHA equals the `develop` tip.
+  4. Merges `develop` into `main` via the GitHub API.
+  5. Triggers `docker-release` + `deploy-release` to build and deploy production.
+
+Do **not** open a manual `develop` → `main` PR; the workflow handles the merge. Do **not** create a release targeting `main` — the workflow rejects it.
 
 ### Pull Request Description Template
 
