@@ -1,8 +1,33 @@
 import { prisma } from "../prisma.js";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import type { ParsedTransaction } from "../services/importers/types.js";
 import { ServiceError } from "../errors.js";
 import type { MatchType } from "./category-rule.repository.js";
+
+// Postgres SQLSTATEs we explicitly translate from the raw regex path.
+const PG_INVALID_REGEX = "2201B";
+const PG_QUERY_CANCELED = "57014";
+
+function mapPostgresRegexError(err: unknown): never {
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    const code = (err.meta as { code?: string } | undefined)?.code;
+    if (code === PG_INVALID_REGEX) {
+      throw new ServiceError(400, "Pattern is not supported by the database regex engine");
+    }
+    if (code === PG_QUERY_CANCELED) {
+      throw new ServiceError(400, "Pattern took too long to evaluate");
+    }
+  }
+  if (err instanceof Prisma.PrismaClientUnknownRequestError) {
+    if (err.message.includes("invalid regular expression")) {
+      throw new ServiceError(400, "Pattern is not supported by the database regex engine");
+    }
+    if (err.message.includes("canceling statement due to statement timeout")) {
+      throw new ServiceError(400, "Pattern took too long to evaluate");
+    }
+  }
+  throw err;
+}
 
 const TRANSACTION_SELECT = {
   id: true,
@@ -220,40 +245,48 @@ export async function findPreviewMatchesForUser(
   if (matchType === "regex") {
     type RegexCountRow = { count: bigint };
     type RegexTxRow = { id: string; amount: number; dateId: number; merchantName: string };
-    const [countRows, sampleRows] = await prisma.$transaction([
-      prisma.$queryRaw<RegexCountRow[]>`
-        SELECT COUNT(*)::bigint AS count
-        FROM "FactTransactions" ft
-        JOIN "DimMerchant" dm ON ft."merchantId" = dm.id
-        WHERE ft."userId" = ${userId}
-          AND ft."categoryId" IS NULL
-          AND ft."manualOverride" = false
-          AND dm.name ~* ${pattern}
-      `,
-      prisma.$queryRaw<RegexTxRow[]>`
-        SELECT ft.id,
-               ft.amount::double precision AS amount,
-               ft."dateId",
-               dm.name AS "merchantName"
-        FROM "FactTransactions" ft
-        JOIN "DimMerchant" dm ON ft."merchantId" = dm.id
-        WHERE ft."userId" = ${userId}
-          AND ft."categoryId" IS NULL
-          AND ft."manualOverride" = false
-          AND dm.name ~* ${pattern}
-        ORDER BY ft."dateId" DESC, ft.id ASC
-        LIMIT ${sampleLimit}
-      `,
-    ]);
-    return {
-      matchCount: Number(countRows[0]?.count ?? 0),
-      matchedTransactions: sampleRows.map((tx) => ({
-        id: tx.id,
-        merchantName: tx.merchantName,
-        amount: Number(tx.amount),
-        dateId: tx.dateId,
-      })),
-    };
+    try {
+      // Bound the regex evaluation so a pathological pattern can't tie up
+      // the Postgres backend. statement_timeout is scoped to the tx.
+      const { countRows, sampleRows } = await prisma.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe(`SET LOCAL statement_timeout = '2s'`);
+        const countRows = await tx.$queryRaw<RegexCountRow[]>`
+          SELECT COUNT(*)::bigint AS count
+          FROM "FactTransactions" ft
+          JOIN "DimMerchant" dm ON ft."merchantId" = dm.id
+          WHERE ft."userId" = ${userId}
+            AND ft."categoryId" IS NULL
+            AND ft."manualOverride" = false
+            AND dm.name ~* ${pattern}
+        `;
+        const sampleRows = await tx.$queryRaw<RegexTxRow[]>`
+          SELECT ft.id,
+                 ft.amount::double precision AS amount,
+                 ft."dateId",
+                 dm.name AS "merchantName"
+          FROM "FactTransactions" ft
+          JOIN "DimMerchant" dm ON ft."merchantId" = dm.id
+          WHERE ft."userId" = ${userId}
+            AND ft."categoryId" IS NULL
+            AND ft."manualOverride" = false
+            AND dm.name ~* ${pattern}
+          ORDER BY ft."dateId" DESC, ft.id ASC
+          LIMIT ${sampleLimit}
+        `;
+        return { countRows, sampleRows };
+      });
+      return {
+        matchCount: Number(countRows[0]?.count ?? 0),
+        matchedTransactions: sampleRows.map((tx) => ({
+          id: tx.id,
+          merchantName: tx.merchantName,
+          amount: Number(tx.amount),
+          dateId: tx.dateId,
+        })),
+      };
+    } catch (err) {
+      mapPostgresRegexError(err);
+    }
   }
 
   const nameFilter: Prisma.DimMerchantWhereInput =

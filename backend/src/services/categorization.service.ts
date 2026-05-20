@@ -23,9 +23,13 @@ export function matchTransaction(merchantName: string, rules: RuleForMatching[])
       if (name.includes(rule.pattern.toLowerCase())) return rule.categoryId;
     } else if (rule.matchType === "regex") {
       try {
-        if (new RegExp(rule.pattern, "i").test(merchantName)) return rule.categoryId;
+        // The "i" flag is load-bearing — drops to case-insensitive parity with
+        // exact/contains. Testing against `name` instead of the original keeps
+        // the input pipeline symmetric across all three branches.
+        if (new RegExp(rule.pattern, "i").test(name)) return rule.categoryId;
       } catch {
-        return null;
+        // Bad regex on this rule must not block lower-priority valid rules.
+        continue;
       }
     }
   }

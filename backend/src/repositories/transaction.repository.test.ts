@@ -565,4 +565,45 @@ describe("findPreviewMatchesForUser", () => {
     expect(result.matchedTransactions).toHaveLength(1);
     expect(result.matchCount).toBe(5);
   });
+
+  it("maps Postgres 'invalid regular expression' errors to ServiceError(400)", async () => {
+    vi.mocked(prisma.$transaction).mockRejectedValue(
+      Object.assign(new Error("invalid regular expression: parentheses () not balanced"), {
+        name: "PrismaClientUnknownRequestError",
+      }),
+    );
+    // Patch the prototype name check used by `instanceof` so the err is
+    // recognised — vitest mock doesn't have @prisma/client's prototype chain.
+    const { Prisma } = await import("@prisma/client");
+    const err = new Prisma.PrismaClientUnknownRequestError(
+      "invalid regular expression: parentheses () not balanced",
+      { clientVersion: "x" },
+    );
+    vi.mocked(prisma.$transaction).mockRejectedValue(err);
+
+    const error = await findPreviewMatchesForUser("user-1", "(?<name>x)", "regex", 3).catch(
+      (e: ServiceError) => e,
+    );
+
+    expect(error).toBeInstanceOf(ServiceError);
+    expect(error.statusCode).toBe(400);
+    expect(error.message).toMatch(/not supported by the database regex engine/i);
+  });
+
+  it("maps Postgres statement_timeout cancellation to ServiceError(400)", async () => {
+    const { Prisma } = await import("@prisma/client");
+    const err = new Prisma.PrismaClientUnknownRequestError(
+      "canceling statement due to statement timeout",
+      { clientVersion: "x" },
+    );
+    vi.mocked(prisma.$transaction).mockRejectedValue(err);
+
+    const error = await findPreviewMatchesForUser("user-1", "(a+)+b", "regex", 3).catch(
+      (e: ServiceError) => e,
+    );
+
+    expect(error).toBeInstanceOf(ServiceError);
+    expect(error.statusCode).toBe(400);
+    expect(error.message).toMatch(/took too long/i);
+  });
 });

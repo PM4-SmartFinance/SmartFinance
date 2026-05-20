@@ -1,8 +1,8 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, MatchType } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { DuplicateRuleError } from "../errors.js";
 
-export type MatchType = "exact" | "contains" | "regex";
+export { MatchType };
 
 export async function findAllByUser(userId: string) {
   return prisma.categoryRule.findMany({
@@ -29,27 +29,25 @@ export async function create(data: {
   matchType: MatchType;
   priority: number;
 }) {
-  return prisma.$transaction(async (tx) => {
-    try {
-      return await tx.categoryRule.create({
-        data: {
-          userId: data.userId,
-          categoryId: data.categoryId,
-          pattern: data.pattern,
-          matchType: data.matchType,
-          priority: data.priority,
-        },
-        include: { category: { select: { id: true, categoryName: true } } },
-      });
-    } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError) {
-        if (err.code === "P2002") throw new DuplicateRuleError();
-        if (err.code === "P2003")
-          throw new DuplicateRuleError("Referenced category no longer exists");
-      }
-      throw err;
+  try {
+    return await prisma.categoryRule.create({
+      data: {
+        userId: data.userId,
+        categoryId: data.categoryId,
+        pattern: data.pattern,
+        matchType: data.matchType,
+        priority: data.priority,
+      },
+      include: { category: { select: { id: true, categoryName: true } } },
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+      if (err.code === "P2002") throw new DuplicateRuleError();
+      if (err.code === "P2003")
+        throw new DuplicateRuleError("Referenced category no longer exists");
     }
-  });
+    throw err;
+  }
 }
 
 export async function update(
@@ -81,10 +79,8 @@ export async function update(
 }
 
 export async function remove(id: string, userId: string) {
-  return prisma.$transaction(async (tx) => {
-    const result = await tx.categoryRule.deleteMany({ where: { id, userId } });
-    return result.count > 0;
-  });
+  const result = await prisma.categoryRule.deleteMany({ where: { id, userId } });
+  return result.count > 0;
 }
 
 export async function findCategoryForUser(categoryId: string, userId: string) {

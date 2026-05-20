@@ -90,7 +90,15 @@ export function RuleRow({
             </Button>
           </div>
         </div>
-        {overlapError && !conflicts.length && (
+        {editor.matchType === "regex" && (
+          <p
+            className="mt-2 text-xs text-muted-foreground"
+            data-testid={`overlap-skipped-regex-${rule.id}`}
+          >
+            Overlap detection isn't available for regex rules.
+          </p>
+        )}
+        {editor.matchType !== "regex" && overlapError && !conflicts.length && (
           <p
             role="alert"
             className="mt-2 text-xs text-muted-foreground"
@@ -129,6 +137,15 @@ export function RuleRow({
         <span className="text-sm md:flex-1">
           <span className="font-medium">{rule.pattern}</span>
           <span className="ml-2 text-muted-foreground">({rule.matchType})</span>
+          {rule.isValid === false && (
+            <span
+              className="ml-2 rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-destructive"
+              data-testid={`invalid-rule-badge-${rule.id}`}
+              role="alert"
+            >
+              Invalid regex — fix the pattern
+            </span>
+          )}
         </span>
         <span
           className="text-xs text-muted-foreground"

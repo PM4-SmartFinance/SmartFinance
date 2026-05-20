@@ -19,6 +19,7 @@ export interface CategoryRule {
   priority: number;
   createdAt: string;
   updatedAt: string;
+  isValid: boolean;
 }
 
 export interface RuleDraft {
@@ -175,7 +176,7 @@ export function useDeleteCategoryRule(options?: CategoryMutationOptions) {
 export interface RuleConflict {
   id: string;
   pattern: string;
-  matchType: "exact" | "contains";
+  matchType: "exact" | "contains" | "regex";
   priority: number;
   categoryId: string;
   categoryName: string;
@@ -183,7 +184,7 @@ export interface RuleConflict {
 
 export function useRuleOverlap(
   pattern: string,
-  matchType: "exact" | "contains",
+  matchType: "exact" | "contains" | "regex",
   excludeRuleId?: string,
 ) {
   const trimmed = pattern.trim();
@@ -194,6 +195,7 @@ export function useRuleOverlap(
       { pattern: trimmed, matchType, excludeRuleId },
     ] as const,
     queryFn: async () => {
+      // matchType is narrowed by `enabled` below — never "regex" here.
       const params = new URLSearchParams({ pattern: trimmed, matchType });
       if (excludeRuleId) params.set("excludeRuleId", excludeRuleId);
       const response = await api.get<{ conflicts: RuleConflict[] }>(
@@ -201,7 +203,9 @@ export function useRuleOverlap(
       );
       return response.conflicts;
     },
-    enabled: trimmed.length > 0,
+    // The overlap endpoint rejects regex patterns (no useful literal-substring
+    // comparison). Skip the call entirely instead of letting it 400.
+    enabled: trimmed.length > 0 && matchType !== "regex",
     staleTime: 5_000,
   });
 }

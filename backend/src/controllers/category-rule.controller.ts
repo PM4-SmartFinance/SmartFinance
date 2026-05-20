@@ -36,7 +36,7 @@ const createRuleSchema = {
   required: ["pattern", "matchType", "categoryId", "priority"],
   additionalProperties: false,
   properties: {
-    pattern: { type: "string", minLength: 1 },
+    pattern: { type: "string", minLength: 1, maxLength: 256 },
     matchType: { type: "string", enum: ["exact", "contains", "regex"] },
     categoryId: { type: "string", pattern: uuidPattern },
     priority: { type: "integer", minimum: 0 },
@@ -47,7 +47,7 @@ const updateRuleSchema = {
   type: "object",
   additionalProperties: false,
   properties: {
-    pattern: { type: "string", minLength: 1 },
+    pattern: { type: "string", minLength: 1, maxLength: 256 },
     matchType: { type: "string", enum: ["exact", "contains", "regex"] },
     categoryId: { type: "string", pattern: uuidPattern },
     priority: { type: "integer", minimum: 0 },

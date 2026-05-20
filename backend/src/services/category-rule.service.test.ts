@@ -39,13 +39,26 @@ describe("category-rule.service", () => {
   });
 
   describe("listRules", () => {
-    it("returns all rules for user", async () => {
+    it("returns all rules for user with isValid=true for non-regex rules", async () => {
       mockRepo.findAllByUser.mockResolvedValue([sampleRule] as never);
 
       const result = await service.listRules("user-1");
 
-      expect(result).toEqual([sampleRule]);
+      expect(result).toEqual([{ ...sampleRule, isValid: true }]);
       expect(mockRepo.findAllByUser).toHaveBeenCalledWith("user-1");
+    });
+
+    it("marks regex rules with invalid patterns as isValid=false", async () => {
+      mockRepo.findAllByUser.mockResolvedValue([
+        { ...sampleRule, id: "rule-good", matchType: "regex", pattern: "^Migros.*" },
+        { ...sampleRule, id: "rule-bad", matchType: "regex", pattern: "[invalid(" },
+      ] as never);
+
+      const result = await service.listRules("user-1");
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({ id: "rule-good", isValid: true });
+      expect(result[1]).toMatchObject({ id: "rule-bad", isValid: false });
     });
   });
 
@@ -128,6 +141,18 @@ describe("category-rule.service", () => {
         service.createRule("user-1", "cat-1", "[invalid(", "exact", 10),
       ).resolves.toBeDefined();
     });
+
+    it("rejects a catastrophic-backtracking regex pattern with a 400 error", async () => {
+      const error = await service
+        .createRule("user-1", "cat-1", "(a+)+b", "regex", 10)
+        .catch((e: ServiceError) => e);
+
+      expect(error).toBeInstanceOf(ServiceError);
+      expect(error.statusCode).toBe(400);
+      expect(error.message).toMatch(/too complex/i);
+      expect(mockRepo.findCategoryForUser).not.toHaveBeenCalled();
+      expect(mockRepo.create).not.toHaveBeenCalled();
+    });
   });
 
   describe("updateRule", () => {
@@ -166,6 +191,7 @@ describe("category-rule.service", () => {
     });
 
     it("throws 409 when update causes duplicate", async () => {
+      mockRepo.findById.mockResolvedValue(sampleRule as never);
       mockRepo.update.mockRejectedValue(new DuplicateRuleError());
 
       const error = await service
@@ -177,6 +203,8 @@ describe("category-rule.service", () => {
     });
 
     it("rejects invalid regex pattern when updating matchType to regex with a new pattern", async () => {
+      mockRepo.findById.mockResolvedValue(sampleRule as never);
+
       const error = await service
         .updateRule("rule-1", "user-1", { matchType: "regex", pattern: "[invalid(" })
         .catch((e: ServiceError) => e);
@@ -187,6 +215,7 @@ describe("category-rule.service", () => {
     });
 
     it("accepts valid regex pattern when updating matchType to regex", async () => {
+      mockRepo.findById.mockResolvedValue(sampleRule as never);
       mockRepo.update.mockResolvedValue({
         ...sampleRule,
         matchType: "regex",
@@ -196,6 +225,50 @@ describe("category-rule.service", () => {
       await expect(
         service.updateRule("rule-1", "user-1", { matchType: "regex", pattern: "^Migros.*" }),
       ).resolves.toBeDefined();
+    });
+
+    it("rejects invalid regex when PATCHing pattern only on a rule already stored as regex", async () => {
+      mockRepo.findById.mockResolvedValue({
+        ...sampleRule,
+        matchType: "regex",
+        pattern: "^Migros.*",
+      } as never);
+
+      const error = await service
+        .updateRule("rule-1", "user-1", { pattern: "[invalid(" })
+        .catch((e: ServiceError) => e);
+
+      expect(error).toBeInstanceOf(ServiceError);
+      expect(error.statusCode).toBe(400);
+      expect(mockRepo.update).not.toHaveBeenCalled();
+    });
+
+    it("rejects when switching matchType to regex without changing the existing (invalid) pattern", async () => {
+      mockRepo.findById.mockResolvedValue({
+        ...sampleRule,
+        matchType: "contains",
+        pattern: "[invalid(",
+      } as never);
+
+      const error = await service
+        .updateRule("rule-1", "user-1", { matchType: "regex" })
+        .catch((e: ServiceError) => e);
+
+      expect(error).toBeInstanceOf(ServiceError);
+      expect(error.statusCode).toBe(400);
+      expect(mockRepo.update).not.toHaveBeenCalled();
+    });
+
+    it("throws 404 from the pre-fetch when rule does not exist and pattern is provided", async () => {
+      mockRepo.findById.mockResolvedValue(null);
+
+      const error = await service
+        .updateRule("nonexistent", "user-1", { pattern: "Migros" })
+        .catch((e: ServiceError) => e);
+
+      expect(error).toBeInstanceOf(ServiceError);
+      expect(error.statusCode).toBe(404);
+      expect(mockRepo.update).not.toHaveBeenCalled();
     });
   });
 
@@ -441,6 +514,29 @@ describe("category-rule.service", () => {
         pattern: "coop",
         matchType: "contains",
         excludeRuleId: "rule-self",
+      });
+
+      expect(result).toEqual([]);
+    });
+
+    it("skips stored regex rules when computing overlap", async () => {
+      mockRepo.findAllByUser.mockResolvedValue([
+        {
+          id: "rule-regex",
+          pattern: "^Coop$",
+          matchType: "regex",
+          priority: 10,
+          categoryId: "cat-grocery",
+          userId: "user-1",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          category: { id: "cat-grocery", categoryName: "Groceries" },
+        },
+      ] as never);
+
+      const result = await service.findOverlappingRules("user-1", {
+        pattern: "Coop",
+        matchType: "contains",
       });
 
       expect(result).toEqual([]);

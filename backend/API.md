@@ -895,6 +895,7 @@ Returns all category rules for the authenticated user, ordered by priority desce
       "userId": "uuid",
       "createdAt": "2026-03-29T10:00:00.000Z",
       "updatedAt": "2026-03-29T10:00:00.000Z",
+      "isValid": true,
       "category": {
         "id": "uuid",
         "categoryName": "Groceries"
@@ -903,6 +904,8 @@ Returns all category rules for the authenticated user, ordered by priority desce
   ]
 }
 ```
+
+`isValid` is `false` only for `regex` rules whose stored pattern can no longer compile (e.g. left over from a less strict validator). Categorization silently skips these rules; clients should flag them in the UI.
 
 **Response 401:** Not authenticated
 
@@ -951,12 +954,12 @@ Creates a new category rule.
 
 **Request Body:**
 
-| Field        | Type    | Required | Validation                                                              |
-| ------------ | ------- | -------- | ----------------------------------------------------------------------- |
-| `pattern`    | string  | yes      | Non-empty string. For `"regex"` type, must be a valid JavaScript regex. |
-| `matchType`  | string  | yes      | `"exact"`, `"contains"`, or `"regex"`                                   |
-| `categoryId` | string  | yes      | UUID, must be a valid category (user-owned or global)                   |
-| `priority`   | integer | yes      | >= 0                                                                    |
+| Field        | Type    | Required | Validation                                                                                                                             |
+| ------------ | ------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `pattern`    | string  | yes      | 1–256 chars. For `"regex"` type, must be a valid JavaScript regex and pass a complexity check (no catastrophic-backtracking patterns). |
+| `matchType`  | string  | yes      | `"exact"`, `"contains"`, or `"regex"`                                                                                                  |
+| `categoryId` | string  | yes      | UUID, must be a valid category (user-owned or global)                                                                                  |
+| `priority`   | integer | yes      | >= 0                                                                                                                                   |
 
 **Regex matching:** When `matchType` is `"regex"`, the `pattern` is evaluated as a case-insensitive regular expression against the full merchant name. For example, `Migros.*Online` matches `"Migros Online"` and `"Migros Bahnhof Online"`, while `^Migros$` matches only the exact string `"Migros"`.
 
@@ -994,12 +997,14 @@ Previews matching transactions for a proposed rule without creating it. Returns 
 
 **Request Body:**
 
-| Field        | Type    | Required | Validation                                                              |
-| ------------ | ------- | -------- | ----------------------------------------------------------------------- |
-| `pattern`    | string  | yes      | Non-empty string. For `"regex"` type, must be a valid JavaScript regex. |
-| `matchType`  | string  | yes      | `"exact"`, `"contains"`, or `"regex"`                                   |
-| `categoryId` | string  | yes      | UUID, must be a valid category (user-owned or global)                   |
-| `priority`   | integer | yes      | >= 0                                                                    |
+| Field        | Type    | Required | Validation                                                                                                                             |
+| ------------ | ------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `pattern`    | string  | yes      | 1–256 chars. For `"regex"` type, must be a valid JavaScript regex and pass a complexity check (no catastrophic-backtracking patterns). |
+| `matchType`  | string  | yes      | `"exact"`, `"contains"`, or `"regex"`                                                                                                  |
+| `categoryId` | string  | yes      | UUID, must be a valid category (user-owned or global)                                                                                  |
+| `priority`   | integer | yes      | >= 0                                                                                                                                   |
+
+For `regex` patterns the preview also runs against the database with a 2 s statement timeout. If the pattern is syntactically valid in JavaScript but rejected by Postgres' POSIX regex engine, or if it exceeds the timeout, the endpoint returns 400 with a descriptive message.
 
 **Response 200:**
 
@@ -1087,12 +1092,12 @@ Updates an existing category rule. Only rules owned by the authenticated user ca
 
 **Request Body:**
 
-| Field        | Type    | Required | Validation                                                              |
-| ------------ | ------- | -------- | ----------------------------------------------------------------------- |
-| `pattern`    | string  | no       | Non-empty string. For `"regex"` type, must be a valid JavaScript regex. |
-| `matchType`  | string  | no       | `"exact"`, `"contains"`, or `"regex"`                                   |
-| `categoryId` | string  | no       | UUID, must be a valid category (user-owned or global)                   |
-| `priority`   | integer | no       | >= 0                                                                    |
+| Field        | Type    | Required | Validation                                                                                                                             |
+| ------------ | ------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `pattern`    | string  | no       | 1–256 chars. For `"regex"` type, must be a valid JavaScript regex and pass a complexity check (no catastrophic-backtracking patterns). |
+| `matchType`  | string  | no       | `"exact"`, `"contains"`, or `"regex"`                                                                                                  |
+| `categoryId` | string  | no       | UUID, must be a valid category (user-owned or global)                                                                                  |
+| `priority`   | integer | no       | >= 0                                                                                                                                   |
 
 **Response 200:**
 

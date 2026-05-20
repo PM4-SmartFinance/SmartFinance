@@ -176,7 +176,7 @@ describe("matchTransaction", () => {
       rule("[invalid(", "regex", "cat-broken", 20),
       rule("migros", "contains", "cat-valid", 10),
     ];
-    expect(matchTransaction("Migros", rules)).toBeNull();
+    expect(matchTransaction("Migros", rules)).toBe("cat-valid");
   });
 });
 

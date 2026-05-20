@@ -1,8 +1,9 @@
-import { useDeferredValue, useEffect, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { useRuleOverlap } from "../lib/queries/categories";
+import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
 
 interface RuleEditorState {
   pattern: string;
@@ -33,21 +34,11 @@ export function NewRuleForm({
     matchType: "contains",
     priority: 0,
   });
-  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const onPreviewRef = useRef(onPreview);
 
+  const debouncedPreview = useDebouncedCallback(onPreview, 300);
   useEffect(() => {
-    onPreviewRef.current = onPreview;
-  });
-
-  useEffect(() => {
-    clearTimeout(timerRef.current);
-    const currentDraft = draft;
-    timerRef.current = setTimeout(() => {
-      onPreviewRef.current(currentDraft);
-    }, 300);
-    return () => clearTimeout(timerRef.current);
-  }, [draft]);
+    debouncedPreview(draft);
+  }, [draft, debouncedPreview]);
 
   // Soft warning. `useDeferredValue` lets React skip overlap queries while
   // the user is typing fast — paired with TanStack's request dedupe and a 5 s
@@ -104,7 +95,12 @@ export function NewRuleForm({
           Add Rule
         </Button>
       </div>
-      {overlapError && conflicts.length === 0 && (
+      {draft.matchType === "regex" && (
+        <p className="mt-2 text-xs text-muted-foreground" data-testid="overlap-skipped-regex-new">
+          Overlap detection isn't available for regex rules.
+        </p>
+      )}
+      {draft.matchType !== "regex" && overlapError && conflicts.length === 0 && (
         <p
           role="alert"
           className="mt-2 text-xs text-muted-foreground"
