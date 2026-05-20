@@ -3,7 +3,8 @@
   "private": true,
   "workspaces": [
     "frontend",
-    "backend"
+    "backend",
+    ".github/scripts"
   ],
   "scripts": {
     "dev": "concurrently --names fe,be --prefix-colors cyan,green \"bun run dev --cwd frontend\" \"bun run dev --cwd backend\"",
@@ -12,11 +13,12 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky",
-    "test": "bun run --cwd=backend test && bun run --cwd=frontend test",
+    "test": "bun run --cwd=backend test && bun run --cwd=frontend test && bun run test:scripts",
     "test:commit-msg": "bash scripts/test-commit-msg.sh",
-    "test:coverage": "bun run --cwd=backend test:coverage && bun run --cwd=frontend test:coverage",
+    "test:coverage": "bun run --cwd=backend test:coverage && bun run --cwd=frontend test:coverage && bun run test:scripts",
     "test:frontend": "bun run --cwd=frontend test",
-    "test:backend": "bun run --cwd=backend test"
+    "test:backend": "bun run --cwd=backend test",
+    "test:scripts": "vitest run --config .github/scripts/vitest.config.ts"
   },
   "devDependencies": {
     "@eslint-react/eslint-plugin": "^2.13.0",
@@ -30,6 +32,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^14.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
     "prettier": "^3.8.1",
