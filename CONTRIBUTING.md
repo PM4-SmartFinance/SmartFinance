@@ -93,7 +93,43 @@ Use this template for all PR descriptions:
 <optional: trade-offs, follow-ups, or decisions for reviewers>
 ```
 
-## 5. Pre-commit Hooks and Linting
+## 5. Architecture Decision Records (ADRs)
+
+We use a small set of MADR-style ADRs stored in `docs/adr/` to capture important, long-lived architectural decisions (examples: auth model, layered architecture, transaction boundaries).
+
+### When to create an ADR
+
+- For decisions that affect multiple components, are hard to reverse, or require team alignment (e.g. switching auth model, changing DB schema conventions).
+- For trade-offs where the reasoning will help future maintainers.
+
+### How to create an ADR
+
+1. Copy an existing ADR in `docs/adr/` and give it the next number (e.g. `0007-my-decision.md`).
+2. Fill the sections: `Status`, `Date`, `Context`, `Decision`, `Consequences`, `Related ADRs`, and link to relevant code paths.
+3. Open a PR against `develop` with the ADR. Add reviewers and the relevant Jira ticket if applicable.
+4. After review, merge the ADR. Keep the status updated (e.g. `Accepted`, `Superseded`).
+
+### ADR Template
+
+```markdown
+# 000X — Short Title
+
+Status: Proposed | Accepted | Superseded
+
+Date: YYYY-MM-DD
+
+Context
+
+Decision
+
+Consequences
+
+Related code (link to files)
+
+Related ADRs
+```
+
+## 6. Pre-commit Hooks and Linting
 
 We use Husky and lint-staged to automatically format and lint code before it is committed.
 
@@ -101,7 +137,7 @@ We use Husky and lint-staged to automatically format and lint code before it is 
 - If ESLint finds severe, unfixable errors, your commit will be safely blocked.
 - **How to handle failures:** Read the terminal output to locate the specific line causing the linting error. Fix the issue in your IDE, stage the file again using `git add <file>`, and re-run your `git commit` command. Do not use the `--no-verify` flag to bypass these checks.
 
-## 6. Test Coverage Requirements
+## 7. Test Coverage Requirements
 
 We enforce test coverage to prevent regressions. Key points:
 

@@ -11,8 +11,8 @@ import {
   getMostSpecificActiveBudget,
   groupBudgetsByCategory,
   getMostSpecificBudgetsPerCategory,
-  Budget,
 } from "./budgets";
+import type { Budget } from "./budgets";
 
 vi.mock("../api", () => ({
   api: {
@@ -24,6 +24,10 @@ vi.mock("../api", () => ({
 }));
 
 import { api } from "../api";
+import i18n from "../i18n";
+import type { TFunction } from "i18next";
+
+const t = i18n.t.bind(i18n) as TFunction;
 
 const mockApi = {
   get: vi.mocked(api.get),
@@ -172,29 +176,60 @@ describe("useDeleteBudget", () => {
 
 describe("getBudgetTypeLabel", () => {
   it("returns 'Daily Budget' for DAILY", () => {
-    expect(getBudgetTypeLabel("DAILY", 0, 0)).toBe("Daily Budget");
+    expect(getBudgetTypeLabel("DAILY", 0, 0, t, i18n.resolvedLanguage)).toBe("Daily Budget");
   });
 
   it("returns 'Monthly Budget' for MONTHLY", () => {
-    expect(getBudgetTypeLabel("MONTHLY", 0, 0)).toBe("Monthly Budget");
+    expect(getBudgetTypeLabel("MONTHLY", 0, 0, t, i18n.resolvedLanguage)).toBe("Monthly Budget");
   });
 
   it("returns 'Yearly Budget' for YEARLY", () => {
-    expect(getBudgetTypeLabel("YEARLY", 0, 0)).toBe("Yearly Budget");
+    expect(getBudgetTypeLabel("YEARLY", 0, 0, t, i18n.resolvedLanguage)).toBe("Yearly Budget");
   });
 
   it("returns month name (recurring) for SPECIFIC_MONTH", () => {
-    expect(getBudgetTypeLabel("SPECIFIC_MONTH", 3, 0)).toBe("March (recurring)");
-    expect(getBudgetTypeLabel("SPECIFIC_MONTH", 12, 0)).toBe("December (recurring)");
+    expect(getBudgetTypeLabel("SPECIFIC_MONTH", 3, 0, t, i18n.resolvedLanguage)).toBe(
+      "March (recurring)",
+    );
+    expect(getBudgetTypeLabel("SPECIFIC_MONTH", 12, 0, t, i18n.resolvedLanguage)).toBe(
+      "December (recurring)",
+    );
   });
 
   it("returns year string for SPECIFIC_YEAR", () => {
-    expect(getBudgetTypeLabel("SPECIFIC_YEAR", 0, 2026)).toBe("2026");
+    expect(getBudgetTypeLabel("SPECIFIC_YEAR", 0, 2026, t, i18n.resolvedLanguage)).toBe("2026");
   });
 
   it("returns month + year for SPECIFIC_MONTH_YEAR", () => {
-    expect(getBudgetTypeLabel("SPECIFIC_MONTH_YEAR", 6, 2026)).toBe("June 2026");
-    expect(getBudgetTypeLabel("SPECIFIC_MONTH_YEAR", 1, 2025)).toBe("January 2025");
+    expect(getBudgetTypeLabel("SPECIFIC_MONTH_YEAR", 6, 2026, t, i18n.resolvedLanguage)).toBe(
+      "June 2026",
+    );
+    expect(getBudgetTypeLabel("SPECIFIC_MONTH_YEAR", 1, 2025, t, i18n.resolvedLanguage)).toBe(
+      "January 2025",
+    );
+  });
+
+  describe("locale branches (de/fr/it/rm)", () => {
+    // Months are computed via Intl.DateTimeFormat with the bare 2-letter code
+    // (e.g. "de"). ICU still produces locale-correct names — we assert
+    // recognisable substrings rather than golden strings to stay tolerant of
+    // ICU locale-data versioning.
+    it.each([
+      ["de", /März/],
+      ["fr", /mars/i],
+      ["it", /marzo/i],
+    ])("SPECIFIC_MONTH renders the March name in %s", (lng, re) => {
+      expect(getBudgetTypeLabel("SPECIFIC_MONTH", 3, 0, t, lng)).toMatch(re);
+    });
+
+    it("SPECIFIC_MONTH returns a non-empty string for Romansh", () => {
+      const out = getBudgetTypeLabel("SPECIFIC_MONTH", 3, 0, t, "rm");
+      expect(out.length).toBeGreaterThan(0);
+    });
+
+    it.each(["de", "fr", "it", "rm"])("SPECIFIC_MONTH_YEAR includes the year for %s", (lng) => {
+      expect(getBudgetTypeLabel("SPECIFIC_MONTH_YEAR", 6, 2026, t, lng)).toContain("2026");
+    });
   });
 });
 

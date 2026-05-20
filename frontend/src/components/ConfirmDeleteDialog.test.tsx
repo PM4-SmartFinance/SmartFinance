@@ -78,4 +78,34 @@ describe("ConfirmDeleteDialog", () => {
     expect(screen.getByRole("button", { name: "Remove" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Keep" })).toBeInTheDocument();
   });
+
+  it("hides the reason textarea by default (collectReason defaults to false)", () => {
+    render(<ConfirmDeleteDialog {...defaultProps} />);
+    expect(screen.queryByLabelText(/reason for deletion/i)).not.toBeInTheDocument();
+  });
+
+  it("shows the reason textarea when collectReason is true and passes the typed value to onConfirm", async () => {
+    const user = userEvent.setup();
+    render(<ConfirmDeleteDialog {...defaultProps} collectReason />);
+    const textarea = screen.getByLabelText(/reason for deletion/i);
+    await user.type(textarea, "duplicate import");
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    expect(defaultProps.onConfirm).toHaveBeenCalledExactlyOnceWith("duplicate import");
+  });
+
+  it("passes undefined to onConfirm when collectReason is false even after re-renders", async () => {
+    const user = userEvent.setup();
+    render(<ConfirmDeleteDialog {...defaultProps} />);
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    expect(defaultProps.onConfirm).toHaveBeenCalledExactlyOnceWith(undefined);
+  });
+
+  it("resets the reason textarea when the dialog reopens (collectReason on)", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<ConfirmDeleteDialog {...defaultProps} collectReason />);
+    await user.type(screen.getByLabelText(/reason for deletion/i), "first");
+    rerender(<ConfirmDeleteDialog {...defaultProps} collectReason isOpen={false} />);
+    rerender(<ConfirmDeleteDialog {...defaultProps} collectReason isOpen />);
+    expect(screen.getByLabelText(/reason for deletion/i)).toHaveValue("");
+  });
 });

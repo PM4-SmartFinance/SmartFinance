@@ -1,0 +1,541 @@
+{
+  "common": {
+    "add": "Add",
+    "apply": "Apply",
+    "cancel": "Cancel",
+    "clear": "Clear",
+    "delete": "Delete",
+    "deleteReason": {
+      "label": "Reason for deletion (Audit Log - Optional)",
+      "placeholder": "e.g., Duplicate entry"
+    },
+    "dismiss": "Dismiss",
+    "edit": "Edit",
+    "name": "Name",
+    "next": "Next",
+    "previous": "Previous",
+    "run": "Run",
+    "save": "Save",
+    "search": "Search",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "loading": "Loading…",
+    "backToDashboard": "Back to Dashboard",
+    "deleting": "Deleting…",
+    "inactive": "Inactive",
+    "unknown": "Unknown",
+    "category": "Category",
+    "saving": "Saving…",
+    "creating": "Creating…",
+    "saveChanges": "Save Changes",
+    "retry": "Retry",
+    "roles": {
+      "user": "User",
+      "admin": "Admin"
+    },
+    "presets": {
+      "last7days": "Last 7 days",
+      "last30days": "Last 30 days",
+      "last3months": "Last 3 months",
+      "lastYear": "Last year",
+      "custom": "Custom"
+    }
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "loadCategories": "Failed to load categories",
+    "invalidDateRange": "Start date must not be after end date."
+  },
+  "categories": {
+    "title": "Categories & Rules",
+    "description": "Manage your categories and auto-categorization rules in one place.",
+    "loading": "Loading categories and rules…",
+    "loadingError": "Failed to load categories or rules. Please refresh.",
+    "refreshHint": "Saved, but the dashboard may need a manual refresh.",
+    "personalTitle": "Your Categories",
+    "personalDesc": "Editable categories you created.",
+    "globalTitle": "Global Categories",
+    "globalDesc": "Shared defaults available to all users.",
+    "globalCategoryReadOnly": "Global category (read-only)",
+    "noCategories": "No categories in this section.",
+    "createCategoryTitle": "Create Category",
+    "newCategoryPlaceholder": "e.g. Subscriptions",
+    "applyRulesTitle": "Apply Rules",
+    "applyRulesDescription": "Auto-categorize processes uncategorized transactions only. Recategorize re-applies every rule (highest priority first) to all non-manually-edited transactions in the selected range, overwriting prior auto-categorizations.",
+    "autoCategorizeBtn": "Auto-categorize uncategorized",
+    "autoCategorizing": "Auto-categorizing…",
+    "recategorizeBtn": "Recategorize date range…",
+    "recategorizing": "Recategorizing…",
+    "recategorizeFrom": "From",
+    "recategorizeTo": "To",
+    "existingRules": "Existing Rules",
+    "noRules": "No rules yet.",
+    "matchCount_one": "{{count}} existing transaction would match.",
+    "matchCount_other": "{{count}} existing transactions would match.",
+    "autoCategorizeNone": "No uncategorized transactions matched any rule.",
+    "autoCategorizeSuccess_one": "Categorized {{count}} transaction.",
+    "autoCategorizeSuccess_other": "Categorized {{count}} transactions.",
+    "recategorizeNone": "No transactions changed in the selected range.",
+    "recategorizeSuccess_one": "Recategorized {{count}} transaction.",
+    "recategorizeSuccess_other": "Recategorized {{count}} transactions.",
+    "errors": {
+      "nameRequired": "Category name is required.",
+      "createFailed": "Failed to create category.",
+      "updateFailed": "Failed to update category.",
+      "deleteFailed": "Failed to delete category.",
+      "rulePatternRequired": "Rule pattern is required.",
+      "createRuleFailed": "Failed to create rule.",
+      "previewFailed": "Failed to preview rule matches.",
+      "updateRuleFailed": "Failed to update rule.",
+      "deleteRuleFailed": "Failed to delete rule.",
+      "autoCategorizeFailed": "Failed to run auto-categorization.",
+      "recategorizeFailed": "Failed to recategorize the selected range."
+    },
+    "aria": {
+      "editCategory": "Edit category {{name}}",
+      "saveCategory": "Save category {{name}}",
+      "deleteCategory": "Delete category {{name}}"
+    }
+  },
+  "nav": {
+    "transactions": "Transactions",
+    "budgets": "Budgets",
+    "categories": "Categories",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "heading": "Dashboard",
+    "subtitle": "View your financial overview at a glance",
+    "greeting": "Welcome back, {{email}}"
+  },
+  "login": {
+    "brand": "⬡ SmartFinance",
+    "title": "Sign in",
+    "description": "Enter your credentials to access your account",
+    "submit": "Sign in",
+    "submitting": "Signing in…",
+    "emailLabel": "Email",
+    "passwordLabel": "Password"
+  },
+  "404": {
+    "title": "404 - Page Not Found",
+    "homepage": "Go to homepage"
+  },
+  "settings": {
+    "heading": "Settings",
+    "description": "Manage your account and platform settings.",
+    "nav": {
+      "profile": "Profile",
+      "userManagement": "User Management"
+    }
+  },
+  "settingsUsers": {
+    "heading": "Users",
+    "description": "Manage platform users and access",
+    "createUserBtn": "Create User",
+    "deleteDialog": {
+      "title": "Delete User?",
+      "body": "Permanently delete <1>{{email}}</1>? This action cannot be undone."
+    },
+    "errors": {
+      "deactivateFailed": "Failed to deactivate user",
+      "deleteFailed": "Failed to delete user",
+      "loadFailed": "Failed to load users. Please try again."
+    }
+  },
+  "budgets": {
+    "heading": "Budgets",
+    "description": "Set spending limits per category and monitor progress",
+    "loading": "Loading budgets…",
+    "createBtn": "Create Budget",
+    "emptyState": "No budgets yet. Create one to get started.",
+    "types": {
+      "daily": "Daily Budget",
+      "monthly": "Monthly Budget",
+      "yearly": "Yearly Budget",
+      "specificMonth": "{{month}} (recurring)"
+    },
+    "periods": {
+      "daily": "Daily",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "dateRange": "Date Range"
+    },
+    "filters": {
+      "viewPeriod": "View Period"
+    },
+    "deleteDialog": {
+      "title": "Delete Budget?",
+      "body": "Are you sure you want to delete the <1>{{type}}</1> budget for <3>{{name}}</3>? This action cannot be undone."
+    },
+    "errors": {
+      "deleteFailed": "Failed to delete budget. Please try again.",
+      "loadFailed": "Failed to load budgets"
+    }
+  },
+  "settingsProfile": {
+    "heading": "Profile",
+    "errors": {
+      "passwordsMismatch": "New passwords do not match."
+    },
+    "account": {
+      "title": "Account information",
+      "description": "Update your display name and email address.",
+      "loadFailed": "Failed to load your profile. Please refresh the page.",
+      "displayNameLabel": "Display name",
+      "displayNamePlaceholder": "Your name",
+      "emailLabel": "Email address",
+      "success": "Profile updated successfully.",
+      "saving": "Saving…",
+      "saveBtn": "Save changes"
+    },
+    "password": {
+      "title": "Change password",
+      "description": "Enter your current password before setting a new one. You will be signed out after a successful change.",
+      "currentLabel": "Current password",
+      "newLabel": "New password",
+      "confirmLabel": "Confirm new password",
+      "success": "Password changed. Please sign in again.",
+      "changing": "Changing…",
+      "changeBtn": "Change password"
+    }
+  },
+  "transactions": {
+    "heading": "Transactions",
+    "emptyState": "No transactions found. Try adjusting your filters.",
+    "filters": {
+      "heading": "Filters",
+      "category": "Filter by Category",
+      "allCategories": "All Categories",
+      "searchPlaceholder": "Search by merchant name…"
+    },
+    "table": {
+      "date": "Date",
+      "description": "Description",
+      "category": "Category",
+      "amount": "Amount",
+      "actions": "Actions"
+    },
+    "pagination": {
+      "info": "Page {{page}} of {{totalPages}} ({{totalCount}} total)"
+    },
+    "delete": {
+      "title": "Delete Transaction",
+      "body": "Are you sure you want to delete the transaction with <1>{{merchant}}</1> on <3>{{date}}</3> for <5>{{amount}}</5>?<7/>This action can be undone by an administrator if needed."
+    },
+    "edit": {
+      "title": "Edit Transaction",
+      "dateLabel": "Date",
+      "amountLabel": "Amount",
+      "categoryLabel": "Category",
+      "noCategory": "No Category",
+      "notesLabel": "Notes",
+      "notesPlaceholder": "Add some notes…",
+      "reasonLabel": "Reason for Change (Audit Log)",
+      "reasonPlaceholder": "e.g., Corrected date",
+      "saving": "Saving…",
+      "save": "Save Changes"
+    },
+    "errors": {
+      "loadFailed": "Failed to load transactions. Please try again later."
+    }
+  },
+  "components": {
+    "budgetWidget": {
+      "error": "Failed to load budget data. Please try again.",
+      "title": "Budget Status",
+      "empty": "No active budgets. Click to create one.",
+      "statusSummary": "{{onTrack}} on track, {{approaching}} approaching limit, {{exceeded}} exceeded",
+      "activeCount_one": "{{count}} active budget",
+      "activeCount_other": "{{count}} active budgets",
+      "ariaView": "View budgets"
+    },
+    "budgetCategoryGroup": {
+      "basedOn": "Based on {{type}} budget",
+      "noBudget": "No budget set",
+      "of": "of",
+      "overBudget": "over budget",
+      "remaining": "remaining",
+      "spent": "spent",
+      "editAria": "Edit {{type}}",
+      "deleteAria": "Delete {{type}}",
+      "over": "over",
+      "left": "left"
+    },
+    "budgetProgress": {
+      "title": "Budget Progress",
+      "viewAll": "View all budgets",
+      "error": "Failed to load budget progress. Please try again.",
+      "loading": "Loading budget progress…",
+      "parseError": "Some budget values could not be parsed. Please refresh — if the problem persists, contact support.",
+      "empty": "No tracked budget totals yet. Create budgets and import transactions to populate these charts.",
+      "excludedWarning": "Some budget values could not be parsed and were excluded from the totals below.",
+      "chart": {
+        "spent": "Spent",
+        "remaining": "Remaining",
+        "over": "Over",
+        "noSpending": "No category spending"
+      },
+      "noCategorySpending": "No category spending yet.",
+      "spent": "Spent",
+      "trackedTotal": "Tracked total",
+      "overBudget": "Over budget"
+    },
+    "categoryBreakdownChart": {
+      "title": "Spending by Category",
+      "error": "Failed to load category breakdown data. Please try again.",
+      "loading": "Loading chart…",
+      "empty": "No category breakdown yet. Import transactions or a CSV to see spending by category.",
+      "viewCategoriesAria": "View categories",
+      "tooltipSpent": "Spent"
+    },
+    "createEditBudgetDialog": {
+      "titleCreate": "Create Budget",
+      "titleEdit": "Edit Budget",
+      "selectCategory": "Select a category…",
+      "budgetType": "Budget Type",
+      "general": "General",
+      "specific": "Specific",
+      "period": "Period",
+      "monthOptional": "Month (optional)",
+      "anyMonth": "Any month",
+      "yearOptional": "Year (optional)",
+      "anyYear": "Any year",
+      "spendingLimit": "Spending Limit",
+      "limitPlaceholder": "Enter limit amount",
+      "active": "Active",
+      "createBtn": "Create Budget",
+      "errors": {
+        "invalidLimit": "Please enter a valid limit amount",
+        "missingCategory": "Please select a category",
+        "missingMonthYear": "Please select at least a month or year for specific budgets",
+        "updateFailed": "Failed to update budget",
+        "createFailed": "Failed to create budget"
+      }
+    },
+    "createUserDialog": {
+      "title": "Create New User",
+      "emailLabel": "Email",
+      "passwordLabel": "Password",
+      "displayNameLabel": "Display Name",
+      "roleLabel": "Role",
+      "createBtn": "Create User",
+      "placeholders": {
+        "email": "user@example.com",
+        "password": "Minimum 8 characters",
+        "displayName": "John Doe (optional)"
+      },
+      "errors": {
+        "emailRequired": "Email is required",
+        "passwordRequired": "Password is required",
+        "passwordLength": "Password must be at least 8 characters",
+        "emailExists": "Email already exists",
+        "createFailed": "Failed to create user"
+      }
+    },
+    "csvImportCard": {
+      "title": "Import Transactions",
+      "dropZoneIdle": "Drop a CSV file here, or click to browse",
+      "dropZoneActive": "Release to select file",
+      "dropZoneSelected": "Selected: {{name}}",
+      "dropZoneAria": "File drop zone",
+      "dropZoneSubtext": ".csv files only · max 10 MB",
+      "formatLabel": "Bank format",
+      "accountLabel": "Account",
+      "uploadBtn": "Upload",
+      "uploading": "Uploading…",
+      "resultSuccess_one": "{{count}} transaction imported successfully.",
+      "resultSuccess_other": "{{count}} transactions imported successfully.",
+      "resultZero": "No new transactions found (all rows may be duplicates).",
+      "resetBtn": "Import another file",
+      "refreshHint": "Imported, but the dashboard may need a manual refresh.",
+      "errors": {
+        "fileTooLarge": "File exceeds the 10 MB size limit.",
+        "noAccounts": "No accounts found. Create an account first.",
+        "accountsError": "Failed to load accounts. Please try again.",
+        "invalidType": "Only .csv files are accepted.",
+        "uploadFailed": "Upload failed."
+      }
+    },
+    "editUserDialog": {
+      "title": "Edit User: {{email}}",
+      "roleLabel": "Role",
+      "activeLabel": "Active",
+      "warnings": {
+        "cannotChangeAdmin": "Cannot change role of other admin users",
+        "cannotDemoteSelf": "Cannot demote yourself from admin"
+      },
+      "errors": {
+        "noChanges": "No changes to save",
+        "updateFailed": "Failed to update user"
+      }
+    },
+    "newRuleForm": {
+      "title": "New Rule",
+      "ariaPattern": "New rule pattern for {{category}}",
+      "patternPlaceholder": "Pattern",
+      "patternPlaceholderRegex": "e.g. Migros.*Online",
+      "ariaMatchType": "New rule match type for {{category}}",
+      "matchTypeContains": "contains",
+      "matchTypeExact": "exact",
+      "matchTypeRegex": "regex",
+      "ariaPriority": "New rule priority for {{category}}",
+      "priorityTitle": "Higher priority rules are evaluated first",
+      "addRuleBtn": "Add Rule",
+      "conflictUnavailable": "Conflict check unavailable.",
+      "overlapSkippedRegex": "Overlap detection isn't available for regex rules.",
+      "overlapWarning_one": "Pattern overlaps with {{count}} existing rule.",
+      "overlapWarning_other": "Pattern overlaps with {{count}} existing rules.",
+      "overlapSubtext": "Higher-priority rules win when both match. You can save anyway.",
+      "priorityLabel": "priority {{priority}}"
+    },
+    "recentTransactionsWidget": {
+      "title": "Recent Transactions",
+      "navLabel": "View transactions",
+      "empty": "No transactions yet.",
+      "error": "Failed to load recent transactions.",
+      "merchant": "Merchant"
+    },
+    "resetPasswordDialog": {
+      "title": "Reset Password",
+      "description": "Enter a new password for {{email}}. They will need to use the new password the next time they sign in.",
+      "newPasswordLabel": "New password",
+      "confirmPasswordLabel": "Confirm new password",
+      "successMessage": "Password reset successfully.",
+      "resettingBtn": "Resetting…",
+      "resetBtn": "Reset Password",
+      "errors": {
+        "passwordMismatch": "Passwords do not match.",
+        "resetFailed": "Failed to reset password."
+      }
+    },
+    "ruleRow": {
+      "ariaPattern": "Rule pattern {{id}}",
+      "ariaMatchType": "Rule match type {{id}}",
+      "matchTypeContains": "contains",
+      "matchTypeExact": "exact",
+      "matchTypeRegex": "regex",
+      "patternPlaceholderRegex": "e.g. Migros.*Online",
+      "ariaPriority": "Rule priority {{id}}",
+      "priorityTitle": "Higher priority rules are evaluated first",
+      "ariaSave": "Save rule {{id}}",
+      "conflictUnavailable": "Conflict check unavailable.",
+      "overlapSkippedRegex": "Overlap detection isn't available for regex rules.",
+      "overlapWarning_one": "Pattern overlaps with {{count}} other rule.",
+      "overlapWarning_other": "Pattern overlaps with {{count}} other rules.",
+      "priorityLabel": "priority {{priority}}",
+      "priorityDisplay": "Priority: {{priority}}",
+      "ariaEdit": "Edit rule {{id}}",
+      "ariaDelete": "Delete rule {{id}}",
+      "invalidRegexBadge": "Invalid regex — fix the pattern"
+    },
+    "regexHelper": {
+      "captionPrefix": "Case-insensitive.",
+      "captionAny": "any chars",
+      "captionAnchors": "anchors",
+      "captionEither": "either/or",
+      "captionCharClass": "char class",
+      "captionMaxChars": "Max 256 chars.",
+      "validityTypePrompt": "Type a pattern to validate.",
+      "validityValid": "Valid pattern.",
+      "validitySlow": "Warning: {{message}}",
+      "validityInvalid": "Invalid: {{message}}",
+      "slowMessage": "Pattern may cause catastrophic backtracking",
+      "testAgainstLabel": "Test against:",
+      "testPlaceholder": "e.g. Migros Online",
+      "testMatches": "✓ matches",
+      "testNoMatch": "✗ no match"
+    },
+    "spendingTrendChart": {
+      "title": "Monthly Income vs. Expenses",
+      "viewTransactions": "View transactions →",
+      "income": "Income",
+      "expenses": "Expenses",
+      "singleBucketHelp": "Adjust the date range or pick a finer granularity to see a trend.",
+      "footerSummary": "Showing {{count}} {{granularity}} of income and expenses.",
+      "aria": {
+        "empty": "Income and expenses chart, no data.",
+        "describe": "{{date}}: income {{income}}, expenses {{expenses}}",
+        "short": "Income and expenses chart. {{details}}.",
+        "long": "Income and expenses chart with {{total}} periods. {{head}}. … {{skipped}} periods omitted. {{tail}}."
+      },
+      "states": {
+        "error": "Failed to load spending trend data. Please try again.",
+        "loading": "Loading chart…",
+        "empty": "No spending data for the selected period. Adjust the date range or import transactions."
+      },
+      "controls": {
+        "bucket": "Bucket",
+        "granularityAria": "Granularity",
+        "labels": "Labels",
+        "labelsAria": "Number of axis labels",
+        "chartStyleAria": "Chart style",
+        "line": "Line",
+        "bar": "Bar",
+        "toggleSeriesAria": "Toggle chart series",
+        "options": {
+          "auto": "Auto",
+          "day": "Day",
+          "week": "Week",
+          "month": "Month",
+          "quarter": "Quarter",
+          "year": "Year"
+        }
+      },
+      "granularities": {
+        "auto_one": "auto",
+        "auto_other": "auto",
+        "day_one": "day",
+        "day_other": "days",
+        "week_one": "week",
+        "week_other": "weeks",
+        "month_one": "month",
+        "month_other": "months",
+        "quarter_one": "quarter",
+        "quarter_other": "quarters",
+        "year_one": "year",
+        "year_other": "years"
+      }
+    },
+    "summaryMetricsWidget": {
+      "fromSelectedPeriod": "From selected period",
+      "error": "Failed to load summary data. Please try again.",
+      "viewTransactionsAria": "View transactions",
+      "netBalance": "Net Balance",
+      "totalExpenses": "Total Expenses",
+      "totalIncome": "Total Income"
+    },
+    "userMenu": {
+      "ariaLabel": "User menu",
+      "theme": "Theme",
+      "language": "Language",
+      "signingOut": "Signing out…",
+      "signOut": "Sign out",
+      "themes": {
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System"
+      }
+    },
+    "userTable": {
+      "empty": "No users found. Create your first user to get started.",
+      "noActions": "No actions available",
+      "headers": {
+        "email": "Email",
+        "name": "Name",
+        "role": "Role",
+        "status": "Status",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "deactivated": "Deactivated"
+      },
+      "actions": {
+        "resetPassword": "Reset Password",
+        "deactivate": "Deactivate"
+      }
+    }
+  }
+}

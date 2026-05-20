@@ -1,7 +1,8 @@
 import { Link } from "react-router";
 import { useDashboardSummary } from "../lib/queries/dashboard";
-import { formatCurrency } from "../lib/utils";
+import { formatAmount } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { useTranslation } from "react-i18next";
 
 // SummaryMetricsWidget is a Link wrapping a 3-up grid of MetricCards.
 // Unlike other dashboard tiles (Card-shaped), this one is a grid layout, so
@@ -16,6 +17,7 @@ function MetricCard({
   value: string | number;
   isLoading: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <Card className="flex-1 transition-all duration-200 group-hover:border-primary/50 group-hover:shadow-md group-hover:bg-accent/5">
       <CardHeader>
@@ -28,7 +30,9 @@ function MetricCard({
           <div className="text-3xl font-bold">{value}</div>
         )}
         <div className="text-xs text-muted-foreground">
-          {isLoading ? "Loading…" : "From selected period"}
+          {isLoading
+            ? t("common.loading", "Loading…")
+            : t("components.summaryMetricsWidget.fromSelectedPeriod", "From selected period")}
         </div>
       </CardContent>
     </Card>
@@ -37,11 +41,15 @@ function MetricCard({
 
 export function SummaryMetricsWidget() {
   const { data, isLoading, error } = useDashboardSummary();
+  const { t, i18n } = useTranslation();
 
   if (error) {
     return (
       <div className="rounded border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
-        Failed to load summary data. Please try again.
+        {t(
+          "components.summaryMetricsWidget.error",
+          "Failed to load summary data. Please try again.",
+        )}
       </div>
     );
   }
@@ -49,23 +57,23 @@ export function SummaryMetricsWidget() {
   return (
     <Link
       to="/transactions"
-      aria-label="View transactions"
+      aria-label={t("components.summaryMetricsWidget.viewTransactionsAria", "View transactions")}
       className="group block rounded-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <MetricCard
-          title="Net Balance"
-          value={data ? formatCurrency(data.netBalance) : "—"}
+          title={t("components.summaryMetricsWidget.netBalance", "Net Balance")}
+          value={data ? formatAmount(data.netBalance, i18n.resolvedLanguage) : "—"}
           isLoading={isLoading}
         />
         <MetricCard
-          title="Total Expenses"
-          value={data ? formatCurrency(Math.abs(data.totalExpenses)) : "—"}
+          title={t("components.summaryMetricsWidget.totalExpenses", "Total Expenses")}
+          value={data ? formatAmount(Math.abs(data.totalExpenses), i18n.resolvedLanguage) : "—"}
           isLoading={isLoading}
         />
         <MetricCard
-          title="Total Income"
-          value={data ? formatCurrency(data.totalIncome) : "—"}
+          title={t("components.summaryMetricsWidget.totalIncome", "Total Income")}
+          value={data ? formatAmount(data.totalIncome, i18n.resolvedLanguage) : "—"}
           isLoading={isLoading}
         />
       </div>

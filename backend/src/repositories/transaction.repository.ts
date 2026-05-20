@@ -45,17 +45,24 @@ const TRANSACTION_SELECT = {
   date: { select: { id: true, dayOfWeek: true, month: true, year: true } },
   categoryId: true,
   category: { select: { id: true, categoryName: true } },
+  isDeleted: true,
 } as const;
 
-export async function findByIdForUser(id: string, userId: string) {
-  const transaction = await prisma.factTransactions.findUnique({
-    where: { id },
+export async function findByIdForUser(
+  id: string,
+  userId: string,
+  isAdmin = false,
+  tx?: Prisma.TransactionClient,
+) {
+  const client = tx ?? prisma;
+  const transaction = await client.factTransactions.findFirst({
+    where: { id, isDeleted: false },
     select: TRANSACTION_SELECT,
   });
   if (!transaction) {
     throw new ServiceError(404, "Transaction not found");
   }
-  if (transaction.userId !== userId) {
+  if (!isAdmin && transaction.userId !== userId) {
     throw new ServiceError(404, "Transaction not found");
   }
   return transaction;
@@ -64,23 +71,34 @@ export async function findByIdForUser(id: string, userId: string) {
 export async function updateById(
   id: string,
   userId: string,
-  data: { categoryId?: string; notes?: string; manualOverride?: boolean },
+  data: {
+    categoryId?: string;
+    notes?: string;
+    manualOverride?: boolean;
+    amount?: number;
+    dateId?: number;
+  },
+  isAdmin = false,
+  tx?: Prisma.TransactionClient,
 ) {
-  return prisma.$transaction(async (tx) => {
-    const existing = await tx.factTransactions.findUnique({
-      where: { id },
+  const run = async (client: Prisma.TransactionClient) => {
+    // `findFirst` (not `findUnique`): `isDeleted` is not a unique field, so
+    // `findUnique`'s where input would silently ignore the predicate and
+    // return already-soft-deleted rows. `findFirst` composes the filter.
+    const existing = await client.factTransactions.findFirst({
+      where: { id, isDeleted: false },
       select: { id: true, userId: true },
     });
     if (!existing) {
       throw new ServiceError(404, "Transaction not found");
     }
-    if (existing.userId !== userId) {
+    if (!isAdmin && existing.userId !== userId) {
       throw new ServiceError(404, "Transaction not found");
     }
 
     if (data.categoryId !== undefined) {
-      const category = await tx.dimCategory.findFirst({
-        where: { id: data.categoryId, userId },
+      const category = await client.dimCategory.findFirst({
+        where: { id: data.categoryId, userId: isAdmin ? existing.userId : userId },
         select: { id: true },
       });
       if (!category) {
@@ -88,29 +106,41 @@ export async function updateById(
       }
     }
 
-    return tx.factTransactions.update({
+    return client.factTransactions.update({
       where: { id },
       data,
       select: TRANSACTION_SELECT,
     });
-  });
+  };
+  return tx ? run(tx) : prisma.$transaction(run);
 }
 
-export async function deleteById(id: string, userId: string) {
-  return prisma.$transaction(async (tx) => {
-    const existing = await tx.factTransactions.findUnique({
-      where: { id },
+export async function deleteById(
+  id: string,
+  userId: string,
+  isAdmin = false,
+  tx?: Prisma.TransactionClient,
+) {
+  const run = async (client: Prisma.TransactionClient) => {
+    const existing = await client.factTransactions.findFirst({
+      where: { id, isDeleted: false },
       select: { id: true, userId: true },
     });
     if (!existing) {
       throw new ServiceError(404, "Transaction not found");
     }
-    if (existing.userId !== userId) {
+    if (!isAdmin && existing.userId !== userId) {
       throw new ServiceError(404, "Transaction not found");
     }
 
-    await tx.factTransactions.delete({ where: { id } });
-  });
+    await client.factTransactions.update({
+      where: { id },
+      data: { isDeleted: true },
+    });
+    return existing;
+  };
+  if (tx) await run(tx);
+  else await prisma.$transaction(run);
 }
 
 export async function findAccountByIdAndUser(accountId: string, userId: string) {
@@ -147,7 +177,7 @@ export async function insertTransactions(
   }>,
   tx: Prisma.TransactionClient,
 ) {
-  await tx.factTransactions.createMany({ data: rows });
+  await tx.factTransactions.createMany({ data: rows.map((r) => ({ ...r, isDeleted: false })) });
 }
 
 export async function bulkImport(
@@ -197,7 +227,7 @@ export async function bulkImport(
 
 export async function findUncategorizedForUser(userId: string) {
   return prisma.factTransactions.findMany({
-    where: { userId, categoryId: null, manualOverride: false },
+    where: { userId, categoryId: null, manualOverride: false, isDeleted: false },
     select: {
       id: true,
       amount: true,
@@ -216,13 +246,14 @@ export async function findCategorizableInRange(
     where: {
       userId,
       manualOverride: false,
+      isDeleted: false,
       dateId: { gte: startDateId, lte: endDateId },
     },
     select: {
       id: true,
-      categoryId: true,
       amount: true,
       dateId: true,
+      categoryId: true,
       merchant: { select: { name: true } },
     },
   });
@@ -257,6 +288,7 @@ export async function findPreviewMatchesForUser(
           WHERE ft."userId" = ${userId}
             AND ft."categoryId" IS NULL
             AND ft."manualOverride" = false
+            AND ft."isDeleted" = false
             AND dm.name ~* ${pattern}
         `;
         const sampleRows = await tx.$queryRaw<RegexTxRow[]>`
@@ -269,6 +301,7 @@ export async function findPreviewMatchesForUser(
           WHERE ft."userId" = ${userId}
             AND ft."categoryId" IS NULL
             AND ft."manualOverride" = false
+            AND ft."isDeleted" = false
             AND dm.name ~* ${pattern}
           ORDER BY ft."dateId" DESC, ft.id ASC
           LIMIT ${sampleLimit}
@@ -299,6 +332,7 @@ export async function findPreviewMatchesForUser(
     categoryId: null,
     manualOverride: false,
     merchant: nameFilter,
+    isDeleted: false,
   };
 
   const [matchCount, rows] = await prisma.$transaction([
@@ -355,7 +389,7 @@ export async function bulkSetCategory(
           // `manualOverride: false` is a defense-in-depth guard: a user could
           // toggle the flag between `findUncategorizedForUser` and this write,
           // and we must never silently overwrite a manually-chosen category.
-          where: { id: { in: chunk }, userId, manualOverride: false },
+          where: { id: { in: chunk }, userId, manualOverride: false, isDeleted: false },
           data: { categoryId },
         }),
       );
@@ -376,9 +410,10 @@ export interface ListTransactionsArgs {
 
 export async function listTransactions(args: ListTransactionsArgs) {
   const { userId, skip, take, orderBy, where } = args;
+  const whereWithDeleted = { ...where, isDeleted: false };
   return prisma.$transaction([
     prisma.factTransactions.findMany({
-      where,
+      where: whereWithDeleted,
       orderBy,
       skip,
       take,
@@ -387,6 +422,10 @@ export async function listTransactions(args: ListTransactionsArgs) {
         amount: true,
         dateId: true,
         accountId: true,
+        categoryId: true,
+        category: {
+          select: { id: true, categoryName: true },
+        },
         merchant: {
           select: {
             id: true,
@@ -404,6 +443,6 @@ export async function listTransactions(args: ListTransactionsArgs) {
         },
       },
     }),
-    prisma.factTransactions.count({ where }),
+    prisma.factTransactions.count({ where: whereWithDeleted }),
   ]);
 }

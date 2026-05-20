@@ -136,8 +136,8 @@ describe("SettingsUsers", () => {
       renderWithProviders();
 
       await waitFor(() => {
-        const adminBadges = screen.getAllByText("ADMIN");
-        const userBadges = screen.getAllByText("USER");
+        const adminBadges = screen.getAllByText("Admin");
+        const userBadges = screen.getAllByText("User");
         expect(adminBadges.length).toBeGreaterThanOrEqual(1);
         expect(userBadges.length).toBeGreaterThanOrEqual(2);
       });

@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useTranslation } from "react-i18next";
 
 const QUERY_KEYS_TO_INVALIDATE_AFTER_IMPORT = [
   ["budgets"],
@@ -37,25 +38,6 @@ interface Account {
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
-const TEXT = {
-  title: "Import Transactions",
-  dropZoneIdle: "Drop a CSV file here, or click to browse",
-  dropZoneActive: "Release to select file",
-  dropZoneSelected: (name: string) => `Selected: ${name}`,
-  formatLabel: "Bank format",
-  accountLabel: "Account",
-  uploadBtn: "Upload",
-  uploading: "Uploading…",
-  fileTooLarge: "File exceeds the 10 MB size limit.",
-  noAccounts: "No accounts found. Create an account first.",
-  accountsError: "Failed to load accounts. Please try again.",
-  invalidType: "Only .csv files are accepted.",
-  resultSuccess: (n: number) => `${n} transaction${n !== 1 ? "s" : ""} imported successfully.`,
-  resultZero: "No new transactions found (all rows may be duplicates).",
-  resetBtn: "Import another file",
-  refreshHint: "Imported, but the dashboard may need a manual refresh.",
-} as const;
-
 export function CsvImportCard() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -66,6 +48,7 @@ export function CsvImportCard() {
   const [typeError, setTypeError] = useState<string | null>(null);
   const [result, setResult] = useState<UploadResult | null>(null);
   const [refreshHint, setRefreshHint] = useState(false);
+  const { t } = useTranslation();
 
   const { data: accountsData, isError: isAccountsError } = useQuery({
     queryKey: ["accounts"],
@@ -119,11 +102,15 @@ export function CsvImportCard() {
 
   function acceptFile(f: File) {
     if (!f.name.toLowerCase().endsWith(".csv")) {
-      setTypeError(TEXT.invalidType);
+      setTypeError(
+        t("components.csvImportCard.errors.invalidType", "Only .csv files are accepted."),
+      );
       return;
     }
     if (f.size > MAX_FILE_SIZE) {
-      setTypeError(TEXT.fileTooLarge);
+      setTypeError(
+        t("components.csvImportCard.errors.fileTooLarge", "File exceeds the 10 MB size limit."),
+      );
       return;
     }
     setTypeError(null);
@@ -164,7 +151,7 @@ export function CsvImportCard() {
       : uploadError instanceof Error
         ? uploadError.message
         : uploadError
-          ? "Upload failed."
+          ? t("components.csvImportCard.errors.uploadFailed", "Upload failed.")
           : null;
 
   const canUpload = file !== null && effectiveAccountId !== "" && !isUploading;
@@ -173,7 +160,7 @@ export function CsvImportCard() {
     <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
       <CardHeader>
         <CardTitle className="text-xs font-semibold uppercase tracking-wider">
-          {TEXT.title}
+          {t("components.csvImportCard.title", "Import Transactions")}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
@@ -194,18 +181,30 @@ export function CsvImportCard() {
               </svg>
             </div>
             <p className="text-sm font-medium text-foreground">
-              {result.imported > 0 ? TEXT.resultSuccess(result.imported) : TEXT.resultZero}
+              {result.imported > 0
+                ? t(
+                    "components.csvImportCard.resultSuccess",
+                    "{{count}} transactions imported successfully.",
+                    { count: result.imported },
+                  )
+                : t(
+                    "components.csvImportCard.resultZero",
+                    "No new transactions found (all rows may be duplicates).",
+                  )}
             </p>
             {refreshHint && (
               <p
                 role="alert"
                 className="rounded border border-destructive bg-destructive/10 px-3 py-2 text-xs text-destructive"
               >
-                {TEXT.refreshHint}
+                {t(
+                  "components.csvImportCard.refreshHint",
+                  "Imported, but the dashboard may need a manual refresh.",
+                )}
               </p>
             )}
             <Button variant="outline" size="sm" onClick={handleReset}>
-              {TEXT.resetBtn}
+              {t("components.csvImportCard.resetBtn", "Import another file")}
             </Button>
           </div>
         ) : (
@@ -213,7 +212,7 @@ export function CsvImportCard() {
             {/* ── Drop zone ── */}
             <button
               type="button"
-              aria-label="File drop zone"
+              aria-label={t("components.csvImportCard.dropZoneAria", "File drop zone")}
               className={[
                 "flex min-h-36 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-8 text-center transition-colors",
                 isDragOver
@@ -244,12 +243,19 @@ export function CsvImportCard() {
               </svg>
               <p className="text-sm text-muted-foreground">
                 {isDragOver
-                  ? TEXT.dropZoneActive
+                  ? t("components.csvImportCard.dropZoneActive", "Release to select file")
                   : file
-                    ? TEXT.dropZoneSelected(file.name)
-                    : TEXT.dropZoneIdle}
+                    ? t("components.csvImportCard.dropZoneSelected", "Selected: {{name}}", {
+                        name: file.name,
+                      })
+                    : t(
+                        "components.csvImportCard.dropZoneIdle",
+                        "Drop a CSV file here, or click to browse",
+                      )}
               </p>
-              <p className="text-xs text-muted-foreground/60">.csv files only · max 10 MB</p>
+              <p className="text-xs text-muted-foreground/60">
+                {t("components.csvImportCard.dropZoneSubtext", ".csv files only · max 10 MB")}
+              </p>
             </button>
 
             <input
@@ -272,7 +278,7 @@ export function CsvImportCard() {
             <div className="flex flex-wrap gap-4">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="csv-format" className="text-xs text-muted-foreground">
-                  {TEXT.formatLabel}
+                  {t("components.csvImportCard.formatLabel", "Bank format")}
                 </Label>
                 <Select
                   value={format}
@@ -295,14 +301,22 @@ export function CsvImportCard() {
 
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="csv-account" className="text-xs text-muted-foreground">
-                  {TEXT.accountLabel}
+                  {t("components.csvImportCard.accountLabel", "Account")}
                 </Label>
                 {isAccountsError ? (
                   <p role="alert" className="py-1.5 text-sm text-destructive">
-                    {TEXT.accountsError}
+                    {t(
+                      "components.csvImportCard.errors.accountsError",
+                      "Failed to load accounts. Please try again.",
+                    )}
                   </p>
                 ) : accounts.length === 0 ? (
-                  <p className="py-1.5 text-sm text-muted-foreground">{TEXT.noAccounts}</p>
+                  <p className="py-1.5 text-sm text-muted-foreground">
+                    {t(
+                      "components.csvImportCard.errors.noAccounts",
+                      "No accounts found. Create an account first.",
+                    )}
+                  </p>
                 ) : (
                   <Select value={effectiveAccountId} onValueChange={(v) => setAccountId(v ?? "")}>
                     <SelectTrigger id="csv-account" className="w-64">
@@ -345,10 +359,10 @@ export function CsvImportCard() {
                         d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
                       />
                     </svg>
-                    {TEXT.uploading}
+                    {t("components.csvImportCard.uploading", "Uploading…")}
                   </>
                 ) : (
-                  TEXT.uploadBtn
+                  t("components.csvImportCard.uploadBtn", "Upload")
                 )}
               </Button>
             </div>

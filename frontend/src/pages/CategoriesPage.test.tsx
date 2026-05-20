@@ -37,7 +37,7 @@ vi.mock("../hooks/useLogout", async () => {
   return logoutMockFactory();
 });
 
-import { CategoriesPage, formatDateId } from "./CategoriesPage";
+import { CategoriesPage } from "./CategoriesPage";
 
 let categories: Category[] = [
   {
@@ -67,6 +67,16 @@ let rules: CategoryRule[] = [
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
+  {
+    id: "rule-2",
+    userId: "user-1",
+    categoryId: "cat-1",
+    pattern: "netflix",
+    matchType: "exact" as const,
+    priority: 2,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
 ];
 
 const mockGet = api.get as ReturnType<typeof vi.fn>;
@@ -87,24 +97,6 @@ function renderWithProviders() {
     </QueryClientProvider>,
   );
 }
-
-describe("formatDateId", () => {
-  it("formats a standard date in de-CH locale", () => {
-    expect(formatDateId(20260412)).toMatch(/12.*4.*2026/);
-  });
-
-  it("formats January 1st correctly", () => {
-    expect(formatDateId(20250101)).toMatch(/1.*1.*2025/);
-  });
-
-  it("formats December 31st correctly", () => {
-    expect(formatDateId(20251231)).toMatch(/31.*12.*2025/);
-  });
-
-  it("handles single-digit month and day", () => {
-    expect(formatDateId(20250307)).toMatch(/7.*3.*2025/);
-  });
-});
 
 describe("CategoriesPage", () => {
   beforeEach(() => {
@@ -133,6 +125,16 @@ describe("CategoriesPage", () => {
         pattern: "coop",
         matchType: "contains",
         priority: 1,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: "rule-2",
+        userId: "user-1",
+        categoryId: "cat-1",
+        pattern: "netflix",
+        matchType: "exact",
+        priority: 2,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -687,6 +689,14 @@ describe("CategoriesPage", () => {
               categoryId: "cat-2",
               categoryName: "Rent",
             },
+            {
+              id: "rule-another",
+              pattern: "coop supercenter",
+              matchType: "exact",
+              priority: 6,
+              categoryId: "cat-2",
+              categoryName: "Rent",
+            },
           ],
         });
       }
@@ -704,7 +714,7 @@ describe("CategoriesPage", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/Pattern overlaps with 1 existing rule\./i)).toBeInTheDocument();
+      expect(screen.getByText(/Pattern overlaps with 2/i)).toBeInTheDocument();
     });
   });
 

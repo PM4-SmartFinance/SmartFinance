@@ -1,4 +1,5 @@
 import { useDeferredValue, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -30,6 +31,7 @@ export function NewRuleForm({
   onPreview: (draft: RuleEditorState) => void;
   isSubmitting: boolean;
 }) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState<RuleEditorState>({
     pattern: "",
     matchType: "contains",
@@ -60,31 +62,52 @@ export function NewRuleForm({
 
   return (
     <div className="rounded border p-3">
-      <h4 className="mb-2 text-sm font-semibold">New Rule</h4>
+      <h4 className="mb-2 text-sm font-semibold">
+        {t("components.newRuleForm.title", "New Rule")}
+      </h4>
       <div className="flex flex-col gap-2 md:flex-row md:items-center">
         <Input
-          aria-label={`New rule pattern for ${categoryName}`}
+          aria-label={t("components.newRuleForm.ariaPattern", "New rule pattern for {{category}}", {
+            category: categoryName,
+          })}
           className="md:flex-1"
-          placeholder={draft.matchType === "regex" ? "e.g. Migros.*Online" : "Pattern"}
+          placeholder={
+            draft.matchType === "regex"
+              ? t("components.newRuleForm.patternPlaceholderRegex", "e.g. Migros.*Online")
+              : t("components.newRuleForm.patternPlaceholder", "Pattern")
+          }
           maxLength={256}
           value={draft.pattern}
           onChange={(event) => setDraft({ ...draft, pattern: event.target.value })}
         />
         <NativeSelect
-          aria-label={`New rule match type for ${categoryName}`}
+          aria-label={t(
+            "components.newRuleForm.ariaMatchType",
+            "New rule match type for {{category}}",
+            { category: categoryName },
+          )}
           className="w-auto"
           value={draft.matchType}
           onChange={(event) =>
             setDraft({ ...draft, matchType: event.target.value as "exact" | "contains" | "regex" })
           }
         >
-          <option value="contains">contains</option>
-          <option value="exact">exact</option>
-          <option value="regex">regex</option>
+          <option value="contains">
+            {t("components.newRuleForm.matchTypeContains", "contains")}
+          </option>
+          <option value="exact">{t("components.newRuleForm.matchTypeExact", "exact")}</option>
+          <option value="regex">{t("components.newRuleForm.matchTypeRegex", "regex")}</option>
         </NativeSelect>
         <Input
-          aria-label={`New rule priority for ${categoryName}`}
-          title="Higher priority rules are evaluated first"
+          aria-label={t(
+            "components.newRuleForm.ariaPriority",
+            "New rule priority for {{category}}",
+            { category: categoryName },
+          )}
+          title={t(
+            "components.newRuleForm.priorityTitle",
+            "Higher priority rules are evaluated first",
+          )}
           type="number"
           min={0}
           max={1000}
@@ -94,14 +117,17 @@ export function NewRuleForm({
           onChange={(event) => setDraft({ ...draft, priority: Number(event.target.value || 0) })}
         />
         <Button size="sm" onClick={handleSubmit} disabled={isSubmitting}>
-          Add Rule
+          {t("components.newRuleForm.addRuleBtn", "Add Rule")}
         </Button>
       </div>
       {draft.matchType === "regex" && (
         <>
           <RegexHelper pattern={draft.pattern} idSuffix="new" />
           <p className="mt-2 text-xs text-muted-foreground" data-testid="overlap-skipped-regex-new">
-            Overlap detection isn't available for regex rules.
+            {t(
+              "components.newRuleForm.overlapSkippedRegex",
+              "Overlap detection isn't available for regex rules.",
+            )}
           </p>
         </>
       )}
@@ -111,7 +137,7 @@ export function NewRuleForm({
           className="mt-2 text-xs text-muted-foreground"
           data-testid="overlap-degraded-new"
         >
-          Conflict check unavailable.
+          {t("components.newRuleForm.conflictUnavailable", "Conflict check unavailable.")}
         </p>
       )}
       {conflicts.length > 0 && (
@@ -120,17 +146,29 @@ export function NewRuleForm({
           className="mt-2 rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400"
         >
           <p className="font-semibold">
-            Pattern overlaps with {conflicts.length} existing rule
-            {conflicts.length === 1 ? "" : "s"}.
+            {t(
+              "components.newRuleForm.overlapWarning",
+              "Pattern overlaps with {{count}} existing rules.",
+              { count: conflicts.length },
+            )}
           </p>
           <p className="mt-1 text-[11px]">
-            Higher-priority rules win when both match. You can save anyway.
+            {t(
+              "components.newRuleForm.overlapSubtext",
+              "Higher-priority rules win when both match. You can save anyway.",
+            )}
           </p>
           <ul className="mt-1 list-disc space-y-0.5 pl-4">
             {conflicts.map((c) => (
               <li key={c.id}>
                 <span className="font-mono">"{c.pattern}"</span> ({c.matchType}) → {c.categoryName}
-                <span className="text-muted-foreground"> — priority {c.priority}</span>
+                <span className="text-muted-foreground">
+                  {" "}
+                  —{" "}
+                  {t("components.newRuleForm.priorityLabel", "priority {{priority}}", {
+                    priority: c.priority,
+                  })}
+                </span>
               </li>
             ))}
           </ul>

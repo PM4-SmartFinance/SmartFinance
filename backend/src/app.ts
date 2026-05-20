@@ -1,6 +1,9 @@
 import Fastify from "fastify";
+import type { FastifyPluginAsync } from "fastify";
 import secureSession from "@fastify/secure-session";
 import rateLimit from "@fastify/rate-limit";
+import fastifyMetricsModule from "fastify-metrics";
+import type { IMetricsPluginOptions } from "fastify-metrics";
 import { errorHandler } from "./middleware/error-handler.js";
 import { healthRoutes } from "./controllers/health.controller.js";
 import { authRoutes } from "./controllers/auth.controller.js";
@@ -12,11 +15,18 @@ import { accountRoutes } from "./controllers/account.controller.js";
 import { categoryRuleRoutes } from "./controllers/category-rule.controller.js";
 import { dashboardRoutes } from "./controllers/dashboard.controller.js";
 import { categoryRoutes } from "./controllers/category.controller.js";
+import { auditRoutes } from "./controllers/audit.controller.js";
 
 export interface BuildAppOptions {
   /** Register the rate limiter even under NODE_ENV=test / VITEST. */
   forceRateLimit?: boolean;
 }
+
+// fastify-metrics is published as CJS with `exports.default = plugin`. Under
+// NodeNext ESM resolution the default import resolves to the module namespace
+// rather than the inner default, so we unwrap it explicitly.
+const fastifyMetrics = ((fastifyMetricsModule as unknown as { default?: unknown }).default ??
+  fastifyMetricsModule) as FastifyPluginAsync<Partial<IMetricsPluginOptions>>;
 
 export async function buildApp(options: BuildAppOptions = {}) {
   const app = Fastify({ logger: true });
@@ -29,7 +39,8 @@ export async function buildApp(options: BuildAppOptions = {}) {
   const finalSecret =
     sessionSecret.length >= 32 ? sessionSecret : "dev_secret_do_not_use_in_prod_32";
 
-  await app.register(secureSession, {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await app.register(secureSession as any, {
     key: Buffer.from(finalSecret).subarray(0, 32),
     cookie: {
       path: "/",
@@ -58,6 +69,14 @@ export async function buildApp(options: BuildAppOptions = {}) {
 
   app.setErrorHandler(errorHandler);
 
+  await app.register(fastifyMetrics, {
+    endpoint: "/metrics",
+    routeMetrics: {
+      enabled: true,
+      groupStatusCodes: true,
+    },
+  });
+
   await app.register(healthRoutes, { prefix: "/api/v1" });
   await app.register(authRoutes, { prefix: "/api/v1" });
   await app.register(transactionRoutes, { prefix: "/api/v1" });
@@ -67,6 +86,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   await app.register(accountRoutes, { prefix: "/api/v1" });
   await app.register(categoryRuleRoutes, { prefix: "/api/v1" });
   await app.register(categoryRoutes, { prefix: "/api/v1" });
+  await app.register(auditRoutes, { prefix: "/api/v1" });
 
   return app;
 }

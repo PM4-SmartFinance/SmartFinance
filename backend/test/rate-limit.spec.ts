@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { buildApp } from "../src/app.js";
 import { prisma } from "../src/prisma.js";
 import type { FastifyInstance } from "fastify";
-
+import { register } from "prom-client";
 /**
  * `buildApp` disables the global rate limiter under Vitest so normal
  * integration suites don't trip 429s. These tests opt back in via
@@ -65,6 +65,7 @@ describe("Rate limit — POST /api/v1/auth/login (max 10 / minute)", () => {
     // so the table must be empty — scoped deletes are not sufficient here.
     await prisma.dimUser.deleteMany();
     await ensureCurrency();
+    register.clear();
     app = await buildApp({ forceRateLimit: true });
     await app.ready();
     await bootstrapAdmin(app, LOGIN_EMAIL, TEST_PASSWORD);
@@ -109,6 +110,7 @@ describe("Rate limit — POST /api/v1/auth/login counts failed attempts (wrong p
     // so the table must be empty — scoped deletes are not sufficient here.
     await prisma.dimUser.deleteMany();
     await ensureCurrency();
+    register.clear();
     app = await buildApp({ forceRateLimit: true });
     await app.ready();
     await bootstrapAdmin(app, INVALID_LOGIN_EMAIL, TEST_PASSWORD);
@@ -155,6 +157,7 @@ describe("Rate limit — POST /api/v1/users (max 10 / minute, admin creation pat
     // so the table must be empty — scoped deletes are not sufficient here.
     await prisma.dimUser.deleteMany();
     await ensureCurrency();
+    register.clear();
     app = await buildApp({ forceRateLimit: true });
     await app.ready();
     // Bootstrap counts as request #1 on the /users bucket; the remaining
@@ -207,6 +210,7 @@ describe("Rate limit — POST /api/v1/users (unauthenticated bootstrap path)", (
     // so the table must be empty — scoped deletes are not sufficient here.
     await prisma.dimUser.deleteMany();
     await ensureCurrency();
+    register.clear();
     app = await buildApp({ forceRateLimit: true });
     await app.ready();
   });
