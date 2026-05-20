@@ -91,40 +91,63 @@ jobs:
               return;
             }
 
+            // Prefer the CI run that built the release tag SHA (if present).
+            // This handles cases where CI ran specifically for the tagged commit.
             let workflowRuns;
+            let latestRun;
             try {
               ({ data: workflowRuns } = await github.rest.actions.listWorkflowRunsForWorkflow({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 workflow_id: "ci.yml",
-                branch: "develop",
+                head_sha: releaseTagSha,
                 status: "completed",
                 per_page: 1,
               }));
+
+              latestRun = workflowRuns.workflow_runs[0];
             } catch (error) {
-              core.setFailed(
-                `Failed to list CI runs for workflow 'ci.yml' on branch 'develop': ${error.message}`,
+              core.info(
+                `Could not query workflow runs by head_sha (${error.message}), falling back to branch-based lookup.`,
               );
-              return;
             }
 
-            const latestRun = workflowRuns.workflow_runs[0];
+            if (!latestRun) {
+              try {
+                ({ data: workflowRuns } = await github.rest.actions.listWorkflowRunsForWorkflow({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  workflow_id: "ci.yml",
+                  branch: "develop",
+                  status: "completed",
+                  per_page: 1,
+                }));
+              } catch (error) {
+                core.setFailed(
+                  `Failed to list CI runs for workflow 'ci.yml' on branch 'develop': ${error.message}`,
+                );
+                return;
+              }
+
+              latestRun = workflowRuns.workflow_runs[0];
+            }
 
             if (!latestRun) {
-              core.setFailed("No completed CI run was found for develop.");
+              core.setFailed("No completed CI run was found for develop or for the release tag SHA.");
               return;
             }
 
             if (latestRun.conclusion !== "success") {
               core.setFailed(
-                `Latest CI run on develop is not green (run #${latestRun.run_number}, conclusion: ${latestRun.conclusion}).`,
+                `CI is not green for the release commit (run #${latestRun.run_number}, conclusion: ${latestRun.conclusion}).`,
               );
               return;
             }
 
-            if (latestRun.head_sha !== developRef.object.sha) {
+            // If we found a run by head_sha, ensure it matches the release tag commit.
+            if (latestRun.head_sha !== releaseTagSha && latestRun.head_sha !== developRef.object.sha) {
               core.setFailed(
-                `Develop is not healthy at the release boundary. CI passed for ${latestRun.head_sha}, but develop is currently at ${developRef.object.sha}.`,
+                `CI passed for ${latestRun.head_sha}, which does not match the release tag ${releaseTagSha} or the develop tip ${developRef.object.sha}.`,
               );
               return;
             }
