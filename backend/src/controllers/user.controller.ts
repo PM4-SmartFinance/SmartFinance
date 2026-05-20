@@ -137,7 +137,7 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
           id: sessionUser.id,
           role: sessionUser.role,
           email: updated.email,
-          pwdVersion: sessionUser.pwdVersion,
+          ...(sessionUser.pwdVersion !== undefined && { pwdVersion: sessionUser.pwdVersion }),
         });
       }
 
