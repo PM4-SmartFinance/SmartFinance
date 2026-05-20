@@ -1,13 +1,15 @@
-import { useDeferredValue, useEffect, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { useRuleOverlap } from "../lib/queries/categories";
-import { useTranslation } from "react-i18next";
+import { useDebouncedCallback } from "../hooks/useDebouncedCallback";
+import { RegexHelper } from "./RegexHelper";
 
 interface RuleEditorState {
   pattern: string;
-  matchType: "exact" | "contains";
+  matchType: "exact" | "contains" | "regex";
   priority: number;
 }
 
@@ -29,27 +31,17 @@ export function NewRuleForm({
   onPreview: (draft: RuleEditorState) => void;
   isSubmitting: boolean;
 }) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState<RuleEditorState>({
     pattern: "",
     matchType: "contains",
     priority: 0,
   });
-  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const onPreviewRef = useRef(onPreview);
-  const { t } = useTranslation();
 
+  const debouncedPreview = useDebouncedCallback(onPreview, 300);
   useEffect(() => {
-    onPreviewRef.current = onPreview;
-  });
-
-  useEffect(() => {
-    clearTimeout(timerRef.current);
-    const currentDraft = draft;
-    timerRef.current = setTimeout(() => {
-      onPreviewRef.current(currentDraft);
-    }, 300);
-    return () => clearTimeout(timerRef.current);
-  }, [draft]);
+    debouncedPreview(draft);
+  }, [draft, debouncedPreview]);
 
   // Soft warning. `useDeferredValue` lets React skip overlap queries while
   // the user is typing fast — paired with TanStack's request dedupe and a 5 s
@@ -79,7 +71,12 @@ export function NewRuleForm({
             category: categoryName,
           })}
           className="md:flex-1"
-          placeholder={t("components.newRuleForm.patternPlaceholder", "Pattern")}
+          placeholder={
+            draft.matchType === "regex"
+              ? t("components.newRuleForm.patternPlaceholderRegex", "e.g. Migros.*Online")
+              : t("components.newRuleForm.patternPlaceholder", "Pattern")
+          }
+          maxLength={256}
           value={draft.pattern}
           onChange={(event) => setDraft({ ...draft, pattern: event.target.value })}
         />
@@ -92,13 +89,14 @@ export function NewRuleForm({
           className="w-auto"
           value={draft.matchType}
           onChange={(event) =>
-            setDraft({ ...draft, matchType: event.target.value as "exact" | "contains" })
+            setDraft({ ...draft, matchType: event.target.value as "exact" | "contains" | "regex" })
           }
         >
           <option value="contains">
             {t("components.newRuleForm.matchTypeContains", "contains")}
           </option>
           <option value="exact">{t("components.newRuleForm.matchTypeExact", "exact")}</option>
+          <option value="regex">{t("components.newRuleForm.matchTypeRegex", "regex")}</option>
         </NativeSelect>
         <Input
           aria-label={t(
@@ -122,7 +120,18 @@ export function NewRuleForm({
           {t("components.newRuleForm.addRuleBtn", "Add Rule")}
         </Button>
       </div>
-      {overlapError && conflicts.length === 0 && (
+      {draft.matchType === "regex" && (
+        <>
+          <RegexHelper pattern={draft.pattern} idSuffix="new" />
+          <p className="mt-2 text-xs text-muted-foreground" data-testid="overlap-skipped-regex-new">
+            {t(
+              "components.newRuleForm.overlapSkippedRegex",
+              "Overlap detection isn't available for regex rules.",
+            )}
+          </p>
+        </>
+      )}
+      {draft.matchType !== "regex" && overlapError && conflicts.length === 0 && (
         <p
           role="alert"
           className="mt-2 text-xs text-muted-foreground"

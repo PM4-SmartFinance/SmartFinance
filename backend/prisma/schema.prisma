@@ -177,11 +177,17 @@ model AuditLog {
   @@index([transactionId])
 }
 
+enum MatchType {
+  exact
+  contains
+  regex
+}
+
 model CategoryRule {
-  id        String @id @default(uuid())
+  id        String    @id @default(uuid())
   pattern   String
-  matchType String // "exact" or "contains"
-  priority  Int    @default(0)
+  matchType MatchType
+  priority  Int       @default(0)
 
   categoryId String
   category   DimCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
