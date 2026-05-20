@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 export function DashboardPage() {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const displayName = user?.name?.trim();
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
@@ -25,7 +26,9 @@ export function DashboardPage() {
             </h1>
             <p className="text-sm text-muted-foreground">
               {user
-                ? t("dashboard.greeting", "Welcome back, {{email}}", { email: user.email })
+                ? t("dashboard.greeting", "Welcome back, {{name}}", {
+                    name: displayName || user.email,
+                  })
                 : t("dashboard.subtitle", "View your financial overview at a glance")}
             </p>
           </div>

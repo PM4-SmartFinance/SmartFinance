@@ -120,9 +120,24 @@ describe("GET /api/v1/users/me", () => {
 
 describe("PATCH /api/v1/users/me", () => {
   let app: FastifyInstance;
+  // Hoisted so individual tests can assert on the session refresh payload
+  // (mirrors the sessionDeleteSpy pattern used by the change-password block).
+  let sessionSetSpy: ReturnType<typeof vi.fn>;
 
   beforeAll(async () => {
-    app = buildTestApp();
+    sessionSetSpy = vi.fn();
+    app = Fastify({ logger: false });
+    app.decorateRequest("session", null);
+    app.addHook("onRequest", async (request) => {
+      Object.defineProperty(request, "session", {
+        configurable: true,
+        value: {
+          get: () => sessionUser,
+          set: sessionSetSpy,
+          delete: vi.fn(),
+        },
+      });
+    });
     await app.register(userRoutes, { prefix: "/api/v1" });
     await app.ready();
   });
@@ -131,6 +146,7 @@ describe("PATCH /api/v1/users/me", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionSetSpy.mockClear();
     sessionUser = {
       id: "user-1",
       role: "USER",
@@ -165,6 +181,48 @@ describe("PATCH /api/v1/users/me", () => {
       displayName: "X",
       email: "new@example.com",
     });
+  });
+
+  it("refreshes the session email and preserves pwdVersion when email changes", async () => {
+    mockUpdateProfile.mockResolvedValue({ ...profileFixture, email: "new@example.com" });
+
+    await app.inject({
+      method: "PATCH",
+      url: "/api/v1/users/me",
+      payload: { email: "new@example.com" },
+    });
+
+    expect(sessionSetSpy).toHaveBeenCalledWith("user", {
+      id: "user-1",
+      role: "USER",
+      email: "new@example.com",
+      pwdVersion: "1234567890",
+    });
+  });
+
+  it("does not refresh the session when only displayName changes", async () => {
+    mockUpdateProfile.mockResolvedValue({ ...profileFixture, name: "Renamed" });
+
+    await app.inject({
+      method: "PATCH",
+      url: "/api/v1/users/me",
+      payload: { displayName: "Renamed" },
+    });
+
+    expect(sessionSetSpy).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when updateProfile resolves to null", async () => {
+    mockUpdateProfile.mockResolvedValue(null);
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/users/me",
+      payload: { displayName: "X" },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(sessionSetSpy).not.toHaveBeenCalled();
   });
 
   it("returns 409 when the new email is already taken", async () => {

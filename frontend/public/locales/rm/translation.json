@@ -106,7 +106,7 @@
   "dashboard": {
     "heading": "Dashboard",
     "subtitle": "Guardai vossa survista finanziala d'in sulet egl",
-    "greeting": "Bainvegni enavos, {{email}}"
+    "greeting": "Bainvegni enavos, {{name}}"
   },
   "login": {
     "brand": "⬡ SmartFinance",

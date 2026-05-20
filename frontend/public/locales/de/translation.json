@@ -106,7 +106,7 @@
   "dashboard": {
     "heading": "Dashboard",
     "subtitle": "Sehen Sie Ihre finanzielle Übersicht auf einen Blick",
-    "greeting": "Willkommen zurück, {{email}}"
+    "greeting": "Willkommen zurück, {{name}}"
   },
   "login": {
     "brand": "⬡ SmartFinance",
