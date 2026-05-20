@@ -37,7 +37,16 @@ export function UserMenu() {
 
   if (!user) return null;
 
-  const initials = user.email.slice(0, 2).toUpperCase();
+  const displayName = user.name?.trim();
+  const initials = displayName
+    ? displayName
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0])
+        .join("")
+        .toUpperCase() || displayName.slice(0, 2).toUpperCase()
+    : user.email.slice(0, 2).toUpperCase();
 
   return (
     <Menu.Root>
@@ -54,7 +63,7 @@ export function UserMenu() {
         <Menu.Positioner side="bottom" align="end" sideOffset={8}>
           <Menu.Popup className="z-50 min-w-48 rounded-lg border border-border bg-popover py-1 shadow-md text-sm text-popover-foreground origin-(--transform-origin) data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 transition-[opacity,transform]">
             <div className="px-3 py-2 text-xs text-muted-foreground truncate border-b border-border mb-1">
-              {user.email}
+              {displayName || user.email}
             </div>
 
             <div className="px-3 pt-1 pb-0.5 text-xs font-medium text-muted-foreground">

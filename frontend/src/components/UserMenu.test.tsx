@@ -6,9 +6,10 @@ import { UserMenu } from "./UserMenu";
 import { useAppStore } from "../store/appStore";
 
 const authState = vi.hoisted(() => ({
-  user: { id: "1", email: "test@example.com", role: "USER" } as {
+  user: { id: "1", email: "test@example.com", name: null, role: "USER" } as {
     id: string;
     email: string;
+    name: string | null;
     role: string;
   } | null,
 }));
@@ -32,7 +33,7 @@ vi.mock("../hooks/useLogout", () => ({
 
 describe("UserMenu", () => {
   beforeEach(() => {
-    authState.user = { id: "1", email: "test@example.com", role: "USER" };
+    authState.user = { id: "1", email: "test@example.com", name: null, role: "USER" };
     logoutState.mutate = vi.fn();
     logoutState.isPending = false;
     useAppStore.setState({ theme: "system" });
@@ -43,6 +44,18 @@ describe("UserMenu", () => {
     render(<UserMenu />);
     expect(screen.getByRole("button", { name: "User menu" })).toBeInTheDocument();
     expect(screen.getByText("TE")).toBeInTheDocument();
+  });
+
+  it("shows the configured display name in the menu", async () => {
+    authState.user = { id: "1", email: "test@example.com", name: "Test User", role: "USER" };
+    const user = userEvent.setup();
+
+    render(<UserMenu />);
+    await user.click(screen.getByRole("button", { name: "User menu" }));
+
+    expect(await screen.findByText("Test User")).toBeInTheDocument();
+    expect(screen.queryByText("test@example.com")).not.toBeInTheDocument();
+    expect(screen.getByText("TU")).toBeInTheDocument();
   });
 
   it("returns null when no user is authenticated", () => {

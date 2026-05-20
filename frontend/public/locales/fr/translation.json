@@ -106,7 +106,7 @@
   "dashboard": {
     "heading": "Tableau de Bord",
     "subtitle": "Aperçu de vos finances en un coup d'œil",
-    "greeting": "Bon retour, {{email}}"
+    "greeting": "Bon retour, {{name}}"
   },
   "login": {
     "brand": "⬡ SmartFinance",
