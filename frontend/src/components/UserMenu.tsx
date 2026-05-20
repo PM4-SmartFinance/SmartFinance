@@ -43,10 +43,10 @@ export function UserMenu() {
     const parts = displayName.split(/\s+/).filter(Boolean);
     // Single-word names borrow the first two characters so "Anna" → "AN"
     // matches the visual weight of multi-word initials like "Test User" → "TU".
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    if (parts.length === 1) return displayName.slice(0, 2).toUpperCase();
     return parts
       .slice(0, 2)
-      .map((part) => part[0])
+      .map((part) => part.charAt(0))
       .join("")
       .toUpperCase();
   })();
