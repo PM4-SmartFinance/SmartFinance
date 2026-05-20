@@ -27,7 +27,8 @@
     "fastify-metrics": "^13.2.0",
     "pg": "^8.20.0",
     "prisma": "^7.5.0",
-    "prom-client": "^15.1.3"
+    "prom-client": "^15.1.3",
+    "safe-regex2": "^5.1.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
