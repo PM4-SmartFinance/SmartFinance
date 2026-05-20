@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import * as authService from "../services/auth.service.js";
+import * as userService from "../services/user.service.js";
 import { verifySession } from "../middleware/rbac.js";
 
 interface AuthBody {
@@ -43,7 +44,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.get("/auth/me", async (request, reply) => {
-    const user = await verifySession(request);
+    const sessionUser = await verifySession(request);
+    const user = await userService.getProfile(sessionUser.id);
     return reply.send({ user });
   });
 }

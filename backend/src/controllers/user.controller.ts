@@ -130,12 +130,14 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
         ...(email !== undefined && { email }),
       });
 
-      // Refresh session so subsequent /auth/me calls return the new email
+      // Refresh the session email while preserving the password version so
+      // subsequent auth checks continue to validate correctly.
       if (updated && email !== undefined) {
         request.session.set("user", {
           id: sessionUser.id,
           role: sessionUser.role,
           email: updated.email,
+          pwdVersion: sessionUser.pwdVersion,
         });
       }
 
