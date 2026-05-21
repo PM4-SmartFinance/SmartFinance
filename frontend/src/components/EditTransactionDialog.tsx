@@ -20,7 +20,9 @@ interface EditTransactionDialogProps {
     id: string;
     date: string;
     amount: number;
-    categoryId: string;
+    // `null` clears the category and restores the post-import "uncategorized"
+    // state on the server (KAN-156).
+    categoryId: string | null;
     notes: string;
     reason: string;
   }) => void;
@@ -67,7 +69,9 @@ export function EditTransactionDialog({
       id: transaction.id,
       date,
       amount: parsedAmount,
-      categoryId,
+      // Empty select value means "No Category" — send null so the server
+      // clears the assignment instead of rejecting the empty UUID.
+      categoryId: categoryId === "" ? null : categoryId,
       notes,
       reason,
     });

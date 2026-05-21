@@ -11,6 +11,7 @@ import {
   useDeleteCategoryRule,
   useAutoCategorize,
   useRecategorizeRange,
+  useUncategorizeCategoryTransactions,
   type Category,
   type CategoryRule,
   type RuleDraft,
@@ -70,6 +71,7 @@ export function CategoriesPage() {
   const deleteCategory = useDeleteCategory({ onInvalidationFailure });
   const autoCategorize = useAutoCategorize({ onInvalidationFailure });
   const recategorize = useRecategorizeRange({ onInvalidationFailure });
+  const uncategorizeAll = useUncategorizeCategoryTransactions({ onInvalidationFailure });
 
   const createRule = useCreateCategoryRule({ onInvalidationFailure });
   const updateRule = useUpdateCategoryRule({ onInvalidationFailure });
@@ -347,6 +349,42 @@ export function CategoriesPage() {
     }
   }
 
+  async function handleUncategorizeAll(category: Category) {
+    setCategoryError(category.id, null);
+    setActionError(null);
+    setActionResult(null);
+    const confirmed = window.confirm(
+      t(
+        "categories.confirmUncategorizeAll",
+        "Remove the category from every transaction currently assigned to ‘{{name}}’? They will become uncategorized.",
+        { name: category.categoryName },
+      ),
+    );
+    if (!confirmed) return;
+    try {
+      const { uncategorized } = await uncategorizeAll.mutateAsync(category.id);
+      setActionResult(
+        uncategorized === 0
+          ? t("categories.uncategorizeAllNone", "No transactions were assigned to ‘{{name}}’.", {
+              name: category.categoryName,
+            })
+          : t(
+              "categories.uncategorizeAllSuccess",
+              "Cleared the category from {{count}} transaction(s) in ‘{{name}}’.",
+              { count: uncategorized, name: category.categoryName },
+            ),
+      );
+    } catch (error) {
+      setCategoryError(
+        category.id,
+        getErrorMessage(
+          error,
+          t("categories.errors.uncategorizeAllFailed", "Failed to uncategorize transactions."),
+        ),
+      );
+    }
+  }
+
   async function handleRecategorize() {
     setActionError(null);
     setActionResult(null);
@@ -597,6 +635,22 @@ export function CategoriesPage() {
                               </div>
                               {!isGlobal && (
                                 <div className="flex items-center gap-2">
+                                  <Button
+                                    aria-label={t(
+                                      "categories.aria.uncategorizeAll",
+                                      "Move all transactions in {{name}} to uncategorized",
+                                      { name: category.categoryName },
+                                    )}
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleUncategorizeAll(category)}
+                                    disabled={uncategorizeAll.isPending}
+                                  >
+                                    {t(
+                                      "categories.uncategorizeAllBtn",
+                                      "Move all to uncategorized",
+                                    )}
+                                  </Button>
                                   <Button
                                     aria-label={t(
                                       "categories.aria.editCategory",
