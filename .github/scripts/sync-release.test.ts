@@ -78,11 +78,25 @@ function makeGithub(opts: {
         })),
       },
       actions: {
-        listWorkflowRuns: vi.fn(async ({ head_sha }: { head_sha?: string; branch?: string }) => {
-          const result = head_sha !== undefined ? opts.tagRuns : opts.branchRuns;
-          if (result instanceof Error) throw result;
-          return { data: { workflow_runs: result ?? [] } };
-        }),
+        listWorkflowRuns: vi.fn(
+          async ({
+            workflow_id,
+            head_sha,
+          }: {
+            workflow_id?: string;
+            head_sha?: string;
+            branch?: string;
+          }) => {
+            if (workflow_id !== "ci.yml") {
+              throw new Error(
+                `mock listWorkflowRuns expected workflow_id="ci.yml", got ${String(workflow_id)}`,
+              );
+            }
+            const result = head_sha !== undefined ? opts.tagRuns : opts.branchRuns;
+            if (result instanceof Error) throw result;
+            return { data: { workflow_runs: result ?? [] } };
+          },
+        ),
       },
       repos: {
         merge: vi.fn(async () => {
@@ -157,6 +171,14 @@ describe("sync-release", () => {
 
     expect(result).toEqual({ skipped: false });
     expect(core.setFailed).not.toHaveBeenCalled();
+    expect(github.rest.actions.listWorkflowRuns).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workflow_id: "ci.yml",
+        head_sha: TAG_COMMIT_SHA,
+        status: "completed",
+        per_page: 1,
+      }),
+    );
     expect(github.rest.repos.merge).toHaveBeenCalledOnce();
     const mergeArgs = github.rest.repos.merge.mock.calls[0][0];
     expect(mergeArgs.base).toBe("main");
@@ -221,6 +243,16 @@ describe("sync-release", () => {
     const result = await syncRelease({ github, context, core, inputs: baseInputs });
 
     expect(result).toEqual({ skipped: false });
+    expect(github.rest.actions.listWorkflowRuns).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        workflow_id: "ci.yml",
+        branch: "develop",
+        status: "completed",
+        per_page: 1,
+      }),
+    );
+    expect(github.rest.actions.listWorkflowRuns.mock.calls[1][0]).not.toHaveProperty("head_sha");
     expect(github.rest.repos.merge).toHaveBeenCalledOnce();
     expect(github.rest.repos.merge.mock.calls[0][0].head).toBe(TAG_COMMIT_SHA);
   });
