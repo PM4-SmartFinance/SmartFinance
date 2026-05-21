@@ -294,7 +294,7 @@ export function CsvImportCard() {
                   <Select
                     value={effectiveFormat}
                     onValueChange={(v) => {
-                      if (formats.some((f) => f.value === v)) setFormat(v);
+                      if (v !== null && formats.some((f) => f.value === v)) setFormat(v);
                     }}
                   >
                     <SelectTrigger id="csv-format" className="w-40">
