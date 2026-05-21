@@ -78,13 +78,11 @@ function makeGithub(opts: {
         })),
       },
       actions: {
-        listWorkflowRuns: vi.fn(
-          async ({ head_sha }: { head_sha?: string; branch?: string }) => {
-            const result = head_sha !== undefined ? opts.tagRuns : opts.branchRuns;
-            if (result instanceof Error) throw result;
-            return { data: { workflow_runs: result ?? [] } };
-          },
-        ),
+        listWorkflowRuns: vi.fn(async ({ head_sha }: { head_sha?: string; branch?: string }) => {
+          const result = head_sha !== undefined ? opts.tagRuns : opts.branchRuns;
+          if (result instanceof Error) throw result;
+          return { data: { workflow_runs: result ?? [] } };
+        }),
       },
       repos: {
         merge: vi.fn(async () => {
