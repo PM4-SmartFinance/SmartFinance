@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { requireRole } from "../middleware/rbac.js";
 import * as moduleRegistry from "../services/module-registry.service.js";
+import * as navItemRegistry from "../services/nav-item-registry.service.js";
+import * as widgetRegistry from "../services/widget-registry.service.js";
 
 export async function moduleRoutes(app: FastifyInstance): Promise<void> {
   app.get("/modules", { preHandler: requireRole("USER") }, async (_request, reply) => {
@@ -25,4 +27,12 @@ export async function moduleRoutes(app: FastifyInstance): Promise<void> {
       return reply.send({ id: mod.id, name: mod.name, status: mod.getStatus() });
     },
   );
+
+  app.get("/modules/nav-items", { preHandler: requireRole("USER") }, async (_request, reply) => {
+    return reply.send({ navItems: navItemRegistry.getAllNavItems() });
+  });
+
+  app.get("/modules/widgets", { preHandler: requireRole("USER") }, async (_request, reply) => {
+    return reply.send({ widgets: widgetRegistry.getAllWidgets() });
+  });
 }

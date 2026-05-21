@@ -11,6 +11,7 @@ import { SettingsProfile } from "./pages/SettingsProfile";
 import { SettingsLayout } from "./pages/SettingsLayout";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { ModulePage } from "./pages/ModulePage";
 import { LoginWireframe } from "./wireframes/LoginWireframe";
 import { DashboardWireframe } from "./wireframes/DashboardWireframe";
 import { TransactionsWireframe } from "./wireframes/TransactionsWireframe";
@@ -40,6 +41,10 @@ export const router = createBrowserRouter([
       {
         path: "/categories",
         element: <CategoriesPage />,
+      },
+      {
+        path: "/modules/:moduleId",
+        element: <ModulePage />,
       },
       {
         path: "/settings",

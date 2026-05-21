@@ -27,10 +27,22 @@ vi.mock("../services/module-registry.service.js", () => ({
   getModule: vi.fn(),
 }));
 
+vi.mock("../services/nav-item-registry.service.js", () => ({
+  getAllNavItems: vi.fn(),
+}));
+
+vi.mock("../services/widget-registry.service.js", () => ({
+  getAllWidgets: vi.fn(),
+}));
+
 import * as moduleRegistry from "../services/module-registry.service.js";
+import * as navItemRegistry from "../services/nav-item-registry.service.js";
+import * as widgetRegistry from "../services/widget-registry.service.js";
 
 const mockGetAllModules = vi.mocked(moduleRegistry.getAllModules);
 const mockGetModule = vi.mocked(moduleRegistry.getModule);
+const mockGetAllNavItems = vi.mocked(navItemRegistry.getAllNavItems);
+const mockGetAllWidgets = vi.mocked(widgetRegistry.getAllWidgets);
 
 describe("module routes", () => {
   let app: FastifyInstance;
@@ -170,6 +182,72 @@ describe("module routes", () => {
         method: "GET",
         url: "/api/v1/modules/hello-world/status",
       });
+      expect(response.statusCode).toBe(401);
+    });
+  });
+
+  describe("GET /api/v1/modules/nav-items", () => {
+    it("returns 200 with all registered nav items", async () => {
+      mockGetAllNavItems.mockReturnValue([
+        { moduleId: "savings-goals", label: "Savings Goals", path: "/modules/savings-goals" },
+      ]);
+      const response = await app.inject({ method: "GET", url: "/api/v1/modules/nav-items" });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({
+        navItems: [
+          { moduleId: "savings-goals", label: "Savings Goals", path: "/modules/savings-goals" },
+        ],
+      });
+    });
+
+    it("returns 200 with empty array when no nav items are registered", async () => {
+      mockGetAllNavItems.mockReturnValue([]);
+      const response = await app.inject({ method: "GET", url: "/api/v1/modules/nav-items" });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ navItems: [] });
+    });
+
+    it("returns 401 when there is no session", async () => {
+      sessionUser = undefined;
+      const response = await app.inject({ method: "GET", url: "/api/v1/modules/nav-items" });
+      expect(response.statusCode).toBe(401);
+    });
+  });
+
+  describe("GET /api/v1/modules/widgets", () => {
+    it("returns 200 with all registered widgets", async () => {
+      mockGetAllWidgets.mockReturnValue([
+        {
+          moduleId: "savings-goals",
+          widgetId: "savings-goals-summary",
+          title: "Savings Goals",
+          dataEndpoint: "/modules/savings-goals/goals/widget",
+        },
+      ]);
+      const response = await app.inject({ method: "GET", url: "/api/v1/modules/widgets" });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({
+        widgets: [
+          {
+            moduleId: "savings-goals",
+            widgetId: "savings-goals-summary",
+            title: "Savings Goals",
+            dataEndpoint: "/modules/savings-goals/goals/widget",
+          },
+        ],
+      });
+    });
+
+    it("returns 200 with empty array when no widgets are registered", async () => {
+      mockGetAllWidgets.mockReturnValue([]);
+      const response = await app.inject({ method: "GET", url: "/api/v1/modules/widgets" });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ widgets: [] });
+    });
+
+    it("returns 401 when there is no session", async () => {
+      sessionUser = undefined;
+      const response = await app.inject({ method: "GET", url: "/api/v1/modules/widgets" });
       expect(response.statusCode).toBe(401);
     });
   });
