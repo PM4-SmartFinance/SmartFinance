@@ -20,15 +20,13 @@ const QUERY_KEYS_TO_INVALIDATE_AFTER_IMPORT = [
   ["transactions"],
 ] as const;
 
-const FORMATS = [
-  { value: "neon", label: "Neon" },
-  { value: "zkb", label: "ZKB" },
-  { value: "wise", label: "Wise" },
-] as const;
-
-type ImportFormat = (typeof FORMATS)[number]["value"];
+type ImportFormat = string;
 
 type UploadResult = { imported: number };
+
+interface ImportFormatsResponse {
+  formats: { value: string; label: string }[];
+}
 
 interface Account {
   id: string;
@@ -42,7 +40,7 @@ export function CsvImportCard() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [format, setFormat] = useState<ImportFormat>("neon");
+  const [format, setFormat] = useState<ImportFormat>("");
   const [accountId, setAccountId] = useState<string>("");
   const [isDragOver, setIsDragOver] = useState(false);
   const [typeError, setTypeError] = useState<string | null>(null);
@@ -50,15 +48,22 @@ export function CsvImportCard() {
   const [refreshHint, setRefreshHint] = useState(false);
   const { t } = useTranslation();
 
+  const { data: formatsData } = useQuery({
+    queryKey: ["import-formats"],
+    queryFn: () => api.get<ImportFormatsResponse>("/transactions/import/formats"),
+  });
+  const formats = formatsData?.formats ?? [];
+
   const { data: accountsData, isError: isAccountsError } = useQuery({
     queryKey: ["accounts"],
     queryFn: () => api.get<{ accounts: Account[] }>("/accounts"),
   });
   const accounts = accountsData?.accounts ?? [];
 
+  // Derive the active format without writing to state during render.
+  const effectiveFormat = format || formats[0]?.value || "";
+
   // Derive the active account without writing to state during render.
-  // If the user has made an explicit selection it wins; otherwise fall back to
-  // the first account returned by the query.
   const effectiveAccountId = accountId || accounts[0]?.id || "";
 
   const {
@@ -67,7 +72,7 @@ export function CsvImportCard() {
     error: uploadError,
     reset: resetMutation,
   } = useMutation({
-    mutationFn: ({ f, fmt, acId }: { f: File; fmt: ImportFormat; acId: string }) => {
+    mutationFn: ({ f, fmt, acId }: { f: File; fmt: string; acId: string }) => {
       const formData = new FormData();
       formData.append("file", f);
       return api.upload<UploadResult>(
@@ -133,8 +138,8 @@ export function CsvImportCard() {
   }
 
   function handleUpload() {
-    if (!file || !effectiveAccountId) return;
-    uploadFile({ f: file, fmt: format, acId: effectiveAccountId });
+    if (!file || !effectiveAccountId || !effectiveFormat) return;
+    uploadFile({ f: file, fmt: effectiveFormat, acId: effectiveAccountId });
   }
 
   function handleReset() {
@@ -154,7 +159,8 @@ export function CsvImportCard() {
           ? t("components.csvImportCard.errors.uploadFailed", "Upload failed.")
           : null;
 
-  const canUpload = file !== null && effectiveAccountId !== "" && !isUploading;
+  const canUpload =
+    file !== null && effectiveAccountId !== "" && effectiveFormat !== "" && !isUploading;
 
   return (
     <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
@@ -281,16 +287,16 @@ export function CsvImportCard() {
                   {t("components.csvImportCard.formatLabel", "Bank format")}
                 </Label>
                 <Select
-                  value={format}
+                  value={effectiveFormat}
                   onValueChange={(v) => {
-                    if (FORMATS.some((f) => f.value === v)) setFormat(v as ImportFormat);
+                    if (formats.some((f) => f.value === v)) setFormat(v);
                   }}
                 >
                   <SelectTrigger id="csv-format" className="w-40">
-                    <SelectValue />
+                    <SelectValue placeholder="Select format" />
                   </SelectTrigger>
                   <SelectContent>
-                    {FORMATS.map((f) => (
+                    {formats.map((f) => (
                       <SelectItem key={f.value} value={f.value}>
                         {f.label}
                       </SelectItem>

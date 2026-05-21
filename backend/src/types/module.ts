@@ -1,11 +1,19 @@
 import type { FastifyInstance, FastifyBaseLogger } from "fastify";
 import type { RoleType } from "../middleware/rbac.js";
+import type { ParsedTransaction } from "../services/importers/types.js";
 
 export interface ModuleStorageAdapter {
   get(userId: string, key: string): Promise<unknown>;
   set(userId: string, key: string, value: unknown): Promise<void>;
   delete(userId: string, key: string): Promise<void>;
   list(userId: string): Promise<Array<{ key: string; value: unknown }>>;
+}
+
+export interface ImporterPlugin {
+  format: string;
+  label: string;
+  encoding?: string;
+  parse(csvText: string): ParsedTransaction[];
 }
 
 export type RouteRegistrar = Pick<
@@ -17,6 +25,7 @@ export interface ModuleContext {
   app: RouteRegistrar;
   storage: ModuleStorageAdapter;
   logger: FastifyBaseLogger;
+  registerImporter(plugin: ImporterPlugin): void;
 }
 
 export interface ModuleStatus {

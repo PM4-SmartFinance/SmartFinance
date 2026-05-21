@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { importTransactions } from "./import.service.js";
 import { ServiceError } from "../errors.js";
+import { registerImporter, clearImporterRegistry } from "./importer-registry.service.js";
 
 vi.mock("../repositories/transaction.repository.js", () => ({
   findAccountByIdAndUser: vi.fn(),
@@ -191,6 +192,62 @@ describe("importTransactions", () => {
     });
 
     expect(result).toEqual({ imported: 1, categorized: 0 });
+  });
+
+  it("throws 400 for an unknown format not in registry", async () => {
+    await expect(
+      importTransactions({
+        csvText: "data",
+        format: "unknown-bank",
+        accountId: "acc-1",
+        userId: "user-1",
+        logger,
+      }),
+    ).rejects.toThrow(new ServiceError(400, "Unsupported import format: unknown-bank"));
+  });
+
+  describe("plugin format dispatch", () => {
+    afterEach(() => {
+      clearImporterRegistry();
+    });
+
+    it("dispatches to a registered plugin parser", async () => {
+      const mockParse = vi
+        .fn()
+        .mockReturnValue([{ date: new Date(), amount: -10, description: "Test", subject: "" }]);
+      registerImporter({ format: "test-bank", label: "Test Bank", parse: mockParse });
+
+      const result = await importTransactions({
+        csvText: "some,csv,data",
+        format: "test-bank",
+        accountId: "acc-1",
+        userId: "user-1",
+        logger,
+      });
+
+      expect(mockParse).toHaveBeenCalledWith("some,csv,data");
+      expect(result.imported).toBe(1);
+    });
+
+    it("propagates a ServiceError thrown by a plugin parser", async () => {
+      registerImporter({
+        format: "bad-parser",
+        label: "Bad Parser",
+        parse: () => {
+          throw new ServiceError(422, "bad csv");
+        },
+      });
+
+      await expect(
+        importTransactions({
+          csvText: "garbage",
+          format: "bad-parser",
+          accountId: "acc-1",
+          userId: "user-1",
+          logger,
+        }),
+      ).rejects.toThrow(new ServiceError(422, "bad csv"));
+    });
   });
 
   it("fires the onTransactionImported lifecycle hook after bulkImport", async () => {
