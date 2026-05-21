@@ -50,7 +50,7 @@ describe("widget registry", () => {
       registerWidget("mod-a", {
         widgetId: "w1",
         title: "Widget 1 duplicate",
-        dataEndpoint: "/dup",
+        dataEndpoint: "/modules/mod-a/w1",
       }),
     ).toThrow('Widget "w1" from module "mod-a" is already registered');
   });
@@ -59,18 +59,22 @@ describe("widget registry", () => {
     registerWidget("mod-a", {
       widgetId: "summary",
       title: "A Summary",
-      dataEndpoint: "/a/summary",
+      dataEndpoint: "/modules/mod-a/summary",
     });
     registerWidget("mod-b", {
       widgetId: "summary",
       title: "B Summary",
-      dataEndpoint: "/b/summary",
+      dataEndpoint: "/modules/mod-b/summary",
     });
     expect(getAllWidgets()).toHaveLength(2);
   });
 
   it("getAllWidgets returns a shallow copy, not the internal array", () => {
-    registerWidget("mod-a", { widgetId: "w1", title: "W1", dataEndpoint: "/w1" });
+    registerWidget("mod-a", {
+      widgetId: "w1",
+      title: "W1",
+      dataEndpoint: "/modules/mod-a/w1",
+    });
     const first = getAllWidgets();
     first.push({
       moduleId: "injected",
@@ -82,8 +86,42 @@ describe("widget registry", () => {
   });
 
   it("clearWidgetRegistry removes all entries", () => {
-    registerWidget("mod-a", { widgetId: "w1", title: "W1", dataEndpoint: "/w1" });
+    registerWidget("mod-a", {
+      widgetId: "w1",
+      title: "W1",
+      dataEndpoint: "/modules/mod-a/w1",
+    });
     clearWidgetRegistry();
     expect(getAllWidgets()).toEqual([]);
+  });
+
+  it("rejects a dataEndpoint outside the module's namespace", () => {
+    expect(() =>
+      registerWidget("mod-a", {
+        widgetId: "w1",
+        title: "W1",
+        dataEndpoint: "/users/me",
+      }),
+    ).toThrow(/must start with "\/modules\/mod-a\/"/);
+  });
+
+  it("rejects a dataEndpoint that targets a different module", () => {
+    expect(() =>
+      registerWidget("mod-a", {
+        widgetId: "w1",
+        title: "W1",
+        dataEndpoint: "/modules/mod-b/data",
+      }),
+    ).toThrow(/must start with "\/modules\/mod-a\/"/);
+  });
+
+  it("rejects a relative dataEndpoint", () => {
+    expect(() =>
+      registerWidget("mod-a", {
+        widgetId: "w1",
+        title: "W1",
+        dataEndpoint: "data",
+      }),
+    ).toThrow(/must start with "\/modules\/mod-a\/"/);
   });
 });

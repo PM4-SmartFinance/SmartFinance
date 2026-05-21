@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,9 +24,18 @@ export interface RegisteredWidget {
 }
 
 export function ModuleWidgetCard({ widget }: { widget: RegisteredWidget }) {
+  const { t } = useTranslation();
+  const requiredPrefix = `/modules/${widget.moduleId}/`;
   const { data, isLoading, isError } = useQuery({
     queryKey: ["module-widget", widget.moduleId, widget.widgetId],
-    queryFn: () => api.get<ModuleWidgetData>(widget.dataEndpoint),
+    queryFn: () => {
+      if (!widget.dataEndpoint.startsWith(requiredPrefix)) {
+        throw new Error(
+          `widget "${widget.widgetId}" dataEndpoint "${widget.dataEndpoint}" is outside module namespace`,
+        );
+      }
+      return api.get<ModuleWidgetData>(widget.dataEndpoint);
+    },
   });
 
   return (
@@ -42,10 +52,12 @@ export function ModuleWidgetCard({ widget }: { widget: RegisteredWidget }) {
             <Skeleton className="h-4 w-3/4" />
           </div>
         ) : isError ? (
-          <p className="text-sm text-destructive">Failed to load widget data.</p>
+          <p className="text-sm text-destructive">
+            {t("modules.widgetLoadError", "Failed to load widget data.")}
+          </p>
         ) : !data || data.items.length === 0 ? (
           <p className="py-2 text-sm text-muted-foreground">
-            {data?.emptyMessage ?? "No data available."}
+            {data?.emptyMessage ?? t("modules.widgetNoData", "No data available.")}
           </p>
         ) : (
           <ul className="space-y-3">

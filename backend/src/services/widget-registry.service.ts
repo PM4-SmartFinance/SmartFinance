@@ -7,6 +7,12 @@ export interface RegisteredWidget extends WidgetDescriptor {
 const widgets: RegisteredWidget[] = [];
 
 export function registerWidget(moduleId: string, widget: WidgetDescriptor): void {
+  const requiredPrefix = `/modules/${moduleId}/`;
+  if (!widget.dataEndpoint.startsWith(requiredPrefix)) {
+    throw new Error(
+      `Widget "${widget.widgetId}" dataEndpoint "${widget.dataEndpoint}" must start with "${requiredPrefix}"`,
+    );
+  }
   if (widgets.some((w) => w.moduleId === moduleId && w.widgetId === widget.widgetId)) {
     throw new Error(`Widget "${widget.widgetId}" from module "${moduleId}" is already registered`);
   }
