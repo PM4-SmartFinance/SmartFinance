@@ -3,7 +3,6 @@ import { buildApp } from "../src/app.js";
 import * as argon2 from "argon2";
 import { prisma } from "../src/prisma.js";
 import type { FastifyInstance } from "fastify";
-import FormData from "form-data";
 
 type SessionCookie = { name: string; value: string };
 
@@ -13,6 +12,19 @@ const PASSWORD = "TestPass#123";
 let app: FastifyInstance;
 let sessionCookie: string;
 let accountId: string;
+
+const BOUNDARY = "----SmartFinanceTestBoundary";
+
+function buildMultipartBody(filename: string, content: Buffer): Buffer {
+  return Buffer.concat([
+    Buffer.from(`--${BOUNDARY}\r\n`),
+    Buffer.from(`Content-Disposition: form-data; name="file"; filename="${filename}"\r\n`),
+    Buffer.from(`Content-Type: text/csv\r\n`),
+    Buffer.from(`\r\n`),
+    content,
+    Buffer.from(`\r\n--${BOUNDARY}--\r\n`),
+  ]);
+}
 
 async function loginAs(email: string): Promise<string> {
   const res = await app.inject({
@@ -83,14 +95,16 @@ describe("mock-bank plugin — full import flow", () => {
   });
 
   it("POST /transactions/import with mock-bank format inserts rows to DB", async () => {
-    const form = new FormData();
-    form.append("file", Buffer.from(MOCK_CSV), { filename: "test.csv", contentType: "text/csv" });
+    const payload = buildMultipartBody("test.csv", Buffer.from(MOCK_CSV));
 
     const res = await app.inject({
       method: "POST",
       url: `/api/v1/transactions/import?accountId=${accountId}&format=mock-bank`,
-      headers: { ...form.getHeaders(), cookie: `session=${sessionCookie}` },
-      payload: form.getBuffer(),
+      headers: {
+        "content-type": `multipart/form-data; boundary=${BOUNDARY}`,
+        cookie: `session=${sessionCookie}`,
+      },
+      payload,
     });
 
     expect(res.statusCode).toBe(200);
@@ -113,14 +127,16 @@ describe("mock-bank plugin — full import flow", () => {
   });
 
   it("returns 400 for an unregistered format", async () => {
-    const form = new FormData();
-    form.append("file", Buffer.from("data"), { filename: "test.csv", contentType: "text/csv" });
+    const payload = buildMultipartBody("test.csv", Buffer.from("data"));
 
     const res = await app.inject({
       method: "POST",
       url: `/api/v1/transactions/import?accountId=${accountId}&format=nonexistent-bank`,
-      headers: { ...form.getHeaders(), cookie: `session=${sessionCookie}` },
-      payload: form.getBuffer(),
+      headers: {
+        "content-type": `multipart/form-data; boundary=${BOUNDARY}`,
+        cookie: `session=${sessionCookie}`,
+      },
+      payload,
     });
 
     expect(res.statusCode).toBe(400);
@@ -128,14 +144,16 @@ describe("mock-bank plugin — full import flow", () => {
 
   it("returns 422 for a malformed mock-bank CSV", async () => {
     const badCsv = ["date,amount,description", "not-a-date,-5.00,Shop"].join("\n");
-    const form = new FormData();
-    form.append("file", Buffer.from(badCsv), { filename: "bad.csv", contentType: "text/csv" });
+    const payload = buildMultipartBody("bad.csv", Buffer.from(badCsv));
 
     const res = await app.inject({
       method: "POST",
       url: `/api/v1/transactions/import?accountId=${accountId}&format=mock-bank`,
-      headers: { ...form.getHeaders(), cookie: `session=${sessionCookie}` },
-      payload: form.getBuffer(),
+      headers: {
+        "content-type": `multipart/form-data; boundary=${BOUNDARY}`,
+        cookie: `session=${sessionCookie}`,
+      },
+      payload,
     });
 
     expect(res.statusCode).toBe(422);
