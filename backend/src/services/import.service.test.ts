@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { importTransactions } from "./import.service.js";
 import { ServiceError } from "../errors.js";
+import { registerImporter, clearImporterRegistry } from "./importer-registry.service.js";
 
 vi.mock("../repositories/transaction.repository.js", () => ({
   findAccountByIdAndUser: vi.fn(),
@@ -11,18 +12,18 @@ vi.mock("../repositories/account.repository.js", () => ({
   findAccountsByUser: vi.fn(),
 }));
 
-vi.mock("./importers/account-hint.js", () => ({
-  extractAccountHint: vi.fn(() => null),
-}));
-
 vi.mock("./categorization.service.js", () => ({
   autoCategorize: vi.fn().mockResolvedValue({ categorized: 0 }),
 }));
 
+vi.mock("./module-registry.service.js", () => ({
+  fireTransactionImported: vi.fn().mockResolvedValue(undefined),
+}));
+
 import * as repo from "../repositories/transaction.repository.js";
 import * as accountRepo from "../repositories/account.repository.js";
-import * as accountHint from "./importers/account-hint.js";
 import * as categorizationService from "./categorization.service.js";
+import * as moduleRegistry from "./module-registry.service.js";
 
 // Spy-able no-op logger that satisfies the ImportLogger interface.
 const logger = { warn: vi.fn() };
@@ -32,15 +33,14 @@ const NEON_ROW = `"2025-01-15";"42.00";"";"";"";"Grocery Store";"ref";"uncategor
 
 const mockRepo = vi.mocked(repo);
 const mockAccountRepo = vi.mocked(accountRepo);
-const mockHint = vi.mocked(accountHint);
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockRepo.findAccountByIdAndUser.mockResolvedValue({ id: "acc-1" } as never);
   mockRepo.bulkImport.mockImplementation((parsed: unknown[]) => Promise.resolve(parsed.length));
   mockAccountRepo.findAccountsByUser.mockResolvedValue([]);
-  mockHint.extractAccountHint.mockReturnValue(null);
   vi.mocked(categorizationService.autoCategorize).mockResolvedValue({ categorized: 0 });
+  vi.mocked(moduleRegistry.fireTransactionImported).mockResolvedValue(undefined);
 });
 
 describe("importTransactions", () => {
@@ -245,36 +245,6 @@ describe("importTransactions", () => {
     expect(mockRepo.bulkImport).not.toHaveBeenCalled();
   });
 
-  it("invokes extractAccountHint once with (csvText, format) when accountId is absent", async () => {
-    mockAccountRepo.findAccountsByUser.mockResolvedValue([
-      { id: "acc-only", name: "Main", iban: "CH00 0000" },
-    ]);
-    const csv = [NEON_HEADER, NEON_ROW].join("\n");
-
-    await importTransactions({
-      csvText: csv,
-      format: "neon",
-      userId: "user-1",
-      logger,
-    });
-
-    expect(mockHint.extractAccountHint).toHaveBeenCalledExactlyOnceWith(csv, "neon");
-  });
-
-  it("does not call extractAccountHint when an accountId is explicitly provided", async () => {
-    const csv = [NEON_HEADER, NEON_ROW].join("\n");
-
-    await importTransactions({
-      csvText: csv,
-      format: "neon",
-      accountId: "acc-1",
-      userId: "user-1",
-      logger,
-    });
-
-    expect(mockHint.extractAccountHint).not.toHaveBeenCalled();
-  });
-
   it("works correctly for the ubs format", async () => {
     const ubsHeader = `"Kontonummer";"Kartennummer";"Konto-/Karteninhaber";"Einkaufsdatum";"Buchungstext";"Branche";"Betrag";"Originalw\u00e4hrung";"Kurs";"W\u00e4hrung";"Belastung";"Gutschrift";"Buchung"`;
     const ubsRow = `"1234 5678 9101";"9999 99XX XXXX 9999";"M. MUSTERMANN";"21.07.2025";"Laden6";"Shop";"1.7";"CHF";"";"CHF";"1.7";"";"23.07.2025"`;
@@ -288,5 +258,101 @@ describe("importTransactions", () => {
     });
 
     expect(result).toEqual({ imported: 1, categorized: 0 });
+  });
+
+  it("throws 400 for an unknown format not in registry", async () => {
+    await expect(
+      importTransactions({
+        csvText: "data",
+        format: "unknown-bank",
+        accountId: "acc-1",
+        userId: "user-1",
+        logger,
+      }),
+    ).rejects.toThrow(new ServiceError(400, "Unsupported import format: unknown-bank"));
+  });
+
+  describe("plugin format dispatch", () => {
+    afterEach(() => {
+      clearImporterRegistry();
+    });
+
+    it("dispatches to a registered plugin parser", async () => {
+      const mockParse = vi
+        .fn()
+        .mockReturnValue([{ date: new Date(), amount: -10, description: "Test", subject: "" }]);
+      registerImporter({ format: "test-bank", label: "Test Bank", parse: mockParse });
+
+      const result = await importTransactions({
+        csvText: "some,csv,data",
+        format: "test-bank",
+        accountId: "acc-1",
+        userId: "user-1",
+        logger,
+      });
+
+      expect(mockParse).toHaveBeenCalledWith("some,csv,data");
+      expect(result.imported).toBe(1);
+    });
+
+    it("propagates a ServiceError thrown by a plugin parser", async () => {
+      registerImporter({
+        format: "bad-parser",
+        label: "Bad Parser",
+        parse: () => {
+          throw new ServiceError(422, "bad csv");
+        },
+      });
+
+      await expect(
+        importTransactions({
+          csvText: "garbage",
+          format: "bad-parser",
+          accountId: "acc-1",
+          userId: "user-1",
+          logger,
+        }),
+      ).rejects.toThrow(new ServiceError(422, "bad csv"));
+    });
+  });
+
+  it("fires the onTransactionImported lifecycle hook after bulkImport", async () => {
+    mockRepo.bulkImport.mockResolvedValue(2);
+    const csv = [NEON_HEADER, NEON_ROW, NEON_ROW].join("\n");
+
+    await importTransactions({
+      csvText: csv,
+      format: "neon",
+      accountId: "acc-1",
+      userId: "user-1",
+      logger,
+    });
+
+    expect(vi.mocked(moduleRegistry.fireTransactionImported)).toHaveBeenCalledExactlyOnceWith({
+      userId: "user-1",
+      accountId: "acc-1",
+      imported: 2,
+    });
+  });
+
+  it("swallows a fireTransactionImported failure and logs a warning", async () => {
+    mockRepo.bulkImport.mockResolvedValue(2);
+    const fireErr = new Error("registry blew up");
+    vi.mocked(moduleRegistry.fireTransactionImported).mockRejectedValueOnce(fireErr);
+    const csv = [NEON_HEADER, NEON_ROW, NEON_ROW].join("\n");
+
+    const result = await importTransactions({
+      csvText: csv,
+      format: "neon",
+      accountId: "acc-1",
+      userId: "user-1",
+      logger,
+    });
+
+    expect(result).toEqual({ imported: 2, categorized: 0 });
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ err: fireErr, userId: "user-1", accountId: "acc-1" }),
+      "post-import fireTransactionImported failed",
+    );
   });
 });

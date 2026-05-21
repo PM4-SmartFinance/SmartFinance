@@ -3,14 +3,30 @@ import { parseNeonCSV } from "./importers/neon.parser.js";
 import { parseZKBCSV } from "./importers/zkb.parser.js";
 import { parseWiseCSV } from "./importers/wise.parser.js";
 import { parseUBSCSV } from "./importers/ubs.parser.js";
-import { extractAccountHint } from "./importers/account-hint.js";
 import * as transactionRepository from "../repositories/transaction.repository.js";
 import * as accountRepository from "../repositories/account.repository.js";
 import { autoCategorize } from "./categorization.service.js";
 import { importOperations, transactionsImported } from "../metrics/business-metrics.js";
+import { fireTransactionImported } from "./module-registry.service.js";
+import { getImporter } from "./importer-registry.service.js";
 
 export const SUPPORTED_FORMATS = ["neon", "zkb", "wise", "ubs"] as const;
 export type ImportFormat = (typeof SUPPORTED_FORMATS)[number];
+
+const FORMAT_ENCODING: Record<ImportFormat, string> = {
+  neon: "utf-8",
+  zkb: "utf-8",
+  wise: "utf-8",
+  ubs: "iso-8859-1",
+};
+
+export function resolveImportEncoding(format: string): string {
+  if ((SUPPORTED_FORMATS as readonly string[]).includes(format)) {
+    return FORMAT_ENCODING[format as ImportFormat];
+  }
+  const plugin = getImporter(format);
+  return plugin?.encoding ?? "utf-8";
+}
 
 export interface ImportLogger {
   warn(obj: Record<string, unknown>, msg: string): void;
@@ -18,7 +34,7 @@ export interface ImportLogger {
 
 interface ImportParams {
   csvText: string;
-  format: ImportFormat;
+  format: string;
   accountId?: string | undefined;
   userId: string;
   logger: ImportLogger;
@@ -31,12 +47,11 @@ interface AccountCandidate {
 }
 
 async function resolveAccountId(params: {
-  csvText: string;
-  format: ImportFormat;
+  format: string;
   providedAccountId?: string | undefined;
   userId: string;
 }): Promise<string> {
-  const { csvText, format, providedAccountId, userId } = params;
+  const { providedAccountId, userId } = params;
 
   if (providedAccountId) {
     const account = await transactionRepository.findAccountByIdAndUser(providedAccountId, userId);
@@ -45,10 +60,6 @@ async function resolveAccountId(params: {
     }
     return account.id;
   }
-
-  // Future extension point: a non-null hint can drive an IBAN/account-number
-  // lookup. Today this always returns null (see account-hint.ts).
-  extractAccountHint(csvText, format);
 
   const accounts: AccountCandidate[] = await accountRepository.findAccountsByUser(userId);
   if (accounts.length === 1) {
@@ -75,7 +86,6 @@ export async function importTransactions({
 }: ImportParams): Promise<{ imported: number; categorized: number }> {
   try {
     const resolvedAccountId = await resolveAccountId({
-      csvText,
       format,
       providedAccountId: accountId,
       userId,
@@ -91,12 +101,27 @@ export async function importTransactions({
     } else if (format === "ubs") {
       parsed = parseUBSCSV(csvText);
     } else {
-      throw new ServiceError(400, `Unsupported import format: ${format}`);
+      const plugin = getImporter(format);
+      if (!plugin) throw new ServiceError(400, `Unsupported import format: ${format}`);
+      parsed = plugin.parse(csvText);
+    }
+
+    if (parsed.length === 0) {
+      return { imported: 0, categorized: 0 };
     }
 
     const imported = await transactionRepository.bulkImport(parsed, userId, resolvedAccountId);
     transactionsImported.inc({ format }, imported);
     importOperations.inc({ format, outcome: "success" });
+
+    try {
+      await fireTransactionImported({ userId, accountId: resolvedAccountId, imported });
+    } catch (err) {
+      logger.warn(
+        { err, userId, accountId: resolvedAccountId },
+        "post-import fireTransactionImported failed",
+      );
+    }
 
     let categorized = 0;
     try {

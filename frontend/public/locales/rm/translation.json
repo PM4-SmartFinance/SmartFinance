@@ -110,6 +110,13 @@
     "subtitle": "Guardai vossa survista finanziala d'in sulet egl",
     "greeting": "Bainvegni enavos, {{name}}"
   },
+  "modules": {
+    "backToDashboard": "Dashboard",
+    "noWidgets": "Quest modul n'ha nagins widgets per il dashboard.",
+    "loadError": "Las datas dal modul n'han betg pudì vegnir chargiadas.",
+    "widgetLoadError": "Las datas dal widget n'han betg pudì vegnir chargiadas.",
+    "widgetNoData": "Naginas datas a disposiziun."
+  },
   "login": {
     "brand": "⬡ SmartFinance",
     "title": "S'annunziar",
@@ -359,7 +366,8 @@
       "errors": {
         "fileTooLarge": "La datoteca surpassa il limit da grondezza da 10 MB.",
         "invalidType": "Sulet datotecas .csv vegnan acceptadas.",
-        "uploadFailed": "La chariga n'è betg reussida."
+        "uploadFailed": "La chariga n'è betg reussida.",
+        "formatsError": "Ils formats n'han betg pudì vegnir chargads. Actualisai la pagina."
       }
     },
     "editUserDialog": {

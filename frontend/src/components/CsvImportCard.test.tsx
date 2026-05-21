@@ -82,9 +82,22 @@ function makeCsvFile(name = "export.csv") {
   return new File(["date,amount\n2025-01-01,42"], name, { type: "text/csv" });
 }
 
+const FORMATS = [
+  { value: "neon", label: "Neon" },
+  { value: "zkb", label: "ZKB" },
+  { value: "wise", label: "Wise" },
+  { value: "ubs", label: "UBS" },
+];
+
 beforeEach(() => {
   mockGet.mockReset();
   mockUpload.mockReset();
+  mockGet.mockImplementation((path: string) => {
+    if (path === "/transactions/import/formats") {
+      return Promise.resolve({ formats: FORMATS });
+    }
+    return Promise.resolve({});
+  });
 });
 
 // ── Initial render ──────────────────────────────────────────────────────────
@@ -105,12 +118,13 @@ describe("initial render", () => {
     expect(screen.getByText("Drop a CSV file here, or click to browse")).toBeInTheDocument();
   });
 
-  it("renders all three format options", async () => {
+  it("renders all format options from the API", async () => {
     renderCard();
     await userEvent.click(screen.getByLabelText("Bank format"));
     await waitFor(() => expect(screen.getByRole("option", { name: "Neon" })).toBeInTheDocument());
     expect(screen.getByRole("option", { name: "ZKB" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Wise" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "UBS" })).toBeInTheDocument();
   });
 
   it("defaults format selection to Neon", async () => {
@@ -272,6 +286,9 @@ describe("upload", () => {
     let budgetRequests = 0;
     mockUpload.mockResolvedValue({ imported: 3 });
     mockGet.mockImplementation((path: string) => {
+      if (path === "/transactions/import/formats") {
+        return Promise.resolve({ formats: FORMATS });
+      }
       if (path === "/categories" || path.startsWith("/categories?")) {
         return Promise.resolve({ categories: [{ id: "cat-1", categoryName: "Groceries" }] });
       }

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "../lib/api";
 import { DASHBOARD_QUERY_KEY } from "../lib/queries/dashboard";
 import { Button } from "@/components/ui/button";
@@ -20,15 +20,13 @@ const QUERY_KEYS_TO_INVALIDATE_AFTER_IMPORT = [
   ["transactions"],
 ] as const;
 
-const FORMATS = [
-  { value: "neon", label: "Neon" },
-  { value: "zkb", label: "ZKB" },
-  { value: "wise", label: "Wise" },
-] as const;
-
-type ImportFormat = (typeof FORMATS)[number]["value"];
+type ImportFormat = string;
 
 type UploadResult = { imported: number };
+
+interface ImportFormatsResponse {
+  formats: { value: string; label: string }[];
+}
 
 interface AccountCandidate {
   id: string;
@@ -62,13 +60,22 @@ export function CsvImportCard() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [format, setFormat] = useState<ImportFormat>("neon");
+  const [format, setFormat] = useState<ImportFormat>("");
   const [isDragOver, setIsDragOver] = useState(false);
   const [typeError, setTypeError] = useState<string | null>(null);
   const [result, setResult] = useState<UploadResult | null>(null);
   const [refreshHint, setRefreshHint] = useState(false);
   const [resolution, setResolution] = useState<Resolution>({ kind: "idle" });
   const { t } = useTranslation();
+
+  const { data: formatsData, isError: isFormatsError } = useQuery({
+    queryKey: ["import-formats"],
+    queryFn: () => api.get<ImportFormatsResponse>("/transactions/import/formats"),
+  });
+  const formats = formatsData?.formats ?? [];
+
+  // Derive the active format without writing to state during render.
+  const effectiveFormat = format || formats[0]?.value || "";
 
   const {
     mutate: uploadFile,
@@ -151,9 +158,9 @@ export function CsvImportCard() {
   }
 
   function handleUpload() {
-    if (!file) return;
+    if (!file || !effectiveFormat) return;
     const acId = resolution.kind === "needs_choice" ? resolution.chosen : undefined;
-    uploadFile({ f: file, fmt: format, acId });
+    uploadFile({ f: file, fmt: effectiveFormat, acId });
   }
 
   function handleReset() {
@@ -180,6 +187,7 @@ export function CsvImportCard() {
 
   const canUpload =
     file !== null &&
+    effectiveFormat !== "" &&
     !isUploading &&
     resolution.kind !== "no_accounts" &&
     (resolution.kind !== "needs_choice" || resolution.chosen !== undefined);
@@ -308,23 +316,32 @@ export function CsvImportCard() {
                 <Label htmlFor="csv-format" className="text-xs text-muted-foreground">
                   {t("components.csvImportCard.formatLabel", "Bank format")}
                 </Label>
-                <Select
-                  value={format}
-                  onValueChange={(v) => {
-                    if (FORMATS.some((f) => f.value === v)) setFormat(v as ImportFormat);
-                  }}
-                >
-                  <SelectTrigger id="csv-format" className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FORMATS.map((f) => (
-                      <SelectItem key={f.value} value={f.value}>
-                        {f.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {isFormatsError ? (
+                  <p role="alert" className="py-1.5 text-sm text-destructive">
+                    {t(
+                      "components.csvImportCard.errors.formatsError",
+                      "Failed to load formats. Please refresh.",
+                    )}
+                  </p>
+                ) : (
+                  <Select
+                    value={effectiveFormat}
+                    onValueChange={(v) => {
+                      if (v !== null && formats.some((f) => f.value === v)) setFormat(v);
+                    }}
+                  >
+                    <SelectTrigger id="csv-format" className="w-40">
+                      <SelectValue placeholder="Select format" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {formats.map((f) => (
+                        <SelectItem key={f.value} value={f.value}>
+                          {f.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
 

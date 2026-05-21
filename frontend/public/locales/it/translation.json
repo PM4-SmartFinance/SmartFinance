@@ -110,6 +110,13 @@
     "subtitle": "Visualizza la tua panoramica finanziaria a colpo d'occhio",
     "greeting": "Bentornato, {{name}}"
   },
+  "modules": {
+    "backToDashboard": "Dashboard",
+    "noWidgets": "Questo modulo non ha widget per la dashboard.",
+    "loadError": "Caricamento dei dati del modulo non riuscito.",
+    "widgetLoadError": "Caricamento dei dati del widget non riuscito.",
+    "widgetNoData": "Nessun dato disponibile."
+  },
   "login": {
     "brand": "⬡ SmartFinance",
     "title": "Accedi",
@@ -359,7 +366,8 @@
       "errors": {
         "fileTooLarge": "Il file supera il limite di dimensioni di 10 MB.",
         "invalidType": "Sono accettati solo i file .csv.",
-        "uploadFailed": "Caricamento non riuscito."
+        "uploadFailed": "Caricamento non riuscito.",
+        "formatsError": "Impossibile caricare i formati. Aggiornare la pagina."
       }
     },
     "editUserDialog": {

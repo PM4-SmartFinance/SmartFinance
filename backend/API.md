@@ -1214,6 +1214,235 @@ Deletes a category rule. Only rules owned by the authenticated user can be delet
 
 ---
 
+## Modules
+
+The extension module system lets bundled and third-party modules register routes, dashboard nav items, widgets, and importer plugins at app startup. Every module runs in an isolated Fastify plugin scope under the prefix `/api/v1/modules/<moduleId>` and receives a namespace-isolated JSON storage adapter — modules cannot read each other's data, modify the database schema, or call the repository layer directly.
+
+A module is only registered if its `id` matches `^[a-z0-9][a-z0-9-]{0,63}$` and its `init()` returns successfully. If `init()` throws, the module is logged and skipped; any routes, nav items, widgets, or importer plugins it tried to register during that aborted init are discarded, so a failing module never partially mounts itself.
+
+The two modules shipped today are `mock-bank` (an importer plugin used to demonstrate the plugin pipeline) and `savings-goals` (a CRUD example with a dashboard widget). Their endpoints are documented under [Module: `savings-goals`](#module-savings-goals) below.
+
+### GET /modules
+
+Lists all successfully registered modules. The `error` field on `getStatus()` output is intentionally redacted from this response; admins can fetch the full status via `GET /modules/:moduleId/status`.
+
+**Authentication:** `USER`
+
+**Response 200:**
+
+```json
+{
+  "modules": [
+    {
+      "id": "mock-bank",
+      "name": "Mock Bank",
+      "requiredRole": "USER",
+      "status": { "initialized": true }
+    },
+    {
+      "id": "savings-goals",
+      "name": "Savings Goals",
+      "requiredRole": "USER",
+      "status": { "initialized": true }
+    }
+  ]
+}
+```
+
+**Response 401:** Not authenticated
+
+### GET /modules/nav-items
+
+Returns the navigation entries that registered modules want surfaced in the dashboard navigation. Used by the frontend to populate module links beside the built-in routes.
+
+**Authentication:** `USER`
+
+**Response 200:**
+
+```json
+{
+  "navItems": [
+    {
+      "moduleId": "savings-goals",
+      "label": "Savings Goals",
+      "path": "/modules/savings-goals"
+    }
+  ]
+}
+```
+
+**Response 401:** Not authenticated
+
+### GET /modules/widgets
+
+Returns dashboard widget descriptors registered by modules. Each entry's `dataEndpoint` is constrained at registration time to start with `/modules/<moduleId>/`, preventing modules from advertising endpoints outside their own namespace.
+
+**Authentication:** `USER`
+
+**Response 200:**
+
+```json
+{
+  "widgets": [
+    {
+      "moduleId": "savings-goals",
+      "widgetId": "savings-goals-summary",
+      "title": "Savings Goals",
+      "dataEndpoint": "/modules/savings-goals/goals/widget"
+    }
+  ]
+}
+```
+
+**Response 401:** Not authenticated
+
+### GET /modules/:moduleId/status
+
+Returns full status for a single registered module, including the human-readable `error` message if its init reported one. Restricted to `ADMIN` because the error message may reveal internal failure context.
+
+**Authentication:** `ADMIN`
+
+**Path Parameters:**
+
+| Field      | Type   | Required | Validation                             |
+| ---------- | ------ | -------- | -------------------------------------- |
+| `moduleId` | string | yes      | Must match `^[a-z0-9][a-z0-9-]{0,63}$` |
+
+**Response 200:**
+
+```json
+{
+  "id": "savings-goals",
+  "name": "Savings Goals",
+  "status": { "initialized": true }
+}
+```
+
+**Response 401:** Not authenticated
+**Response 403:** Forbidden (requires `ADMIN` role)
+**Response 404:** Module not found (either unknown id or registration failed)
+
+---
+
+### Module: `savings-goals`
+
+Per-user savings goals. Each user's goals live in namespace-isolated storage and cannot be read or modified by another user. All routes require `USER`.
+
+#### GET /modules/savings-goals/goals
+
+Lists every savings goal owned by the authenticated user. On the first call after a deploy that introduces per-record storage, any legacy `goals` array key is migrated to per-record entries transparently.
+
+**Response 200:**
+
+```json
+{
+  "goals": [
+    {
+      "id": "8e6f...",
+      "name": "Emergency Fund",
+      "targetAmount": 5000,
+      "currentAmount": 1200
+    }
+  ]
+}
+```
+
+**Response 401:** Not authenticated
+
+#### POST /modules/savings-goals/goals
+
+Creates a new savings goal. `currentAmount` always starts at `0`.
+
+**Request Body:**
+
+| Field          | Type   | Required | Validation                               |
+| -------------- | ------ | -------- | ---------------------------------------- |
+| `name`         | string | yes      | 1–200 chars, must not be whitespace-only |
+| `targetAmount` | number | yes      | Strictly greater than `0`                |
+
+**Response 201:**
+
+```json
+{
+  "goal": {
+    "id": "8e6f...",
+    "name": "Emergency Fund",
+    "targetAmount": 5000,
+    "currentAmount": 0
+  }
+}
+```
+
+**Response 400:** Invalid body (missing name, empty name, non-positive targetAmount)
+**Response 401:** Not authenticated
+
+#### PATCH /modules/savings-goals/goals/:goalId
+
+Partially updates a goal. Any subset of `name`, `targetAmount`, and `currentAmount` may be supplied.
+
+**Path Parameters:**
+
+| Field    | Type   | Required |
+| -------- | ------ | -------- |
+| `goalId` | string | yes      |
+
+**Request Body:**
+
+| Field           | Type   | Validation                               |
+| --------------- | ------ | ---------------------------------------- |
+| `name`          | string | 1–200 chars, must not be whitespace-only |
+| `targetAmount`  | number | Strictly greater than `0`                |
+| `currentAmount` | number | Non-negative                             |
+
+**Response 200:**
+
+```json
+{
+  "goal": {
+    "id": "8e6f...",
+    "name": "Emergency Fund",
+    "targetAmount": 6000,
+    "currentAmount": 1200
+  }
+}
+```
+
+**Response 400:** Invalid body
+**Response 401:** Not authenticated
+**Response 404:** Goal not found, or belongs to a different user (IDOR guard)
+
+#### DELETE /modules/savings-goals/goals/:goalId
+
+Deletes a goal.
+
+**Response 204:** No content
+**Response 401:** Not authenticated
+**Response 404:** Goal not found, or belongs to a different user (IDOR guard)
+
+#### GET /modules/savings-goals/goals/widget
+
+Widget-friendly summary used by the dashboard `ModuleWidgetCard`. Each item carries a clamped 0–100 `progress` percentage.
+
+**Response 200:**
+
+```json
+{
+  "items": [
+    {
+      "id": "8e6f...",
+      "label": "Emergency Fund",
+      "detail": "1200.00 / 5000.00",
+      "progress": 24
+    }
+  ],
+  "emptyMessage": "No savings goals yet. Create your first goal!"
+}
+```
+
+**Response 401:** Not authenticated
+
+---
+
 ## Dashboard
 
 All dashboard endpoints require an authenticated session with the `USER` role.

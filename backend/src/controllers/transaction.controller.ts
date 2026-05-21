@@ -2,11 +2,24 @@ import type { FastifyInstance } from "fastify";
 import multipart from "@fastify/multipart";
 import { requireRole, getSessionUser } from "../middleware/rbac.js";
 import { ServiceError } from "../errors.js";
-import type { ImportFormat } from "../services/import.service.js";
-import { importTransactions, SUPPORTED_FORMATS } from "../services/import.service.js";
+import {
+  importTransactions,
+  resolveImportEncoding,
+  SUPPORTED_FORMATS,
+} from "../services/import.service.js";
+import { getImporter, getAllPluginFormats } from "../services/importer-registry.service.js";
 import { decodeCSVBuffer } from "../services/importers/csv.utils.js";
 import type { SortBy, SortOrder } from "../services/transaction.service.js";
 import * as transactionService from "../services/transaction.service.js";
+
+type ImportFormat = (typeof SUPPORTED_FORMATS)[number];
+
+const BUILTIN_FORMAT_LABELS: Record<ImportFormat, string> = {
+  neon: "Neon",
+  zkb: "ZKB",
+  wise: "Wise",
+  ubs: "UBS",
+};
 
 interface ListTransactionsQuery {
   page: number;
@@ -28,13 +41,6 @@ interface UpdateTransactionBody {
   amount?: number;
   reason?: string;
 }
-
-const FORMAT_ENCODING: Record<ImportFormat, string> = {
-  neon: "utf-8",
-  zkb: "utf-8",
-  wise: "utf-8",
-  ubs: "iso-8859-1",
-};
 
 const updateTransactionSchema = {
   params: {
@@ -222,10 +228,20 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
+  app.get(
+    "/transactions/import/formats",
+    { preHandler: requireRole("USER") },
+    async (_request, reply) => {
+      const builtin = SUPPORTED_FORMATS.map((f) => ({ value: f, label: BUILTIN_FORMAT_LABELS[f] }));
+      const plugins = getAllPluginFormats().map((p) => ({ value: p.format, label: p.label }));
+      return reply.send({ formats: [...builtin, ...plugins] });
+    },
+  );
+
   await app.register(async function importRoutes(importApp) {
     await importApp.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } }); // 10 MB
 
-    importApp.post<{ Querystring: { accountId?: string; format: ImportFormat } }>(
+    importApp.post<{ Querystring: { accountId?: string; format: string } }>(
       "/transactions/import",
       {
         preHandler: requireRole("USER"),
@@ -235,7 +251,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
             required: ["format"],
             properties: {
               accountId: { type: "string", minLength: 1 },
-              format: { type: "string", enum: SUPPORTED_FORMATS as unknown as string[] },
+              format: { type: "string", minLength: 1 },
             },
             additionalProperties: false,
           },
@@ -245,13 +261,21 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
         const { accountId, format } = request.query;
         const user = getSessionUser(request);
 
+        const isBuiltin = (SUPPORTED_FORMATS as readonly string[]).includes(format);
+        const plugin = isBuiltin ? undefined : getImporter(format);
+        if (!isBuiltin && !plugin) {
+          throw new ServiceError(400, `Unsupported import format: ${format}`);
+        }
+
         const fileData = await request.file();
         if (!fileData) {
           throw new ServiceError(400, "No file uploaded");
         }
 
+        const encoding = resolveImportEncoding(format);
+
         const buffer = await fileData.toBuffer();
-        const csvText = decodeCSVBuffer(buffer, FORMAT_ENCODING[format]);
+        const csvText = decodeCSVBuffer(buffer, encoding);
 
         const result = await importTransactions({
           csvText,

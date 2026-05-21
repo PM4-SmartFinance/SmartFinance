@@ -1,25 +1,74 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { uncategorizeAllForCategory } from "./category.service.js";
-import * as categoryRepository from "../repositories/category.repository.js";
-import * as transactionRepository from "../repositories/transaction.repository.js";
-import { ServiceError } from "../errors.js";
+
+const mockLogger = { warn: vi.fn(), error: vi.fn() };
 
 vi.mock("../repositories/category.repository.js", () => ({
+  create: vi.fn().mockResolvedValue({ id: "cat-1", categoryName: "Food", userId: "user-1" }),
+  findAllForUser: vi.fn(),
   findById: vi.fn(),
+  update: vi.fn(),
+  deleteById: vi.fn(),
 }));
 
 vi.mock("../repositories/transaction.repository.js", () => ({
   clearCategoryAssignments: vi.fn(),
 }));
 
+vi.mock("./module-registry.service.js", () => ({
+  fireCategoryAdded: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("../logger.js", () => ({
+  getLogger: vi.fn(() => mockLogger),
+}));
+
+import { createCategory, uncategorizeAllForCategory } from "./category.service.js";
+import * as categoryRepository from "../repositories/category.repository.js";
+import * as transactionRepository from "../repositories/transaction.repository.js";
+import * as moduleRegistry from "./module-registry.service.js";
+import { ServiceError } from "../errors.js";
+
 const mockCategoryRepo = vi.mocked(categoryRepository);
 const mockTxRepo = vi.mocked(transactionRepository);
 
-describe("uncategorizeAllForCategory", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(moduleRegistry.fireCategoryAdded).mockResolvedValue(undefined);
+  vi.mocked(categoryRepository.create).mockResolvedValue({
+    // @ts-expect-error -- partial fixture
+    id: "cat-1",
+    categoryName: "Food",
+    userId: "user-1",
+  });
+});
+
+describe("createCategory lifecycle hook", () => {
+  it("fires the onCategoryAdded lifecycle hook after repository create", async () => {
+    await createCategory("Food", "user-1");
+    expect(vi.mocked(moduleRegistry.fireCategoryAdded)).toHaveBeenCalledExactlyOnceWith({
+      userId: "user-1",
+      categoryId: "cat-1",
+      categoryName: "Food",
+    });
   });
 
+  it("returns the created category", async () => {
+    const result = await createCategory("Food", "user-1");
+    expect(result).toEqual({ id: "cat-1", categoryName: "Food", userId: "user-1" });
+  });
+
+  it("swallows a registry failure and logs a warning", async () => {
+    const err = new Error("registry bug");
+    vi.mocked(moduleRegistry.fireCategoryAdded).mockRejectedValueOnce(err);
+    await expect(createCategory("Food", "user-1")).resolves.toBeDefined();
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ err }),
+      "fireCategoryAdded unexpectedly threw",
+    );
+  });
+});
+
+describe("uncategorizeAllForCategory", () => {
   it("throws ServiceError 404 when the category does not exist", async () => {
     mockCategoryRepo.findById.mockResolvedValue(null);
     await expect(uncategorizeAllForCategory("missing", "user-1")).rejects.toThrow(

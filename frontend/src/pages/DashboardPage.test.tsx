@@ -118,6 +118,12 @@ describe("DashboardPage", () => {
           meta: { totalCount: 0, totalPages: 0, page: 1, limit: 5 },
         });
       }
+      if (path === "/modules/nav-items") {
+        return Promise.resolve({ navItems: [] });
+      }
+      if (path === "/modules/widgets") {
+        return Promise.resolve({ widgets: [] });
+      }
       return Promise.resolve({});
     });
   });
@@ -242,6 +248,76 @@ describe("DashboardPage", () => {
     for (const link of links) {
       expect(link.getAttribute("href")).toMatch(/^\/transactions(\?.*)?$/);
     }
+  });
+
+  it("renders module nav items as links in the nav bar", async () => {
+    mockGet.mockImplementation((path: string) => {
+      if (path === "/modules/nav-items") {
+        return Promise.resolve({
+          navItems: [
+            { moduleId: "savings-goals", label: "Savings Goals", path: "/modules/savings-goals" },
+          ],
+        });
+      }
+      if (path === "/modules/widgets") return Promise.resolve({ widgets: [] });
+      if (path.includes("/dashboard/summary")) return Promise.resolve(mockSummaryData);
+      if (path.includes("/dashboard/trends")) return Promise.resolve(mockTrendData);
+      if (path.includes("/dashboard/categories")) return Promise.resolve(mockCategoryData);
+      if (path === "/categories" || path.startsWith("/categories?"))
+        return Promise.resolve({ categories: [] });
+      if (path.includes("/budgets")) return Promise.resolve({ budgets: [], categorySpending: [] });
+      if (path.includes("/transactions"))
+        return Promise.resolve({
+          data: [],
+          meta: { totalCount: 0, totalPages: 0, page: 1, limit: 5 },
+        });
+      return Promise.resolve({});
+    });
+
+    renderWithProviders();
+
+    const link = await screen.findByRole("link", { name: "Savings Goals" });
+    expect(link).toHaveAttribute("href", "/modules/savings-goals");
+  });
+
+  it("renders module widgets on the dashboard", async () => {
+    mockGet.mockImplementation((path: string) => {
+      if (path === "/modules/nav-items") return Promise.resolve({ navItems: [] });
+      if (path === "/modules/widgets") {
+        return Promise.resolve({
+          widgets: [
+            {
+              moduleId: "savings-goals",
+              widgetId: "savings-goals-summary",
+              title: "Savings Goals",
+              dataEndpoint: "/modules/savings-goals/goals/widget",
+            },
+          ],
+        });
+      }
+      if (path === "/modules/savings-goals/goals/widget") {
+        return Promise.resolve({
+          items: [{ id: "g1", label: "Emergency Fund", detail: "500 / 1000", progress: 50 }],
+        });
+      }
+      if (path.includes("/dashboard/summary")) return Promise.resolve(mockSummaryData);
+      if (path.includes("/dashboard/trends")) return Promise.resolve(mockTrendData);
+      if (path.includes("/dashboard/categories")) return Promise.resolve(mockCategoryData);
+      if (path === "/categories" || path.startsWith("/categories?"))
+        return Promise.resolve({ categories: [] });
+      if (path.includes("/budgets")) return Promise.resolve({ budgets: [], categorySpending: [] });
+      if (path.includes("/transactions"))
+        return Promise.resolve({
+          data: [],
+          meta: { totalCount: 0, totalPages: 0, page: 1, limit: 5 },
+        });
+      return Promise.resolve({});
+    });
+
+    renderWithProviders();
+
+    expect(await screen.findByText("Savings Goals")).toBeInTheDocument();
+    expect(await screen.findByText("Emergency Fund")).toBeInTheDocument();
   });
 
   it("exposes Sign out from the user menu", async () => {

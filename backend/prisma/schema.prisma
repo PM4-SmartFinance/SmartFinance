@@ -146,6 +146,7 @@ model DimUser {
   accounts      DimAccount[]
   budgets       DimBudget[]
   categoryRules CategoryRule[]
+  moduleData    ModuleData[]
 }
 
 model DimDate {
@@ -201,6 +202,20 @@ model CategoryRule {
   @@unique([userId, pattern, matchType])
   @@index([userId])
   @@index([categoryId])
+}
+
+model ModuleData {
+  id         String   @id @default(uuid())
+  moduleName String
+  userId     String
+  user       DimUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key        String
+  value      String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([moduleName, userId, key])
+  @@index([moduleName, userId])
 }
 
 enum BudgetType {

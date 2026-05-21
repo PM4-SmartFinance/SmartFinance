@@ -110,6 +110,13 @@
     "subtitle": "Sehen Sie Ihre finanzielle Übersicht auf einen Blick",
     "greeting": "Willkommen zurück, {{name}}"
   },
+  "modules": {
+    "backToDashboard": "Dashboard",
+    "noWidgets": "Dieses Modul hat keine Dashboard-Widgets.",
+    "loadError": "Moduldaten konnten nicht geladen werden.",
+    "widgetLoadError": "Widget-Daten konnten nicht geladen werden.",
+    "widgetNoData": "Keine Daten verfügbar."
+  },
   "login": {
     "brand": "⬡ SmartFinance",
     "title": "Anmelden",
@@ -359,7 +366,8 @@
       "errors": {
         "fileTooLarge": "Die Datei überschreitet das Größenlimit von 10 MB.",
         "invalidType": "Nur .csv-Dateien werden akzeptiert.",
-        "uploadFailed": "Hochladen fehlgeschlagen."
+        "uploadFailed": "Hochladen fehlgeschlagen.",
+        "formatsError": "Formate konnten nicht geladen werden. Bitte Seite neu laden."
       }
     },
     "editUserDialog": {

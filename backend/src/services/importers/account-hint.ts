@@ -1,5 +1,3 @@
-import type { ImportFormat } from "../import.service.js";
-
 export interface AccountHint {
   iban?: string;
   accountNumber?: string;
@@ -15,7 +13,7 @@ export interface AccountHint {
  * findAccountByAccountNumberAndUser repository helper exists, return
  * { accountNumber } here for `format === "ubs"`.
  */
-export function extractAccountHint(csvText: string, format: ImportFormat): AccountHint | null {
+export function extractAccountHint(csvText: string, format: string): AccountHint | null {
   void csvText;
   void format;
   return null;
