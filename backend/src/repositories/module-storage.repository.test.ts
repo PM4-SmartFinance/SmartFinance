@@ -162,4 +162,50 @@ describe("createStorageAdapter", () => {
       }),
     );
   });
+
+  it("two adapters with different module names address disjoint rows for the same user+key", async () => {
+    mockModuleData.upsert.mockResolvedValue(undefined as never);
+    mockModuleData.findUnique.mockResolvedValue(null as never);
+
+    const adapterA = createStorageAdapter("mod-a");
+    const adapterB = createStorageAdapter("mod-b");
+
+    await adapterA.set("user-1", "shared-key", "a-value");
+    await adapterB.set("user-1", "shared-key", "b-value");
+
+    expect(mockModuleData.upsert).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: {
+          moduleName_userId_key: { moduleName: "mod-a", userId: "user-1", key: "shared-key" },
+        },
+      }),
+    );
+    expect(mockModuleData.upsert).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: {
+          moduleName_userId_key: { moduleName: "mod-b", userId: "user-1", key: "shared-key" },
+        },
+      }),
+    );
+
+    await adapterA.get("user-1", "shared-key");
+    expect(mockModuleData.findUnique).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        where: {
+          moduleName_userId_key: { moduleName: "mod-a", userId: "user-1", key: "shared-key" },
+        },
+      }),
+    );
+
+    await adapterB.get("user-1", "shared-key");
+    expect(mockModuleData.findUnique).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        where: {
+          moduleName_userId_key: { moduleName: "mod-b", userId: "user-1", key: "shared-key" },
+        },
+      }),
+    );
+  });
 });

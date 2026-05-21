@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeAll, beforeEach, afterAll } from "vitest";
 import type { FastifyInstance } from "fastify";
 import Fastify from "fastify";
-import { savingsGoalsModule } from "./index.js";
-import type { ModuleStorageAdapter } from "../../types/module.js";
+import { createSavingsGoalsModule } from "./index.js";
+import type { ModuleStorageAdapter, SmartFinanceModule } from "../../types/module.js";
 
 let sessionUser: { id: string; role: string; email: string; pwdVersion?: string } | undefined = {
   id: "user-1",
@@ -23,7 +23,11 @@ vi.mock("../../prisma.js", () => ({
   },
 }));
 
-function createInMemoryStorage(): ModuleStorageAdapter & { reset(): void } {
+function createInMemoryStorage(): ModuleStorageAdapter & {
+  reset(): void;
+  raw(): Map<string, unknown>;
+  seedRaw(userId: string, key: string, value: unknown): void;
+} {
   const data = new Map<string, unknown>();
   return {
     async get(userId, key) {
@@ -35,24 +39,40 @@ function createInMemoryStorage(): ModuleStorageAdapter & { reset(): void } {
     async delete(userId, key) {
       data.delete(`${userId}:${key}`);
     },
-    async list() {
-      return [];
+    async list(userId) {
+      const prefix = `${userId}:`;
+      const out: Array<{ key: string; value: unknown }> = [];
+      for (const [k, v] of data) {
+        if (k.startsWith(prefix)) {
+          out.push({ key: k.slice(prefix.length), value: v });
+        }
+      }
+      out.sort((a, b) => a.key.localeCompare(b.key));
+      return out;
     },
     reset() {
       data.clear();
+    },
+    raw() {
+      return data;
+    },
+    seedRaw(userId, key, value) {
+      data.set(`${userId}:${key}`, value);
     },
   };
 }
 
 describe("savings-goals module", () => {
   let app: FastifyInstance;
-  let storage: ModuleStorageAdapter & { reset(): void };
+  let storage: ReturnType<typeof createInMemoryStorage>;
+  let module: SmartFinanceModule;
   const registerNavItem = vi.fn();
   const registerWidget = vi.fn();
   const registerImporter = vi.fn();
 
   beforeAll(async () => {
     storage = createInMemoryStorage();
+    module = createSavingsGoalsModule();
     app = Fastify({ logger: false });
     app.decorateRequest("session", null);
     app.addHook("onRequest", async (request) => {
@@ -63,7 +83,7 @@ describe("savings-goals module", () => {
     });
     await app.register(
       async (scopedApp) => {
-        await savingsGoalsModule.init({
+        await module.init({
           app: scopedApp,
           storage,
           logger: scopedApp.log,
@@ -93,7 +113,7 @@ describe("savings-goals module", () => {
 
   describe("init", () => {
     it("marks the module as initialized after init", () => {
-      expect(savingsGoalsModule.getStatus()).toEqual({ initialized: true });
+      expect(module.getStatus()).toEqual({ initialized: true });
     });
 
     it("registers a nav item pointing to /modules/savings-goals", () => {
@@ -147,6 +167,18 @@ describe("savings-goals module", () => {
       expect(goal.targetAmount).toBe(5000);
       expect(goal.currentAmount).toBe(0);
       expect(goal.id).toBeTruthy();
+    });
+
+    it("persists each goal under a goals:<id> key (not a single array)", async () => {
+      const createRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/modules/savings-goals/goals",
+        payload: { name: "Solo", targetAmount: 100 },
+      });
+      const { goal } = createRes.json<{ goal: { id: string } }>();
+      const stored = storage.raw();
+      expect(stored.has(`user-1:goals:${goal.id}`)).toBe(true);
+      expect(stored.has("user-1:goals")).toBe(false);
     });
 
     it("trims whitespace from the goal name", async () => {
@@ -505,19 +537,176 @@ describe("savings-goals module", () => {
       expect(u1Goals.some((g) => g.name === "User1 Exclusive")).toBe(true);
       expect(u1Goals.some((g) => g.name === "User2 Exclusive")).toBe(false);
     });
+
+    it("user-2 PATCH on user-1's goalId returns 404 (IDOR guard)", async () => {
+      sessionUser = {
+        id: "user-1",
+        role: "USER",
+        email: "u1@example.com",
+        pwdVersion: "1234567890",
+      };
+      const createRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/modules/savings-goals/goals",
+        payload: { name: "User1 Only", targetAmount: 100 },
+      });
+      const { goal } = createRes.json<{ goal: { id: string } }>();
+
+      sessionUser = {
+        id: "user-2",
+        role: "USER",
+        email: "u2@example.com",
+        pwdVersion: "1234567890",
+      };
+      const patchRes = await app.inject({
+        method: "PATCH",
+        url: `/api/v1/modules/savings-goals/goals/${goal.id}`,
+        payload: { name: "Hijacked" },
+      });
+      expect(patchRes.statusCode).toBe(404);
+
+      // The original goal must remain unchanged.
+      sessionUser = {
+        id: "user-1",
+        role: "USER",
+        email: "u1@example.com",
+        pwdVersion: "1234567890",
+      };
+      const listRes = await app.inject({
+        method: "GET",
+        url: "/api/v1/modules/savings-goals/goals",
+      });
+      const { goals } = listRes.json<{ goals: Array<{ id: string; name: string }> }>();
+      expect(goals.find((g) => g.id === goal.id)?.name).toBe("User1 Only");
+    });
+
+    it("user-2 DELETE on user-1's goalId returns 404 (IDOR guard)", async () => {
+      sessionUser = {
+        id: "user-1",
+        role: "USER",
+        email: "u1@example.com",
+        pwdVersion: "1234567890",
+      };
+      const createRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/modules/savings-goals/goals",
+        payload: { name: "User1 Protected", targetAmount: 200 },
+      });
+      const { goal } = createRes.json<{ goal: { id: string } }>();
+
+      sessionUser = {
+        id: "user-2",
+        role: "USER",
+        email: "u2@example.com",
+        pwdVersion: "1234567890",
+      };
+      const deleteRes = await app.inject({
+        method: "DELETE",
+        url: `/api/v1/modules/savings-goals/goals/${goal.id}`,
+      });
+      expect(deleteRes.statusCode).toBe(404);
+
+      sessionUser = {
+        id: "user-1",
+        role: "USER",
+        email: "u1@example.com",
+        pwdVersion: "1234567890",
+      };
+      const listRes = await app.inject({
+        method: "GET",
+        url: "/api/v1/modules/savings-goals/goals",
+      });
+      const { goals } = listRes.json<{ goals: Array<{ id: string }> }>();
+      expect(goals.find((g) => g.id === goal.id)).toBeDefined();
+    });
+  });
+
+  describe("legacy storage migration", () => {
+    it("splits a legacy 'goals' array key into per-record entries on first read", async () => {
+      storage.seedRaw("user-1", "goals", [
+        { id: "g1", name: "Legacy1", targetAmount: 100, currentAmount: 10 },
+        { id: "g2", name: "Legacy2", targetAmount: 200, currentAmount: 20 },
+      ]);
+
+      const listRes = await app.inject({
+        method: "GET",
+        url: "/api/v1/modules/savings-goals/goals",
+      });
+      const { goals } = listRes.json<{ goals: Array<{ id: string; name: string }> }>();
+      expect(goals.map((g) => g.id).sort()).toEqual(["g1", "g2"]);
+      expect(goals.find((g) => g.id === "g1")!.name).toBe("Legacy1");
+
+      const raw = storage.raw();
+      expect(raw.has("user-1:goals")).toBe(false);
+      expect(raw.has("user-1:goals:g1")).toBe(true);
+      expect(raw.has("user-1:goals:g2")).toBe(true);
+    });
+
+    it("migration is idempotent: second read after migration shows the same goals", async () => {
+      storage.seedRaw("user-1", "goals", [
+        { id: "gA", name: "Once", targetAmount: 50, currentAmount: 5 },
+      ]);
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/modules/savings-goals/goals",
+      });
+      const secondRes = await app.inject({
+        method: "GET",
+        url: "/api/v1/modules/savings-goals/goals",
+      });
+      const { goals } = secondRes.json<{ goals: Array<{ id: string }> }>();
+      expect(goals).toHaveLength(1);
+      expect(goals[0]!.id).toBe("gA");
+    });
+
+    it("ignores malformed entries inside a legacy array", async () => {
+      storage.seedRaw("user-1", "goals", [
+        { id: "valid", name: "OK", targetAmount: 10, currentAmount: 0 },
+        { id: 42, name: "WrongIdType", targetAmount: 10, currentAmount: 0 },
+        "not-an-object",
+        null,
+      ]);
+
+      const listRes = await app.inject({
+        method: "GET",
+        url: "/api/v1/modules/savings-goals/goals",
+      });
+      const { goals } = listRes.json<{ goals: Array<{ id: string }> }>();
+      expect(goals).toHaveLength(1);
+      expect(goals[0]!.id).toBe("valid");
+    });
   });
 
   describe("onTransactionImported hook", () => {
     it("is defined on the module", () => {
-      expect(typeof savingsGoalsModule.onTransactionImported).toBe("function");
+      expect(typeof module.onTransactionImported).toBe("function");
     });
 
-    it("resolves without throwing", async () => {
+    it("logs the import event via the module logger", async () => {
+      const logSpy = vi.spyOn(app.log, "info");
+      await module.onTransactionImported!({
+        userId: "user-1",
+        accountId: "acc-1",
+        imported: 7,
+      });
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          moduleId: "savings-goals",
+          userId: "user-1",
+          imported: 7,
+        }),
+        expect.stringContaining("transaction import event received"),
+      );
+      logSpy.mockRestore();
+    });
+
+    it("resolves silently when called on a freshly-created module (no init yet)", async () => {
+      const fresh = createSavingsGoalsModule();
       await expect(
-        savingsGoalsModule.onTransactionImported!({
+        fresh.onTransactionImported!({
           userId: "user-1",
           accountId: "acc-1",
-          imported: 3,
+          imported: 1,
         }),
       ).resolves.toBeUndefined();
     });
