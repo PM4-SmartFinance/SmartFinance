@@ -18,11 +18,15 @@
     "test:coverage": "bun run --cwd=backend test:coverage && bun run --cwd=frontend test:coverage && bun run test:scripts",
     "test:frontend": "bun run --cwd=frontend test",
     "test:backend": "bun run --cwd=backend test",
-    "test:scripts": "vitest run --config .github/scripts/vitest.config.ts"
+    "test:scripts": "vitest run --config .github/scripts/vitest.config.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui"
   },
   "devDependencies": {
     "@eslint-react/eslint-plugin": "^2.13.0",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.60.0",
     "@types/pg": "8.11.11",
     "@vitest/coverage-v8": "^4.1.1",
     "@vitest/eslint-plugin": "^1.6.13",

@@ -282,7 +282,7 @@ export function BudgetProgressWidget() {
             return (
               <div key={snapshot.label} className="rounded border border-border p-4">
                 <p className="mb-2 text-sm font-semibold">{snapshot.label}</p>
-                <div className="h-52 w-full">
+                <div className="h-52 w-full outline-none [&_svg]:outline-none [&_svg:focus]:outline-none">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie

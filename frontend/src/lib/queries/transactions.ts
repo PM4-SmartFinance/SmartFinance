@@ -67,7 +67,9 @@ export function useUpdateTransaction() {
   return useMutation({
     mutationFn: async (data: {
       id: string;
-      categoryId?: string;
+      // `null` clears the category and restores the post-import
+      // "uncategorized" state (KAN-156).
+      categoryId?: string | null;
       notes?: string;
       date?: string;
       amount?: number;

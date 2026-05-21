@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import * as categoryRepository from "../repositories/category.repository.js";
+import * as transactionRepository from "../repositories/transaction.repository.js";
 import { ServiceError } from "../errors.js";
 import { fireCategoryAdded } from "./module-registry.service.js";
 import { getLogger } from "../logger.js";
@@ -42,4 +43,26 @@ export async function deleteCategory(id: string, userId: string) {
     }
     throw error;
   }
+}
+
+/**
+ * Bulk-clears the category assignment from every transaction in the given
+ * personal category for the requesting user. Restores the post-import
+ * "uncategorized" state so the user can subsequently delete the category
+ * or let the auto-categorize engine re-evaluate the rows. (KAN-156)
+ *
+ * Global categories (userId == null) are read-only and not subject to bulk
+ * clearing — return 404 to match the existing delete/edit contract for
+ * defensive uniformity.
+ */
+export async function uncategorizeAllForCategory(
+  categoryId: string,
+  userId: string,
+): Promise<{ uncategorized: number }> {
+  const category = await categoryRepository.findById(categoryId);
+  if (!category || category.userId !== userId) {
+    throw new ServiceError(404, "Category not found");
+  }
+  const count = await transactionRepository.clearCategoryAssignments(userId, categoryId);
+  return { uncategorized: count };
 }

@@ -948,15 +948,90 @@ describe("POST /api/v1/transactions/import", () => {
     expect(response.statusCode).toBe(400);
   });
 
-  it("returns 400 when accountId is missing", async () => {
+  it("accepts a request without accountId and forwards undefined to the service", async () => {
+    mockImportTransactions.mockResolvedValue({ imported: 0, categorized: 0 });
+    const { payload, headers } = buildMultipart("file", "tx.csv", "Date,Amount\n");
+
     const response = await app.inject({
       method: "POST",
       url: "/api/v1/transactions/import?format=neon",
+      headers,
+      payload,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(mockImportTransactions).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ format: "neon", userId: "user-1" }),
+    );
+    const callArg = mockImportTransactions.mock.calls[0]![0];
+    expect(callArg.accountId).toBeUndefined();
+  });
+
+  it("returns 400 when accountId is an empty string", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/transactions/import?accountId=&format=neon",
       headers: { "content-type": "multipart/form-data; boundary=---test" },
       payload: "-----test--",
     });
 
     expect(response.statusCode).toBe(400);
+  });
+
+  it("surfaces a 409 AMBIGUOUS_ACCOUNT response with candidates from the service error details", async () => {
+    const candidates = [
+      { id: "acc-1", name: "Main", iban: "CH00 0001" },
+      { id: "acc-2", name: "Savings", iban: "CH00 0002" },
+    ];
+    mockImportTransactions.mockRejectedValue(
+      new ServiceError(409, "Multiple accounts available. Choose one and retry.", {
+        code: "AMBIGUOUS_ACCOUNT",
+        candidates,
+      }),
+    );
+    const { payload, headers } = buildMultipart("file", "tx.csv", "Date,Amount\n");
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/transactions/import?format=neon",
+      headers,
+      payload,
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      error: {
+        statusCode: 409,
+        message: "Multiple accounts available. Choose one and retry.",
+        code: "AMBIGUOUS_ACCOUNT",
+        candidates,
+      },
+    });
+  });
+
+  it("surfaces a 409 NO_MATCH response when the user has no accounts", async () => {
+    mockImportTransactions.mockRejectedValue(
+      new ServiceError(409, "No account available for this user.", {
+        code: "NO_MATCH",
+        candidates: [],
+      }),
+    );
+    const { payload, headers } = buildMultipart("file", "tx.csv", "Date,Amount\n");
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/transactions/import?format=neon",
+      headers,
+      payload,
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error).toEqual({
+      statusCode: 409,
+      message: "No account available for this user.",
+      code: "NO_MATCH",
+      candidates: [],
+    });
   });
 
   it("returns 200 with the import result on a valid multipart upload", async () => {

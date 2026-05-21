@@ -131,6 +131,22 @@ bun run test:coverage
 
 Detailed testing conventions are documented in [TEST.md](TEST.md) and the wiki chapters that cover implementation and operations.
 
+### End-to-end tests
+
+A Playwright suite under [`e2e/`](e2e) exercises the running app (frontend + backend + Postgres) across multi-step user journeys (admin user lifecycle, CSV import + categorize retry, filters). It is driven by the [`.github/workflows/playwright.yml`](.github/workflows/playwright.yml) workflow nightly at 03:00 UTC against `develop`, plus on every PR that touches the suite itself.
+
+Run locally:
+
+```bash
+docker compose -f docker-compose.test.yml up -d --wait
+cd backend && bun --bun run prisma migrate deploy && bun prisma/seed.ts && cd ..
+bun run test:e2e          # headless, full suite
+bun run test:e2e:headed   # watch the browser
+bun run test:e2e:ui       # interactive runner
+```
+
+Specs live in `e2e/specs/`, API-driven helpers in `e2e/helpers/`, and CSV fixtures in `e2e/fixtures/` (use absolute dates so suites stay stable as real-world time passes). Failure artifacts (`playwright-report/`, `test-results/`) upload as workflow artifacts; nightly failures auto-open a GitHub issue tagged `e2e-failure`.
+
 ### Need a quick sanity check?
 
 After setup, the safest first check is:
