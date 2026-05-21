@@ -51,5 +51,11 @@ export default defineConfig([
       globals: { ...vitest.environments.env.globals, ...globals.node },
     },
   },
+  {
+    files: ["e2e/**/*.ts"],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
+  },
   eslintConfigPrettier, // Must always remain at the very bottom!
 ]);
