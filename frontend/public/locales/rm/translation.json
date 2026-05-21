@@ -343,7 +343,6 @@
       "dropZoneAria": "Zona da depona da datotecas",
       "dropZoneSubtext": "Sulet datotecas .csv · max 10 MB",
       "formatLabel": "Format da banca",
-      "accountLabel": "Conto",
       "uploadBtn": "Chargiar si",
       "uploading": "Chargiar si…",
       "resultSuccess_one": "Importà {{count}} transacziun cun success.",
@@ -353,8 +352,6 @@
       "refreshHint": "Importà, ma il dashboard sto probabelmaint vegnir actualisà manualmain.",
       "errors": {
         "fileTooLarge": "La datoteca surpassa il limit da grondezza da 10 MB.",
-        "noAccounts": "Nagins contos chattads. Creai l'emprim in conto.",
-        "accountsError": "Betg pussaivel da chargiar ils contos. Empruvai anc ina giada.",
         "invalidType": "Sulet datotecas .csv vegnan acceptadas.",
         "uploadFailed": "La chariga n'è betg reussida."
       }

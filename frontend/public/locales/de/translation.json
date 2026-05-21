@@ -343,7 +343,6 @@
       "dropZoneAria": "Datei-Ablagebereich",
       "dropZoneSubtext": "Nur .csv Dateien · max 10 MB",
       "formatLabel": "Bankformat",
-      "accountLabel": "Konto",
       "uploadBtn": "Hochladen",
       "uploading": "Wird hochgeladen…",
       "resultSuccess_one": "{{count}} Transaktion erfolgreich importiert.",
@@ -353,8 +352,6 @@
       "refreshHint": "Importiert, aber das Dashboard muss möglicherweise manuell aktualisiert werden.",
       "errors": {
         "fileTooLarge": "Die Datei überschreitet das Größenlimit von 10 MB.",
-        "noAccounts": "Keine Konten gefunden. Erstellen Sie zuerst ein Konto.",
-        "accountsError": "Konten konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
         "invalidType": "Nur .csv-Dateien werden akzeptiert.",
         "uploadFailed": "Hochladen fehlgeschlagen."
       }

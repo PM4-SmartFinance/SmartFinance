@@ -343,7 +343,6 @@
       "dropZoneAria": "File drop zone",
       "dropZoneSubtext": ".csv files only · max 10 MB",
       "formatLabel": "Bank format",
-      "accountLabel": "Account",
       "uploadBtn": "Upload",
       "uploading": "Uploading…",
       "resultSuccess_one": "{{count}} transaction imported successfully.",
@@ -353,8 +352,6 @@
       "refreshHint": "Imported, but the dashboard may need a manual refresh.",
       "errors": {
         "fileTooLarge": "File exceeds the 10 MB size limit.",
-        "noAccounts": "No accounts found. Create an account first.",
-        "accountsError": "Failed to load accounts. Please try again.",
         "invalidType": "Only .csv files are accepted.",
         "uploadFailed": "Upload failed."
       }
