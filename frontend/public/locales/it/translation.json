@@ -110,6 +110,13 @@
     "subtitle": "Visualizza la tua panoramica finanziaria a colpo d'occhio",
     "greeting": "Bentornato, {{name}}"
   },
+  "modules": {
+    "backToDashboard": "Dashboard",
+    "noWidgets": "Questo modulo non ha widget per la dashboard.",
+    "loadError": "Caricamento dei dati del modulo non riuscito.",
+    "widgetLoadError": "Caricamento dei dati del widget non riuscito.",
+    "widgetNoData": "Nessun dato disponibile."
+  },
   "login": {
     "brand": "⬡ SmartFinance",
     "title": "Accedi",

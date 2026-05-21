@@ -110,6 +110,13 @@
     "subtitle": "Aperçu de vos finances en un coup d'œil",
     "greeting": "Bon retour, {{name}}"
   },
+  "modules": {
+    "backToDashboard": "Tableau de bord",
+    "noWidgets": "Ce module n'a pas de widgets de tableau de bord.",
+    "loadError": "Échec du chargement des données du module.",
+    "widgetLoadError": "Échec du chargement des données du widget.",
+    "widgetNoData": "Aucune donnée disponible."
+  },
   "login": {
     "brand": "⬡ SmartFinance",
     "title": "Se connecter",

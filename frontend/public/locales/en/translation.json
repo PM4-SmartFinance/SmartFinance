@@ -110,6 +110,13 @@
     "subtitle": "View your financial overview at a glance",
     "greeting": "Welcome back, {{name}}"
   },
+  "modules": {
+    "backToDashboard": "Dashboard",
+    "noWidgets": "This module has no dashboard widgets.",
+    "loadError": "Failed to load module data.",
+    "widgetLoadError": "Failed to load widget data.",
+    "widgetNoData": "No data available."
+  },
   "login": {
     "brand": "⬡ SmartFinance",
     "title": "Sign in",

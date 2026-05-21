@@ -1,18 +1,14 @@
 import { useParams, Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { ModuleWidgetCard } from "../components/ModuleWidgetCard";
 import { UserMenu } from "../components/UserMenu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MODULE_NAV_ITEMS_QUERY, MODULE_WIDGETS_QUERY } from "../lib/moduleQueries";
 
-const TEXT = {
-  backToDashboard: "Dashboard",
-  noWidgets: "This module has no dashboard widgets.",
-  loadError: "Failed to load module data.",
-} as const;
-
 export function ModulePage() {
   const { moduleId } = useParams<{ moduleId: string }>();
+  const { t } = useTranslation();
 
   const { data: navData } = useQuery(MODULE_NAV_ITEMS_QUERY);
 
@@ -35,7 +31,7 @@ export function ModulePage() {
               to="/"
               className="inline-flex h-8 items-center rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
             >
-              {TEXT.backToDashboard}
+              {t("modules.backToDashboard", "Dashboard")}
             </Link>
             <UserMenu />
           </nav>
@@ -46,9 +42,13 @@ export function ModulePage() {
             <Skeleton className="h-48 w-full" />
           </div>
         ) : isError ? (
-          <p className="text-sm text-destructive">{TEXT.loadError}</p>
+          <p className="text-sm text-destructive">
+            {t("modules.loadError", "Failed to load module data.")}
+          </p>
         ) : moduleWidgets.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{TEXT.noWidgets}</p>
+          <p className="text-sm text-muted-foreground">
+            {t("modules.noWidgets", "This module has no dashboard widgets.")}
+          </p>
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
             {moduleWidgets.map((widget) => (

@@ -110,6 +110,13 @@
     "subtitle": "Sehen Sie Ihre finanzielle Übersicht auf einen Blick",
     "greeting": "Willkommen zurück, {{name}}"
   },
+  "modules": {
+    "backToDashboard": "Dashboard",
+    "noWidgets": "Dieses Modul hat keine Dashboard-Widgets.",
+    "loadError": "Moduldaten konnten nicht geladen werden.",
+    "widgetLoadError": "Widget-Daten konnten nicht geladen werden.",
+    "widgetNoData": "Keine Daten verfügbar."
+  },
   "login": {
     "brand": "⬡ SmartFinance",
     "title": "Anmelden",
