@@ -69,8 +69,12 @@ export function SettingsProfile() {
       setPasswordSuccess(true);
       // Server has already deleted the session; the login page refetches
       // /auth/me on mount and the auth guard will treat the cleared cookie as
-      // anonymous — no need to invalidate the cache here.
-      setTimeout(() => navigate("/login"), LOGOUT_REDIRECT_DELAY_MS);
+      // anonymous. Clear the cached auth state just before redirect so the
+      // login page cannot briefly reuse a stale authenticated user.
+      setTimeout(() => {
+        void queryClient.removeQueries({ queryKey: ["auth", "me"] });
+        navigate("/login");
+      }, LOGOUT_REDIRECT_DELAY_MS);
     },
     onError: () => setPasswordSuccess(false),
   });

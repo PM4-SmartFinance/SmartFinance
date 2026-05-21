@@ -6,6 +6,8 @@ vi.mock("../prisma.js", () => ({
     categoryRule: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
+      create: vi.fn(),
+      deleteMany: vi.fn(),
     },
     dimCategory: {
       findFirst: vi.fn(),
@@ -87,14 +89,8 @@ describe("category-rule.repository", () => {
   });
 
   describe("create", () => {
-    it("creates a new category rule within a transaction", async () => {
-      const txClient = {
-        categoryRule: {
-          create: vi.fn().mockResolvedValue(sampleRule),
-        },
-      };
-      // @ts-expect-error -- mock tx is an intentional partial stub of TransactionClient
-      mockTransaction.mockImplementation((cb) => cb(txClient));
+    it("creates a new category rule", async () => {
+      mockCategoryRule.create.mockResolvedValue(sampleRule as never);
 
       const result = await create({
         userId: "user-1",
@@ -105,7 +101,7 @@ describe("category-rule.repository", () => {
       });
 
       expect(result).toEqual(sampleRule);
-      expect(txClient.categoryRule.create).toHaveBeenCalledWith({
+      expect(mockCategoryRule.create).toHaveBeenCalledWith({
         data: {
           userId: "user-1",
           categoryId: "cat-1",
@@ -122,13 +118,7 @@ describe("category-rule.repository", () => {
         code: "P2002",
         clientVersion: "5.0.0",
       });
-      const txClient = {
-        categoryRule: {
-          create: vi.fn().mockRejectedValue(prismaError),
-        },
-      };
-      // @ts-expect-error -- mock tx is an intentional partial stub of TransactionClient
-      mockTransaction.mockImplementation((cb) => cb(txClient));
+      mockCategoryRule.create.mockRejectedValue(prismaError);
 
       await expect(
         create({
@@ -149,13 +139,7 @@ describe("category-rule.repository", () => {
           clientVersion: "5.0.0",
         },
       );
-      const txClient = {
-        categoryRule: {
-          create: vi.fn().mockRejectedValue(prismaError),
-        },
-      };
-      // @ts-expect-error -- mock tx is an intentional partial stub of TransactionClient
-      mockTransaction.mockImplementation((cb) => cb(txClient));
+      mockCategoryRule.create.mockRejectedValue(prismaError);
 
       await expect(
         create({
@@ -238,26 +222,14 @@ describe("category-rule.repository", () => {
 
   describe("remove", () => {
     it("returns true when rule is deleted", async () => {
-      const txClient = {
-        categoryRule: {
-          deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
-        },
-      };
-      // @ts-expect-error -- mock tx is an intentional partial stub of TransactionClient
-      mockTransaction.mockImplementation((cb) => cb(txClient));
+      mockCategoryRule.deleteMany.mockResolvedValue({ count: 1 } as never);
 
       const result = await remove("rule-1", "user-1");
       expect(result).toBe(true);
     });
 
     it("returns false when rule not found", async () => {
-      const txClient = {
-        categoryRule: {
-          deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
-        },
-      };
-      // @ts-expect-error -- mock tx is an intentional partial stub of TransactionClient
-      mockTransaction.mockImplementation((cb) => cb(txClient));
+      mockCategoryRule.deleteMany.mockResolvedValue({ count: 0 } as never);
 
       const result = await remove("nonexistent", "user-1");
       expect(result).toBe(false);

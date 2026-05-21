@@ -148,6 +148,30 @@ describe("DashboardPage", () => {
     expect(screen.getByRole("button", { name: "User menu" })).toBeInTheDocument();
   });
 
+  it("greets the user by configured display name when available", () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { ...USER_FIXTURE, name: "Test User" },
+      isAuthenticated: true,
+      isLoading: false,
+    });
+
+    renderWithProviders();
+
+    expect(screen.getByText("Welcome back, Test User")).toBeInTheDocument();
+  });
+
+  it("falls back to the email greeting when the display name is whitespace-only", () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { ...USER_FIXTURE, name: "   " },
+      isAuthenticated: true,
+      isLoading: false,
+    });
+
+    renderWithProviders();
+
+    expect(screen.getByText("Welcome back, test@example.com")).toBeInTheDocument();
+  });
+
   it("triggers loading states when date range is changed", async () => {
     renderWithProviders();
 

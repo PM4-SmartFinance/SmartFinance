@@ -63,6 +63,40 @@ describe("SettingsProfile - Password Change Flow", () => {
     });
   });
 
+  it("clears the cached auth query before redirecting after password change", async () => {
+    const user = userEvent.setup();
+    const removeQueriesSpy = vi.spyOn(QueryClient.prototype, "removeQueries");
+    mockPost.mockResolvedValue({ ok: true });
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Test User")).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByLabelText(/Current password/i), "oldpass123");
+    await user.type(screen.getByLabelText(/^New password/i), "newpass123");
+    await user.type(screen.getByLabelText(/Confirm new password/i), "newpass123");
+    await user.click(screen.getByRole("button", { name: "Change password" }));
+
+    await waitFor(
+      () => {
+        expect(mockNavigate).toHaveBeenCalledExactlyOnceWith("/login");
+      },
+      { timeout: 3000 },
+    );
+
+    expect(removeQueriesSpy).toHaveBeenCalledWith({ queryKey: ["auth", "me"] });
+
+    // Ordering matters: cache must be evicted BEFORE the redirect, otherwise
+    // the login page can briefly observe a stale authenticated user.
+    const removeOrder = removeQueriesSpy.mock.invocationCallOrder[0];
+    const navigateOrder = mockNavigate.mock.invocationCallOrder[0];
+    expect(removeOrder).toBeDefined();
+    expect(navigateOrder).toBeDefined();
+    expect(removeOrder).toBeLessThan(navigateOrder as number);
+    removeQueriesSpy.mockRestore();
+  });
+
   it("shows error when new passwords do not match", async () => {
     const user = userEvent.setup();
     renderWithProviders();

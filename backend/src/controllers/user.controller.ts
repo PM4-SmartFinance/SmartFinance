@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { requireRole, requireOwnerOrAdmin, getSessionUser } from "../middleware/rbac.js";
 import * as userService from "../services/user.service.js";
+import { ServiceError } from "../errors.js";
 
 interface UserParams {
   id: string;
@@ -130,12 +131,18 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
         ...(email !== undefined && { email }),
       });
 
-      // Refresh session so subsequent /auth/me calls return the new email
-      if (updated && email !== undefined) {
+      if (!updated) {
+        throw new ServiceError(404, "User not found");
+      }
+
+      // Refresh the session email while preserving the password version so
+      // subsequent auth checks continue to validate correctly.
+      if (email !== undefined) {
         request.session.set("user", {
           id: sessionUser.id,
           role: sessionUser.role,
           email: updated.email,
+          ...(sessionUser.pwdVersion !== undefined && { pwdVersion: sessionUser.pwdVersion }),
         });
       }
 

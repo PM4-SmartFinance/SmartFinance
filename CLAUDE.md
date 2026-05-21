@@ -197,7 +197,7 @@ See `README.md` for two setup paths: **Quick Start (Docker)** for running from p
 
 Two permanent branches:
 
-- **`main`** (Production) — stable, release-only. Never commit directly. Updated only via release PRs from `develop` at end of sprint.
+- **`main`** (Production) — stable, release-only. Never commit directly. Updated automatically by the `sync-release` CD job when a GitHub Release is published from `develop` at end of sprint.
 - **`develop`** (Pre-Production) — active integration branch. All feature/bugfix PRs target `develop`.
 
 ### Branch Rules
@@ -216,7 +216,7 @@ Two permanent branches:
 
 ### Pull Requests
 
-- PRs target `develop` (not `main`). Release PRs from `develop` → `main` happen at end of sprint.
+- PRs target `develop` (not `main`). Promotion to `main` happens automatically when a release is published from `develop` at end of sprint (see Releases).
 - Include Jira ID in title (e.g., `[KAN-23] Define branching strategy`), squash and merge, delete branch after merge.
 - **Deadline:** No new PRs on Friday mornings. Cutoff for PR creation is **Thursday 20:00**.
 - **Approval:** Every PR requires explicit approval from the Project Owner.
@@ -246,8 +246,17 @@ Two permanent branches:
 
 ### Releases
 
-- At sprint end, create a release PR from `develop` → `main`.
-- After merging, create a version tag (e.g., `v2.0.0`) via GitHub Releases pointing to `main`.
+Two deployment paths:
+
+- **Test environment (`develop`)** — the `docker-test` + `deploy-test` jobs in `.github/workflows/cd.yml` run on a nightly schedule (02:00 UTC), building and deploying `develop` to the test environment automatically. No manual action required.
+- **Production (`main`)** — at sprint end, create a GitHub Release with a new version tag (e.g., `v2.0.0`) **targeting `develop`** (not `main`). The `sync-release` CD job then:
+  1. Verifies the release targets `develop`.
+  2. Verifies a successful `ci.yml` run exists for the release commit (preferred) or the `develop` tip.
+  3. Verifies the release tag SHA equals the `develop` tip.
+  4. Merges `develop` into `main` via the GitHub API.
+  5. Triggers `docker-release` + `deploy-release` to build and deploy production.
+
+Do **not** open a manual `develop` → `main` PR; the workflow handles the merge. Do **not** create a release targeting `main` — the workflow rejects it.
 
 ### Pull Request Description Template
 

@@ -1,10 +1,37 @@
+import safeRegex from "safe-regex2";
 import { DuplicateRuleError, ServiceError } from "../errors.js";
 import * as categoryRuleRepository from "../repositories/category-rule.repository.js";
-import type { MatchType } from "../repositories/category-rule.repository.js";
+import { MatchType } from "../repositories/category-rule.repository.js";
 import * as transactionRepository from "../repositories/transaction.repository.js";
 
+function assertValidRegex(pattern: string) {
+  try {
+    new RegExp(pattern);
+  } catch {
+    throw new ServiceError(400, `Invalid regex pattern: ${pattern}`);
+  }
+  if (!safeRegex(pattern)) {
+    throw new ServiceError(400, "Regex pattern is too complex");
+  }
+}
+
+function isValidRegex(pattern: string): boolean {
+  try {
+    assertValidRegex(pattern);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function listRules(userId: string) {
-  return categoryRuleRepository.findAllByUser(userId);
+  const rules = await categoryRuleRepository.findAllByUser(userId);
+  // `isValid` lets the UI flag rules that auto-categorize would silently
+  // skip — without persisting a per-rule health column.
+  return rules.map((rule) => ({
+    ...rule,
+    isValid: rule.matchType !== "regex" || isValidRegex(rule.pattern),
+  }));
 }
 
 export async function getRule(id: string, userId: string) {
@@ -22,6 +49,8 @@ export async function createRule(
   matchType: MatchType,
   priority: number,
 ) {
+  if (matchType === "regex") assertValidRegex(pattern);
+
   const category = await categoryRuleRepository.findCategoryForUser(categoryId, userId);
   if (!category) {
     throw new ServiceError(404, "Category not found");
@@ -47,6 +76,18 @@ export async function updateRule(
   userId: string,
   data: { pattern?: string; matchType?: MatchType; categoryId?: string; priority?: number },
 ) {
+  // Validate against the effective (matchType, pattern) pair so the regex
+  // check still runs when only one of the two fields is in the patch.
+  if (data.pattern != null || data.matchType != null) {
+    const existing = await categoryRuleRepository.findById(id, userId);
+    if (!existing) {
+      throw new ServiceError(404, "Category rule not found");
+    }
+    const effectiveMatchType = data.matchType ?? existing.matchType;
+    const effectivePattern = data.pattern ?? existing.pattern;
+    if (effectiveMatchType === "regex") assertValidRegex(effectivePattern);
+  }
+
   if (data.categoryId != null) {
     const category = await categoryRuleRepository.findCategoryForUser(data.categoryId, userId);
     if (!category) {
@@ -86,6 +127,8 @@ export async function previewRule(
     dateId: number;
   }>;
 }> {
+  if (rule.matchType === "regex") assertValidRegex(rule.pattern);
+
   const category = await categoryRuleRepository.findCategoryForUser(rule.categoryId, userId);
   if (!category) {
     throw new ServiceError(404, "Category not found");
@@ -136,20 +179,26 @@ export async function findOverlappingRules(
   if (candidate.pattern.trim().length === 0) return [];
 
   const all = await categoryRuleRepository.findAllByUser(userId);
-  return all
-    .filter((rule) => rule.id !== candidate.excludeRuleId)
-    .filter((rule) =>
-      patternsOverlap(
-        { pattern: candidate.pattern, matchType: candidate.matchType },
-        { pattern: rule.pattern, matchType: rule.matchType as MatchType },
-      ),
-    )
-    .map((rule) => ({
-      id: rule.id,
-      pattern: rule.pattern,
-      matchType: rule.matchType as MatchType,
-      priority: rule.priority,
-      categoryId: rule.categoryId,
-      categoryName: rule.category.categoryName,
-    }));
+  return (
+    all
+      .filter((rule) => rule.id !== candidate.excludeRuleId)
+      // Regex patterns are not literal strings; comparing them via includes()
+      // produces both false positives ("a" in everything) and false negatives
+      // ("^Coop$" not in "Coop"). Skip them in the literal-substring heuristic.
+      .filter((rule) => rule.matchType !== "regex")
+      .filter((rule) =>
+        patternsOverlap(
+          { pattern: candidate.pattern, matchType: candidate.matchType },
+          { pattern: rule.pattern, matchType: rule.matchType },
+        ),
+      )
+      .map((rule) => ({
+        id: rule.id,
+        pattern: rule.pattern,
+        matchType: rule.matchType,
+        priority: rule.priority,
+        categoryId: rule.categoryId,
+        categoryName: rule.category.categoryName,
+      }))
+  );
 }
