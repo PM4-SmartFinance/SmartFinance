@@ -7,6 +7,7 @@ export function errorHandler(
   reply: FastifyReply,
 ): void {
   const statusCode = error instanceof ServiceError ? error.statusCode : (error.statusCode ?? 500);
+  const details = error instanceof ServiceError ? error.details : undefined;
   const isProduction = process.env["NODE_ENV"] === "production";
 
   if (statusCode >= 500) {
@@ -17,6 +18,7 @@ export function errorHandler(
     error: {
       statusCode,
       message: isProduction && statusCode >= 500 ? "Internal Server Error" : error.message,
+      ...(details ?? {}),
     },
   });
 }
