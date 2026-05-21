@@ -211,10 +211,17 @@ export class ApiClient {
       categoryId?: string;
       search?: string;
     }): Promise<{ items: Transaction[]; total: number }> => {
+      // The backend response is { data, meta: { totalCount, ... } } (see
+      // transaction.service.ts:255). Normalise here so spec code can stay
+      // in {items, total} terms.
       const res = await this.ctx.get("/api/v1/transactions", {
         params: query as Record<string, string>,
       });
-      return assertOk<{ items: Transaction[]; total: number }>(res, "transactions.list");
+      const body = await assertOk<{ data: Transaction[]; meta: { totalCount: number } }>(
+        res,
+        "transactions.list",
+      );
+      return { items: body.data ?? [], total: body.meta?.totalCount ?? 0 };
     },
     delete: async (id: string): Promise<void> => {
       const res = await this.ctx.delete(`/api/v1/transactions/${id}`);

@@ -23,7 +23,10 @@ export default defineConfig({
   testDir: "./e2e/specs",
   fullyParallel: false,
   forbidOnly: isCI,
-  retries: isCI ? 1 : 0,
+  // No retries: specs run against a fresh DB and are deterministic. A retry
+  // would re-run beforeAll hooks and collide with the seed (409 on uniques),
+  // and flake-masking is exactly what the review warned against.
+  retries: 0,
   workers: isCI ? 1 : 1,
   reporter: isCI ? [["list"], ["html"], ["github"]] : [["list"], ["html"]],
   globalSetup: "./e2e/global-setup.ts",
