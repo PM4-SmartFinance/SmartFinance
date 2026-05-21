@@ -225,18 +225,19 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
   await app.register(async function importRoutes(importApp) {
     await importApp.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } }); // 10 MB
 
-    importApp.post<{ Querystring: { accountId: string; format: ImportFormat } }>(
+    importApp.post<{ Querystring: { accountId?: string; format: ImportFormat } }>(
       "/transactions/import",
       {
         preHandler: requireRole("USER"),
         schema: {
           querystring: {
             type: "object",
-            required: ["accountId", "format"],
+            required: ["format"],
             properties: {
               accountId: { type: "string", minLength: 1 },
               format: { type: "string", enum: SUPPORTED_FORMATS as unknown as string[] },
             },
+            additionalProperties: false,
           },
         },
       },
