@@ -67,7 +67,7 @@ module.exports = async function syncRelease({ github, context, core, inputs }) {
   let latestRun;
   let lookupSource;
   try {
-    const { data: tagRuns } = await github.rest.actions.listWorkflowRunsForWorkflow({
+    const { data: tagRuns } = await github.rest.actions.listWorkflowRuns({
       owner: context.repo.owner,
       repo: context.repo.repo,
       workflow_id: "ci.yml",
@@ -95,7 +95,7 @@ module.exports = async function syncRelease({ github, context, core, inputs }) {
 
   if (!latestRun) {
     try {
-      const { data: branchRuns } = await github.rest.actions.listWorkflowRunsForWorkflow({
+      const { data: branchRuns } = await github.rest.actions.listWorkflowRuns({
         owner: context.repo.owner,
         repo: context.repo.repo,
         workflow_id: "ci.yml",
