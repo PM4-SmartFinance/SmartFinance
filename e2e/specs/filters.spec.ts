@@ -73,7 +73,9 @@ test.describe("filters", () => {
     await page.getByLabel("Start Date").fill(OCT.startDate);
     await page.getByLabel("End Date").fill(OCT.endDate);
     await page.getByRole("button", { name: "Apply" }).click();
-    await expect(page.getByText(/Page 1 of 1/i)).toBeVisible();
+    // Pagination text ("Page X of Y") only renders when totalPages > 1
+    // (TransactionsPage.tsx:345), so 5 rows on a default limit=20 means no
+    // pagination element appears. Rely on toHaveCount auto-waiting instead.
     await expect(page.getByRole("row").filter({ has: page.locator("td") })).toHaveCount(5);
   });
 
