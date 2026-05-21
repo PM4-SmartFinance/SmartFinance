@@ -22,7 +22,7 @@ interface ListTransactionsQuery {
 }
 
 interface UpdateTransactionBody {
-  categoryId?: string;
+  categoryId?: string | null;
   notes?: string;
   date?: string;
   amount?: number;
@@ -45,7 +45,9 @@ const updateTransactionSchema = {
   body: {
     type: "object",
     properties: {
-      categoryId: { type: "string", format: "uuid" },
+      // `null` clears the category and restores the post-import
+      // "uncategorized" state (KAN-156).
+      categoryId: { type: ["string", "null"], format: "uuid" },
       notes: { type: "string", maxLength: 10000 },
       date: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
       amount: { type: "number" },

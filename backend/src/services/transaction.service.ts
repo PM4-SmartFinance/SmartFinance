@@ -13,7 +13,7 @@ export async function updateTransaction(
   id: string,
   userId: string,
   data: {
-    categoryId?: string;
+    categoryId?: string | null;
     notes?: string;
     date?: string;
     amount?: number;
@@ -28,7 +28,10 @@ export async function updateTransaction(
     delete updateData.reason;
 
     if (data.categoryId !== undefined) {
-      updateData.manualOverride = true;
+      // Clearing the category (null) restores the fresh-from-import state so
+      // a subsequent auto-categorize run can re-evaluate. Setting a category
+      // explicitly marks the row as user-edited and excludes it from auto-cat.
+      updateData.manualOverride = data.categoryId !== null;
     }
     if (data.date !== undefined) {
       updateData.dateId = dateStringToId(data.date);
