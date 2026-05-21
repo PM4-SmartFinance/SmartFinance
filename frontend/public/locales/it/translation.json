@@ -52,12 +52,7 @@
     "loading": "Caricamento categorie e regole…",
     "loadingError": "Impossibile caricare categorie o regole. Ricarica la pagina.",
     "refreshHint": "Salvato, ma la dashboard potrebbe richiedere un aggiornamento manuale.",
-    "personalTitle": "Le Tue Categorie",
-    "personalDesc": "Categorie modificabili che hai creato.",
-    "globalTitle": "Categorie Globali",
-    "globalDesc": "Impostazioni predefinite condivise disponibili per tutti gli utenti.",
-    "globalCategoryReadOnly": "Categoria globale (sola lettura)",
-    "noCategories": "Nessuna categoria in questa sezione.",
+    "noCategories": "Ancora nessuna categoria.",
     "createCategoryTitle": "Crea Categoria",
     "newCategoryPlaceholder": "es. Abbonamenti",
     "applyRulesTitle": "Applica Regole",
@@ -78,6 +73,11 @@
     "recategorizeNone": "Nessuna transazione modificata nell'intervallo selezionato.",
     "recategorizeSuccess_one": "Ricategorizzata {{count}} transazione.",
     "recategorizeSuccess_other": "Ricategorizzate {{count}} transazioni.",
+    "uncategorizeAllBtn": "Sposta tutto in non categorizzato",
+    "confirmUncategorizeAll": "Rimuovere la categoria da tutte le transazioni attualmente assegnate a ‘{{name}}’? Diventeranno non categorizzate.",
+    "uncategorizeAllNone": "Nessuna transazione era assegnata a ‘{{name}}’.",
+    "uncategorizeAllSuccess_one": "Categoria rimossa da {{count}} transazione in ‘{{name}}’.",
+    "uncategorizeAllSuccess_other": "Categoria rimossa da {{count}} transazioni in ‘{{name}}’.",
     "errors": {
       "nameRequired": "Il nome della categoria è obbligatorio.",
       "createFailed": "Impossibile creare la categoria.",
@@ -89,12 +89,14 @@
       "updateRuleFailed": "Impossibile aggiornare la regola.",
       "deleteRuleFailed": "Impossibile eliminare la regola.",
       "autoCategorizeFailed": "Impossibile eseguire la categorizzazione automatica.",
-      "recategorizeFailed": "Impossibile ricategorizzare l'intervallo selezionato."
+      "recategorizeFailed": "Impossibile ricategorizzare l'intervallo selezionato.",
+      "uncategorizeAllFailed": "Impossibile spostare le transazioni in non categorizzato."
     },
     "aria": {
       "editCategory": "Modifica la categoria {{name}}",
       "saveCategory": "Salva la categoria {{name}}",
-      "deleteCategory": "Elimina la categoria {{name}}"
+      "deleteCategory": "Elimina la categoria {{name}}",
+      "uncategorizeAll": "Sposta tutte le transazioni in {{name}} in non categorizzato"
     }
   },
   "nav": {

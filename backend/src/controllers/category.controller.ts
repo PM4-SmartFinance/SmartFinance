@@ -3,7 +3,7 @@ import { requireRole, getSessionUser } from "../middleware/rbac.js";
 import * as categoryService from "../services/category.service.js";
 
 export async function categoryRoutes(app: FastifyInstance): Promise<void> {
-  // GET: List all categories (Global + User-specific)
+  // GET: List all categories for the authenticated user
   app.get("/categories", { preHandler: requireRole("USER") }, async (request, reply) => {
     const user = getSessionUser(request);
 
@@ -85,6 +85,35 @@ export async function categoryRoutes(app: FastifyInstance): Promise<void> {
       const { id } = request.params;
       await categoryService.deleteCategory(id, user.id);
       return reply.status(204).send(); // 204 No Content
+    },
+  );
+
+  // POST: Bulk-clear category from every transaction in this personal category.
+  // Restores the post-import "uncategorized" state for those rows (KAN-156).
+  app.post<{ Params: { id: string } }>(
+    "/categories/:id/uncategorize-transactions",
+    {
+      preHandler: requireRole("USER"),
+      schema: {
+        params: {
+          type: "object",
+          properties: { id: { type: "string", format: "uuid" } },
+          required: ["id"],
+        },
+        response: {
+          200: {
+            type: "object",
+            properties: { uncategorized: { type: "integer" } },
+            required: ["uncategorized"],
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const user = getSessionUser(request);
+      const { id } = request.params;
+      const result = await categoryService.uncategorizeAllForCategory(id, user.id);
+      return reply.status(200).send(result);
     },
   );
 }

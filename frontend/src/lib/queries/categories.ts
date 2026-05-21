@@ -5,7 +5,7 @@ import { DASHBOARD_QUERY_KEY } from "./dashboard";
 export interface Category {
   id: string;
   categoryName: string;
-  userId: string | null;
+  userId: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -231,6 +231,26 @@ export function useRecategorizeRange(options?: CategoryMutationOptions) {
   return useMutation({
     mutationFn: (range: { startDate: string; endDate: string }) =>
       api.post<{ recategorized: number }>("/transactions/recategorize", range),
+    onSuccess: () =>
+      invalidateAll(
+        queryClient,
+        [["transactions"], DASHBOARD_QUERY_KEY],
+        options?.onInvalidationFailure,
+      ),
+  });
+}
+
+// KAN-156: bulk-clear category from every transaction in a personal category
+// so the user can subsequently delete the category or rerun auto-categorize.
+export function useUncategorizeCategoryTransactions(options?: CategoryMutationOptions) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (categoryId: string) =>
+      api.post<{ uncategorized: number }>(
+        `/categories/${categoryId}/uncategorize-transactions`,
+        null as never,
+      ),
     onSuccess: () =>
       invalidateAll(
         queryClient,
