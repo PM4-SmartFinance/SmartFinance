@@ -72,7 +72,7 @@ export async function updateById(
   id: string,
   userId: string,
   data: {
-    categoryId?: string;
+    categoryId?: string | null;
     notes?: string;
     manualOverride?: boolean;
     amount?: number;
@@ -96,7 +96,8 @@ export async function updateById(
       throw new ServiceError(404, "Transaction not found");
     }
 
-    if (data.categoryId !== undefined) {
+    // `null` means "clear the category" — no row to validate.
+    if (data.categoryId) {
       const category = await client.dimCategory.findFirst({
         where: { id: data.categoryId, userId: isAdmin ? existing.userId : userId },
         select: { id: true },
@@ -398,6 +399,24 @@ export async function bulkSetCategory(
 
   const results = await prisma.$transaction(statements);
   return results.reduce((sum, r) => sum + r.count, 0);
+}
+
+/**
+ * Clears the category on every transaction that belongs to the given
+ * user/category pair, restoring the post-import "uncategorized" state.
+ * Also resets `manualOverride` so that the next auto-categorize run can
+ * re-evaluate the row — the user explicitly asked to discard the prior
+ * assignment, manual or otherwise.
+ */
+export async function clearCategoryAssignments(
+  userId: string,
+  categoryId: string,
+): Promise<number> {
+  const result = await prisma.factTransactions.updateMany({
+    where: { userId, categoryId, isDeleted: false },
+    data: { categoryId: null, manualOverride: false },
+  });
+  return result.count;
 }
 
 export interface ListTransactionsArgs {

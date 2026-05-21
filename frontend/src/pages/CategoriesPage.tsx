@@ -11,6 +11,7 @@ import {
   useDeleteCategoryRule,
   useAutoCategorize,
   useRecategorizeRange,
+  useUncategorizeCategoryTransactions,
   type Category,
   type CategoryRule,
   type RuleDraft,
@@ -70,6 +71,7 @@ export function CategoriesPage() {
   const deleteCategory = useDeleteCategory({ onInvalidationFailure });
   const autoCategorize = useAutoCategorize({ onInvalidationFailure });
   const recategorize = useRecategorizeRange({ onInvalidationFailure });
+  const uncategorizeAll = useUncategorizeCategoryTransactions({ onInvalidationFailure });
 
   const createRule = useCreateCategoryRule({ onInvalidationFailure });
   const updateRule = useUpdateCategoryRule({ onInvalidationFailure });
@@ -85,29 +87,10 @@ export function CategoriesPage() {
     }, {});
   }, [rules]);
 
-  const categorySections = useMemo(() => {
-    const personal = categories
-      .filter((category) => category.userId !== null)
-      .sort((a, b) => a.categoryName.localeCompare(b.categoryName));
-    const global = categories
-      .filter((category) => category.userId === null)
-      .sort((a, b) => a.categoryName.localeCompare(b.categoryName));
-
-    return [
-      {
-        id: "personal",
-        title: t("categories.personalTitle", "Your Categories"),
-        description: t("categories.personalDesc", "Editable categories you created."),
-        categories: personal,
-      },
-      {
-        id: "global",
-        title: t("categories.globalTitle", "Global Categories"),
-        description: t("categories.globalDesc", "Shared defaults available to all users."),
-        categories: global,
-      },
-    ];
-  }, [categories, t]);
+  const sortedCategories = useMemo(
+    () => [...categories].sort((a, b) => a.categoryName.localeCompare(b.categoryName)),
+    [categories],
+  );
 
   function setCategoryError(categoryId: string, message: string | null) {
     setErrorByCategory((prev) => {
@@ -347,6 +330,42 @@ export function CategoriesPage() {
     }
   }
 
+  async function handleUncategorizeAll(category: Category) {
+    setCategoryError(category.id, null);
+    setActionError(null);
+    setActionResult(null);
+    const confirmed = window.confirm(
+      t(
+        "categories.confirmUncategorizeAll",
+        "Remove the category from every transaction currently assigned to ‘{{name}}’? They will become uncategorized.",
+        { name: category.categoryName },
+      ),
+    );
+    if (!confirmed) return;
+    try {
+      const { uncategorized } = await uncategorizeAll.mutateAsync(category.id);
+      setActionResult(
+        uncategorized === 0
+          ? t("categories.uncategorizeAllNone", "No transactions were assigned to ‘{{name}}’.", {
+              name: category.categoryName,
+            })
+          : t(
+              "categories.uncategorizeAllSuccess",
+              "Cleared the category from {{count}} transaction(s) in ‘{{name}}’.",
+              { count: uncategorized, name: category.categoryName },
+            ),
+      );
+    } catch (error) {
+      setCategoryError(
+        category.id,
+        getErrorMessage(
+          error,
+          t("categories.errors.uncategorizeAllFailed", "Failed to uncategorize transactions."),
+        ),
+      );
+    }
+  }
+
   async function handleRecategorize() {
     setActionError(null);
     setActionResult(null);
@@ -524,157 +543,140 @@ export function CategoriesPage() {
           <p className="mb-4 text-sm text-destructive">{createCategoryError}</p>
         )}
 
-        <div className="space-y-8">
-          {categorySections.map((section) => (
-            <section key={section.id} className="space-y-4">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">{section.title}</h2>
-                <p className="text-sm text-muted-foreground">{section.description}</p>
-              </div>
+        {sortedCategories.length === 0 ? (
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">
+                {t("categories.noCategories", "No categories yet.")}
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-6">
+            {sortedCategories.map((category) => {
+              const categoryRules = rulesByCategory[category.id] ?? [];
 
-              {section.categories.length === 0 ? (
-                <Card>
-                  <CardContent className="pt-6">
-                    <p className="text-sm text-muted-foreground">
-                      {t("categories.noCategories", "No categories in this section.")}
-                    </p>
+              return (
+                <Card key={category.id}>
+                  <CardHeader className="flex flex-row items-center justify-between gap-2">
+                    {editingCategoryId === category.id ? (
+                      <div className="flex w-full items-center gap-2">
+                        <Input
+                          aria-label={t("categories.aria.editCategory", "Edit category {{name}}", {
+                            name: category.categoryName,
+                          })}
+                          value={editingCategoryName}
+                          onChange={(event) => setEditingCategoryName(event.target.value)}
+                        />
+                        <Button
+                          aria-label={t("categories.aria.saveCategory", "Save category {{name}}", {
+                            name: category.categoryName,
+                          })}
+                          onClick={() => handleSaveCategoryEdit(category.id)}
+                          size="sm"
+                        >
+                          {t("common.save", "Save")}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditingCategoryId(null);
+                            setEditingCategoryName("");
+                          }}
+                        >
+                          {t("common.cancel", "Cancel")}
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex w-full items-center justify-between gap-3">
+                        <CardTitle className="text-base">{category.categoryName}</CardTitle>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            aria-label={t(
+                              "categories.aria.uncategorizeAll",
+                              "Move all transactions in {{name}} to uncategorized",
+                              { name: category.categoryName },
+                            )}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleUncategorizeAll(category)}
+                            disabled={uncategorizeAll.isPending}
+                          >
+                            {t("categories.uncategorizeAllBtn", "Move all to uncategorized")}
+                          </Button>
+                          <Button
+                            aria-label={t(
+                              "categories.aria.editCategory",
+                              "Edit category {{name}}",
+                              { name: category.categoryName },
+                            )}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleStartCategoryEdit(category)}
+                          >
+                            {t("common.edit", "Edit")}
+                          </Button>
+                          <Button
+                            aria-label={t(
+                              "categories.aria.deleteCategory",
+                              "Delete category {{name}}",
+                              { name: category.categoryName },
+                            )}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteCategory(category.id)}
+                            disabled={deleteCategory.isPending}
+                          >
+                            {t("common.delete", "Delete")}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardHeader>
+
+                  <CardContent className="space-y-4">
+                    {errorByCategory[category.id] && (
+                      <p className="text-xs text-destructive">{errorByCategory[category.id]}</p>
+                    )}
+
+                    <NewRuleForm
+                      categoryName={category.categoryName}
+                      preview={previewByCategory[category.id] ?? null}
+                      onSubmit={(draft) => handleCreateRule(category.id, draft)}
+                      onPreview={(draft) => handlePreviewRule(category.id, draft)}
+                      isSubmitting={createRule.isPending}
+                    />
+
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-semibold">
+                        {t("categories.existingRules", "Existing Rules")}
+                      </h3>
+                      {categoryRules.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          {t("categories.noRules", "No rules yet.")}
+                        </p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {categoryRules.map((rule) => (
+                            <RuleRow
+                              key={rule.id}
+                              rule={rule}
+                              onSave={(draft) => handleSaveRule(rule, draft)}
+                              onDelete={() => handleDeleteRule(rule.id, category.id)}
+                              isSaving={pendingRuleSaveId === rule.id}
+                              isDeleting={pendingRuleDeleteId === rule.id}
+                            />
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
-              ) : (
-                <div className="space-y-6">
-                  {section.categories.map((category) => {
-                    const categoryRules = rulesByCategory[category.id] ?? [];
-                    const isGlobal = category.userId === null;
-
-                    return (
-                      <Card key={category.id}>
-                        <CardHeader className="flex flex-row items-center justify-between gap-2">
-                          {editingCategoryId === category.id ? (
-                            <div className="flex w-full items-center gap-2">
-                              <Input
-                                aria-label={t(
-                                  "categories.aria.editCategory",
-                                  "Edit category {{name}}",
-                                  { name: category.categoryName },
-                                )}
-                                value={editingCategoryName}
-                                onChange={(event) => setEditingCategoryName(event.target.value)}
-                              />
-                              <Button
-                                aria-label={t(
-                                  "categories.aria.saveCategory",
-                                  "Save category {{name}}",
-                                  { name: category.categoryName },
-                                )}
-                                onClick={() => handleSaveCategoryEdit(category.id)}
-                                size="sm"
-                              >
-                                {t("common.save", "Save")}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setEditingCategoryId(null);
-                                  setEditingCategoryName("");
-                                }}
-                              >
-                                {t("common.cancel", "Cancel")}
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="flex w-full items-center justify-between gap-3">
-                              <div>
-                                <CardTitle className="text-base">{category.categoryName}</CardTitle>
-                                {isGlobal && (
-                                  <p className="text-xs text-muted-foreground">
-                                    {t(
-                                      "categories.globalCategoryReadOnly",
-                                      "Global category (read-only)",
-                                    )}
-                                  </p>
-                                )}
-                              </div>
-                              {!isGlobal && (
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    aria-label={t(
-                                      "categories.aria.editCategory",
-                                      "Edit category {{name}}",
-                                      { name: category.categoryName },
-                                    )}
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleStartCategoryEdit(category)}
-                                  >
-                                    {t("common.edit", "Edit")}
-                                  </Button>
-                                  <Button
-                                    aria-label={t(
-                                      "categories.aria.deleteCategory",
-                                      "Delete category {{name}}",
-                                      { name: category.categoryName },
-                                    )}
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleDeleteCategory(category.id)}
-                                    disabled={deleteCategory.isPending}
-                                  >
-                                    {t("common.delete", "Delete")}
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </CardHeader>
-
-                        <CardContent className="space-y-4">
-                          {errorByCategory[category.id] && (
-                            <p className="text-xs text-destructive">
-                              {errorByCategory[category.id]}
-                            </p>
-                          )}
-
-                          <NewRuleForm
-                            categoryName={category.categoryName}
-                            preview={previewByCategory[category.id] ?? null}
-                            onSubmit={(draft) => handleCreateRule(category.id, draft)}
-                            onPreview={(draft) => handlePreviewRule(category.id, draft)}
-                            isSubmitting={createRule.isPending}
-                          />
-
-                          <div className="space-y-2">
-                            <h3 className="text-sm font-semibold">
-                              {t("categories.existingRules", "Existing Rules")}
-                            </h3>
-                            {categoryRules.length === 0 ? (
-                              <p className="text-sm text-muted-foreground">
-                                {t("categories.noRules", "No rules yet.")}
-                              </p>
-                            ) : (
-                              <ul className="space-y-2">
-                                {categoryRules.map((rule) => (
-                                  <RuleRow
-                                    key={rule.id}
-                                    rule={rule}
-                                    onSave={(draft) => handleSaveRule(rule, draft)}
-                                    onDelete={() => handleDeleteRule(rule.id, category.id)}
-                                    isSaving={pendingRuleSaveId === rule.id}
-                                    isDeleting={pendingRuleDeleteId === rule.id}
-                                  />
-                                ))}
-                              </ul>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </main>
   );
