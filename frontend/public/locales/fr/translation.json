@@ -78,6 +78,11 @@
     "recategorizeNone": "Aucune transaction n'a été modifiée dans la plage sélectionnée.",
     "recategorizeSuccess_one": "{{count}} transaction recatégorisée.",
     "recategorizeSuccess_other": "{{count}} transactions recatégorisées.",
+    "uncategorizeAllBtn": "Tout déplacer vers non catégorisé",
+    "confirmUncategorizeAll": "Supprimer la catégorie de toutes les transactions actuellement assignées à ‘{{name}}’ ? Elles deviendront non catégorisées.",
+    "uncategorizeAllNone": "Aucune transaction n'était assignée à ‘{{name}}’.",
+    "uncategorizeAllSuccess_one": "Catégorie supprimée de {{count}} transaction dans ‘{{name}}’.",
+    "uncategorizeAllSuccess_other": "Catégorie supprimée de {{count}} transactions dans ‘{{name}}’.",
     "errors": {
       "nameRequired": "Le nom de la catégorie est requis.",
       "createFailed": "Échec de la création de la catégorie.",
@@ -89,12 +94,14 @@
       "updateRuleFailed": "Échec de la mise à jour de la règle.",
       "deleteRuleFailed": "Échec de la suppression de la règle.",
       "autoCategorizeFailed": "Échec de l'exécution de la catégorisation automatique.",
-      "recategorizeFailed": "Échec de la recatégorisation de la plage sélectionnée."
+      "recategorizeFailed": "Échec de la recatégorisation de la plage sélectionnée.",
+      "uncategorizeAllFailed": "Échec du déplacement des transactions vers non catégorisé."
     },
     "aria": {
       "editCategory": "Modifier la catégorie {{name}}",
       "saveCategory": "Enregistrer la catégorie {{name}}",
-      "deleteCategory": "Supprimer la catégorie {{name}}"
+      "deleteCategory": "Supprimer la catégorie {{name}}",
+      "uncategorizeAll": "Déplacer toutes les transactions de {{name}} vers non catégorisé"
     }
   },
   "nav": {

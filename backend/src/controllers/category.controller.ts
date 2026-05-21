@@ -87,4 +87,33 @@ export async function categoryRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(204).send(); // 204 No Content
     },
   );
+
+  // POST: Bulk-clear category from every transaction in this personal category.
+  // Restores the post-import "uncategorized" state for those rows (KAN-156).
+  app.post<{ Params: { id: string } }>(
+    "/categories/:id/uncategorize-transactions",
+    {
+      preHandler: requireRole("USER"),
+      schema: {
+        params: {
+          type: "object",
+          properties: { id: { type: "string", format: "uuid" } },
+          required: ["id"],
+        },
+        response: {
+          200: {
+            type: "object",
+            properties: { uncategorized: { type: "integer" } },
+            required: ["uncategorized"],
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const user = getSessionUser(request);
+      const { id } = request.params;
+      const result = await categoryService.uncategorizeAllForCategory(id, user.id);
+      return reply.status(200).send(result);
+    },
+  );
 }
