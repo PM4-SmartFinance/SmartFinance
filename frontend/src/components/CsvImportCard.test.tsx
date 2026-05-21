@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -93,54 +94,6 @@ describe("initial render", () => {
   it("renders the upload button as disabled when no file is selected", () => {
     renderCard();
     expect(screen.getByRole("button", { name: "Upload" })).toBeDisabled();
-  });
-});
-
-// ── Accounts loading ─────────────────────────────────────────────────────────
-
-describe("accounts", () => {
-  it("shows the no-accounts message while accounts are loading", () => {
-    mockGet.mockReturnValue(new Promise(() => {})); // never resolves
-    renderCard();
-    expect(screen.getByText("No accounts found. Create an account first.")).toBeInTheDocument();
-  });
-
-  it("renders the account selector once accounts load", async () => {
-    renderCard();
-    await waitFor(() => expect(screen.getByLabelText("Account")).toBeInTheDocument());
-    await userEvent.click(screen.getByLabelText("Account"));
-    await waitFor(() =>
-      expect(screen.getByRole("option", { name: /Main Account/ })).toBeInTheDocument(),
-    );
-  });
-
-  it("renders all accounts as options", async () => {
-    renderCard();
-    await waitFor(() => expect(screen.getByLabelText("Account")).toBeInTheDocument());
-    await userEvent.click(screen.getByLabelText("Account"));
-    await waitFor(() => {
-      expect(screen.getByRole("option", { name: /Main Account/ })).toBeInTheDocument();
-      expect(screen.getByRole("option", { name: /Savings/ })).toBeInTheDocument();
-    });
-  });
-
-  it("shows an error message when the accounts query fails", async () => {
-    mockGet.mockRejectedValue(new Error("Network error"));
-    renderCard();
-    await waitFor(() =>
-      expect(screen.getByText("Failed to load accounts. Please try again.")).toBeInTheDocument(),
-    );
-    expect(
-      screen.queryByText("No accounts found. Create an account first."),
-    ).not.toBeInTheDocument();
-  });
-
-  it("shows the no-accounts message when the user has no accounts", async () => {
-    mockGet.mockResolvedValue({ accounts: [] });
-    renderCard();
-    await waitFor(() =>
-      expect(screen.getByText("No accounts found. Create an account first.")).toBeInTheDocument(),
-    );
   });
 });
 

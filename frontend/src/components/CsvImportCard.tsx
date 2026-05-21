@@ -43,14 +43,14 @@ export function CsvImportCard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [format, setFormat] = useState<ImportFormat>("neon");
-  const [accountId, setAccountId] = useState<string>("");
+  const [accountId] = useState<string>("");
   const [isDragOver, setIsDragOver] = useState(false);
   const [typeError, setTypeError] = useState<string | null>(null);
   const [result, setResult] = useState<UploadResult | null>(null);
   const [refreshHint, setRefreshHint] = useState(false);
   const { t } = useTranslation();
 
-  const { data: accountsData, isError: isAccountsError } = useQuery({
+  const { data: accountsData } = useQuery({
     queryKey: ["accounts"],
     queryFn: () => api.get<{ accounts: Account[] }>("/accounts"),
   });
@@ -297,40 +297,6 @@ export function CsvImportCard() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="csv-account" className="text-xs text-muted-foreground">
-                  {t("components.csvImportCard.accountLabel", "Account")}
-                </Label>
-                {isAccountsError ? (
-                  <p role="alert" className="py-1.5 text-sm text-destructive">
-                    {t(
-                      "components.csvImportCard.errors.accountsError",
-                      "Failed to load accounts. Please try again.",
-                    )}
-                  </p>
-                ) : accounts.length === 0 ? (
-                  <p className="py-1.5 text-sm text-muted-foreground">
-                    {t(
-                      "components.csvImportCard.errors.noAccounts",
-                      "No accounts found. Create an account first.",
-                    )}
-                  </p>
-                ) : (
-                  <Select value={effectiveAccountId} onValueChange={(v) => setAccountId(v ?? "")}>
-                    <SelectTrigger id="csv-account" className="w-64">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accounts.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.name} — {a.iban}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
               </div>
             </div>
 
