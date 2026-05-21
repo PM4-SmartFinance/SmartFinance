@@ -1,0 +1,8 @@
+Generated at: 2026-05-21T18:21:14+02:00
+Repository root: /Users/thomastopuz/zhaw/SmartFinance
+Branch: feature/KAN-149-Add-nightly-end-to-end-test-suite
+Commit: 81e8f0f
+Bun: 1.3.10
+Docker Server: 29.4.2
+Docker Client: 29.4.2
+Docker Compose: 5.1.3

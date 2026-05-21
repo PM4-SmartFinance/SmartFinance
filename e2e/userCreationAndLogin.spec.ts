@@ -1,0 +1,30 @@
+import { test, expect } from "@playwright/test";
+
+test("test", async ({ page }) => {
+  await page.goto("http://localhost:5173/login");
+  await page.getByRole("textbox", { name: "Email" }).click();
+  await page.getByRole("textbox", { name: "Email" }).fill("dev@smartfinance.local");
+  await page.getByRole("textbox", { name: "Password" }).click();
+  await page.getByRole("textbox", { name: "Password" }).fill("password123");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("link", { name: "Settings" }).click();
+  await page.getByRole("link", { name: "User Management" }).click();
+  await page.getByRole("button", { name: "Create User" }).click();
+  await page.getByRole("textbox", { name: "Email" }).click();
+  await page.getByRole("textbox", { name: "Email" }).fill("test@test.ch");
+  await page.getByRole("textbox", { name: "Email" }).press("Tab");
+  await page.getByRole("textbox", { name: "Password" }).fill("test@test.ch");
+  await page.getByRole("textbox", { name: "Password" }).press("Tab");
+  await page.getByRole("textbox", { name: "Display Name" }).fill("Test User");
+  await page.getByRole("textbox", { name: "Display Name" }).press("Tab");
+  await page.getByRole("dialog").getByRole("button", { name: "Create User" }).click();
+  await page.getByRole("link", { name: "Back to Dashboard" }).click();
+  await page.getByRole("button", { name: "User menu" }).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  await page.getByRole("textbox", { name: "Email" }).click();
+  await page.getByRole("textbox", { name: "Email" }).fill("test@test.ch");
+  await page.getByRole("textbox", { name: "Email" }).press("Tab");
+  await page.getByRole("textbox", { name: "Password" }).fill("test@test.ch");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByText("Welcome back, Test User")).toBeVisible();
+});

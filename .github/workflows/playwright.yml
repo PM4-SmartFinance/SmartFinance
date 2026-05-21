@@ -1,0 +1,120 @@
+name: E2E Nightly (Playwright)
+
+on:
+  schedule:
+    # Nightly at 03:00 UTC — runs after the CD deploy at 02:00 UTC so the
+    # test environment is freshly built before we exercise it.
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+  # Self-validate: run on PRs that touch the e2e suite itself so we never
+  # merge a broken nightly. Other PRs are unaffected.
+  pull_request:
+    paths:
+      - ".github/workflows/playwright.yml"
+      - "playwright.config.ts"
+      - "e2e/**"
+      - "backend/prisma/seed.ts"
+      - "backend/prisma/migrations/**"
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: Playwright E2E (fresh DB, seeded)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: smartfinance_e2e
+          POSTGRES_USER: smartfinance
+          POSTGRES_PASSWORD: smartfinance
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U smartfinance"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://smartfinance:smartfinance@localhost:5432/smartfinance_e2e
+      SESSION_SECRET: nightly_e2e_session_secret_at_least_32_chars
+      NODE_ENV: development
+      HOST: 127.0.0.1
+      PORT: "3000"
+      CI: "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Scheduled runs always test the latest develop. PR / manual dispatch
+          # runs test the ref that triggered them, so the workflow can be
+          # validated before merging.
+          ref: ${{ github.event_name == 'schedule' && 'develop' || github.ref }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.11"
+
+      - name: Cache Bun download cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-cache-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-cache-${{ runner.os }}-
+
+      - name: Install dependencies
+        env:
+          HUSKY: "0"
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: bun --bun run prisma generate
+        working-directory: backend
+
+      - name: Apply migrations to fresh database
+        run: bun --bun run prisma migrate deploy
+        working-directory: backend
+
+      - name: Seed database
+        run: bun prisma/seed.ts
+        working-directory: backend
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      - name: Install Playwright browsers
+        run: bunx playwright install --with-deps
+
+      - name: Run Playwright tests
+        # Playwright's webServer config (see playwright.config.ts) starts the
+        # backend on :3000 and the Vite dev server on :5173 before tests run.
+        run: bunx playwright test
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+
+      - name: Upload Playwright traces
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 14

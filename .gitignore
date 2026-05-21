@@ -50,3 +50,10 @@ CLAUDE.local.md
 .claude/settings.local.json
 .claude/issues/
 .claude/review/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

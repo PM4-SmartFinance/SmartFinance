@@ -61,6 +61,7 @@ async function main() {
         name: "Local Dev User",
         password: hashedPassword,
         defaultCurrencyId: chf.id,
+        role: "ADMIN",
       },
     });
 
