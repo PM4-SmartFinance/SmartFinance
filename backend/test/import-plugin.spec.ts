@@ -100,10 +100,8 @@ describe("mock-bank plugin — full import flow", () => {
     const res = await app.inject({
       method: "POST",
       url: `/api/v1/transactions/import?accountId=${accountId}&format=mock-bank`,
-      headers: {
-        "content-type": `multipart/form-data; boundary=${BOUNDARY}`,
-        cookie: `session=${sessionCookie}`,
-      },
+      headers: { "content-type": `multipart/form-data; boundary=${BOUNDARY}` },
+      cookies: { session: sessionCookie },
       payload,
     });
 
@@ -132,10 +130,8 @@ describe("mock-bank plugin — full import flow", () => {
     const res = await app.inject({
       method: "POST",
       url: `/api/v1/transactions/import?accountId=${accountId}&format=nonexistent-bank`,
-      headers: {
-        "content-type": `multipart/form-data; boundary=${BOUNDARY}`,
-        cookie: `session=${sessionCookie}`,
-      },
+      headers: { "content-type": `multipart/form-data; boundary=${BOUNDARY}` },
+      cookies: { session: sessionCookie },
       payload,
     });
 
@@ -149,10 +145,8 @@ describe("mock-bank plugin — full import flow", () => {
     const res = await app.inject({
       method: "POST",
       url: `/api/v1/transactions/import?accountId=${accountId}&format=mock-bank`,
-      headers: {
-        "content-type": `multipart/form-data; boundary=${BOUNDARY}`,
-        cookie: `session=${sessionCookie}`,
-      },
+      headers: { "content-type": `multipart/form-data; boundary=${BOUNDARY}` },
+      cookies: { session: sessionCookie },
       payload,
     });
 

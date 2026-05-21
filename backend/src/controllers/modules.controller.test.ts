@@ -116,7 +116,12 @@ describe("module routes", () => {
 
   describe("GET /api/v1/modules/:moduleId/status", () => {
     it("returns 200 with module status when admin requests it", async () => {
-      sessionUser = { id: "user-1", role: "ADMIN", email: "admin@example.com" };
+      sessionUser = {
+        id: "user-1",
+        role: "ADMIN",
+        email: "admin@example.com",
+        pwdVersion: "1234567890",
+      };
       mockGetModule.mockReturnValue({
         id: "hello-world",
         name: "Hello World",
@@ -147,7 +152,12 @@ describe("module routes", () => {
     });
 
     it("returns 404 when the module does not exist", async () => {
-      sessionUser = { id: "user-1", role: "ADMIN", email: "admin@example.com" };
+      sessionUser = {
+        id: "user-1",
+        role: "ADMIN",
+        email: "admin@example.com",
+        pwdVersion: "1234567890",
+      };
       mockGetModule.mockReturnValue(undefined);
       const response = await app.inject({ method: "GET", url: "/api/v1/modules/unknown/status" });
       expect(response.statusCode).toBe(404);
