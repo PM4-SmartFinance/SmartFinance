@@ -43,7 +43,6 @@ export function CsvImportCard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [format, setFormat] = useState<ImportFormat>("neon");
-  const [accountId] = useState<string>("");
   const [isDragOver, setIsDragOver] = useState(false);
   const [typeError, setTypeError] = useState<string | null>(null);
   const [result, setResult] = useState<UploadResult | null>(null);
@@ -55,11 +54,7 @@ export function CsvImportCard() {
     queryFn: () => api.get<{ accounts: Account[] }>("/accounts"),
   });
   const accounts = accountsData?.accounts ?? [];
-
-  // Derive the active account without writing to state during render.
-  // If the user has made an explicit selection it wins; otherwise fall back to
-  // the first account returned by the query.
-  const effectiveAccountId = accountId || accounts[0]?.id || "";
+  const effectiveAccountId = accounts[0]?.id ?? "";
 
   const {
     mutate: uploadFile,
