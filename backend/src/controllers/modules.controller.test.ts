@@ -93,6 +93,20 @@ describe("module routes", () => {
       expect(response.json()).toEqual({ modules: [] });
     });
 
+    it("strips the error field from module status in the list response", async () => {
+      mockGetAllModules.mockReturnValue([
+        {
+          id: "broken",
+          name: "Broken Module",
+          requiredRole: "USER",
+          status: { initialized: false, error: "init failed: secret/path/info" },
+        },
+      ]);
+      const response = await app.inject({ method: "GET", url: "/api/v1/modules" });
+      expect(response.statusCode).toBe(200);
+      expect(response.json().modules[0].status).toEqual({ initialized: false });
+    });
+
     it("returns 401 when there is no session", async () => {
       sessionUser = undefined;
       const response = await app.inject({ method: "GET", url: "/api/v1/modules" });
@@ -101,7 +115,8 @@ describe("module routes", () => {
   });
 
   describe("GET /api/v1/modules/:moduleId/status", () => {
-    it("returns 200 with module status when module exists", async () => {
+    it("returns 200 with module status when admin requests it", async () => {
+      sessionUser = { id: "user-1", role: "ADMIN", email: "admin@example.com" };
       mockGetModule.mockReturnValue({
         id: "hello-world",
         name: "Hello World",
@@ -122,7 +137,17 @@ describe("module routes", () => {
       });
     });
 
+    it("returns 403 when a non-admin user requests module status", async () => {
+      mockGetModule.mockReturnValue(undefined);
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/modules/hello-world/status",
+      });
+      expect(response.statusCode).toBe(403);
+    });
+
     it("returns 404 when the module does not exist", async () => {
+      sessionUser = { id: "user-1", role: "ADMIN", email: "admin@example.com" };
       mockGetModule.mockReturnValue(undefined);
       const response = await app.inject({ method: "GET", url: "/api/v1/modules/unknown/status" });
       expect(response.statusCode).toBe(404);

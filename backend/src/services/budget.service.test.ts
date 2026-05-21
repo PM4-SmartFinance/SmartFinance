@@ -85,4 +85,9 @@ describe("createBudget lifecycle hook", () => {
       categoryId: "cat-1",
     });
   });
+
+  it("propagates a registry failure — callers must ensure fire* never throws", async () => {
+    vi.mocked(moduleRegistry.fireBudgetCreated).mockRejectedValueOnce(new Error("registry bug"));
+    await expect(createBudget("user-1", "cat-1", "MONTHLY", 500)).rejects.toThrow("registry bug");
+  });
 });

@@ -4,12 +4,18 @@ import * as moduleRegistry from "../services/module-registry.service.js";
 
 export async function moduleRoutes(app: FastifyInstance): Promise<void> {
   app.get("/modules", { preHandler: requireRole("USER") }, async (_request, reply) => {
-    return reply.send({ modules: moduleRegistry.getAllModules() });
+    const modules = moduleRegistry.getAllModules().map(({ id, name, requiredRole, status }) => ({
+      id,
+      name,
+      requiredRole,
+      status: { initialized: status.initialized },
+    }));
+    return reply.send({ modules });
   });
 
   app.get<{ Params: { moduleId: string } }>(
     "/modules/:moduleId/status",
-    { preHandler: requireRole("USER") },
+    { preHandler: requireRole("ADMIN") },
     async (request, reply) => {
       const { moduleId } = request.params;
       const mod = moduleRegistry.getModule(moduleId);

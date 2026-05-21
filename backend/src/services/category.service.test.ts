@@ -33,4 +33,9 @@ describe("createCategory lifecycle hook", () => {
     const result = await createCategory("Food", "user-1");
     expect(result).toEqual({ id: "cat-1", categoryName: "Food", userId: "user-1" });
   });
+
+  it("propagates a registry failure — callers must ensure fire* never throws", async () => {
+    vi.mocked(moduleRegistry.fireCategoryAdded).mockRejectedValueOnce(new Error("registry bug"));
+    await expect(createCategory("Food", "user-1")).rejects.toThrow("registry bug");
+  });
 });
