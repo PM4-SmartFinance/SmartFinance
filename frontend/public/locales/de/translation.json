@@ -354,7 +354,8 @@
         "noAccounts": "Keine Konten gefunden. Erstellen Sie zuerst ein Konto.",
         "accountsError": "Konten konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
         "invalidType": "Nur .csv-Dateien werden akzeptiert.",
-        "uploadFailed": "Hochladen fehlgeschlagen."
+        "uploadFailed": "Hochladen fehlgeschlagen.",
+        "formatsError": "Formate konnten nicht geladen werden. Bitte Seite neu laden."
       }
     },
     "editUserDialog": {

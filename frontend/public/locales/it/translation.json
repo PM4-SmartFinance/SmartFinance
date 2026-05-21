@@ -354,7 +354,8 @@
         "noAccounts": "Nessun account trovato. Crea prima un account.",
         "accountsError": "Impossibile caricare gli account. Riprova.",
         "invalidType": "Sono accettati solo i file .csv.",
-        "uploadFailed": "Caricamento non riuscito."
+        "uploadFailed": "Caricamento non riuscito.",
+        "formatsError": "Impossibile caricare i formati. Aggiornare la pagina."
       }
     },
     "editUserDialog": {

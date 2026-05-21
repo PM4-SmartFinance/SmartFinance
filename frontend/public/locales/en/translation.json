@@ -354,7 +354,8 @@
         "noAccounts": "No accounts found. Create an account first.",
         "accountsError": "Failed to load accounts. Please try again.",
         "invalidType": "Only .csv files are accepted.",
-        "uploadFailed": "Upload failed."
+        "uploadFailed": "Upload failed.",
+        "formatsError": "Failed to load formats. Please refresh."
       }
     },
     "editUserDialog": {

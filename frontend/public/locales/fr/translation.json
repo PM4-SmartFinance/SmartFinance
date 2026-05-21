@@ -354,7 +354,8 @@
         "noAccounts": "Aucun compte trouvé. Créez d'abord un compte.",
         "accountsError": "Échec du chargement des comptes. Veuillez réessayer.",
         "invalidType": "Seuls les fichiers .csv sont acceptés.",
-        "uploadFailed": "Échec de l'importation."
+        "uploadFailed": "Échec de l'importation.",
+        "formatsError": "Impossible de charger les formats. Veuillez rafraîchir la page."
       }
     },
     "editUserDialog": {

@@ -354,7 +354,8 @@
         "noAccounts": "Nagins contos chattads. Creai l'emprim in conto.",
         "accountsError": "Betg pussaivel da chargiar ils contos. Empruvai anc ina giada.",
         "invalidType": "Sulet datotecas .csv vegnan acceptadas.",
-        "uploadFailed": "La chariga n'è betg reussida."
+        "uploadFailed": "La chariga n'è betg reussida.",
+        "formatsError": "Ils formats n'han betg pudì vegnir chargads. Actualisai la pagina."
       }
     },
     "editUserDialog": {
