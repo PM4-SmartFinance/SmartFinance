@@ -7,11 +7,21 @@ vi.mock("../repositories/transaction.repository.js", () => ({
   bulkImport: vi.fn(),
 }));
 
+vi.mock("../repositories/account.repository.js", () => ({
+  findAccountsByUser: vi.fn(),
+}));
+
+vi.mock("./importers/account-hint.js", () => ({
+  extractAccountHint: vi.fn(() => null),
+}));
+
 vi.mock("./categorization.service.js", () => ({
   autoCategorize: vi.fn().mockResolvedValue({ categorized: 0 }),
 }));
 
 import * as repo from "../repositories/transaction.repository.js";
+import * as accountRepo from "../repositories/account.repository.js";
+import * as accountHint from "./importers/account-hint.js";
 import * as categorizationService from "./categorization.service.js";
 
 // Spy-able no-op logger that satisfies the ImportLogger interface.
@@ -21,11 +31,15 @@ const NEON_HEADER = `"Date";"Amount";"Original amount";"Original currency";"Exch
 const NEON_ROW = `"2025-01-15";"42.00";"";"";"";"Grocery Store";"ref";"uncategorized";"";"no";"no"`;
 
 const mockRepo = vi.mocked(repo);
+const mockAccountRepo = vi.mocked(accountRepo);
+const mockHint = vi.mocked(accountHint);
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockRepo.findAccountByIdAndUser.mockResolvedValue({ id: "acc-1" } as never);
   mockRepo.bulkImport.mockImplementation((parsed: unknown[]) => Promise.resolve(parsed.length));
+  mockAccountRepo.findAccountsByUser.mockResolvedValue([]);
+  mockHint.extractAccountHint.mockReturnValue(null);
   vi.mocked(categorizationService.autoCategorize).mockResolvedValue({ categorized: 0 });
 });
 
@@ -170,6 +184,95 @@ describe("importTransactions", () => {
     });
 
     expect(result).toEqual({ imported: 1, categorized: 0 });
+  });
+
+  it("falls back to the user's single account when no accountId is provided", async () => {
+    mockAccountRepo.findAccountsByUser.mockResolvedValue([
+      { id: "acc-only", name: "Main", iban: "CH00 0000" },
+    ]);
+    const csv = [NEON_HEADER, NEON_ROW].join("\n");
+
+    const result = await importTransactions({
+      csvText: csv,
+      format: "neon",
+      userId: "user-1",
+      logger,
+    });
+
+    expect(result.imported).toBe(1);
+    const [, , accountIdArg] = mockRepo.bulkImport.mock.calls[0]!;
+    expect(accountIdArg).toBe("acc-only");
+    expect(mockRepo.findAccountByIdAndUser).not.toHaveBeenCalled();
+  });
+
+  it("throws 409 NO_MATCH with empty candidates when the user has no accounts", async () => {
+    mockAccountRepo.findAccountsByUser.mockResolvedValue([]);
+
+    await expect(
+      importTransactions({
+        csvText: [NEON_HEADER, NEON_ROW].join("\n"),
+        format: "neon",
+        userId: "user-1",
+        logger,
+      }),
+    ).rejects.toMatchObject({
+      name: "ServiceError",
+      statusCode: 409,
+      details: { code: "NO_MATCH", candidates: [] },
+    });
+    expect(mockRepo.bulkImport).not.toHaveBeenCalled();
+  });
+
+  it("throws 409 AMBIGUOUS_ACCOUNT with candidates when the user has multiple accounts", async () => {
+    const candidates = [
+      { id: "acc-1", name: "Main", iban: "CH00 0001" },
+      { id: "acc-2", name: "Savings", iban: "CH00 0002" },
+    ];
+    mockAccountRepo.findAccountsByUser.mockResolvedValue(candidates);
+
+    await expect(
+      importTransactions({
+        csvText: [NEON_HEADER, NEON_ROW].join("\n"),
+        format: "neon",
+        userId: "user-1",
+        logger,
+      }),
+    ).rejects.toMatchObject({
+      name: "ServiceError",
+      statusCode: 409,
+      details: { code: "AMBIGUOUS_ACCOUNT", candidates },
+    });
+    expect(mockRepo.bulkImport).not.toHaveBeenCalled();
+  });
+
+  it("invokes extractAccountHint once with (csvText, format) when accountId is absent", async () => {
+    mockAccountRepo.findAccountsByUser.mockResolvedValue([
+      { id: "acc-only", name: "Main", iban: "CH00 0000" },
+    ]);
+    const csv = [NEON_HEADER, NEON_ROW].join("\n");
+
+    await importTransactions({
+      csvText: csv,
+      format: "neon",
+      userId: "user-1",
+      logger,
+    });
+
+    expect(mockHint.extractAccountHint).toHaveBeenCalledExactlyOnceWith(csv, "neon");
+  });
+
+  it("does not call extractAccountHint when an accountId is explicitly provided", async () => {
+    const csv = [NEON_HEADER, NEON_ROW].join("\n");
+
+    await importTransactions({
+      csvText: csv,
+      format: "neon",
+      accountId: "acc-1",
+      userId: "user-1",
+      logger,
+    });
+
+    expect(mockHint.extractAccountHint).not.toHaveBeenCalled();
   });
 
   it("works correctly for the ubs format", async () => {

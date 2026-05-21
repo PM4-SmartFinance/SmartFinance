@@ -343,7 +343,12 @@
       "dropZoneAria": "Zone de dépôt de fichiers",
       "dropZoneSubtext": "Fichiers .csv uniquement · max 10 Mo",
       "formatLabel": "Format bancaire",
-      "accountLabel": "Compte",
+      "chooseAccountTitle": "Plusieurs comptes disponibles",
+      "chooseAccountHelp": "Choisissez le compte auquel ce CSV appartient et continuez.",
+      "chooseAccountPlaceholder": "Sélectionner un compte",
+      "chooseAccountAriaLabel": "Choisir le compte d'import",
+      "continueBtn": "Continuer",
+      "noAccountsTitle": "Aucun compte configuré. Créez un compte avant d'importer.",
       "uploadBtn": "Importer",
       "uploading": "Importation…",
       "resultSuccess_one": "{{count}} transaction importée avec succès.",
@@ -353,8 +358,6 @@
       "refreshHint": "Importé, mais le tableau de bord peut nécessiter une actualisation manuelle.",
       "errors": {
         "fileTooLarge": "Le fichier dépasse la limite de taille de 10 Mo.",
-        "noAccounts": "Aucun compte trouvé. Créez d'abord un compte.",
-        "accountsError": "Échec du chargement des comptes. Veuillez réessayer.",
         "invalidType": "Seuls les fichiers .csv sont acceptés.",
         "uploadFailed": "Échec de l'importation."
       }

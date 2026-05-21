@@ -1,10 +1,12 @@
 export class ServiceError extends Error {
   statusCode: number;
+  details?: Record<string, unknown> | undefined;
 
-  constructor(statusCode: number, message: string) {
+  constructor(statusCode: number, message: string, details?: Record<string, unknown> | undefined) {
     super(message);
     this.name = "ServiceError";
     this.statusCode = statusCode;
+    this.details = details;
   }
 }
 
