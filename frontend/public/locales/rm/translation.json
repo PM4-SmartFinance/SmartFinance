@@ -73,6 +73,11 @@
     "recategorizeNone": "Naginas transacziuns èn vegnidas midadas en l'interval tschernì.",
     "recategorizeSuccess_one": "Recategorisà {{count}} transacziun.",
     "recategorizeSuccess_other": "Recategorisà {{count}} transacziuns.",
+    "uncategorizeAllBtn": "Spustar tut a betg categorisà",
+    "confirmUncategorizeAll": "Allontanar la categoria da tut las transacziuns actualmain attribuidas a ‘{{name}}’? Vegnan betg categorisadas.",
+    "uncategorizeAllNone": "Naginas transacziuns èn vegnidas attribuidas a ‘{{name}}’.",
+    "uncategorizeAllSuccess_one": "Allontanà la categoria da {{count}} transacziun en ‘{{name}}’.",
+    "uncategorizeAllSuccess_other": "Allontanà la categoria da {{count}} transacziuns en ‘{{name}}’.",
     "errors": {
       "nameRequired": "Il num da la categoria è necessari.",
       "createFailed": "Betg pussaivel da crear la categoria.",
@@ -84,12 +89,14 @@
       "updateRuleFailed": "Betg pussaivel d'actualisar la regla.",
       "deleteRuleFailed": "Betg pussaivel da stizzar la regla.",
       "autoCategorizeFailed": "Betg pussaivel d'exequir la categorisaziun automatica.",
-      "recategorizeFailed": "Betg pussaivel da recategorisar l'interval tschernì."
+      "recategorizeFailed": "Betg pussaivel da recategorisar l'interval tschernì.",
+      "uncategorizeAllFailed": "Betg pussaivel da spustar las transacziuns a betg categorisà."
     },
     "aria": {
       "editCategory": "Elavurar la categoria {{name}}",
       "saveCategory": "Memorisar la categoria {{name}}",
-      "deleteCategory": "Stizzar la categoria {{name}}"
+      "deleteCategory": "Stizzar la categoria {{name}}",
+      "uncategorizeAll": "Spustar tut las transacziuns en {{name}} a betg categorisà"
     }
   },
   "nav": {

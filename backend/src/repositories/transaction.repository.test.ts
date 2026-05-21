@@ -23,6 +23,7 @@ import {
   updateById,
   deleteById,
   findPreviewMatchesForUser,
+  clearCategoryAssignments,
 } from "./transaction.repository.js";
 import { prisma } from "../prisma.js";
 import { ServiceError } from "../errors.js";
@@ -430,6 +431,15 @@ describe("updateById", () => {
     expect(crudTx.factTransactions.update).toHaveBeenCalledOnce();
   });
 
+  it("skips category validation when categoryId is explicitly null (clearing)", async () => {
+    // KAN-156: null means "clear the category" — no category to validate.
+    await updateById(TX_ID, USER_ID, { categoryId: null });
+    expect(crudTx.dimCategory.findFirst).not.toHaveBeenCalled();
+    expect(crudTx.factTransactions.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: TX_ID }, data: { categoryId: null } }),
+    );
+  });
+
   it("calls factTransactions.update with the correct where and data", async () => {
     await updateById(TX_ID, USER_ID, { notes: "memo", categoryId: CAT_ID });
     expect(crudTx.factTransactions.update).toHaveBeenCalledWith(
@@ -617,5 +627,29 @@ describe("findPreviewMatchesForUser", () => {
     expect(error).toBeInstanceOf(ServiceError);
     expect(error.statusCode).toBe(400);
     expect(error.message).toMatch(/took too long/i);
+  });
+});
+
+describe("clearCategoryAssignments", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("clears categoryId and resets manualOverride for the user/category pair", async () => {
+    vi.mocked(prisma.factTransactions.updateMany).mockResolvedValue({ count: 7 });
+
+    const count = await clearCategoryAssignments("user-1", "cat-1");
+
+    expect(prisma.factTransactions.updateMany).toHaveBeenCalledExactlyOnceWith({
+      where: { userId: "user-1", categoryId: "cat-1", isDeleted: false },
+      data: { categoryId: null, manualOverride: false },
+    });
+    expect(count).toBe(7);
+  });
+
+  it("returns 0 when no transactions matched", async () => {
+    vi.mocked(prisma.factTransactions.updateMany).mockResolvedValue({ count: 0 });
+    const count = await clearCategoryAssignments("user-1", "cat-1");
+    expect(count).toBe(0);
   });
 });

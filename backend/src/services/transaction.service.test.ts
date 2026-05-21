@@ -368,6 +368,31 @@ describe("updateTransaction", () => {
     );
   });
 
+  it("clears categoryId and manualOverride when categoryId: null is provided", async () => {
+    // KAN-156: clearing the category restores the post-import "uncategorized"
+    // state so a subsequent auto-categorize run can re-evaluate the row.
+    await updateTransaction("tx-1", "user-1", { categoryId: null });
+    expect(transactionRepository.updateById).toHaveBeenCalledWith(
+      "tx-1",
+      "user-1",
+      expect.objectContaining({ categoryId: null, manualOverride: false }),
+      false,
+      expect.anything(),
+    );
+  });
+
+  it("records categoryId: null in the audit log when clearing a category", async () => {
+    await updateTransaction("tx-1", "user-1", { categoryId: null, reason: "wrong category" });
+    expect(logEventCritical).toHaveBeenCalledWith(
+      expect.objectContaining({
+        previousValues: expect.objectContaining({ categoryId: "cat-1" }),
+        changedValues: expect.objectContaining({ categoryId: null }),
+        reason: "wrong category",
+      }),
+      expect.anything(),
+    );
+  });
+
   it("calls logEventCritical when changes are made", async () => {
     await updateTransaction("tx-1", "user-1", { notes: "new", reason: "test reason" });
     expect(logEventCritical).toHaveBeenCalledWith(

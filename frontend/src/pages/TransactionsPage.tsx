@@ -97,7 +97,7 @@ export function TransactionsPage() {
     id: string;
     date: string;
     amount: number;
-    categoryId: string;
+    categoryId: string | null;
     notes: string;
     reason: string;
   }) => {

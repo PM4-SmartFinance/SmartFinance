@@ -73,6 +73,11 @@
     "recategorizeNone": "Es wurden keine Transaktionen im ausgewählten Bereich geändert.",
     "recategorizeSuccess_one": "{{count}} Transaktion neu kategorisiert.",
     "recategorizeSuccess_other": "{{count}} Transaktionen neu kategorisiert.",
+    "uncategorizeAllBtn": "Alle als unkategorisiert markieren",
+    "confirmUncategorizeAll": "Die Kategorie von allen Transaktionen entfernen, die derzeit ‘{{name}}’ zugewiesen sind? Sie werden unkategorisiert.",
+    "uncategorizeAllNone": "Keine Transaktionen waren ‘{{name}}’ zugewiesen.",
+    "uncategorizeAllSuccess_one": "Kategorie von {{count}} Transaktion in ‘{{name}}’ entfernt.",
+    "uncategorizeAllSuccess_other": "Kategorie von {{count}} Transaktionen in ‘{{name}}’ entfernt.",
     "errors": {
       "nameRequired": "Kategoriename ist erforderlich.",
       "createFailed": "Kategorie konnte nicht erstellt werden.",
@@ -84,12 +89,14 @@
       "updateRuleFailed": "Regel konnte nicht aktualisiert werden.",
       "deleteRuleFailed": "Regel konnte nicht gelöscht werden.",
       "autoCategorizeFailed": "Automatische Kategorisierung fehlgeschlagen.",
-      "recategorizeFailed": "Neukategorisierung des ausgewählten Bereichs fehlgeschlagen."
+      "recategorizeFailed": "Neukategorisierung des ausgewählten Bereichs fehlgeschlagen.",
+      "uncategorizeAllFailed": "Transaktionen konnten nicht zu unkategorisiert verschoben werden."
     },
     "aria": {
       "editCategory": "Kategorie {{name}} bearbeiten",
       "saveCategory": "Kategorie {{name}} speichern",
-      "deleteCategory": "Kategorie {{name}} löschen"
+      "deleteCategory": "Kategorie {{name}} löschen",
+      "uncategorizeAll": "Alle Transaktionen in {{name}} zu unkategorisiert verschieben"
     }
   },
   "nav": {

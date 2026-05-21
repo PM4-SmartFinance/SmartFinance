@@ -73,6 +73,11 @@
     "recategorizeNone": "No transactions changed in the selected range.",
     "recategorizeSuccess_one": "Recategorized {{count}} transaction.",
     "recategorizeSuccess_other": "Recategorized {{count}} transactions.",
+    "uncategorizeAllBtn": "Move all to uncategorized",
+    "confirmUncategorizeAll": "Remove the category from every transaction currently assigned to ‘{{name}}’? They will become uncategorized.",
+    "uncategorizeAllNone": "No transactions were assigned to ‘{{name}}’.",
+    "uncategorizeAllSuccess_one": "Cleared the category from {{count}} transaction in ‘{{name}}’.",
+    "uncategorizeAllSuccess_other": "Cleared the category from {{count}} transactions in ‘{{name}}’.",
     "errors": {
       "nameRequired": "Category name is required.",
       "createFailed": "Failed to create category.",
@@ -84,12 +89,14 @@
       "updateRuleFailed": "Failed to update rule.",
       "deleteRuleFailed": "Failed to delete rule.",
       "autoCategorizeFailed": "Failed to run auto-categorization.",
-      "recategorizeFailed": "Failed to recategorize the selected range."
+      "recategorizeFailed": "Failed to recategorize the selected range.",
+      "uncategorizeAllFailed": "Failed to uncategorize transactions."
     },
     "aria": {
       "editCategory": "Edit category {{name}}",
       "saveCategory": "Save category {{name}}",
-      "deleteCategory": "Delete category {{name}}"
+      "deleteCategory": "Delete category {{name}}",
+      "uncategorizeAll": "Move all transactions in {{name}} to uncategorized"
     }
   },
   "nav": {
