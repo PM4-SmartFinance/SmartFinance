@@ -288,7 +288,10 @@ export function CsvImportCard() {
                 </Label>
                 {isFormatsError ? (
                   <p role="alert" className="py-1.5 text-sm text-destructive">
-                    {TEXT.formatsError}
+                    {t(
+                      "components.csvImportCard.errors.formatsError",
+                      "Failed to load formats. Please refresh.",
+                    )}
                   </p>
                 ) : (
                   <Select
