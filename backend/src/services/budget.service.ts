@@ -2,6 +2,7 @@ import { Prisma, BudgetType } from "@prisma/client";
 import { ServiceError } from "../errors.js";
 import * as budgetRepository from "../repositories/budget.repository.js";
 import { fireBudgetCreated } from "./module-registry.service.js";
+import { getLogger } from "../logger.js";
 
 export function calculateBudgetStatus(
   currentSpending: Prisma.Decimal,
@@ -89,7 +90,12 @@ export async function createBudget(
     limitAmount,
   });
 
-  await fireBudgetCreated({ userId, budgetId: budget.id, categoryId: budget.categoryId });
+  // Best-effort: budget is already committed; hook failures must not surface as budget errors.
+  try {
+    await fireBudgetCreated({ userId, budgetId: budget.id, categoryId: budget.categoryId });
+  } catch (err) {
+    getLogger().warn({ err, userId, budgetId: budget.id }, "fireBudgetCreated unexpectedly threw");
+  }
 
   return {
     ...budget,

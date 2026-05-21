@@ -251,6 +251,32 @@ describe("savings-goals module", () => {
       expect(item!.detail).toContain("2500.00");
     });
 
+    it("caps progress at 100 when currentAmount exceeds targetAmount", async () => {
+      const createRes = await app.inject({
+        method: "POST",
+        url: "/api/v1/modules/savings-goals/goals",
+        payload: { name: "Overshot Goal", targetAmount: 1000 },
+      });
+      const { goal } = createRes.json<{ goal: { id: string } }>();
+
+      await app.inject({
+        method: "PATCH",
+        url: `/api/v1/modules/savings-goals/goals/${goal.id}`,
+        payload: { currentAmount: 1500 },
+      });
+
+      const widgetRes = await app.inject({
+        method: "GET",
+        url: "/api/v1/modules/savings-goals/goals/widget",
+      });
+      const { items } = widgetRes.json<{
+        items: Array<{ label: string; progress: number }>;
+      }>();
+      const item = items.find((i) => i.label === "Overshot Goal");
+      expect(item).toBeDefined();
+      expect(item!.progress).toBe(100);
+    });
+
     it("returns 401 when unauthenticated", async () => {
       sessionUser = undefined;
       const response = await app.inject({
@@ -400,6 +426,84 @@ describe("savings-goals module", () => {
         url: "/api/v1/modules/savings-goals/goals/some-id",
       });
       expect(response.statusCode).toBe(401);
+    });
+  });
+
+  describe("cross-user data isolation", () => {
+    it("user-2 cannot see goals created by user-1", async () => {
+      sessionUser = {
+        id: "user-1",
+        role: "USER",
+        email: "u1@example.com",
+        pwdVersion: "1234567890",
+      };
+      await app.inject({
+        method: "POST",
+        url: "/api/v1/modules/savings-goals/goals",
+        payload: { name: "User1 Goal", targetAmount: 1000 },
+      });
+
+      sessionUser = {
+        id: "user-2",
+        role: "USER",
+        email: "u2@example.com",
+        pwdVersion: "1234567890",
+      };
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/modules/savings-goals/goals",
+      });
+      expect(response.statusCode).toBe(200);
+      const { goals } = response.json<{ goals: Array<{ name: string }> }>();
+      expect(goals.find((g) => g.name === "User1 Goal")).toBeUndefined();
+    });
+
+    it("user-2 goals are stored independently of user-1 goals", async () => {
+      sessionUser = {
+        id: "user-1",
+        role: "USER",
+        email: "u1@example.com",
+        pwdVersion: "1234567890",
+      };
+      await app.inject({
+        method: "POST",
+        url: "/api/v1/modules/savings-goals/goals",
+        payload: { name: "User1 Exclusive", targetAmount: 500 },
+      });
+
+      sessionUser = {
+        id: "user-2",
+        role: "USER",
+        email: "u2@example.com",
+        pwdVersion: "1234567890",
+      };
+      await app.inject({
+        method: "POST",
+        url: "/api/v1/modules/savings-goals/goals",
+        payload: { name: "User2 Exclusive", targetAmount: 800 },
+      });
+
+      const u2Res = await app.inject({
+        method: "GET",
+        url: "/api/v1/modules/savings-goals/goals",
+      });
+      const { goals: u2Goals } = u2Res.json<{ goals: Array<{ name: string }> }>();
+      expect(u2Goals.some((g) => g.name === "User2 Exclusive")).toBe(true);
+      expect(u2Goals.some((g) => g.name === "User1 Exclusive")).toBe(false);
+
+      sessionUser = {
+        id: "user-1",
+        role: "USER",
+        email: "u1@example.com",
+        pwdVersion: "1234567890",
+      };
+      const u1Res = await app.inject({
+        method: "GET",
+        url: "/api/v1/modules/savings-goals/goals",
+      });
+      const { goals: u1Goals } = u1Res.json<{ goals: Array<{ name: string }> }>();
+      expect(u1Goals.some((g) => g.name === "User1 Exclusive")).toBe(true);
+      expect(u1Goals.some((g) => g.name === "User2 Exclusive")).toBe(false);
     });
   });
 

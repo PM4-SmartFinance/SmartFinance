@@ -2,6 +2,8 @@ import { Prisma } from "@prisma/client";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { calculateBudgetStatus, createBudget } from "./budget.service.js";
 
+const mockLogger = { warn: vi.fn(), error: vi.fn() };
+
 vi.mock("../repositories/budget.repository.js", () => ({
   findCategoryForUser: vi.fn().mockResolvedValue({ id: "cat-1" }),
   create: vi.fn().mockResolvedValue({
@@ -21,6 +23,10 @@ vi.mock("../repositories/budget.repository.js", () => ({
 
 vi.mock("./module-registry.service.js", () => ({
   fireBudgetCreated: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("../logger.js", () => ({
+  getLogger: vi.fn(() => mockLogger),
 }));
 
 import * as moduleRegistry from "./module-registry.service.js";
@@ -86,8 +92,13 @@ describe("createBudget lifecycle hook", () => {
     });
   });
 
-  it("propagates a registry failure — callers must ensure fire* never throws", async () => {
-    vi.mocked(moduleRegistry.fireBudgetCreated).mockRejectedValueOnce(new Error("registry bug"));
-    await expect(createBudget("user-1", "cat-1", "MONTHLY", 500)).rejects.toThrow("registry bug");
+  it("swallows a registry failure and logs a warning", async () => {
+    const err = new Error("registry bug");
+    vi.mocked(moduleRegistry.fireBudgetCreated).mockRejectedValueOnce(err);
+    await expect(createBudget("user-1", "cat-1", "MONTHLY", 500)).resolves.toBeDefined();
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ err }),
+      "fireBudgetCreated unexpectedly threw",
+    );
   });
 });

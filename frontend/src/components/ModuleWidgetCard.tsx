@@ -24,7 +24,7 @@ export interface RegisteredWidget {
 
 export function ModuleWidgetCard({ widget }: { widget: RegisteredWidget }) {
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["module-widget", widget.widgetId],
+    queryKey: ["module-widget", widget.moduleId, widget.widgetId],
     queryFn: () => api.get<ModuleWidgetData>(widget.dataEndpoint),
   });
 

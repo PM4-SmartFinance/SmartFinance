@@ -48,7 +48,7 @@ export function CsvImportCard() {
   const [refreshHint, setRefreshHint] = useState(false);
   const { t } = useTranslation();
 
-  const { data: formatsData } = useQuery({
+  const { data: formatsData, isError: isFormatsError } = useQuery({
     queryKey: ["import-formats"],
     queryFn: () => api.get<ImportFormatsResponse>("/transactions/import/formats"),
   });
@@ -286,23 +286,29 @@ export function CsvImportCard() {
                 <Label htmlFor="csv-format" className="text-xs text-muted-foreground">
                   {t("components.csvImportCard.formatLabel", "Bank format")}
                 </Label>
-                <Select
-                  value={effectiveFormat}
-                  onValueChange={(v) => {
-                    if (formats.some((f) => f.value === v)) setFormat(v);
-                  }}
-                >
-                  <SelectTrigger id="csv-format" className="w-40">
-                    <SelectValue placeholder="Select format" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {formats.map((f) => (
-                      <SelectItem key={f.value} value={f.value}>
-                        {f.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {isFormatsError ? (
+                  <p role="alert" className="py-1.5 text-sm text-destructive">
+                    {TEXT.formatsError}
+                  </p>
+                ) : (
+                  <Select
+                    value={effectiveFormat}
+                    onValueChange={(v) => {
+                      if (formats.some((f) => f.value === v)) setFormat(v);
+                    }}
+                  >
+                    <SelectTrigger id="csv-format" className="w-40">
+                      <SelectValue placeholder="Select format" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {formats.map((f) => (
+                        <SelectItem key={f.value} value={f.value}>
+                          {f.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               <div className="flex flex-col gap-1.5">

@@ -1,12 +1,18 @@
 import { prisma } from "../prisma.js";
+import { ServiceError } from "../errors.js";
+import { getLogger } from "../logger.js";
 import type { ModuleStorageAdapter } from "../types/module.js";
 
 const MAX_VALUE_BYTES = 65_536;
 
-function safeParseJson(raw: string): unknown {
+function safeParseJson(
+  raw: string,
+  context: { moduleName: string; userId: string; key: string },
+): unknown {
   try {
     return JSON.parse(raw) as unknown;
-  } catch {
+  } catch (err) {
+    getLogger().error({ err, ...context }, "module-storage: corrupt JSON value, returning null");
     return null;
   }
 }
@@ -16,7 +22,7 @@ export async function getData(moduleName: string, userId: string, key: string): 
     where: { moduleName_userId_key: { moduleName, userId, key } },
     select: { value: true },
   });
-  return row ? safeParseJson(row.value) : null;
+  return row ? safeParseJson(row.value, { moduleName, userId, key }) : null;
 }
 
 export async function setData(
@@ -27,7 +33,10 @@ export async function setData(
 ): Promise<void> {
   const serialized = JSON.stringify(value);
   if (Buffer.byteLength(serialized, "utf8") > MAX_VALUE_BYTES) {
-    throw new Error(`module storage value exceeds maximum size of ${MAX_VALUE_BYTES} bytes`);
+    throw new ServiceError(
+      413,
+      `module storage value exceeds maximum size of ${MAX_VALUE_BYTES} bytes`,
+    );
   }
   await prisma.moduleData.upsert({
     where: { moduleName_userId_key: { moduleName, userId, key } },
@@ -49,7 +58,10 @@ export async function listData(
     select: { key: true, value: true },
     orderBy: { key: "asc" },
   });
-  return rows.map((r) => ({ key: r.key, value: safeParseJson(r.value) }));
+  return rows.map((r) => ({
+    key: r.key,
+    value: safeParseJson(r.value, { moduleName, userId, key: r.key }),
+  }));
 }
 
 export function createStorageAdapter(moduleName: string): ModuleStorageAdapter {

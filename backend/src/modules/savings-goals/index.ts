@@ -85,7 +85,20 @@ function createSavingsGoalsModule(): SmartFinanceModule {
 
         app.post<{ Body: { name: string; targetAmount: number } }>(
           "/goals",
-          { preHandler: requireRole("USER") },
+          {
+            preHandler: requireRole("USER"),
+            schema: {
+              body: {
+                type: "object",
+                required: ["name", "targetAmount"],
+                properties: {
+                  name: { type: "string", minLength: 1, maxLength: 200 },
+                  targetAmount: { type: "number", exclusiveMinimum: 0 },
+                },
+                additionalProperties: false,
+              },
+            },
+          },
           async (request, reply) => {
             const user = getSessionUser(request);
             const { name, targetAmount } = request.body;
@@ -111,37 +124,57 @@ function createSavingsGoalsModule(): SmartFinanceModule {
         app.patch<{
           Params: { goalId: string };
           Body: { name?: string; targetAmount?: number; currentAmount?: number };
-        }>("/goals/:goalId", { preHandler: requireRole("USER") }, async (request, reply) => {
-          const user = getSessionUser(request);
-          const { goalId } = request.params;
-          const goals = await loadGoals(storage, user.id);
-          const idx = goals.findIndex((g) => g.id === goalId);
-          if (idx === -1) throw new ServiceError(404, "Goal not found");
-          const goal = goals[idx]!;
+        }>(
+          "/goals/:goalId",
+          {
+            preHandler: requireRole("USER"),
+            schema: {
+              body: {
+                type: "object",
+                properties: {
+                  name: { type: "string", minLength: 1, maxLength: 200 },
+                  targetAmount: { type: "number", exclusiveMinimum: 0 },
+                  currentAmount: { type: "number", minimum: 0 },
+                },
+                additionalProperties: false,
+              },
+            },
+          },
+          async (request, reply) => {
+            const user = getSessionUser(request);
+            const { goalId } = request.params;
+            const goals = await loadGoals(storage, user.id);
+            const idx = goals.findIndex((g) => g.id === goalId);
+            if (idx === -1) throw new ServiceError(404, "Goal not found");
+            const goal = goals[idx]!;
 
-          if (request.body.name !== undefined) {
-            if (typeof request.body.name !== "string" || request.body.name.trim() === "") {
-              throw new ServiceError(400, "Goal name must be a non-empty string");
+            if (request.body.name !== undefined) {
+              if (typeof request.body.name !== "string" || request.body.name.trim() === "") {
+                throw new ServiceError(400, "Goal name must be a non-empty string");
+              }
+              goal.name = request.body.name.trim();
             }
-            goal.name = request.body.name.trim();
-          }
-          if (request.body.targetAmount !== undefined) {
-            if (typeof request.body.targetAmount !== "number" || request.body.targetAmount <= 0) {
-              throw new ServiceError(400, "Target amount must be a positive number");
+            if (request.body.targetAmount !== undefined) {
+              if (typeof request.body.targetAmount !== "number" || request.body.targetAmount <= 0) {
+                throw new ServiceError(400, "Target amount must be a positive number");
+              }
+              goal.targetAmount = request.body.targetAmount;
             }
-            goal.targetAmount = request.body.targetAmount;
-          }
-          if (request.body.currentAmount !== undefined) {
-            if (typeof request.body.currentAmount !== "number" || request.body.currentAmount < 0) {
-              throw new ServiceError(400, "Current amount must be a non-negative number");
+            if (request.body.currentAmount !== undefined) {
+              if (
+                typeof request.body.currentAmount !== "number" ||
+                request.body.currentAmount < 0
+              ) {
+                throw new ServiceError(400, "Current amount must be a non-negative number");
+              }
+              goal.currentAmount = request.body.currentAmount;
             }
-            goal.currentAmount = request.body.currentAmount;
-          }
 
-          goals[idx] = goal;
-          await persistGoals(storage, user.id, goals);
-          return reply.send({ goal });
-        });
+            goals[idx] = goal;
+            await persistGoals(storage, user.id, goals);
+            return reply.send({ goal });
+          },
+        );
 
         app.delete<{ Params: { goalId: string } }>(
           "/goals/:goalId",
@@ -159,7 +192,7 @@ function createSavingsGoalsModule(): SmartFinanceModule {
 
         initialized = true;
       } catch (err) {
-        initError = String(err);
+        initError = err instanceof Error ? (err.stack ?? err.message) : String(err);
         throw err;
       }
     },
@@ -171,7 +204,8 @@ function createSavingsGoalsModule(): SmartFinanceModule {
     },
 
     async onTransactionImported(event: TransactionImportedEvent): Promise<void> {
-      moduleLogger?.info(
+      if (!moduleLogger) throw new Error("savings-goals: onTransactionImported called before init");
+      moduleLogger.info(
         { moduleId: "savings-goals", userId: event.userId, imported: event.imported },
         "savings-goals: transaction import event received",
       );

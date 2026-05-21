@@ -20,7 +20,7 @@ function createMockBankModule(): SmartFinanceModule {
         });
         initialized = true;
       } catch (err) {
-        initError = String(err);
+        initError = err instanceof Error ? (err.stack ?? err.message) : String(err);
         throw err;
       }
     },

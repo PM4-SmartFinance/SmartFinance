@@ -10,6 +10,12 @@ import { getLogger } from "../logger.js";
 const modules = new Map<string, SmartFinanceModule>();
 
 export function registerModule(mod: SmartFinanceModule): void {
+  if (modules.has(mod.id)) {
+    getLogger().error(
+      { moduleId: mod.id },
+      "module registration conflict — duplicate id, overwriting",
+    );
+  }
   modules.set(mod.id, mod);
 }
 

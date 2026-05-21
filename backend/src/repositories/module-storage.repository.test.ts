@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+const mockLogger = { error: vi.fn() };
+
 vi.mock("../prisma.js", () => ({
   prisma: {
     moduleData: {
@@ -9,6 +11,10 @@ vi.mock("../prisma.js", () => ({
       findMany: vi.fn(),
     },
   },
+}));
+
+vi.mock("../logger.js", () => ({
+  getLogger: vi.fn(() => mockLogger),
 }));
 
 import {
@@ -27,6 +33,16 @@ beforeEach(() => {
 });
 
 describe("getData", () => {
+  it("returns null and logs an error when the stored value is corrupt JSON", async () => {
+    mockModuleData.findUnique.mockResolvedValue({ value: "not-valid-json{" } as never);
+    const result = await getData("my-mod", "user-1", "my-key");
+    expect(result).toBeNull();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ moduleName: "my-mod", userId: "user-1", key: "my-key" }),
+      "module-storage: corrupt JSON value, returning null",
+    );
+  });
+
   it("returns the parsed value when the key exists", async () => {
     mockModuleData.findUnique.mockResolvedValue({ value: JSON.stringify({ count: 3 }) } as never);
     const result = await getData("my-mod", "user-1", "my-key");
@@ -45,6 +61,15 @@ describe("getData", () => {
 });
 
 describe("setData", () => {
+  it("throws ServiceError 413 when the serialized value exceeds MAX_VALUE_BYTES", async () => {
+    const huge = "x".repeat(65_537);
+    await expect(setData("my-mod", "user-1", "big-key", huge)).rejects.toMatchObject({
+      name: "ServiceError",
+      statusCode: 413,
+    });
+    expect(mockModuleData.upsert).not.toHaveBeenCalled();
+  });
+
   it("upserts with JSON-serialized value", async () => {
     mockModuleData.upsert.mockResolvedValue(undefined as never);
     await setData("my-mod", "user-1", "my-key", { score: 42 });
@@ -95,6 +120,22 @@ describe("listData", () => {
     mockModuleData.findMany.mockResolvedValue([]);
     const result = await listData("my-mod", "user-1");
     expect(result).toEqual([]);
+  });
+
+  it("returns null for a corrupt JSON entry and logs an error", async () => {
+    mockModuleData.findMany.mockResolvedValue([
+      { key: "good", value: JSON.stringify(1) },
+      { key: "bad", value: "{broken" },
+    ] as never);
+    const result = await listData("my-mod", "user-1");
+    expect(result).toEqual([
+      { key: "good", value: 1 },
+      { key: "bad", value: null },
+    ]);
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ moduleName: "my-mod", userId: "user-1", key: "bad" }),
+      "module-storage: corrupt JSON value, returning null",
+    );
   });
 });
 

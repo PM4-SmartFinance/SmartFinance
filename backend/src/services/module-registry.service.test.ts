@@ -43,6 +43,18 @@ describe("registerModule / getModule", () => {
   it("returns undefined for an unregistered module id", () => {
     expect(getModule("does-not-exist")).toBeUndefined();
   });
+
+  it("logs an error and overwrites when registering a duplicate module id", () => {
+    const mod1 = makeModule({ name: "Original" });
+    const mod2 = makeModule({ name: "Duplicate" });
+    registerModule(mod1);
+    registerModule(mod2);
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      { moduleId: "test-mod" },
+      "module registration conflict — duplicate id, overwriting",
+    );
+    expect(getModule("test-mod")).toBe(mod2);
+  });
 });
 
 describe("getAllModules", () => {

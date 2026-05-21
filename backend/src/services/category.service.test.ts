@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+const mockLogger = { warn: vi.fn(), error: vi.fn() };
+
 vi.mock("../repositories/category.repository.js", () => ({
   create: vi.fn().mockResolvedValue({ id: "cat-1", categoryName: "Food", userId: "user-1" }),
   findAllForUser: vi.fn(),
@@ -9,6 +11,10 @@ vi.mock("../repositories/category.repository.js", () => ({
 
 vi.mock("./module-registry.service.js", () => ({
   fireCategoryAdded: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("../logger.js", () => ({
+  getLogger: vi.fn(() => mockLogger),
 }));
 
 import { createCategory } from "./category.service.js";
@@ -34,8 +40,13 @@ describe("createCategory lifecycle hook", () => {
     expect(result).toEqual({ id: "cat-1", categoryName: "Food", userId: "user-1" });
   });
 
-  it("propagates a registry failure — callers must ensure fire* never throws", async () => {
-    vi.mocked(moduleRegistry.fireCategoryAdded).mockRejectedValueOnce(new Error("registry bug"));
-    await expect(createCategory("Food", "user-1")).rejects.toThrow("registry bug");
+  it("swallows a registry failure and logs a warning", async () => {
+    const err = new Error("registry bug");
+    vi.mocked(moduleRegistry.fireCategoryAdded).mockRejectedValueOnce(err);
+    await expect(createCategory("Food", "user-1")).resolves.toBeDefined();
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ err }),
+      "fireCategoryAdded unexpectedly threw",
+    );
   });
 });

@@ -1,17 +1,9 @@
-import { useParams } from "react-router";
-import { Link } from "react-router";
+import { useParams, Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "../lib/api";
 import { ModuleWidgetCard } from "../components/ModuleWidgetCard";
-import type { RegisteredWidget } from "../components/ModuleWidgetCard";
 import { UserMenu } from "../components/UserMenu";
 import { Skeleton } from "@/components/ui/skeleton";
-
-interface NavItem {
-  moduleId: string;
-  label: string;
-  path: string;
-}
+import { MODULE_NAV_ITEMS_QUERY, MODULE_WIDGETS_QUERY } from "../lib/moduleQueries";
 
 const TEXT = {
   backToDashboard: "Dashboard",
@@ -22,19 +14,9 @@ const TEXT = {
 export function ModulePage() {
   const { moduleId } = useParams<{ moduleId: string }>();
 
-  const { data: navData } = useQuery({
-    queryKey: ["module-nav-items"],
-    queryFn: () => api.get<{ navItems: NavItem[] }>("/modules/nav-items"),
-  });
+  const { data: navData } = useQuery(MODULE_NAV_ITEMS_QUERY);
 
-  const {
-    data: widgetsData,
-    isLoading,
-    isError,
-  } = useQuery({
-    queryKey: ["module-widgets"],
-    queryFn: () => api.get<{ widgets: RegisteredWidget[] }>("/modules/widgets"),
-  });
+  const { data: widgetsData, isLoading, isError } = useQuery(MODULE_WIDGETS_QUERY);
 
   const moduleNavItem = navData?.navItems.find((item) => item.moduleId === moduleId);
   const moduleWidgets = widgetsData?.widgets.filter((w) => w.moduleId === moduleId) ?? [];
@@ -70,7 +52,7 @@ export function ModulePage() {
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
             {moduleWidgets.map((widget) => (
-              <ModuleWidgetCard key={widget.widgetId} widget={widget} />
+              <ModuleWidgetCard key={`${widget.moduleId}:${widget.widgetId}`} widget={widget} />
             ))}
           </div>
         )}
