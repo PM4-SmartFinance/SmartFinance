@@ -2,8 +2,10 @@ name: E2E Nightly (Playwright)
 
 on:
   schedule:
-    # Nightly at 03:00 UTC — runs after the CD deploy at 02:00 UTC so the
-    # test environment is freshly built before we exercise it.
+    # Nightly at 03:00 UTC — the CD `deploy-test` job runs at 02:00 UTC (see
+    # cd.yml:12) so this offset gives that job time to finish before we exercise
+    # the test environment. workflow_run coupling isn't viable because both
+    # workflows are schedule-triggered.
     - cron: "0 3 * * *"
   workflow_dispatch:
   # Self-validate: run on PRs that touch the e2e suite itself so we never
@@ -18,6 +20,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   e2e:
@@ -42,7 +45,9 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://smartfinance:smartfinance@localhost:5432/smartfinance_e2e
-      SESSION_SECRET: nightly_e2e_session_secret_at_least_32_chars
+      # Acceptable as a fallback for the ephemeral CI DB only. For environments
+      # that share state across runs, set repo secret E2E_SESSION_SECRET.
+      SESSION_SECRET: ${{ secrets.E2E_SESSION_SECRET || 'nightly_e2e_session_secret_at_least_32_chars' }}
       NODE_ENV: development
       HOST: 127.0.0.1
       PORT: "3000"
@@ -75,6 +80,12 @@ jobs:
           HUSKY: "0"
         run: bun install --frozen-lockfile
 
+      - name: Resolve Playwright version
+        id: pwver
+        run: |
+          version=$(bunx playwright --version | awk '{print $2}')
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
       - name: Generate Prisma client
         run: bun --bun run prisma generate
         working-directory: backend
@@ -87,16 +98,30 @@ jobs:
         run: bun prisma/seed.ts
         working-directory: backend
 
+      - name: Verify admin seed
+        # Fail fast if the admin user the e2e suite logs in as doesn't exist.
+        run: |
+          bun -e "
+            import { PrismaClient } from '@prisma/client';
+            import { PrismaPg } from '@prisma/adapter-pg';
+            const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+            const p = new PrismaClient({ adapter });
+            const u = await p.dimUser.findUnique({ where: { email: 'dev@smartfinance.local' } });
+            if (!u || u.role !== 'ADMIN') { console.error('seed admin missing or not ADMIN', u); process.exit(1); }
+            await p.\$disconnect();
+          "
+        working-directory: backend
+
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          key: playwright-${{ runner.os }}-${{ steps.pwver.outputs.version }}
           restore-keys: |
             playwright-${{ runner.os }}-
 
       - name: Install Playwright browsers
-        run: bunx playwright install --with-deps
+        run: bunx playwright install --with-deps chromium
 
       - name: Run Playwright tests
         # Playwright's webServer config (see playwright.config.ts) starts the
@@ -118,3 +143,35 @@ jobs:
           name: playwright-traces
           path: test-results/
           retention-days: 14
+
+      - name: Open failure issue
+        if: ${{ failure() && github.event_name == 'schedule' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const today = new Date().toISOString().slice(0, 10);
+            const title = `[nightly e2e] ${today} failed`;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              `Nightly e2e suite failed.`,
+              ``,
+              `**Workflow run:** ${runUrl}`,
+              ``,
+              `Artifacts: \`playwright-report\` + \`playwright-traces\` are attached to the run.`,
+              `Open the report's HTML index to see failing specs and traces.`,
+            ].join("\n");
+            const search = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${context.repo.owner}/${context.repo.repo} is:issue is:open label:e2e-failure in:title "${today}"`,
+            });
+            if (search.data.total_count > 0) {
+              core.info(`Issue for ${today} already open: ${search.data.items[0].html_url}`);
+              return;
+            }
+            const created = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ["e2e-failure"],
+            });
+            core.info(`Opened ${created.data.html_url}`);

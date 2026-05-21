@@ -52,10 +52,13 @@ async function main() {
     });
 
     // 3. Seed user
+    // The seed path bypasses user.repository.ts's first-user bootstrap rule, so we
+    // explicitly set ADMIN here. update is set so existing dev DBs get promoted, not
+    // only fresh ones (otherwise stale local DBs would have a USER-role dev account).
     const hashedPassword = await argon2.hash("password123");
     const user = await prisma.dimUser.upsert({
       where: { email: "dev@smartfinance.local" },
-      update: {},
+      update: { role: "ADMIN" },
       create: {
         email: "dev@smartfinance.local",
         name: "Local Dev User",

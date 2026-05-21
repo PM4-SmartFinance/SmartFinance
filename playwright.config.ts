@@ -4,10 +4,9 @@ const isCI = !!process.env.CI;
 
 // In CI we swap the backend off `tsx watch` because watch mode never exits
 // and doesn't propagate SIGTERM cleanly, leaving the workflow hanging after
-// tests complete. `vite dev` shuts down fine, and we need it (not `preview`)
-// so the `/api` proxy from vite.config.ts stays active.
+// tests complete. backend `start:ci` runs `tsx src/index.ts` (no watch).
 const backendCommand = isCI
-  ? "bunx tsx backend/src/index.ts"
+  ? "bun run --filter @smartfinance/backend start:ci"
   : "bun run --filter @smartfinance/backend dev";
 
 const frontendCommand = "bun run --filter @smartfinance/frontend dev";
@@ -21,20 +20,21 @@ const allBrowsers = [
 ];
 
 export default defineConfig({
-  testDir: "./e2e",
-  fullyParallel: true,
+  testDir: "./e2e/specs",
+  fullyParallel: false,
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
-  workers: isCI ? 1 : undefined,
-  reporter: "html",
+  workers: isCI ? 1 : 1,
+  reporter: isCI ? [["list"], ["html"], ["github"]] : [["list"], ["html"]],
+  globalSetup: "./e2e/global-setup.ts",
+  expect: { timeout: 10_000 },
 
   use: {
     baseURL: "http://localhost:5173",
     trace: "on-first-retry",
+    screenshot: "only-on-failure",
   },
 
-  // Run only chromium in CI to keep the nightly under ~10 minutes; expand to
-  // all browsers locally when you want cross-engine coverage.
   projects: isCI ? chromiumOnly : allBrowsers,
 
   webServer: [

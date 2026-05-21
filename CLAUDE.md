@@ -16,6 +16,7 @@ A self-hosted personal finance management platform for importing, categorizing, 
 ```
 frontend/      # React + TypeScript + Vite
 backend/       # Node.js REST API (controllers, services, repositories)
+e2e/           # Playwright end-to-end tests (specs, helpers, fixtures)
 docker/        # Docker configuration
 wiki/          # Project documentation (separate git repo, not part of main codebase)
 ```
