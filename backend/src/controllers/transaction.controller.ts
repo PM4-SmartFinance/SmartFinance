@@ -7,11 +7,12 @@ import {
   resolveImportEncoding,
   SUPPORTED_FORMATS,
 } from "../services/import.service.js";
-import type { ImportFormat } from "../services/import.service.js";
 import { getImporter, getAllPluginFormats } from "../services/importer-registry.service.js";
 import { decodeCSVBuffer } from "../services/importers/csv.utils.js";
 import type { SortBy, SortOrder } from "../services/transaction.service.js";
 import * as transactionService from "../services/transaction.service.js";
+
+type ImportFormat = (typeof SUPPORTED_FORMATS)[number];
 
 const BUILTIN_FORMAT_LABELS: Record<ImportFormat, string> = {
   neon: "Neon",
