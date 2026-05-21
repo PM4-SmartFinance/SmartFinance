@@ -1,7 +1,7 @@
 import type { SmartFinanceModule, ModuleContext, ModuleStatus } from "../../types/module.js";
 import { parseMockBankCSV } from "./mock-bank.parser.js";
 
-function createMockBankModule(): SmartFinanceModule {
+export function createMockBankModule(): SmartFinanceModule {
   let initialized = false;
   let initError: string | undefined;
 
@@ -20,7 +20,7 @@ function createMockBankModule(): SmartFinanceModule {
         });
         initialized = true;
       } catch (err) {
-        initError = err instanceof Error ? (err.stack ?? err.message) : String(err);
+        initError = err instanceof Error ? err.message : String(err);
         throw err;
       }
     },
@@ -32,5 +32,3 @@ function createMockBankModule(): SmartFinanceModule {
     },
   };
 }
-
-export const mockBankModule = createMockBankModule();

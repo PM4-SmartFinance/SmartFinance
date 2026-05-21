@@ -1,5 +1,5 @@
 import Fastify from "fastify";
-import type { FastifyPluginAsync } from "fastify";
+import type { FastifyInstance, FastifyPluginAsync } from "fastify";
 import secureSession from "@fastify/secure-session";
 import rateLimit from "@fastify/rate-limit";
 import fastifyMetricsModule from "fastify-metrics";
@@ -22,11 +22,59 @@ import { registerImporter, clearImporterRegistry } from "./services/importer-reg
 import { registerNavItem, clearNavItemRegistry } from "./services/nav-item-registry.service.js";
 import { registerWidget, clearWidgetRegistry } from "./services/widget-registry.service.js";
 import { createStorageAdapter } from "./repositories/module-storage.repository.js";
-import { ACTIVE_MODULES } from "./modules/index.js";
+import { ACTIVE_MODULES, type ModuleFactory } from "./modules/index.js";
+import type {
+  ImporterPlugin,
+  NavItemDescriptor,
+  RouteRegistrar,
+  WidgetDescriptor,
+} from "./types/module.js";
 
 export interface BuildAppOptions {
   /** Register the rate limiter even under NODE_ENV=test / VITEST. */
   forceRateLimit?: boolean;
+  /**
+   * Override the modules used during bootstrap. Used by integration tests to
+   * exercise the `MODULE_ID_RE` skip path, init-failure isolation, and other
+   * lifecycle edge cases without modifying `ACTIVE_MODULES`.
+   */
+  modules?: ModuleFactory[];
+}
+
+type RouteMethod = keyof RouteRegistrar;
+type DeferredCall = { method: RouteMethod; args: unknown[] };
+
+/**
+ * Two-phase init: collect a module's route registrations into a buffer so
+ * routes are only mounted on Fastify after `init()` returns successfully.
+ * A module that throws mid-init leaves no orphaned routes behind.
+ */
+function createDeferredRegistrar(): {
+  registrar: RouteRegistrar;
+  replay: (target: FastifyInstance) => void;
+} {
+  const calls: DeferredCall[] = [];
+  const buffer = (method: RouteMethod) =>
+    function deferred(...args: unknown[]): unknown {
+      calls.push({ method, args });
+      return undefined;
+    };
+  const registrar = {
+    get: buffer("get"),
+    post: buffer("post"),
+    put: buffer("put"),
+    patch: buffer("patch"),
+    delete: buffer("delete"),
+    head: buffer("head"),
+    options: buffer("options"),
+  } as unknown as RouteRegistrar;
+  const replay = (target: FastifyInstance) => {
+    for (const call of calls) {
+      const method = target[call.method] as (...args: unknown[]) => unknown;
+      method.apply(target, call.args);
+    }
+  };
+  return { registrar, replay };
 }
 
 // fastify-metrics is published as CJS with `exports.default = plugin`. Under
@@ -103,7 +151,9 @@ export async function buildApp(options: BuildAppOptions = {}) {
   clearWidgetRegistry();
 
   const MODULE_ID_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
-  for (const mod of ACTIVE_MODULES) {
+  const modulesToBoot = options.modules ?? ACTIVE_MODULES;
+  for (const factory of modulesToBoot) {
+    const mod = factory();
     if (!MODULE_ID_RE.test(mod.id)) {
       app.log.error(
         { moduleId: mod.id },
@@ -112,27 +162,45 @@ export async function buildApp(options: BuildAppOptions = {}) {
       continue;
     }
     const storage = createStorageAdapter(mod.id);
-    await app.register(
-      async (scopedApp) => {
-        try {
-          await mod.init({
-            app: scopedApp,
-            storage,
-            logger: scopedApp.log,
-            registerImporter,
-            registerNavItem: (item) => registerNavItem(mod.id, item),
-            registerWidget: (widget) => registerWidget(mod.id, widget),
-          });
-          registerModule(mod);
-        } catch (err) {
-          scopedApp.log.error(
-            { err, moduleId: mod.id },
-            "module init failed — module not registered",
-          );
-        }
-      },
-      { prefix: `/api/v1/modules/${mod.id}` },
-    );
+    const { registrar, replay } = createDeferredRegistrar();
+    const pendingImporters: ImporterPlugin[] = [];
+    const pendingNavItems: NavItemDescriptor[] = [];
+    const pendingWidgets: WidgetDescriptor[] = [];
+
+    let initOK = false;
+    try {
+      await mod.init({
+        app: registrar,
+        storage,
+        logger: app.log,
+        registerImporter: (plugin) => pendingImporters.push(plugin),
+        registerNavItem: (item) => pendingNavItems.push(item),
+        registerWidget: (widget) => pendingWidgets.push(widget),
+      });
+      initOK = true;
+    } catch (err) {
+      app.log.error({ err, moduleId: mod.id }, "module init failed — module not registered");
+    }
+
+    if (!initOK) continue;
+
+    // Commit all buffered registrations now that init succeeded. Routes are
+    // mounted via a scoped Fastify plugin so the per-module prefix and any
+    // future plugin-level concerns (rate limit, auth) stay contained.
+    try {
+      for (const plugin of pendingImporters) registerImporter(plugin);
+      for (const item of pendingNavItems) registerNavItem(mod.id, item);
+      for (const widget of pendingWidgets) registerWidget(mod.id, widget);
+      await app.register(
+        async (scopedApp) => {
+          replay(scopedApp);
+        },
+        { prefix: `/api/v1/modules/${mod.id}` },
+      );
+      registerModule(mod);
+    } catch (err) {
+      app.log.error({ err, moduleId: mod.id }, "module commit failed — module not registered");
+    }
   }
 
   await app.register(moduleRoutes, { prefix: "/api/v1" });
