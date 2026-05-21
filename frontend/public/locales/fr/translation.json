@@ -52,12 +52,7 @@
     "loading": "Chargement des catégories et règles…",
     "loadingError": "Échec du chargement des catégories ou des règles. Veuillez rafraîchir.",
     "refreshHint": "Enregistré, mais le tableau de bord peut nécessiter une actualisation manuelle.",
-    "personalTitle": "Vos Catégories",
-    "personalDesc": "Catégories modifiables que vous avez créées.",
-    "globalTitle": "Catégories Globales",
-    "globalDesc": "Valeurs par défaut partagées disponibles pour tous les utilisateurs.",
-    "globalCategoryReadOnly": "Catégorie globale (lecture seule)",
-    "noCategories": "Aucune catégorie dans cette section.",
+    "noCategories": "Aucune catégorie pour le moment.",
     "createCategoryTitle": "Créer une Catégorie",
     "newCategoryPlaceholder": "ex. Abonnements",
     "applyRulesTitle": "Appliquer les Règles",
@@ -78,6 +73,11 @@
     "recategorizeNone": "Aucune transaction n'a été modifiée dans la plage sélectionnée.",
     "recategorizeSuccess_one": "{{count}} transaction recatégorisée.",
     "recategorizeSuccess_other": "{{count}} transactions recatégorisées.",
+    "uncategorizeAllBtn": "Tout déplacer vers non catégorisé",
+    "confirmUncategorizeAll": "Supprimer la catégorie de toutes les transactions actuellement assignées à ‘{{name}}’ ? Elles deviendront non catégorisées.",
+    "uncategorizeAllNone": "Aucune transaction n'était assignée à ‘{{name}}’.",
+    "uncategorizeAllSuccess_one": "Catégorie supprimée de {{count}} transaction dans ‘{{name}}’.",
+    "uncategorizeAllSuccess_other": "Catégorie supprimée de {{count}} transactions dans ‘{{name}}’.",
     "errors": {
       "nameRequired": "Le nom de la catégorie est requis.",
       "createFailed": "Échec de la création de la catégorie.",
@@ -89,12 +89,14 @@
       "updateRuleFailed": "Échec de la mise à jour de la règle.",
       "deleteRuleFailed": "Échec de la suppression de la règle.",
       "autoCategorizeFailed": "Échec de l'exécution de la catégorisation automatique.",
-      "recategorizeFailed": "Échec de la recatégorisation de la plage sélectionnée."
+      "recategorizeFailed": "Échec de la recatégorisation de la plage sélectionnée.",
+      "uncategorizeAllFailed": "Échec du déplacement des transactions vers non catégorisé."
     },
     "aria": {
       "editCategory": "Modifier la catégorie {{name}}",
       "saveCategory": "Enregistrer la catégorie {{name}}",
-      "deleteCategory": "Supprimer la catégorie {{name}}"
+      "deleteCategory": "Supprimer la catégorie {{name}}",
+      "uncategorizeAll": "Déplacer toutes les transactions de {{name}} vers non catégorisé"
     }
   },
   "nav": {
@@ -341,7 +343,12 @@
       "dropZoneAria": "Zone de dépôt de fichiers",
       "dropZoneSubtext": "Fichiers .csv uniquement · max 10 Mo",
       "formatLabel": "Format bancaire",
-      "accountLabel": "Compte",
+      "chooseAccountTitle": "Plusieurs comptes disponibles",
+      "chooseAccountHelp": "Choisissez le compte auquel ce CSV appartient et continuez.",
+      "chooseAccountPlaceholder": "Sélectionner un compte",
+      "chooseAccountAriaLabel": "Choisir le compte d'import",
+      "continueBtn": "Continuer",
+      "noAccountsTitle": "Aucun compte configuré. Créez un compte avant d'importer.",
       "uploadBtn": "Importer",
       "uploading": "Importation…",
       "resultSuccess_one": "{{count}} transaction importée avec succès.",
@@ -351,8 +358,6 @@
       "refreshHint": "Importé, mais le tableau de bord peut nécessiter une actualisation manuelle.",
       "errors": {
         "fileTooLarge": "Le fichier dépasse la limite de taille de 10 Mo.",
-        "noAccounts": "Aucun compte trouvé. Créez d'abord un compte.",
-        "accountsError": "Échec du chargement des comptes. Veuillez réessayer.",
         "invalidType": "Seuls les fichiers .csv sont acceptés.",
         "uploadFailed": "Échec de l'importation."
       }

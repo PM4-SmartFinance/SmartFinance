@@ -52,12 +52,7 @@
     "loading": "Loading categories and rules…",
     "loadingError": "Failed to load categories or rules. Please refresh.",
     "refreshHint": "Saved, but the dashboard may need a manual refresh.",
-    "personalTitle": "Your Categories",
-    "personalDesc": "Editable categories you created.",
-    "globalTitle": "Global Categories",
-    "globalDesc": "Shared defaults available to all users.",
-    "globalCategoryReadOnly": "Global category (read-only)",
-    "noCategories": "No categories in this section.",
+    "noCategories": "No categories yet.",
     "createCategoryTitle": "Create Category",
     "newCategoryPlaceholder": "e.g. Subscriptions",
     "applyRulesTitle": "Apply Rules",
@@ -78,6 +73,11 @@
     "recategorizeNone": "No transactions changed in the selected range.",
     "recategorizeSuccess_one": "Recategorized {{count}} transaction.",
     "recategorizeSuccess_other": "Recategorized {{count}} transactions.",
+    "uncategorizeAllBtn": "Move all to uncategorized",
+    "confirmUncategorizeAll": "Remove the category from every transaction currently assigned to ‘{{name}}’? They will become uncategorized.",
+    "uncategorizeAllNone": "No transactions were assigned to ‘{{name}}’.",
+    "uncategorizeAllSuccess_one": "Cleared the category from {{count}} transaction in ‘{{name}}’.",
+    "uncategorizeAllSuccess_other": "Cleared the category from {{count}} transactions in ‘{{name}}’.",
     "errors": {
       "nameRequired": "Category name is required.",
       "createFailed": "Failed to create category.",
@@ -89,12 +89,14 @@
       "updateRuleFailed": "Failed to update rule.",
       "deleteRuleFailed": "Failed to delete rule.",
       "autoCategorizeFailed": "Failed to run auto-categorization.",
-      "recategorizeFailed": "Failed to recategorize the selected range."
+      "recategorizeFailed": "Failed to recategorize the selected range.",
+      "uncategorizeAllFailed": "Failed to uncategorize transactions."
     },
     "aria": {
       "editCategory": "Edit category {{name}}",
       "saveCategory": "Save category {{name}}",
-      "deleteCategory": "Delete category {{name}}"
+      "deleteCategory": "Delete category {{name}}",
+      "uncategorizeAll": "Move all transactions in {{name}} to uncategorized"
     }
   },
   "nav": {
@@ -341,7 +343,12 @@
       "dropZoneAria": "File drop zone",
       "dropZoneSubtext": ".csv files only · max 10 MB",
       "formatLabel": "Bank format",
-      "accountLabel": "Account",
+      "chooseAccountTitle": "Multiple accounts available",
+      "chooseAccountHelp": "Pick which account this CSV belongs to and continue.",
+      "chooseAccountPlaceholder": "Select an account",
+      "chooseAccountAriaLabel": "Choose import account",
+      "continueBtn": "Continue",
+      "noAccountsTitle": "No account configured. Create an account before importing.",
       "uploadBtn": "Upload",
       "uploading": "Uploading…",
       "resultSuccess_one": "{{count}} transaction imported successfully.",
@@ -351,8 +358,6 @@
       "refreshHint": "Imported, but the dashboard may need a manual refresh.",
       "errors": {
         "fileTooLarge": "File exceeds the 10 MB size limit.",
-        "noAccounts": "No accounts found. Create an account first.",
-        "accountsError": "Failed to load accounts. Please try again.",
         "invalidType": "Only .csv files are accepted.",
         "uploadFailed": "Upload failed."
       }

@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -26,10 +27,40 @@ vi.mock("../lib/api", () => {
 const mockGet = vi.mocked(api.get);
 const mockUpload = vi.mocked(api.upload);
 
-const ACCOUNTS = [
+const CANDIDATES = [
   { id: "acc-1", name: "Main Account", iban: "CH93 0076 2011 6238 5295 7" },
   { id: "acc-2", name: "Savings", iban: "CH56 0483 5012 3456 7800 9" },
 ];
+
+function ambiguousError() {
+  return new ApiError(
+    409,
+    {
+      error: {
+        statusCode: 409,
+        message: "Multiple accounts available. Choose one and retry.",
+        code: "AMBIGUOUS_ACCOUNT",
+        candidates: CANDIDATES,
+      },
+    },
+    "Multiple accounts available. Choose one and retry.",
+  );
+}
+
+function noMatchError() {
+  return new ApiError(
+    409,
+    {
+      error: {
+        statusCode: 409,
+        message: "No account available for this user.",
+        code: "NO_MATCH",
+        candidates: [],
+      },
+    },
+    "No account available for this user.",
+  );
+}
 
 function renderCard(queryClient?: QueryClient) {
   const client =
@@ -52,8 +83,8 @@ function makeCsvFile(name = "export.csv") {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
-  mockGet.mockResolvedValue({ accounts: ACCOUNTS });
+  mockGet.mockReset();
+  mockUpload.mockReset();
 });
 
 // ── Initial render ──────────────────────────────────────────────────────────
@@ -94,53 +125,10 @@ describe("initial render", () => {
     renderCard();
     expect(screen.getByRole("button", { name: "Upload" })).toBeDisabled();
   });
-});
 
-// ── Accounts loading ─────────────────────────────────────────────────────────
-
-describe("accounts", () => {
-  it("shows the no-accounts message while accounts are loading", () => {
-    mockGet.mockReturnValue(new Promise(() => {})); // never resolves
+  it("never fetches /accounts on mount (server is authoritative)", () => {
     renderCard();
-    expect(screen.getByText("No accounts found. Create an account first.")).toBeInTheDocument();
-  });
-
-  it("renders the account selector once accounts load", async () => {
-    renderCard();
-    await waitFor(() => expect(screen.getByLabelText("Account")).toBeInTheDocument());
-    await userEvent.click(screen.getByLabelText("Account"));
-    await waitFor(() =>
-      expect(screen.getByRole("option", { name: /Main Account/ })).toBeInTheDocument(),
-    );
-  });
-
-  it("renders all accounts as options", async () => {
-    renderCard();
-    await waitFor(() => expect(screen.getByLabelText("Account")).toBeInTheDocument());
-    await userEvent.click(screen.getByLabelText("Account"));
-    await waitFor(() => {
-      expect(screen.getByRole("option", { name: /Main Account/ })).toBeInTheDocument();
-      expect(screen.getByRole("option", { name: /Savings/ })).toBeInTheDocument();
-    });
-  });
-
-  it("shows an error message when the accounts query fails", async () => {
-    mockGet.mockRejectedValue(new Error("Network error"));
-    renderCard();
-    await waitFor(() =>
-      expect(screen.getByText("Failed to load accounts. Please try again.")).toBeInTheDocument(),
-    );
-    expect(
-      screen.queryByText("No accounts found. Create an account first."),
-    ).not.toBeInTheDocument();
-  });
-
-  it("shows the no-accounts message when the user has no accounts", async () => {
-    mockGet.mockResolvedValue({ accounts: [] });
-    renderCard();
-    await waitFor(() =>
-      expect(screen.getByText("No accounts found. Create an account first.")).toBeInTheDocument(),
-    );
+    expect(mockGet).not.toHaveBeenCalledWith("/accounts");
   });
 });
 
@@ -157,8 +145,6 @@ describe("file input", () => {
   it("shows an error for a non-CSV file", () => {
     renderCard();
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
-    // fireEvent bypasses the accept attribute, matching what happens when a user
-    // overrides the file picker filter in the browser
     fireEvent.change(input, {
       target: { files: [new File(["data"], "data.xlsx", { type: "application/vnd.ms-excel" })] },
     });
@@ -185,13 +171,8 @@ describe("file input", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("enables the upload button after a valid CSV is selected and an account is available", async () => {
+  it("enables the upload button once a CSV is selected", async () => {
     renderCard();
-    await waitFor(() =>
-      expect(
-        screen.queryByText("No accounts found. Create an account first."),
-      ).not.toBeInTheDocument(),
-    );
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
     await userEvent.upload(input, makeCsvFile());
     expect(screen.getByRole("button", { name: "Upload" })).toBeEnabled();
@@ -250,30 +231,24 @@ describe("format selector", () => {
   });
 });
 
-// ── Upload flow ───────────────────────────────────────────────────────────────
+// ── Upload flow (single-account / backend resolved) ─────────────────────────
 
 describe("upload", () => {
   async function setupReadyCard() {
     mockUpload.mockResolvedValue({ imported: 3 });
     renderCard();
-    // Wait for accounts to load
-    await waitFor(() =>
-      expect(
-        screen.queryByText("No accounts found. Create an account first."),
-      ).not.toBeInTheDocument(),
-    );
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
     await userEvent.upload(input, makeCsvFile());
   }
 
-  it("calls api.upload with a FormData body on submit", async () => {
+  it("calls api.upload with a FormData body and without accountId on the first attempt", async () => {
     await setupReadyCard();
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
     await waitFor(() => expect(mockUpload).toHaveBeenCalledOnce());
     const [path, formData] = mockUpload.mock.calls[0]!;
     expect(path).toContain("/transactions/import");
     expect(path).toContain("format=neon");
-    expect(path).toContain("accountId=");
+    expect(path).not.toContain("accountId=");
     expect(formData).toBeInstanceOf(FormData);
   });
 
@@ -297,9 +272,6 @@ describe("upload", () => {
     let budgetRequests = 0;
     mockUpload.mockResolvedValue({ imported: 3 });
     mockGet.mockImplementation((path: string) => {
-      if (path === "/accounts") {
-        return Promise.resolve({ accounts: ACCOUNTS });
-      }
       if (path === "/categories" || path.startsWith("/categories?")) {
         return Promise.resolve({ categories: [{ id: "cat-1", categoryName: "Groceries" }] });
       }
@@ -365,11 +337,6 @@ describe("upload", () => {
   it("uses singular 'transaction' when imported count is 1", async () => {
     mockUpload.mockResolvedValue({ imported: 1 });
     renderCard();
-    await waitFor(() =>
-      expect(
-        screen.queryByText("No accounts found. Create an account first."),
-      ).not.toBeInTheDocument(),
-    );
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
     await userEvent.upload(input, makeCsvFile());
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
@@ -381,11 +348,6 @@ describe("upload", () => {
   it("shows the zero-rows message when imported is 0", async () => {
     mockUpload.mockResolvedValue({ imported: 0 });
     renderCard();
-    await waitFor(() =>
-      expect(
-        screen.queryByText("No accounts found. Create an account first."),
-      ).not.toBeInTheDocument(),
-    );
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
     await userEvent.upload(input, makeCsvFile());
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
@@ -396,14 +358,9 @@ describe("upload", () => {
     );
   });
 
-  it("shows an error message when the upload fails with an ApiError", async () => {
+  it("shows an error message when the upload fails with a non-409 ApiError", async () => {
     mockUpload.mockRejectedValue(new ApiError(422, null, "Invalid CSV format"));
     renderCard();
-    await waitFor(() =>
-      expect(
-        screen.queryByText("No accounts found. Create an account first."),
-      ).not.toBeInTheDocument(),
-    );
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
     await userEvent.upload(input, makeCsvFile());
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
@@ -413,11 +370,6 @@ describe("upload", () => {
   it("shows the actual error message for non-ApiError errors", async () => {
     mockUpload.mockRejectedValue(new Error("Network error"));
     renderCard();
-    await waitFor(() =>
-      expect(
-        screen.queryByText("No accounts found. Create an account first."),
-      ).not.toBeInTheDocument(),
-    );
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
     await userEvent.upload(input, makeCsvFile());
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
@@ -428,11 +380,6 @@ describe("upload", () => {
     mockUpload.mockResolvedValue({ imported: 3 });
     const { queryClient } = renderCard();
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
-    await waitFor(() =>
-      expect(
-        screen.queryByText("No accounts found. Create an account first."),
-      ).not.toBeInTheDocument(),
-    );
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
     await userEvent.upload(input, makeCsvFile());
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
@@ -443,11 +390,6 @@ describe("upload", () => {
     mockUpload.mockResolvedValue({ imported: 3 });
     const { queryClient } = renderCard();
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
-    await waitFor(() =>
-      expect(
-        screen.queryByText("No accounts found. Create an account first."),
-      ).not.toBeInTheDocument(),
-    );
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
     await userEvent.upload(input, makeCsvFile());
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
@@ -459,11 +401,6 @@ describe("upload", () => {
     mockUpload.mockResolvedValue({ imported: 3 });
     const { queryClient } = renderCard();
     vi.spyOn(queryClient, "invalidateQueries").mockRejectedValue(new Error("invalidation boom"));
-    await waitFor(() =>
-      expect(
-        screen.queryByText("No accounts found. Create an account first."),
-      ).not.toBeInTheDocument(),
-    );
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
     await userEvent.upload(input, makeCsvFile());
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
@@ -478,16 +415,86 @@ describe("upload", () => {
     mockUpload.mockRejectedValue(new Error("Network error"));
     const { queryClient } = renderCard();
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
-    await waitFor(() =>
-      expect(
-        screen.queryByText("No accounts found. Create an account first."),
-      ).not.toBeInTheDocument(),
-    );
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
     await userEvent.upload(input, makeCsvFile());
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Network error"));
     expect(invalidateSpy).not.toHaveBeenCalledWith({ queryKey: ["transactions"] });
+  });
+});
+
+// ── Account resolution (server-driven prompt) ────────────────────────────────
+
+describe("account resolution", () => {
+  it("renders an account selector when the server responds 409 AMBIGUOUS_ACCOUNT", async () => {
+    mockUpload.mockRejectedValueOnce(ambiguousError());
+    renderCard();
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    await userEvent.upload(input, makeCsvFile());
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+
+    await waitFor(() =>
+      expect(screen.getByText("Multiple accounts available")).toBeInTheDocument(),
+    );
+    expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+  });
+
+  it("resubmits with the chosen accountId after the user picks an account", async () => {
+    mockUpload.mockRejectedValueOnce(ambiguousError());
+    mockUpload.mockResolvedValueOnce({ imported: 4 });
+    renderCard();
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    await userEvent.upload(input, makeCsvFile());
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+
+    await waitFor(() => expect(screen.getByLabelText("Choose import account")).toBeInTheDocument());
+    await userEvent.click(screen.getByLabelText("Choose import account"));
+    await waitFor(() =>
+      expect(screen.getByRole("option", { name: /Savings/ })).toBeInTheDocument(),
+    );
+    await userEvent.click(screen.getByRole("option", { name: /Savings/ }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    await waitFor(() => expect(mockUpload).toHaveBeenCalledTimes(2));
+    const [secondPath] = mockUpload.mock.calls[1]!;
+    expect(secondPath).toContain("accountId=acc-2");
+    await waitFor(() =>
+      expect(screen.getByText("4 transactions imported successfully.")).toBeInTheDocument(),
+    );
+  });
+
+  it("shows the no-account message and hides the upload button on 409 NO_MATCH", async () => {
+    mockUpload.mockRejectedValueOnce(noMatchError());
+    renderCard();
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    await userEvent.upload(input, makeCsvFile());
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText("No account configured. Create an account before importing."),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole("button", { name: "Upload" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Continue" })).not.toBeInTheDocument();
+  });
+
+  it("does not show the generic upload-failed alert when resolution UI is showing", async () => {
+    mockUpload.mockRejectedValueOnce(ambiguousError());
+    renderCard();
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    await userEvent.upload(input, makeCsvFile());
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+
+    await waitFor(() =>
+      expect(screen.getByText("Multiple accounts available")).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByText("Multiple accounts available. Choose one and retry.", {
+        selector: "p.text-destructive",
+      }),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -497,11 +504,6 @@ describe("reset", () => {
   it("returns to the idle state when 'Import another file' is clicked", async () => {
     mockUpload.mockResolvedValue({ imported: 5 });
     renderCard();
-    await waitFor(() =>
-      expect(
-        screen.queryByText("No accounts found. Create an account first."),
-      ).not.toBeInTheDocument(),
-    );
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
     await userEvent.upload(input, makeCsvFile());
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));

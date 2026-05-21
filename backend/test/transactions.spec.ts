@@ -190,6 +190,21 @@ describe("PATCH /api/v1/transactions/:id", () => {
     expect(transaction.manualOverride).toBe(true);
   });
 
+  it("clears categoryId and resets manualOverride when categoryId is null (KAN-156)", async () => {
+    // Precondition: the previous test set categoryId + manualOverride.
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/transactions/${transactionId}`,
+      cookies: { session: ownerCookie },
+      payload: { categoryId: null },
+    });
+    expect(res.statusCode).toBe(200);
+    const { transaction } = res.json();
+    expect(transaction.categoryId).toBeNull();
+    expect(transaction.category).toBeNull();
+    expect(transaction.manualOverride).toBe(false);
+  });
+
   it("returns 404 for a non-existent transaction", async () => {
     const res = await app.inject({
       method: "PATCH",

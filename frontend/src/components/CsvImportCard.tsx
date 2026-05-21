@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "../lib/api";
 import { DASHBOARD_QUERY_KEY } from "../lib/queries/dashboard";
 import { Button } from "@/components/ui/button";
@@ -30,36 +30,45 @@ type ImportFormat = (typeof FORMATS)[number]["value"];
 
 type UploadResult = { imported: number };
 
-interface Account {
+interface AccountCandidate {
   id: string;
   name: string;
   iban: string;
 }
 
+type Resolution =
+  | { kind: "idle" }
+  | { kind: "needs_choice"; candidates: AccountCandidate[]; chosen?: string | undefined }
+  | { kind: "no_accounts" };
+
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+function parseAccountResolutionError(
+  err: unknown,
+): { code: "AMBIGUOUS_ACCOUNT"; candidates: AccountCandidate[] } | { code: "NO_MATCH" } | null {
+  if (!(err instanceof ApiError) || err.status !== 409) return null;
+  const body = err.body as { error?: { code?: string; candidates?: AccountCandidate[] } } | null;
+  const code = body?.error?.code;
+  if (code === "AMBIGUOUS_ACCOUNT") {
+    return { code, candidates: body?.error?.candidates ?? [] };
+  }
+  if (code === "NO_MATCH") {
+    return { code };
+  }
+  return null;
+}
 
 export function CsvImportCard() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [format, setFormat] = useState<ImportFormat>("neon");
-  const [accountId, setAccountId] = useState<string>("");
   const [isDragOver, setIsDragOver] = useState(false);
   const [typeError, setTypeError] = useState<string | null>(null);
   const [result, setResult] = useState<UploadResult | null>(null);
   const [refreshHint, setRefreshHint] = useState(false);
+  const [resolution, setResolution] = useState<Resolution>({ kind: "idle" });
   const { t } = useTranslation();
-
-  const { data: accountsData, isError: isAccountsError } = useQuery({
-    queryKey: ["accounts"],
-    queryFn: () => api.get<{ accounts: Account[] }>("/accounts"),
-  });
-  const accounts = accountsData?.accounts ?? [];
-
-  // Derive the active account without writing to state during render.
-  // If the user has made an explicit selection it wins; otherwise fall back to
-  // the first account returned by the query.
-  const effectiveAccountId = accountId || accounts[0]?.id || "";
 
   const {
     mutate: uploadFile,
@@ -67,17 +76,17 @@ export function CsvImportCard() {
     error: uploadError,
     reset: resetMutation,
   } = useMutation({
-    mutationFn: ({ f, fmt, acId }: { f: File; fmt: ImportFormat; acId: string }) => {
+    mutationFn: ({ f, fmt, acId }: { f: File; fmt: ImportFormat; acId?: string | undefined }) => {
       const formData = new FormData();
       formData.append("file", f);
-      return api.upload<UploadResult>(
-        `/transactions/import?accountId=${encodeURIComponent(acId)}&format=${encodeURIComponent(fmt)}`,
-        formData,
-      );
+      const params = new URLSearchParams({ format: fmt });
+      if (acId) params.set("accountId", acId);
+      return api.upload<UploadResult>(`/transactions/import?${params.toString()}`, formData);
     },
     onSuccess: async (data) => {
       setResult(data);
       setRefreshHint(false);
+      setResolution({ kind: "idle" });
 
       const invalidations = await Promise.allSettled(
         QUERY_KEYS_TO_INVALIDATE_AFTER_IMPORT.map((queryKey) =>
@@ -98,6 +107,14 @@ export function CsvImportCard() {
       });
       if (anyRejected) setRefreshHint(true);
     },
+    onError: (err) => {
+      const parsed = parseAccountResolutionError(err);
+      if (parsed?.code === "AMBIGUOUS_ACCOUNT") {
+        setResolution({ kind: "needs_choice", candidates: parsed.candidates });
+      } else if (parsed?.code === "NO_MATCH") {
+        setResolution({ kind: "no_accounts" });
+      }
+    },
   });
 
   function acceptFile(f: File) {
@@ -115,6 +132,7 @@ export function CsvImportCard() {
     }
     setTypeError(null);
     setResult(null);
+    setResolution({ kind: "idle" });
     resetMutation();
     setFile(f);
   }
@@ -133,8 +151,9 @@ export function CsvImportCard() {
   }
 
   function handleUpload() {
-    if (!file || !effectiveAccountId) return;
-    uploadFile({ f: file, fmt: format, acId: effectiveAccountId });
+    if (!file) return;
+    const acId = resolution.kind === "needs_choice" ? resolution.chosen : undefined;
+    uploadFile({ f: file, fmt: format, acId });
   }
 
   function handleReset() {
@@ -142,11 +161,16 @@ export function CsvImportCard() {
     setResult(null);
     setTypeError(null);
     setRefreshHint(false);
+    setResolution({ kind: "idle" });
     resetMutation();
   }
 
-  const uploadErrorMessage =
-    uploadError instanceof ApiError
+  // Suppress the generic error message when we have a structured resolution
+  // flow on screen — that flow already explains what to do.
+  const showStructuredResolution = resolution.kind !== "idle";
+  const uploadErrorMessage = showStructuredResolution
+    ? null
+    : uploadError instanceof ApiError
       ? uploadError.message
       : uploadError instanceof Error
         ? uploadError.message
@@ -154,7 +178,11 @@ export function CsvImportCard() {
           ? t("components.csvImportCard.errors.uploadFailed", "Upload failed.")
           : null;
 
-  const canUpload = file !== null && effectiveAccountId !== "" && !isUploading;
+  const canUpload =
+    file !== null &&
+    !isUploading &&
+    resolution.kind !== "no_accounts" &&
+    (resolution.kind !== "needs_choice" || resolution.chosen !== undefined);
 
   return (
     <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
@@ -298,74 +326,106 @@ export function CsvImportCard() {
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="csv-account" className="text-xs text-muted-foreground">
-                  {t("components.csvImportCard.accountLabel", "Account")}
-                </Label>
-                {isAccountsError ? (
-                  <p role="alert" className="py-1.5 text-sm text-destructive">
-                    {t(
-                      "components.csvImportCard.errors.accountsError",
-                      "Failed to load accounts. Please try again.",
-                    )}
-                  </p>
-                ) : accounts.length === 0 ? (
-                  <p className="py-1.5 text-sm text-muted-foreground">
-                    {t(
-                      "components.csvImportCard.errors.noAccounts",
-                      "No accounts found. Create an account first.",
-                    )}
-                  </p>
-                ) : (
-                  <Select value={effectiveAccountId} onValueChange={(v) => setAccountId(v ?? "")}>
-                    <SelectTrigger id="csv-account" className="w-64">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accounts.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.name} — {a.iban}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
             </div>
+
+            {resolution.kind === "needs_choice" && (
+              <div
+                role="group"
+                aria-labelledby="csv-account-title"
+                className="flex flex-col gap-2 rounded border border-border bg-muted/30 p-3"
+              >
+                <p id="csv-account-title" className="text-sm font-medium">
+                  {t("components.csvImportCard.chooseAccountTitle", "Multiple accounts available")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    "components.csvImportCard.chooseAccountHelp",
+                    "Pick which account this CSV belongs to and continue.",
+                  )}
+                </p>
+                <Select
+                  value={resolution.chosen ?? ""}
+                  onValueChange={(v) =>
+                    setResolution({
+                      kind: "needs_choice",
+                      candidates: resolution.candidates,
+                      chosen: v ?? undefined,
+                    })
+                  }
+                >
+                  <SelectTrigger
+                    aria-label={t(
+                      "components.csvImportCard.chooseAccountAriaLabel",
+                      "Choose import account",
+                    )}
+                    className="w-72"
+                  >
+                    <SelectValue
+                      placeholder={t(
+                        "components.csvImportCard.chooseAccountPlaceholder",
+                        "Select an account",
+                      )}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {resolution.candidates.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name} — {a.iban}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {resolution.kind === "no_accounts" && (
+              <p
+                role="alert"
+                className="rounded border border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              >
+                {t(
+                  "components.csvImportCard.noAccountsTitle",
+                  "No account configured. Create an account before importing.",
+                )}
+              </p>
+            )}
 
             {/* ── Upload button ── */}
-            <div className="flex items-center gap-3">
-              <Button disabled={!canUpload} onClick={handleUpload}>
-                {isUploading ? (
-                  <>
-                    <svg
-                      className="h-4 w-4 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                      />
-                    </svg>
-                    {t("components.csvImportCard.uploading", "Uploading…")}
-                  </>
-                ) : (
-                  t("components.csvImportCard.uploadBtn", "Upload")
-                )}
-              </Button>
-            </div>
+            {resolution.kind !== "no_accounts" && (
+              <div className="flex items-center gap-3">
+                <Button disabled={!canUpload} onClick={handleUpload}>
+                  {isUploading ? (
+                    <>
+                      <svg
+                        className="h-4 w-4 animate-spin"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                        />
+                      </svg>
+                      {t("components.csvImportCard.uploading", "Uploading…")}
+                    </>
+                  ) : resolution.kind === "needs_choice" ? (
+                    t("components.csvImportCard.continueBtn", "Continue")
+                  ) : (
+                    t("components.csvImportCard.uploadBtn", "Upload")
+                  )}
+                </Button>
+              </div>
+            )}
 
             {uploadErrorMessage && (
               <p role="alert" className="text-xs text-destructive">
