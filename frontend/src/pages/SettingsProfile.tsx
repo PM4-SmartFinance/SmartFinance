@@ -37,19 +37,37 @@ export function SettingsProfile() {
 
   const { t } = useTranslation();
 
+  const [profileEmailChanged, setProfileEmailChanged] = useState(false);
+
   const {
     mutate: saveProfile,
     isPending: isSaving,
     error: profileError,
   } = useMutation({
     mutationFn: (input: { displayName: string; email: string }) =>
-      api.patch<{ user: ProfileData }>("/users/me", input),
-    onSuccess: () => {
+      api.patch<{ user: ProfileData; emailChanged: boolean }>("/users/me", input),
+    onSuccess: (data) => {
+      setProfileSuccess(true);
+      if (data.emailChanged) {
+        // Backend invalidated the session on email change. Mirror the
+        // change-password flow: show the success banner, then evict the
+        // cached auth query before redirecting so the login page cannot
+        // briefly render a stale authenticated user.
+        setProfileEmailChanged(true);
+        setTimeout(() => {
+          void queryClient.removeQueries({ queryKey: ["auth", "me"] });
+          navigate("/login");
+        }, LOGOUT_REDIRECT_DELAY_MS);
+        return;
+      }
+      setProfileEmailChanged(false);
       void queryClient.invalidateQueries({ queryKey: ["users", "me"] });
       void queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
-      setProfileSuccess(true);
     },
-    onError: () => setProfileSuccess(false),
+    onError: () => {
+      setProfileSuccess(false);
+      setProfileEmailChanged(false);
+    },
   });
 
   const [currentPassword, setCurrentPassword] = useState("");
@@ -82,6 +100,7 @@ export function SettingsProfile() {
   function handleProfileSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setProfileSuccess(false);
+    setProfileEmailChanged(false);
     const fd = new FormData(e.currentTarget);
     saveProfile({
       displayName: String(fd.get("displayName") ?? ""),
@@ -235,12 +254,21 @@ export function SettingsProfile() {
                   <Alert variant="success" role="status">
                     <CheckCircle2 className="size-4" />
                     <AlertDescription>
-                      {t("settingsProfile.account.success", "Profile updated successfully.")}
+                      {profileEmailChanged
+                        ? t(
+                            "settingsProfile.account.emailChangedSignInAgain",
+                            "Profile updated. Please sign in again with your new email.",
+                          )
+                        : t("settingsProfile.account.success", "Profile updated successfully.")}
                     </AlertDescription>
                   </Alert>
                 )}
 
-                <Button type="submit" disabled={isSaving} className="self-start">
+                <Button
+                  type="submit"
+                  disabled={isSaving || profileEmailChanged}
+                  className="self-start"
+                >
                   {isSaving
                     ? t("settingsProfile.account.saving", "Saving…")
                     : t("settingsProfile.account.saveBtn", "Save changes")}

@@ -195,6 +195,7 @@
       "displayNamePlaceholder": "Votre nom",
       "emailLabel": "Adresse e-mail",
       "success": "Profil mis à jour avec succès.",
+      "emailChangedSignInAgain": "Profil mis à jour. Veuillez vous reconnecter avec votre nouvelle adresse e-mail.",
       "saving": "Enregistrement…",
       "saveBtn": "Enregistrer les modifications"
     },
