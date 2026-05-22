@@ -207,6 +207,27 @@ describe("sync-release", () => {
     expect(github.rest.repos.merge).not.toHaveBeenCalled();
   });
 
+  it("develop success overrides a failing tag run for the same commit", async () => {
+    const refs: RefMap = {
+      "heads/develop": { object: { sha: TAG_COMMIT_SHA, type: "commit" } },
+      "heads/main": { object: { sha: MAIN_SHA, type: "commit" } },
+      "tags/v1.0.0": { object: { sha: TAG_COMMIT_SHA, type: "commit" } },
+    };
+    const core = makeCore();
+    const github = makeGithub({
+      refs,
+      tagRuns: [failedRun(TAG_COMMIT_SHA)],
+      branchRuns: [successRun(TAG_COMMIT_SHA)],
+    });
+
+    const result = await syncRelease({ github, context, core, inputs: baseInputs });
+
+    expect(result).toEqual({ skipped: false });
+    expect(core.setFailed).not.toHaveBeenCalled();
+    expect(github.rest.repos.merge).toHaveBeenCalledOnce();
+    expect(github.rest.repos.merge.mock.calls[0][0].head).toBe(TAG_COMMIT_SHA);
+  });
+
   it("tag-SHA empty triggers branch fallback (uses 'develop tip' wording on failure)", async () => {
     const refs: RefMap = {
       "heads/develop": { object: { sha: TAG_COMMIT_SHA, type: "commit" } },

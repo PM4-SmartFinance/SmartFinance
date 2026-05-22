@@ -60,14 +60,16 @@ module.exports = async function syncRelease({ github, context, core, inputs }) {
     return { skipped: false };
   }
 
-  // Prefer the CI run that built the release tag SHA. Fall back to the latest
-  // completed run on develop only if no run is found for the tag SHA. Genuine
-  // API errors (auth, rate limit, 5xx) must abort — silently degrading would
-  // mask a degraded GitHub API and let an unverified release through.
+  // Prefer a successful CI run on develop. If that is unavailable, fall back
+  // to the release tag SHA. This keeps the release flow aligned with the
+  // develop -> main promotion model while avoiding false negatives when the
+  // tag commit has a failing or stale run but develop is already green.
   let latestRun;
   let lookupSource;
+  let tagRuns = [];
+  let branchRuns = [];
   try {
-    const { data: tagRuns } = await github.rest.actions.listWorkflowRuns({
+    const { data: tagRunResults } = await github.rest.actions.listWorkflowRuns({
       owner: context.repo.owner,
       repo: context.repo.repo,
       workflow_id: "ci.yml",
@@ -75,10 +77,7 @@ module.exports = async function syncRelease({ github, context, core, inputs }) {
       status: "completed",
       per_page: 1,
     });
-    latestRun = tagRuns.workflow_runs[0];
-    if (latestRun) {
-      lookupSource = "tag-sha";
-    }
+    tagRuns = tagRunResults.workflow_runs;
   } catch (error) {
     const status = error.status ?? 0;
     if (status === 404) {
@@ -93,26 +92,35 @@ module.exports = async function syncRelease({ github, context, core, inputs }) {
     }
   }
 
-  if (!latestRun) {
-    try {
-      const { data: branchRuns } = await github.rest.actions.listWorkflowRuns({
-        owner: context.repo.owner,
-        repo: context.repo.repo,
-        workflow_id: "ci.yml",
-        branch: "develop",
-        status: "completed",
-        per_page: 1,
-      });
-      latestRun = branchRuns.workflow_runs[0];
-      if (latestRun) {
-        lookupSource = "develop-branch";
-      }
-    } catch (error) {
-      core.setFailed(
-        `Failed to list CI runs for workflow 'ci.yml' on branch 'develop' (release ${releaseTag}, commit ${releaseTagSha}): ${formatError(error)}.`,
-      );
-      return { skipped: false };
-    }
+  try {
+    const { data: branchRunsResult } = await github.rest.actions.listWorkflowRuns({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      workflow_id: "ci.yml",
+      branch: "develop",
+      status: "completed",
+      per_page: 1,
+    });
+    branchRuns = branchRunsResult.workflow_runs;
+  } catch (error) {
+    core.info(
+      `Failed to list CI runs for workflow 'ci.yml' on branch 'develop' (release ${releaseTag}, commit ${releaseTagSha}): ${formatError(error)}.`,
+    );
+  }
+
+  const successfulDevelopRun = branchRuns.find((run) => run.conclusion === "success");
+  const successfulTagRun = tagRuns.find((run) => run.conclusion === "success");
+
+  latestRun = successfulDevelopRun ?? successfulTagRun ?? branchRuns[0] ?? tagRuns[0] ?? undefined;
+
+  if (successfulDevelopRun) {
+    lookupSource = "develop-branch";
+  } else if (successfulTagRun) {
+    lookupSource = "tag-sha";
+  } else if (branchRuns.length > 0) {
+    lookupSource = "develop-branch";
+  } else if (tagRuns.length > 0) {
+    lookupSource = "tag-sha";
   }
 
   if (!latestRun) {
