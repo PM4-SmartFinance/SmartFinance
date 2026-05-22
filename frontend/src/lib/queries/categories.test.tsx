@@ -278,7 +278,7 @@ describe("category mutations", () => {
   });
 
   describe("rule mutations", () => {
-    it("useCreateCategoryRule invalidates rules and dashboard on success", async () => {
+    it("useCreateCategoryRule invalidates rules, dashboard, and transactions on success", async () => {
       const queryClient = new QueryClient({
         defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
       });
@@ -303,10 +303,15 @@ describe("category mutations", () => {
         expect(invalidateSpy).toHaveBeenCalledWith(
           expect.objectContaining({ queryKey: ["dashboard"] }),
         );
+        // KAN-154: rule creation retroactively categorizes server-side, so the
+        // transactions cache must be invalidated for the UI to reflect it.
+        expect(invalidateSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ queryKey: ["transactions"] }),
+        );
       });
     });
 
-    it("useUpdateCategoryRule invalidates rules and dashboard on success", async () => {
+    it("useUpdateCategoryRule invalidates rules, dashboard, and transactions on success", async () => {
       const queryClient = new QueryClient({
         defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
       });
@@ -325,6 +330,11 @@ describe("category mutations", () => {
         );
         expect(invalidateSpy).toHaveBeenCalledWith(
           expect.objectContaining({ queryKey: ["dashboard"] }),
+        );
+        // KAN-154: update can re-trigger server-side categorization, so mirror
+        // the invalidation set from useCreateCategoryRule.
+        expect(invalidateSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ queryKey: ["transactions"] }),
         );
       });
     });

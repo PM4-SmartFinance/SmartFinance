@@ -135,10 +135,13 @@ export function useCreateCategoryRule(options?: CategoryMutationOptions) {
 
   return useMutation({
     mutationFn: (draft: RuleDraft) => api.post<{ rule: CategoryRule }>("/category-rules", draft),
+    // KAN-154: creating a rule retroactively categorizes uncategorized
+    // transactions on the backend, so the transactions cache must be
+    // invalidated for the Transactions page to reflect the new assignments.
     onSuccess: () =>
       invalidateAll(
         queryClient,
-        [CATEGORY_RULES_QUERY_KEY, DASHBOARD_QUERY_KEY],
+        [CATEGORY_RULES_QUERY_KEY, DASHBOARD_QUERY_KEY, ["transactions"]],
         options?.onInvalidationFailure,
       ),
   });
@@ -150,10 +153,12 @@ export function useUpdateCategoryRule(options?: CategoryMutationOptions) {
   return useMutation({
     mutationFn: ({ id, draft }: { id: string; draft: Partial<RuleDraft> }) =>
       api.patch<{ rule: CategoryRule }>(`/category-rules/${id}`, draft),
+    // KAN-154: updating a rule's pattern/category re-runs auto-categorize
+    // server-side; mirror the invalidation set from useCreateCategoryRule.
     onSuccess: () =>
       invalidateAll(
         queryClient,
-        [CATEGORY_RULES_QUERY_KEY, DASHBOARD_QUERY_KEY],
+        [CATEGORY_RULES_QUERY_KEY, DASHBOARD_QUERY_KEY, ["transactions"]],
         options?.onInvalidationFailure,
       ),
   });

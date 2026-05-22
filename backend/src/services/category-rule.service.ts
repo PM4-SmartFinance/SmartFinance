@@ -3,6 +3,8 @@ import { DuplicateRuleError, ServiceError } from "../errors.js";
 import * as categoryRuleRepository from "../repositories/category-rule.repository.js";
 import { MatchType } from "../repositories/category-rule.repository.js";
 import * as transactionRepository from "../repositories/transaction.repository.js";
+import { autoCategorize } from "./categorization.service.js";
+import { getLogger } from "../logger.js";
 
 function assertValidRegex(pattern: string) {
   try {
@@ -55,8 +57,10 @@ export async function createRule(
   if (!category) {
     throw new ServiceError(404, "Category not found");
   }
+
+  let rule;
   try {
-    return await categoryRuleRepository.create({
+    rule = await categoryRuleRepository.create({
       userId,
       categoryId,
       pattern,
@@ -69,6 +73,18 @@ export async function createRule(
     }
     throw err;
   }
+
+  // KAN-154: apply the new rule to existing uncategorized rows immediately so
+  // the Transactions UI reflects the assignment without forcing the user to
+  // open the Auto-categorize button. Best-effort — a failure here must not
+  // roll back the rule itself, since the user can always retry manually.
+  try {
+    await autoCategorize(userId);
+  } catch (err) {
+    getLogger().warn({ err, userId, ruleId: rule.id }, "post-create auto-categorize failed");
+  }
+
+  return rule;
 }
 
 export async function updateRule(
@@ -94,18 +110,28 @@ export async function updateRule(
       throw new ServiceError(404, "Category not found");
     }
   }
+  let rule;
   try {
-    const rule = await categoryRuleRepository.update(id, userId, data);
+    rule = await categoryRuleRepository.update(id, userId, data);
     if (!rule) {
       throw new ServiceError(404, "Category rule not found");
     }
-    return rule;
   } catch (err) {
     if (err instanceof DuplicateRuleError) {
       throw new ServiceError(409, err.message);
     }
     throw err;
   }
+
+  // KAN-154: a pattern or category change can newly match uncategorized rows,
+  // so run auto-categorize as a best-effort follow-up. Mirrors createRule.
+  try {
+    await autoCategorize(userId);
+  } catch (err) {
+    getLogger().warn({ err, userId, ruleId: id }, "post-update auto-categorize failed");
+  }
+
+  return rule;
 }
 
 export async function deleteRule(id: string, userId: string) {
