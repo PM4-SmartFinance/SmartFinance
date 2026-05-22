@@ -13,6 +13,18 @@ vi.mock("../repositories/transaction.repository.js", () => ({
   findPreviewMatchesForUser: vi.fn(),
 }));
 
+// KAN-154: createRule/updateRule now run autoCategorize as a best-effort
+// follow-up. The categorization path is exercised end-to-end in the
+// integration spec; here we mock it so the unit tests stay focused on the
+// rule lifecycle and don't need a real logger/database.
+vi.mock("./categorization.service.js", () => ({
+  autoCategorize: vi.fn().mockResolvedValue({ categorized: 0 }),
+}));
+
+vi.mock("../logger.js", () => ({
+  getLogger: vi.fn(() => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() })),
+}));
+
 import * as service from "./category-rule.service.js";
 import * as repo from "../repositories/category-rule.repository.js";
 import * as transactionRepo from "../repositories/transaction.repository.js";
