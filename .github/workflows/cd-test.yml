@@ -9,6 +9,9 @@ on:
       - .github/workflows/cd.yml
       - .github/workflows/cd-test.yml
 
+permissions:
+  contents: read
+
 jobs:
   test-logic:
     name: Sync-Release Guard Tests
