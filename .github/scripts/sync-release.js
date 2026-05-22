@@ -61,9 +61,14 @@ module.exports = async function syncRelease({ github, context, core, inputs }) {
   }
 
   // Prefer a successful CI run on develop. If that is unavailable, fall back
-  // to the release tag SHA. This keeps the release flow aligned with the
-  // develop -> main promotion model while avoiding false negatives when the
-  // tag commit has a failing or stale run but develop is already green.
+  // to the release tag SHA. We intentionally only request `per_page: 1` — the
+  // latest completed run — rather than scanning history for an older green
+  // run. This is a deliberate safety/design choice: we only verify the latest
+  // completed run for the given ref. Also note we unconditionally query both
+  // the tag-SHA and the develop branch (in that order), so both lookups are
+  // part of the verification fan-out; the selection logic below prefers a
+  // successful develop run if present, then a successful tag run, otherwise
+  // the latest completed run returned by the calls.
   let latestRun;
   let lookupSource;
   let tagRuns = [];
