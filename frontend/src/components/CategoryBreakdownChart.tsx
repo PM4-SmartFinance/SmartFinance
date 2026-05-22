@@ -118,6 +118,7 @@ export function CategoryBreakdownChart() {
                   borderRadius: "4px",
                 }}
                 labelStyle={{ color: "var(--foreground)" }}
+                itemStyle={{ color: "var(--foreground)" }}
                 formatter={(value) => [
                   formatAmount(Number(value), i18n.resolvedLanguage),
                   t("components.categoryBreakdownChart.tooltipSpent", "Spent"),

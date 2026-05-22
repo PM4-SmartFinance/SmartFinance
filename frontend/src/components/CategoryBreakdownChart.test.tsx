@@ -5,6 +5,33 @@ import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { CategoryBreakdownChart } from "./CategoryBreakdownChart";
 
+vi.mock("recharts", () => {
+  type TooltipStub = {
+    itemStyle?: { color?: string };
+    labelStyle?: { color?: string };
+    contentStyle?: { backgroundColor?: string };
+  };
+  const Passthrough = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
+  const Null = () => null;
+  return {
+    ResponsiveContainer: Passthrough,
+    BarChart: Passthrough,
+    Bar: Passthrough,
+    Cell: Null,
+    XAxis: Null,
+    YAxis: Null,
+    CartesianGrid: Null,
+    Tooltip: (props: TooltipStub) => (
+      <div
+        data-testid="recharts-tooltip"
+        data-item-color={props.itemStyle?.color ?? ""}
+        data-label-color={props.labelStyle?.color ?? ""}
+        data-bg={props.contentStyle?.backgroundColor ?? ""}
+      />
+    ),
+  };
+});
+
 vi.mock("../lib/api", () => ({
   ApiError: class MockApiError extends Error {
     status: number;
@@ -219,6 +246,15 @@ describe("CategoryBreakdownChart", () => {
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute("href", "/categories");
     });
+  });
+
+  it("wires tooltip styles to theme tokens so dark-mode keeps contrast (KAN-151)", async () => {
+    renderWithQuery(<CategoryBreakdownChart />);
+
+    const tooltip = await screen.findByTestId("recharts-tooltip");
+    expect(tooltip.dataset.itemColor).toBe("var(--foreground)");
+    expect(tooltip.dataset.labelColor).toBe("var(--foreground)");
+    expect(tooltip.dataset.bg).toBe("var(--card)");
   });
 
   it("supports keyboard navigation to /categories link", async () => {
