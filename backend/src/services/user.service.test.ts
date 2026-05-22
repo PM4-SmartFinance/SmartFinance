@@ -74,7 +74,11 @@ describe("user.service", () => {
   });
 
   describe("updateProfile", () => {
-    it("updates displayName and email when both are provided", async () => {
+    beforeEach(() => {
+      vi.mocked(userRepository.findById).mockResolvedValue(mockUser);
+    });
+
+    it("updates displayName and email when both differ from the stored values", async () => {
       const updatedUser = { ...mockUser, name: "New Name", email: "new@example.com" };
       vi.mocked(userRepository.updateProfileAtomic).mockResolvedValue(updatedUser);
 
@@ -87,45 +91,62 @@ describe("user.service", () => {
         name: "New Name",
         email: "new@example.com",
       });
-      expect(result).toEqual(updatedUser);
+      expect(result).toEqual({ user: updatedUser, emailChanged: true });
     });
 
-    it("updates only displayName when only displayName is provided", async () => {
+    it("updates only displayName when email is unchanged", async () => {
       const updatedUser = { ...mockUser, name: "New Name" };
       vi.mocked(userRepository.updateProfileAtomic).mockResolvedValue(updatedUser);
 
-      await updateProfile("user-1", { displayName: "New Name" });
+      const result = await updateProfile("user-1", {
+        displayName: "New Name",
+        email: mockUser.email,
+      });
 
       expect(userRepository.updateProfileAtomic).toHaveBeenCalledWith("user-1", {
         name: "New Name",
       });
+      expect(result).toEqual({ user: updatedUser, emailChanged: false });
     });
 
-    it("updates only email when only email is provided", async () => {
+    it("updates only email when displayName is unchanged and flags emailChanged", async () => {
       const updatedUser = { ...mockUser, email: "new@example.com" };
       vi.mocked(userRepository.updateProfileAtomic).mockResolvedValue(updatedUser);
 
-      await updateProfile("user-1", { email: "new@example.com" });
+      const result = await updateProfile("user-1", {
+        displayName: mockUser.name,
+        email: "new@example.com",
+      });
 
       expect(userRepository.updateProfileAtomic).toHaveBeenCalledWith("user-1", {
         email: "new@example.com",
       });
+      expect(result).toEqual({ user: updatedUser, emailChanged: true });
     });
 
-    it("returns current user without updating when no fields are provided", async () => {
-      vi.mocked(userRepository.findById).mockResolvedValue(mockUser);
-
-      const result = await updateProfile("user-1", {});
+    it("treats a no-op submit (same displayName and email) as nothing-to-update", async () => {
+      const result = await updateProfile("user-1", {
+        displayName: mockUser.name,
+        email: mockUser.email,
+      });
 
       expect(userRepository.updateProfileAtomic).not.toHaveBeenCalled();
-      expect(userRepository.findById).toHaveBeenCalledWith("user-1");
-      expect(result).toEqual(mockUser);
+      expect(result).toEqual({ user: mockUser, emailChanged: false });
+    });
+
+    it("returns null user with emailChanged=false when the user no longer exists", async () => {
+      vi.mocked(userRepository.findById).mockResolvedValue(null);
+
+      const result = await updateProfile("missing", { displayName: "X", email: "x@example.com" });
+
+      expect(userRepository.updateProfileAtomic).not.toHaveBeenCalled();
+      expect(result).toEqual({ user: null, emailChanged: false });
     });
 
     it("fires PROFILE_UPDATED audit event after successful update", async () => {
       vi.mocked(userRepository.updateProfileAtomic).mockResolvedValue(mockUser);
 
-      await updateProfile("user-1", { displayName: "New Name" });
+      await updateProfile("user-1", { displayName: "New Name", email: mockUser.email });
 
       await vi.waitFor(() => {
         expect(auditService.logEvent).toHaveBeenCalledWith({

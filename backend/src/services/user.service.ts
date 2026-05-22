@@ -20,13 +20,30 @@ export async function getProfile(userId: string) {
 export async function updateProfile(
   userId: string,
   data: { displayName?: string; email?: string },
-) {
+): Promise<{
+  user: Awaited<ReturnType<typeof userRepository.findById>>;
+  emailChanged: boolean;
+}> {
+  // Read the row first so we can diff against the submitted values. Without the
+  // diff the form always submits both fields and the controller can't tell a
+  // real email change from a no-op submit — KAN-159 reproduces because the
+  // no-op path went through `updateProfileAtomic` and then refreshed the
+  // session, leaving the UI showing a misleading load-failed banner.
+  const current = await userRepository.findById(userId);
+  if (!current) return { user: null, emailChanged: false };
+
   const updateData: { name?: string; email?: string } = {};
-  if (data.displayName !== undefined) updateData.name = data.displayName;
-  if (data.email !== undefined) updateData.email = data.email;
+  let emailChanged = false;
+  if (data.displayName !== undefined && data.displayName !== current.name) {
+    updateData.name = data.displayName;
+  }
+  if (data.email !== undefined && data.email !== current.email) {
+    updateData.email = data.email;
+    emailChanged = true;
+  }
 
   if (Object.keys(updateData).length === 0) {
-    return userRepository.findById(userId);
+    return { user: current, emailChanged: false };
   }
 
   let updated;
@@ -43,7 +60,7 @@ export async function updateProfile(
     changedValues: { fields: Object.keys(updateData) },
   });
 
-  return updated;
+  return { user: updated, emailChanged };
 }
 
 export async function changePassword(userId: string, currentPassword: string, newPassword: string) {

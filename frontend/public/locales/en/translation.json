@@ -196,6 +196,7 @@
       "displayNamePlaceholder": "Your name",
       "emailLabel": "Email address",
       "success": "Profile updated successfully.",
+      "emailChangedSignInAgain": "Profile updated. Please sign in again with your new email.",
       "saving": "Saving…",
       "saveBtn": "Save changes"
     },

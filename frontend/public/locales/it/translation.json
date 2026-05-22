@@ -196,6 +196,7 @@
       "displayNamePlaceholder": "Il tuo nome",
       "emailLabel": "Indirizzo email",
       "success": "Profilo aggiornato con successo.",
+      "emailChangedSignInAgain": "Profilo aggiornato. Accedi di nuovo con la tua nuova email.",
       "saving": "Salvataggio…",
       "saveBtn": "Salva le modifiche"
     },
