@@ -128,6 +128,7 @@
   },
   "404": {
     "title": "404 - Pagina non trovata",
+    "description": "La pagina che stai cercando non esiste o è stata spostata.",
     "homepage": "Vai alla homepage"
   },
   "settings": {
