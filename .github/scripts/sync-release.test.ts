@@ -179,6 +179,11 @@ describe("sync-release", () => {
         per_page: 1,
       }),
     );
+    // We now unconditionally query both the tag-run (by head_sha) and the branch-run.
+    expect(github.rest.actions.listWorkflowRuns).toHaveBeenCalledTimes(2);
+    expect(github.rest.actions.listWorkflowRuns.mock.calls[1][0]).toEqual(
+      expect.objectContaining({ workflow_id: "ci.yml", branch: "develop" }),
+    );
     expect(github.rest.repos.merge).toHaveBeenCalledOnce();
     const mergeArgs = github.rest.repos.merge.mock.calls[0][0];
     expect(mergeArgs.base).toBe("main");
@@ -297,6 +302,30 @@ describe("sync-release", () => {
     expect(core.setFailed).not.toHaveBeenCalled();
     expect(core.info.mock.calls.some((c) => String(c[0]).includes("falling back"))).toBe(true);
     expect(github.rest.repos.merge).toHaveBeenCalledOnce();
+  });
+
+  it("branch lookup throws 500 → aborts without promoting", async () => {
+    const refs: RefMap = {
+      "heads/develop": { object: { sha: TAG_COMMIT_SHA, type: "commit" } },
+      "heads/main": { object: { sha: MAIN_SHA, type: "commit" } },
+      "tags/v1.0.0": { object: { sha: TAG_COMMIT_SHA, type: "commit" } },
+    };
+    const core = makeCore();
+    const github = makeGithub({
+      refs,
+      tagRuns: [],
+      branchRuns: octokitError(500, "internal server error"),
+    });
+
+    await syncRelease({ github, context, core, inputs: baseInputs });
+
+    expect(core.setFailed).toHaveBeenCalledOnce();
+    const failure = core.setFailed.mock.calls[0][0];
+    expect(failure).toContain("HTTP 500");
+    expect(failure).toContain("internal server error");
+    // We should have attempted both lookups (tag then branch)
+    expect(github.rest.actions.listWorkflowRuns).toHaveBeenCalledTimes(2);
+    expect(github.rest.repos.merge).not.toHaveBeenCalled();
   });
 
   it.each([

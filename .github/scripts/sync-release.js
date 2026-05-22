@@ -103,9 +103,17 @@ module.exports = async function syncRelease({ github, context, core, inputs }) {
     });
     branchRuns = branchRunsResult.workflow_runs;
   } catch (error) {
-    core.info(
-      `Failed to list CI runs for workflow 'ci.yml' on branch 'develop' (release ${releaseTag}, commit ${releaseTagSha}): ${formatError(error)}.`,
-    );
+    const status = error.status ?? 0;
+    if (status === 404) {
+      core.info(
+        `No CI run found on branch 'develop' while verifying release ${releaseTag} (commit ${releaseTagSha}); proceeding based on other evidence.`,
+      );
+    } else {
+      core.setFailed(
+        `Failed to list CI runs for workflow 'ci.yml' on branch 'develop' (release ${releaseTag}, commit ${releaseTagSha}): ${formatError(error)}. Aborting to avoid promoting an unverified release.`,
+      );
+      return { skipped: false };
+    }
   }
 
   const successfulDevelopRun = branchRuns.find((run) => run.conclusion === "success");
