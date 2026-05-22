@@ -161,8 +161,11 @@ test.describe("import → partial categorization → retry → full categorizati
     });
     wave2.spotify = { category: spotifyCat, rule: spotifyRule };
 
+    // KAN-154 made `createRule` auto-categorize as a side-effect, so the two
+    // wave-2 rule inserts above already categorized the 10 uncategorized rows.
+    // The explicit re-run therefore must be a no-op (idempotent).
     const result = await admin.transactions.autoCategorize();
-    expect(result.categorized).toBe(10);
+    expect(result.categorized).toBe(0);
 
     const list = await admin.transactions.list({
       startDate: RANGE.startDate,
