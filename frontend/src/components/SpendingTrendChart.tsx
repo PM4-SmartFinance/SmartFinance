@@ -565,6 +565,7 @@ export function SpendingTrendChart() {
                     boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
                   }}
                   labelStyle={{ color: "var(--foreground)" }}
+                  itemStyle={{ color: "var(--foreground)" }}
                   formatter={(value, name) => {
                     const num = Number(value);
                     return [isFinite(num) ? formatAmount(num, lng) : FALLBACK, name];
@@ -630,6 +631,7 @@ export function SpendingTrendChart() {
                     boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
                   }}
                   labelStyle={{ color: "var(--foreground)" }}
+                  itemStyle={{ color: "var(--foreground)" }}
                   formatter={(value, name) => {
                     const num = Number(value);
                     return [isFinite(num) ? formatAmount(num, lng) : FALLBACK, name];
