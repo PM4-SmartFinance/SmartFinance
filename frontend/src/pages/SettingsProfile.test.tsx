@@ -209,6 +209,7 @@ describe("SettingsProfile - Password Change Flow", () => {
 describe("SettingsProfile - Profile Update Flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockNavigate.mockReset();
     mockGet.mockResolvedValue({
       user: { id: "1", email: "test@example.com", name: "Test User", role: "USER" },
     });
@@ -217,7 +218,8 @@ describe("SettingsProfile - Profile Update Flow", () => {
   it("sends displayName and email to PATCH /users/me", async () => {
     const user = userEvent.setup();
     mockPatch.mockResolvedValue({
-      user: { id: "1", email: "new@example.com", name: "New Name", role: "USER" },
+      user: { id: "1", email: "test@example.com", name: "New Name", role: "USER" },
+      emailChanged: false,
     });
     renderWithProviders();
 
@@ -231,16 +233,84 @@ describe("SettingsProfile - Profile Update Flow", () => {
     await user.clear(nameInput);
     await user.type(nameInput, "New Name");
     await user.clear(emailInput);
-    await user.type(emailInput, "new@example.com");
+    await user.type(emailInput, "test@example.com");
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
     await waitFor(() => {
       expect(mockPatch).toHaveBeenCalledWith("/users/me", {
         displayName: "New Name",
-        email: "new@example.com",
+        email: "test@example.com",
       });
     });
     expect(await screen.findByText("Profile updated successfully.")).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("shows the re-authentication banner and redirects to /login when the email changed", async () => {
+    const user = userEvent.setup();
+    mockPatch.mockResolvedValue({
+      user: { id: "1", email: "new@example.com", name: "Test User", role: "USER" },
+      emailChanged: true,
+    });
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Test User")).toBeInTheDocument();
+    });
+
+    await user.clear(screen.getByLabelText(/Email address/i));
+    await user.type(screen.getByLabelText(/Email address/i), "new@example.com");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    // Success banner appears before navigation — locks the "show feedback,
+    // then redirect" sequencing.
+    expect(
+      await screen.findByText(/Please sign in again with your new email/i),
+    ).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    // Loading-failed banner must NOT appear — that was the KAN-159 symptom.
+    expect(screen.queryByText(/Failed to load your profile/i)).not.toBeInTheDocument();
+
+    await waitFor(
+      () => {
+        expect(mockNavigate).toHaveBeenCalledExactlyOnceWith("/login");
+      },
+      { timeout: 3000 },
+    );
+  });
+
+  it("clears the cached auth query before redirecting after an email change", async () => {
+    const user = userEvent.setup();
+    const removeQueriesSpy = vi.spyOn(QueryClient.prototype, "removeQueries");
+    mockPatch.mockResolvedValue({
+      user: { id: "1", email: "new@example.com", name: "Test User", role: "USER" },
+      emailChanged: true,
+    });
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Test User")).toBeInTheDocument();
+    });
+
+    await user.clear(screen.getByLabelText(/Email address/i));
+    await user.type(screen.getByLabelText(/Email address/i), "new@example.com");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(
+      () => {
+        expect(mockNavigate).toHaveBeenCalledExactlyOnceWith("/login");
+      },
+      { timeout: 3000 },
+    );
+
+    expect(removeQueriesSpy).toHaveBeenCalledWith({ queryKey: ["auth", "me"] });
+    const removeOrder = removeQueriesSpy.mock.invocationCallOrder[0];
+    const navigateOrder = mockNavigate.mock.invocationCallOrder[0];
+    expect(removeOrder).toBeDefined();
+    expect(navigateOrder).toBeDefined();
+    expect(removeOrder).toBeLessThan(navigateOrder as number);
+    removeQueriesSpy.mockRestore();
   });
 
   it("shows ApiError message when update fails", async () => {
