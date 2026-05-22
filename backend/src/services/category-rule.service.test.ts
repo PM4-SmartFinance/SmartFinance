@@ -13,13 +13,29 @@ vi.mock("../repositories/transaction.repository.js", () => ({
   findPreviewMatchesForUser: vi.fn(),
 }));
 
+// KAN-154: createRule/updateRule now run autoCategorize as a best-effort
+// follow-up. The categorization path is exercised end-to-end in the
+// integration spec; here we mock it so the unit tests stay focused on the
+// rule lifecycle and don't need a real logger/database.
+vi.mock("./categorization.service.js", () => ({
+  autoCategorize: vi.fn().mockResolvedValue({ categorized: 0 }),
+}));
+
+vi.mock("../logger.js", () => ({
+  getLogger: vi.fn(() => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() })),
+}));
+
 import * as service from "./category-rule.service.js";
 import * as repo from "../repositories/category-rule.repository.js";
 import * as transactionRepo from "../repositories/transaction.repository.js";
+import * as categorizationService from "./categorization.service.js";
+import { getLogger } from "../logger.js";
 import { DuplicateRuleError, ServiceError } from "../errors.js";
 
 const mockRepo = vi.mocked(repo);
 const mockTransactionRepo = vi.mocked(transactionRepo);
+const mockAutoCategorize = vi.mocked(categorizationService.autoCategorize);
+const mockGetLogger = vi.mocked(getLogger);
 
 const sampleRule = {
   id: "rule-1",
@@ -153,6 +169,31 @@ describe("category-rule.service", () => {
       expect(mockRepo.findCategoryForUser).not.toHaveBeenCalled();
       expect(mockRepo.create).not.toHaveBeenCalled();
     });
+
+    // KAN-154: post-save auto-categorize is best-effort. A failure must not
+    // surface to the caller or roll back the persisted rule — the user can
+    // always retry categorization manually from the UI.
+    it("returns the rule and logs a warning when post-create autoCategorize throws", async () => {
+      mockRepo.findCategoryForUser.mockResolvedValue({ id: "cat-1" });
+      mockRepo.create.mockResolvedValue(sampleRule as never);
+      const warn = vi.fn();
+      mockGetLogger.mockReturnValue({
+        warn,
+        info: vi.fn(),
+        error: vi.fn(),
+        debug: vi.fn(),
+      } as never);
+      mockAutoCategorize.mockRejectedValueOnce(new Error("DB connection lost"));
+
+      const result = await service.createRule("user-1", "cat-1", "Migros", "contains", 10);
+
+      expect(result).toEqual(sampleRule);
+      expect(mockAutoCategorize).toHaveBeenCalledWith("user-1");
+      expect(warn).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: "user-1", ruleId: sampleRule.id }),
+        expect.stringMatching(/auto-categorize failed/i),
+      );
+    });
   });
 
   describe("updateRule", () => {
@@ -269,6 +310,28 @@ describe("category-rule.service", () => {
       expect(error).toBeInstanceOf(ServiceError);
       expect(error.statusCode).toBe(404);
       expect(mockRepo.update).not.toHaveBeenCalled();
+    });
+
+    // KAN-154: mirrors the createRule best-effort failure case.
+    it("returns the updated rule and logs a warning when post-update autoCategorize throws", async () => {
+      mockRepo.update.mockResolvedValue({ ...sampleRule, priority: 20 } as never);
+      const warn = vi.fn();
+      mockGetLogger.mockReturnValue({
+        warn,
+        info: vi.fn(),
+        error: vi.fn(),
+        debug: vi.fn(),
+      } as never);
+      mockAutoCategorize.mockRejectedValueOnce(new Error("DB connection lost"));
+
+      const result = await service.updateRule("rule-1", "user-1", { priority: 20 });
+
+      expect(result).toEqual({ ...sampleRule, priority: 20 });
+      expect(mockAutoCategorize).toHaveBeenCalledWith("user-1");
+      expect(warn).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: "user-1", ruleId: "rule-1" }),
+        expect.stringMatching(/auto-categorize failed/i),
+      );
     });
   });
 
