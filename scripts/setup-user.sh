@@ -117,6 +117,7 @@ get_image_tag() {
   local candidate_tags
 
   candidate_tags=""
+  REMOTE_IMAGE_AVAILABLE=false
 
   if command_exists git && [ -d .git ]; then
     candidate=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
@@ -141,11 +142,13 @@ EOF
     normalized_tag=$(printf '%s' "$candidate" | sed 's/^[vV]//')
     if docker manifest inspect "ghcr.io/pm4-smartfinance/smartfinance/backend:${normalized_tag}" >/dev/null 2>&1 \
       && docker manifest inspect "ghcr.io/pm4-smartfinance/smartfinance/frontend:${normalized_tag}" >/dev/null 2>&1; then
+      REMOTE_IMAGE_AVAILABLE=true
       printf '%s' "$normalized_tag"
       return 0
     fi
   done
 
+  REMOTE_IMAGE_AVAILABLE=false
   printf '%s' "latest"
 }
 
@@ -210,6 +213,8 @@ ensure_free_space() {
 }
 
 if [ "$LOCAL_BACKEND_IMAGE_PRESENT" = true ] && [ "$LOCAL_FRONTEND_IMAGE_PRESENT" = true ]; then
+  MIN_ROOT_FREE_KB=${SMARTFINANCE_MIN_ROOT_FREE_KB_RUNTIME:-$((512 * 1024))}
+elif [ "$REMOTE_IMAGE_AVAILABLE" = true ]; then
   MIN_ROOT_FREE_KB=${SMARTFINANCE_MIN_ROOT_FREE_KB_RUNTIME:-$((512 * 1024))}
 else
   MIN_ROOT_FREE_KB=${SMARTFINANCE_MIN_ROOT_FREE_KB_BUILD:-$((3 * 1024 * 1024))}
