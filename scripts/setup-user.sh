@@ -117,7 +117,6 @@ get_image_tag() {
   local candidate_tags
 
   candidate_tags=""
-  REMOTE_IMAGE_AVAILABLE=false
 
   if command_exists git && [ -d .git ]; then
     candidate=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
@@ -142,14 +141,18 @@ EOF
     normalized_tag=$(printf '%s' "$candidate" | sed 's/^[vV]//')
     if docker manifest inspect "ghcr.io/pm4-smartfinance/smartfinance/backend:${normalized_tag}" >/dev/null 2>&1 \
       && docker manifest inspect "ghcr.io/pm4-smartfinance/smartfinance/frontend:${normalized_tag}" >/dev/null 2>&1; then
-      REMOTE_IMAGE_AVAILABLE=true
       printf '%s' "$normalized_tag"
       return 0
     fi
   done
 
-  REMOTE_IMAGE_AVAILABLE=false
   printf '%s' "latest"
+}
+
+remote_image_available_for_tag() {
+  local tag="$1"
+  docker manifest inspect "ghcr.io/pm4-smartfinance/smartfinance/backend:${tag}" >/dev/null 2>&1 \
+    && docker manifest inspect "ghcr.io/pm4-smartfinance/smartfinance/frontend:${tag}" >/dev/null 2>&1
 }
 
 echo "===================================================="
@@ -186,6 +189,11 @@ if docker image inspect "$BACKEND_IMAGE" >/dev/null 2>&1; then
 fi
 if docker image inspect "$FRONTEND_IMAGE" >/dev/null 2>&1; then
   LOCAL_FRONTEND_IMAGE_PRESENT=true
+fi
+
+REMOTE_IMAGE_AVAILABLE=false
+if remote_image_available_for_tag "$IMAGE_TAG"; then
+  REMOTE_IMAGE_AVAILABLE=true
 fi
 
 USE_LOCAL_BUILD=false
