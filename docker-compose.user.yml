@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: smartfinance
+      POSTGRES_USER: smartfinance
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_user_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartfinance"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - app
+
+  backend:
+    image: ghcr.io/pm4-smartfinance/smartfinance/backend:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOST: 0.0.0.0
+      DATABASE_URL: postgresql://smartfinance:${POSTGRES_PASSWORD}@postgres:5432/smartfinance
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+      SEED_DEMO_USER: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app
+
+  frontend:
+    image: ghcr.io/pm4-smartfinance/smartfinance/frontend:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - app
+
+volumes:
+  postgres_user_data:
+
+networks:
+  app:
+    driver: bridge

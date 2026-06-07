@@ -61,7 +61,14 @@ Before running or developing the application, make sure these are installed.
 ./scripts/setup-user.sh
 ```
 
-3. Open the app in your browser at `http://localhost` or at your configured domain.
+3. The script checks GHCR for a published backend/frontend image tag first. If one exists, it pulls that tag; otherwise it builds local images and reuses them on reruns.
+4. Open the app in your browser at `http://localhost` or at your configured domain.
+
+When you are done using the app, stop the stack to release resources:
+
+```bash
+./scripts/stop-user.sh
+```
 
 ### Self-Hosting on Windows
 
