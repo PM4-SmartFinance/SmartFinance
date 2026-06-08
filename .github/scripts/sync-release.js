@@ -64,6 +64,12 @@ module.exports = async function syncRelease({ github, context, core, inputs }) {
   // completed run on develop only if no run is found for the tag SHA. Genuine
   // API errors (auth, rate limit, 5xx) must abort — silently degrading would
   // mask a degraded GitHub API and let an unverified release through.
+  //
+  // Each lookup requests only the single most recent completed run
+  // (per_page: 1). That run must *itself* be green: we deliberately do not scan
+  // further back for an older passing run, because a release may only promote a
+  // develop tip whose own latest CI run is green. A 404 from a lookup means "no
+  // such run" (benign — fall through); any other error aborts.
   let latestRun;
   let lookupSource;
   try {
@@ -108,10 +114,21 @@ module.exports = async function syncRelease({ github, context, core, inputs }) {
         lookupSource = "develop-branch";
       }
     } catch (error) {
-      core.setFailed(
-        `Failed to list CI runs for workflow 'ci.yml' on branch 'develop' (release ${releaseTag}, commit ${releaseTagSha}): ${formatError(error)}.`,
-      );
-      return { skipped: false };
+      // Mirror the tag-SHA handler: a 404 is benign (no runs on develop — fall
+      // through to the "no completed run" failure below), but any other status
+      // (auth, rate limit, 5xx) must abort so a degraded GitHub API cannot be
+      // mistaken for "no green run found".
+      const status = error.status ?? 0;
+      if (status === 404) {
+        core.info(
+          `No CI runs found by branch=develop (release ${releaseTag}); no fallback run available.`,
+        );
+      } else {
+        core.setFailed(
+          `Failed to list CI runs for workflow 'ci.yml' on branch 'develop' (release ${releaseTag}, commit ${releaseTagSha}): ${formatError(error)}. Aborting before fallback to avoid masking the underlying API failure.`,
+        );
+        return { skipped: false };
+      }
     }
   }
 
