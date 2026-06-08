@@ -126,7 +126,7 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
       const sessionUser = getSessionUser(request);
 
       const { displayName, email } = request.body;
-      const updated = await userService.updateProfile(sessionUser.id, {
+      const { user: updated, emailChanged } = await userService.updateProfile(sessionUser.id, {
         ...(displayName !== undefined && { displayName }),
         ...(email !== undefined && { email }),
       });
@@ -135,18 +135,15 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
         throw new ServiceError(404, "User not found");
       }
 
-      // Refresh the session email while preserving the password version so
-      // subsequent auth checks continue to validate correctly.
-      if (email !== undefined) {
-        request.session.set("user", {
-          id: sessionUser.id,
-          role: sessionUser.role,
-          email: updated.email,
-          ...(sessionUser.pwdVersion !== undefined && { pwdVersion: sessionUser.pwdVersion }),
-        });
+      // Email is a login credential — force re-authentication so the client
+      // does not silently continue with a session whose identifier no longer
+      // matches the user's expectation, and so the next sign-in confirms the
+      // user knows the new address.
+      if (emailChanged) {
+        request.session.delete();
       }
 
-      return reply.send({ user: updated });
+      return reply.send({ user: updated, emailChanged });
     },
   );
 

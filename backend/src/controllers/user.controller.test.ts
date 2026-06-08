@@ -120,12 +120,16 @@ describe("GET /api/v1/users/me", () => {
 
 describe("PATCH /api/v1/users/me", () => {
   let app: FastifyInstance;
-  // Hoisted so individual tests can assert on the session refresh payload
-  // (mirrors the sessionDeleteSpy pattern used by the change-password block).
+  // Hoisted so individual tests can assert on session lifecycle effects of
+  // the patch handler (`set` is unused in the current design but kept on the
+  // mock so we can lock the "no session writes from the patch path" contract;
+  // `delete` is what the email-changed branch invokes).
   let sessionSetSpy: ReturnType<typeof vi.fn>;
+  let sessionDeleteSpy: ReturnType<typeof vi.fn>;
 
   beforeAll(async () => {
     sessionSetSpy = vi.fn();
+    sessionDeleteSpy = vi.fn();
     app = Fastify({ logger: false });
     app.decorateRequest("session", null);
     app.addHook("onRequest", async (request) => {
@@ -134,7 +138,7 @@ describe("PATCH /api/v1/users/me", () => {
         value: {
           get: () => sessionUser,
           set: sessionSetSpy,
-          delete: vi.fn(),
+          delete: sessionDeleteSpy,
         },
       });
     });
@@ -147,6 +151,7 @@ describe("PATCH /api/v1/users/me", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     sessionSetSpy.mockClear();
+    sessionDeleteSpy.mockClear();
     sessionUser = {
       id: "user-1",
       role: "USER",
@@ -155,8 +160,11 @@ describe("PATCH /api/v1/users/me", () => {
     };
   });
 
-  it("returns 200 with the updated profile", async () => {
-    mockUpdateProfile.mockResolvedValue({ ...profileFixture, name: "New Name" });
+  it("returns 200 with the updated profile and emailChanged=false on displayName-only change", async () => {
+    mockUpdateProfile.mockResolvedValue({
+      user: { ...profileFixture, name: "New Name" },
+      emailChanged: false,
+    });
 
     const response = await app.inject({
       method: "PATCH",
@@ -165,11 +173,17 @@ describe("PATCH /api/v1/users/me", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({ user: { name: "New Name" } });
+    expect(response.json()).toMatchObject({
+      user: { name: "New Name" },
+      emailChanged: false,
+    });
   });
 
   it("passes displayName and email to the service", async () => {
-    mockUpdateProfile.mockResolvedValue({ ...profileFixture, email: "new@example.com" });
+    mockUpdateProfile.mockResolvedValue({
+      user: { ...profileFixture, email: "new@example.com" },
+      emailChanged: true,
+    });
 
     await app.inject({
       method: "PATCH",
@@ -183,25 +197,29 @@ describe("PATCH /api/v1/users/me", () => {
     });
   });
 
-  it("refreshes the session email and preserves pwdVersion when email changes", async () => {
-    mockUpdateProfile.mockResolvedValue({ ...profileFixture, email: "new@example.com" });
+  it("deletes the session and returns emailChanged=true when the email actually changed", async () => {
+    mockUpdateProfile.mockResolvedValue({
+      user: { ...profileFixture, email: "new@example.com" },
+      emailChanged: true,
+    });
 
-    await app.inject({
+    const response = await app.inject({
       method: "PATCH",
       url: "/api/v1/users/me",
       payload: { email: "new@example.com" },
     });
 
-    expect(sessionSetSpy).toHaveBeenCalledWith("user", {
-      id: "user-1",
-      role: "USER",
-      email: "new@example.com",
-      pwdVersion: "1234567890",
-    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ emailChanged: true });
+    expect(sessionDeleteSpy).toHaveBeenCalledTimes(1);
+    expect(sessionSetSpy).not.toHaveBeenCalled();
   });
 
-  it("does not refresh the session when only displayName changes", async () => {
-    mockUpdateProfile.mockResolvedValue({ ...profileFixture, name: "Renamed" });
+  it("does not touch the session when only displayName changes", async () => {
+    mockUpdateProfile.mockResolvedValue({
+      user: { ...profileFixture, name: "Renamed" },
+      emailChanged: false,
+    });
 
     await app.inject({
       method: "PATCH",
@@ -210,10 +228,26 @@ describe("PATCH /api/v1/users/me", () => {
     });
 
     expect(sessionSetSpy).not.toHaveBeenCalled();
+    expect(sessionDeleteSpy).not.toHaveBeenCalled();
   });
 
-  it("returns 404 when updateProfile resolves to null", async () => {
-    mockUpdateProfile.mockResolvedValue(null);
+  it("does not touch the session on a no-op submit (same email)", async () => {
+    mockUpdateProfile.mockResolvedValue({ user: profileFixture, emailChanged: false });
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/users/me",
+      payload: { displayName: profileFixture.name, email: profileFixture.email },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ emailChanged: false });
+    expect(sessionSetSpy).not.toHaveBeenCalled();
+    expect(sessionDeleteSpy).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when updateProfile resolves with a null user", async () => {
+    mockUpdateProfile.mockResolvedValue({ user: null, emailChanged: false });
 
     const response = await app.inject({
       method: "PATCH",
@@ -223,6 +257,7 @@ describe("PATCH /api/v1/users/me", () => {
 
     expect(response.statusCode).toBe(404);
     expect(sessionSetSpy).not.toHaveBeenCalled();
+    expect(sessionDeleteSpy).not.toHaveBeenCalled();
   });
 
   it("returns 409 when the new email is already taken", async () => {

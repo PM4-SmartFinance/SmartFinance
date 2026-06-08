@@ -203,7 +203,7 @@ export async function updateProfileAtomic(id: string, data: { name?: string; ema
       return tx.dimUser.update({
         where: { id },
         data,
-        select: { id: true, email: true, name: true, role: true },
+        select: { id: true, email: true, name: true, role: true, active: true, createdAt: true },
       });
     });
   } catch (err) {

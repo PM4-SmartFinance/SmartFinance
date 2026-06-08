@@ -195,6 +195,7 @@
       "displayNamePlaceholder": "Ihr Name",
       "emailLabel": "E-Mail-Adresse",
       "success": "Profil erfolgreich aktualisiert.",
+      "emailChangedSignInAgain": "Profil aktualisiert. Bitte melden Sie sich mit Ihrer neuen E-Mail-Adresse erneut an.",
       "saving": "Wird gespeichert…",
       "saveBtn": "Änderungen speichern"
     },
