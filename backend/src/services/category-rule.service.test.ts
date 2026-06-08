@@ -170,6 +170,45 @@ describe("category-rule.service", () => {
       expect(mockRepo.create).not.toHaveBeenCalled();
     });
 
+    // KAN-161: regex patterns are capped at 256 chars so the RegExp engine
+    // cannot be pushed into pathological parse work. Boundary pair pins the
+    // `>` comparison (256 accepted, 257 rejected).
+    it("accepts a regex pattern at the 256-char boundary", async () => {
+      mockRepo.findCategoryForUser.mockResolvedValue({ id: "cat-1" });
+      mockRepo.create.mockResolvedValue(sampleRule as never);
+
+      await expect(
+        service.createRule("user-1", "cat-1", "a".repeat(256), "regex", 10),
+      ).resolves.toBeDefined();
+    });
+
+    it("rejects a regex pattern over 256 chars with a 400 'too long' error", async () => {
+      const error = await service
+        .createRule("user-1", "cat-1", "a".repeat(257), "regex", 10)
+        .catch((e: ServiceError) => e);
+
+      expect(error).toBeInstanceOf(ServiceError);
+      expect(error.statusCode).toBe(400);
+      expect(error.message).toMatch(/too long/i);
+      expect(mockRepo.findCategoryForUser).not.toHaveBeenCalled();
+      expect(mockRepo.create).not.toHaveBeenCalled();
+    });
+
+    // KAN-161: the length cap must run before the RegExp syntax check, so an
+    // over-long *and* syntactically-invalid pattern reports "too long" rather
+    // than "Invalid regex pattern". Pins the gate ordering against regression.
+    it("reports 'too long' (not 'invalid') for an over-long malformed pattern", async () => {
+      const error = await service
+        .createRule("user-1", "cat-1", "(".repeat(300), "regex", 10)
+        .catch((e: ServiceError) => e);
+
+      expect(error).toBeInstanceOf(ServiceError);
+      expect(error.statusCode).toBe(400);
+      expect(error.message).toMatch(/too long/i);
+      expect(error.message).not.toMatch(/invalid/i);
+      expect(mockRepo.create).not.toHaveBeenCalled();
+    });
+
     // KAN-154: post-save auto-categorize is best-effort. A failure must not
     // surface to the caller or roll back the persisted rule — the user can
     // always retry categorization manually from the UI.

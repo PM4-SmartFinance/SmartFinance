@@ -202,6 +202,70 @@ describe("Rate limit — POST /api/v1/users (max 10 / minute, admin creation pat
   });
 });
 
+describe("Rate limit — POST /api/v1/auth/logout (max 30 / minute)", () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    register.clear();
+    app = await buildApp({ forceRateLimit: true });
+    await app.ready();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it("allows requests 1 through 30 and returns 429 on request 31", async () => {
+    // Logout records a null actor when no session is present (user?.id ?? null)
+    // and still returns 200, so the limiter can be exercised without auth.
+    for (let attempt = 1; attempt <= 30; attempt++) {
+      const res = await app.inject({ method: "POST", url: "/api/v1/auth/logout" });
+      expect(res.statusCode, `logout attempt ${attempt} should succeed`).toBe(200);
+    }
+
+    const blocked = await app.inject({ method: "POST", url: "/api/v1/auth/logout" });
+    expect(blocked.statusCode).toBe(429);
+    expect(blocked.headers["retry-after"]).toBeDefined();
+    expect(Number(blocked.headers["retry-after"])).toBeGreaterThan(0);
+    expect(Number(blocked.headers["retry-after"])).toBeLessThanOrEqual(60);
+    const body = blocked.json();
+    expect(body).toHaveProperty("error.message");
+    expect(body.error.message).not.toMatch(/at\s+\w+\s+\(/); // no stack traces
+  });
+});
+
+describe("Rate limit — GET /api/v1/auth/me (max 60 / minute)", () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    register.clear();
+    app = await buildApp({ forceRateLimit: true });
+    await app.ready();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it("counts unauthenticated requests against the bucket and returns 429 on request 61", async () => {
+    // The limiter is an onRequest hook, so it runs before verifySession —
+    // unauthenticated requests return 401 but still count toward the cap.
+    for (let attempt = 1; attempt <= 60; attempt++) {
+      const res = await app.inject({ method: "GET", url: "/api/v1/auth/me" });
+      expect(res.statusCode, `/auth/me attempt ${attempt} should be 401`).toBe(401);
+    }
+
+    const blocked = await app.inject({ method: "GET", url: "/api/v1/auth/me" });
+    expect(blocked.statusCode).toBe(429);
+    expect(blocked.headers["retry-after"]).toBeDefined();
+    expect(Number(blocked.headers["retry-after"])).toBeGreaterThan(0);
+    expect(Number(blocked.headers["retry-after"])).toBeLessThanOrEqual(60);
+    const body = blocked.json();
+    expect(body).toHaveProperty("error.message");
+    expect(body.error.message).not.toMatch(/at\s+\w+\s+\(/); // no stack traces
+  });
+});
+
 describe("Rate limit — POST /api/v1/users (unauthenticated bootstrap path)", () => {
   let app: FastifyInstance;
 
