@@ -29,6 +29,7 @@ interface ListTransactionsQuery {
   startDate?: string;
   endDate?: string;
   categoryId?: string;
+  accountId?: string;
   minAmount?: number;
   maxAmount?: number;
   search?: string;
@@ -90,6 +91,7 @@ const listTransactionsSchema = {
       startDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
       endDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
       categoryId: { type: "string" },
+      accountId: { type: "string", format: "uuid" },
       minAmount: { type: "number" },
       maxAmount: { type: "number" },
       search: { type: "string", minLength: 1, maxLength: 200 },

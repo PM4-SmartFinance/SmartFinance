@@ -5,6 +5,7 @@ import { parseWiseCSV } from "./importers/wise.parser.js";
 import { parseUBSCSV } from "./importers/ubs.parser.js";
 import * as transactionRepository from "../repositories/transaction.repository.js";
 import * as accountRepository from "../repositories/account.repository.js";
+import { extractAccountHint } from "./importers/account-hint.js";
 import { autoCategorize } from "./categorization.service.js";
 import { importOperations, transactionsImported } from "../metrics/business-metrics.js";
 import { fireTransactionImported } from "./module-registry.service.js";
@@ -48,10 +49,11 @@ interface AccountCandidate {
 
 async function resolveAccountId(params: {
   format: string;
+  csvText: string;
   providedAccountId?: string | undefined;
   userId: string;
 }): Promise<string> {
-  const { providedAccountId, userId } = params;
+  const { format, csvText, providedAccountId, userId } = params;
 
   if (providedAccountId) {
     const account = await transactionRepository.findAccountByIdAndUser(providedAccountId, userId);
@@ -61,19 +63,42 @@ async function resolveAccountId(params: {
     return account.id;
   }
 
-  const accounts: AccountCandidate[] = await accountRepository.findAccountsByUser(userId);
-  if (accounts.length === 1) {
-    return accounts[0]!.id;
-  }
+  // Only active accounts participate in resolution — deactivated accounts must
+  // never silently receive an import (KAN-169).
+  const accounts = await accountRepository.findActiveAccountsByUser(userId);
+
   if (accounts.length === 0) {
     throw new ServiceError(409, "No account available for this user.", {
       code: "NO_MATCH",
       candidates: [],
     });
   }
+  if (accounts.length === 1) {
+    return accounts[0]!.id;
+  }
+
+  // Several active accounts: try to auto-match the CSV to a specific one via the
+  // account identifier the file carries (e.g. UBS Kontonummer) before asking the
+  // user to choose.
+  const hint = extractAccountHint(csvText, format);
+  if (hint?.accountNumber) {
+    const matches = await accountRepository.findActiveAccountByNumberAndUser(
+      hint.accountNumber,
+      userId,
+    );
+    if (matches.length === 1) {
+      return matches[0]!.id;
+    }
+  }
+
+  const candidates: AccountCandidate[] = accounts.map((a) => ({
+    id: a.id,
+    name: a.name,
+    iban: a.iban,
+  }));
   throw new ServiceError(409, "Multiple accounts available. Choose one and retry.", {
     code: "AMBIGUOUS_ACCOUNT",
-    candidates: accounts,
+    candidates,
   });
 }
 
@@ -87,6 +112,7 @@ export async function importTransactions({
   try {
     const resolvedAccountId = await resolveAccountId({
       format,
+      csvText,
       providedAccountId: accountId,
       userId,
     });

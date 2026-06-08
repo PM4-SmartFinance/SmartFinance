@@ -65,6 +65,17 @@ vi.mock("../lib/queries/categories", () => ({
   }),
 }));
 
+vi.mock("../lib/queries/accounts", () => ({
+  useAccounts: () => ({
+    data: [
+      { id: "acc-1", name: "Main Account", iban: "CH00 0001", accountNumber: null, active: true },
+      { id: "acc-2", name: "Savings", iban: "CH00 0002", accountNumber: null, active: true },
+    ],
+    isLoading: false,
+    error: null,
+  }),
+}));
+
 describe("TransactionsPage", () => {
   let queryClient: QueryClient;
 

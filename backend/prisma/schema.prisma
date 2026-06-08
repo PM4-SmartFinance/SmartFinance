@@ -97,6 +97,16 @@ model DimAccount {
   name String
   iban String
 
+  // Bank-provided account/card number (e.g. UBS "Kontonummer"). Optional —
+  // not every export carries one. Used to auto-match a CSV import to the right
+  // account when the user has several (KAN-169).
+  accountNumber String?
+
+  // Soft-deactivation flag. Deactivated accounts keep their transactions but
+  // are hidden from the transactions view and excluded from import resolution
+  // (KAN-169). Hard delete is only permitted for accounts with no transactions.
+  active Boolean @default(true)
+
   currencyId String
   currency   DimCurrency @relation(fields: [currencyId], references: [id])
 
@@ -111,6 +121,7 @@ model DimAccount {
   @@unique([userId, iban])
   @@index([userId])
   @@index([currencyId])
+  @@index([active])
 }
 
 model DimCurrency {

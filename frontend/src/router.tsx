@@ -8,6 +8,7 @@ import { TransactionsPage } from "./pages/TransactionsPage";
 import { CategoriesPage } from "./pages/CategoriesPage";
 import { SettingsUsers } from "./pages/SettingsUsers";
 import { SettingsProfile } from "./pages/SettingsProfile";
+import { SettingsAccounts } from "./pages/SettingsAccounts";
 import { SettingsLayout } from "./pages/SettingsLayout";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
@@ -54,6 +55,10 @@ export const router = createBrowserRouter([
           {
             path: "profile",
             element: <SettingsProfile />,
+          },
+          {
+            path: "accounts",
+            element: <SettingsAccounts />,
           },
           {
             element: <AdminRoute />,

@@ -291,8 +291,11 @@ Returns a paginated, filtered, and sorted list of transactions belonging to the 
 | `startDate`  | string  | no       | —       | Filter from date inclusive, format `YYYY-MM-DD`                  |
 | `endDate`    | string  | no       | —       | Filter to date inclusive, format `YYYY-MM-DD`                    |
 | `categoryId` | string  | no       | —       | Filter by category ID (matches user's merchant→category mapping) |
+| `accountId`  | string  | no       | —       | Filter by account ID (UUID). Only active accounts are listed     |
 | `minAmount`  | number  | no       | —       | Filter transactions with amount ≥ value                          |
 | `maxAmount`  | number  | no       | —       | Filter transactions with amount ≤ value                          |
+
+> Only transactions belonging to **active** accounts are returned. Deactivating an account hides its transactions from this endpoint without deleting them.
 
 All filters are optional and can be combined. `minAmount` must not exceed `maxAmount`.
 
@@ -923,7 +926,7 @@ All account endpoints require an authenticated session with the `USER` role.
 
 ### GET /accounts
 
-Returns all accounts belonging to the authenticated user, ordered by name.
+Returns all accounts belonging to the authenticated user. Active accounts are listed first, then by name.
 
 **Response 200:**
 
@@ -933,13 +936,70 @@ Returns all accounts belonging to the authenticated user, ordered by name.
     {
       "id": "uuid",
       "name": "Main Account",
-      "iban": "CH93 0076 2011 6238 5295 7"
+      "iban": "CH93 0076 2011 6238 5295 7",
+      "accountNumber": "1234 5678 9101",
+      "active": true
     }
   ]
 }
 ```
 
+`accountNumber` is the bank-provided account/card number (nullable) used to auto-match CSV imports; `active` is `false` for deactivated accounts.
+
 **Response 401:** Not authenticated
+
+---
+
+### POST /accounts
+
+Creates an account for the authenticated user. The account currency defaults to the user's configured default currency (not user-selectable).
+
+**Request Body:**
+
+| Field           | Type           | Required | Description                                                     |
+| --------------- | -------------- | -------- | --------------------------------------------------------------- |
+| `name`          | string         | yes      | Display name (1–100 chars)                                      |
+| `iban`          | string         | yes      | IBAN (5–42 chars, letters/digits/spaces). Unique per user       |
+| `accountNumber` | string \| null | no       | Bank account/card number (≤ 64 chars), used for import matching |
+
+**Response 201:** `{ "account": { "id", "name", "iban", "accountNumber", "active" } }`
+
+**Response 400:** Validation failed
+**Response 401:** Not authenticated
+**Response 409:** An account with this IBAN already exists
+
+---
+
+### PATCH /accounts/:id
+
+Updates an account owned by the authenticated user. At least one field must be provided. Setting `active: false` **deactivates** the account — its transactions remain in the database but are hidden from the transactions view and excluded from import resolution. Setting `active: true` reactivates it.
+
+**Request Body (all optional, min one):**
+
+| Field           | Type           | Description                                |
+| --------------- | -------------- | ------------------------------------------ |
+| `name`          | string         | Display name (1–100 chars)                 |
+| `iban`          | string         | IBAN (unique per user)                     |
+| `accountNumber` | string \| null | Bank account/card number; `null` clears it |
+| `active`        | boolean        | Activate / deactivate the account          |
+
+**Response 200:** `{ "account": { ... } }`
+
+**Response 400:** Validation failed
+**Response 401:** Not authenticated
+**Response 404:** Account not found or not owned by the user
+**Response 409:** An account with this IBAN already exists
+
+---
+
+### DELETE /accounts/:id
+
+Permanently deletes an account owned by the authenticated user. **Delete policy:** an account that still has transactions cannot be hard-deleted (the FK is `ON DELETE CASCADE`, so deletion would destroy transaction history). Deactivate it instead.
+
+**Response 204:** Deleted
+**Response 401:** Not authenticated
+**Response 404:** Account not found or not owned by the user
+**Response 409:** Account still has transactions — body carries `error.code = "ACCOUNT_HAS_TRANSACTIONS"` and `error.transactionCount`
 
 ---
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useCategories } from "../lib/queries/categories";
+import { useAccounts } from "../lib/queries/accounts";
 import { useTransactions } from "../lib/queries/transactions";
 import { useTransactionsStore } from "../store/transactionsStore";
 import { formatAmount, formatDate as formatTransactionDate } from "../lib/format";
@@ -31,10 +32,12 @@ export function TransactionsPage() {
   const startDate = useTransactionsStore((s) => s.startDate);
   const endDate = useTransactionsStore((s) => s.endDate);
   const categoryId = useTransactionsStore((s) => s.categoryId);
+  const accountId = useTransactionsStore((s) => s.accountId);
   const search = useTransactionsStore((s) => s.search);
   const setPage = useTransactionsStore((s) => s.setPage);
   const setSortBy = useTransactionsStore((s) => s.setSortBy);
   const setCategoryId = useTransactionsStore((s) => s.setCategoryId);
+  const setAccountId = useTransactionsStore((s) => s.setAccountId);
   const setStartDate = useTransactionsStore((s) => s.setStartDate);
   const setEndDate = useTransactionsStore((s) => s.setEndDate);
   const setSearch = useTransactionsStore((s) => s.setSearch);
@@ -43,6 +46,7 @@ export function TransactionsPage() {
   const [tempStartDate, setTempStartDate] = useState(startDate || getDefaultStartDate());
   const [tempEndDate, setTempEndDate] = useState(endDate || getDefaultEndDate());
   const [tempCategoryId, setTempCategoryId] = useState(categoryId || "");
+  const [tempAccountId, setTempAccountId] = useState(accountId || "");
   const [tempSearch, setTempSearch] = useState(search || "");
 
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -53,6 +57,11 @@ export function TransactionsPage() {
 
   const { data: categoriesData, error: categoriesError } = useCategories();
   const categories = categoriesData ?? [];
+
+  const { data: accountsData, error: accountsError } = useAccounts();
+  // Only active accounts have visible transactions, so only they are offered as
+  // a filter option.
+  const accounts = (accountsData ?? []).filter((account) => account.active);
 
   const {
     data: transactionsData,
@@ -66,6 +75,7 @@ export function TransactionsPage() {
     startDate: startDate || getDefaultStartDate(),
     endDate: endDate || getDefaultEndDate(),
     categoryId: categoryId || undefined,
+    accountId: accountId || undefined,
     search: search || undefined,
   });
 
@@ -78,6 +88,7 @@ export function TransactionsPage() {
     setStartDate(tempStartDate || null);
     setEndDate(tempEndDate || null);
     setCategoryId(tempCategoryId || null);
+    setAccountId(tempAccountId || null);
     setSearch(tempSearch || null);
   };
 
@@ -85,6 +96,7 @@ export function TransactionsPage() {
     setTempStartDate(getDefaultStartDate());
     setTempEndDate(getDefaultEndDate());
     setTempCategoryId("");
+    setTempAccountId("");
     setTempSearch("");
     resetFilters();
   };
@@ -207,6 +219,30 @@ export function TransactionsPage() {
                     {categories.map((cat) => (
                       <option key={cat.id} value={cat.id}>
                         {cat.categoryName}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                </div>
+
+                {/* Account */}
+                <div className="space-y-2">
+                  <Label htmlFor="account">
+                    {t("transactions.filters.account", "Filter by Account")}
+                  </Label>
+                  <NativeSelect
+                    id="account"
+                    value={tempAccountId}
+                    onChange={(e) => setTempAccountId(e.target.value)}
+                    disabled={isLoading}
+                  >
+                    <option value="">
+                      {accountsError
+                        ? t("transactions.filters.accountsError", "Failed to load accounts")
+                        : t("transactions.filters.allAccounts", "All Accounts")}
+                    </option>
+                    {accounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.name}
                       </option>
                     ))}
                   </NativeSelect>

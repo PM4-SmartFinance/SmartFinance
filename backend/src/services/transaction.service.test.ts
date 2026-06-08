@@ -148,6 +148,18 @@ describe("listTransactions", () => {
       expect(where.userId).toBe("user-1");
     });
 
+    it("accountId scopes where to the given account", async () => {
+      await listTransactions({ ...DEFAULT_PARAMS, accountId: "acc-9" });
+      const { where } = mockRepo.listTransactions.mock.calls[0]![0];
+      expect(where.accountId).toBe("acc-9");
+    });
+
+    it("omits accountId from where when not provided", async () => {
+      await listTransactions(DEFAULT_PARAMS);
+      const { where } = mockRepo.listTransactions.mock.calls[0]![0];
+      expect(where.accountId).toBeUndefined();
+    });
+
     it("startDate converts to gte dateId", async () => {
       await listTransactions({ ...DEFAULT_PARAMS, startDate: "2025-01-15" });
       const { where } = mockRepo.listTransactions.mock.calls[0]![0];

@@ -9,7 +9,8 @@ vi.mock("../repositories/transaction.repository.js", () => ({
 }));
 
 vi.mock("../repositories/account.repository.js", () => ({
-  findAccountsByUser: vi.fn(),
+  findActiveAccountsByUser: vi.fn(),
+  findActiveAccountByNumberAndUser: vi.fn(),
 }));
 
 vi.mock("./categorization.service.js", () => ({
@@ -38,7 +39,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockRepo.findAccountByIdAndUser.mockResolvedValue({ id: "acc-1" } as never);
   mockRepo.bulkImport.mockImplementation((parsed: unknown[]) => Promise.resolve(parsed.length));
-  mockAccountRepo.findAccountsByUser.mockResolvedValue([]);
+  mockAccountRepo.findActiveAccountsByUser.mockResolvedValue([]);
+  mockAccountRepo.findActiveAccountByNumberAndUser.mockResolvedValue([]);
   vi.mocked(categorizationService.autoCategorize).mockResolvedValue({ categorized: 0 });
   vi.mocked(moduleRegistry.fireTransactionImported).mockResolvedValue(undefined);
 });
@@ -187,9 +189,9 @@ describe("importTransactions", () => {
   });
 
   it("falls back to the user's single account when no accountId is provided", async () => {
-    mockAccountRepo.findAccountsByUser.mockResolvedValue([
+    mockAccountRepo.findActiveAccountsByUser.mockResolvedValue([
       { id: "acc-only", name: "Main", iban: "CH00 0000" },
-    ]);
+    ] as never);
     const csv = [NEON_HEADER, NEON_ROW].join("\n");
 
     const result = await importTransactions({
@@ -206,7 +208,7 @@ describe("importTransactions", () => {
   });
 
   it("throws 409 NO_MATCH with empty candidates when the user has no accounts", async () => {
-    mockAccountRepo.findAccountsByUser.mockResolvedValue([]);
+    mockAccountRepo.findActiveAccountsByUser.mockResolvedValue([]);
 
     await expect(
       importTransactions({
@@ -228,7 +230,7 @@ describe("importTransactions", () => {
       { id: "acc-1", name: "Main", iban: "CH00 0001" },
       { id: "acc-2", name: "Savings", iban: "CH00 0002" },
     ];
-    mockAccountRepo.findAccountsByUser.mockResolvedValue(candidates);
+    mockAccountRepo.findActiveAccountsByUser.mockResolvedValue(candidates as never);
 
     await expect(
       importTransactions({
@@ -243,6 +245,36 @@ describe("importTransactions", () => {
       details: { code: "AMBIGUOUS_ACCOUNT", candidates },
     });
     expect(mockRepo.bulkImport).not.toHaveBeenCalled();
+  });
+
+  it("auto-matches a UBS import to the account whose Kontonummer the file carries", async () => {
+    // Two active accounts → ambiguous, but the UBS Kontonummer (column 0)
+    // uniquely identifies acc-2, so resolution must not prompt the user.
+    mockAccountRepo.findActiveAccountsByUser.mockResolvedValue([
+      { id: "acc-1", name: "Main", iban: "CH00 0001" },
+      { id: "acc-2", name: "Cards", iban: "CH00 0002" },
+    ] as never);
+    mockAccountRepo.findActiveAccountByNumberAndUser.mockResolvedValue([
+      { id: "acc-2", name: "Cards", iban: "CH00 0002" },
+    ] as never);
+
+    const ubsHeader = `"Kontonummer";"Kartennummer";"Konto-/Karteninhaber";"Einkaufsdatum";"Buchungstext";"Branche";"Betrag";"Originalwährung";"Kurs";"Währung";"Belastung";"Gutschrift";"Buchung"`;
+    const ubsRow = `"1234 5678 9101";"9999 99XX XXXX 9999";"M. MUSTERMANN";"21.07.2025";"Laden6";"Shop";"1.7";"CHF";"";"CHF";"1.7";"";"23.07.2025"`;
+
+    const result = await importTransactions({
+      csvText: [ubsHeader, ubsRow].join("\n"),
+      format: "ubs",
+      userId: "user-1",
+      logger,
+    });
+
+    expect(result.imported).toBe(1);
+    expect(mockAccountRepo.findActiveAccountByNumberAndUser).toHaveBeenCalledWith(
+      "1234 5678 9101",
+      "user-1",
+    );
+    const [, , accountIdArg] = mockRepo.bulkImport.mock.calls[0]!;
+    expect(accountIdArg).toBe("acc-2");
   });
 
   it("works correctly for the ubs format", async () => {

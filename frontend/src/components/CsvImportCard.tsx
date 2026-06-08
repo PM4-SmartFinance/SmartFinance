@@ -2,8 +2,10 @@ import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "../lib/api";
 import { DASHBOARD_QUERY_KEY } from "../lib/queries/dashboard";
+import { useCreateAccount } from "../lib/queries/accounts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -66,7 +68,12 @@ export function CsvImportCard() {
   const [result, setResult] = useState<UploadResult | null>(null);
   const [refreshHint, setRefreshHint] = useState(false);
   const [resolution, setResolution] = useState<Resolution>({ kind: "idle" });
+  const [newAccountName, setNewAccountName] = useState("");
+  const [newAccountIban, setNewAccountIban] = useState("");
+  const [createAccountError, setCreateAccountError] = useState<string | null>(null);
   const { t } = useTranslation();
+
+  const { mutateAsync: createAccount, isPending: isCreatingAccount } = useCreateAccount();
 
   const { data: formatsData, isError: isFormatsError } = useQuery({
     queryKey: ["import-formats"],
@@ -163,12 +170,50 @@ export function CsvImportCard() {
     uploadFile({ f: file, fmt: effectiveFormat, acId });
   }
 
+  async function handleCreateAccount(e: React.FormEvent) {
+    e.preventDefault();
+    setCreateAccountError(null);
+
+    const name = newAccountName.trim();
+    const iban = newAccountIban.trim();
+    if (!name || !iban) {
+      setCreateAccountError(
+        t("components.csvImportCard.createAccount.errorRequired", "Name and IBAN are required."),
+      );
+      return;
+    }
+
+    try {
+      await createAccount({ name, iban });
+      // The user now has exactly one account, so import resolution will
+      // auto-select it: clear the inline form and let them upload again.
+      setNewAccountName("");
+      setNewAccountIban("");
+      setResolution({ kind: "idle" });
+      resetMutation();
+    } catch (err) {
+      setCreateAccountError(
+        err instanceof ApiError && err.status === 409
+          ? t(
+              "components.csvImportCard.createAccount.errorExists",
+              "An account with this IBAN already exists.",
+            )
+          : err instanceof Error
+            ? err.message
+            : t("components.csvImportCard.createAccount.errorFailed", "Failed to create account."),
+      );
+    }
+  }
+
   function handleReset() {
     setFile(null);
     setResult(null);
     setTypeError(null);
     setRefreshHint(false);
     setResolution({ kind: "idle" });
+    setNewAccountName("");
+    setNewAccountIban("");
+    setCreateAccountError(null);
     resetMutation();
   }
 
@@ -396,15 +441,64 @@ export function CsvImportCard() {
             )}
 
             {resolution.kind === "no_accounts" && (
-              <p
-                role="alert"
-                className="rounded border border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              <form
+                onSubmit={handleCreateAccount}
+                aria-labelledby="csv-create-account-title"
+                className="flex flex-col gap-2 rounded border border-border bg-muted/30 p-3"
               >
-                {t(
-                  "components.csvImportCard.noAccountsTitle",
-                  "No account configured. Create an account before importing.",
+                <p id="csv-create-account-title" className="text-sm font-medium">
+                  {t("components.csvImportCard.createAccount.title", "No account yet")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    "components.csvImportCard.createAccount.help",
+                    "Create an account to import into, then upload again.",
+                  )}
+                </p>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="csv-new-account-name" className="text-xs text-muted-foreground">
+                    {t("components.csvImportCard.createAccount.nameLabel", "Account name")}
+                  </Label>
+                  <Input
+                    id="csv-new-account-name"
+                    value={newAccountName}
+                    onChange={(e) => setNewAccountName(e.target.value)}
+                    placeholder={t(
+                      "components.csvImportCard.createAccount.namePlaceholder",
+                      "e.g. Main Account",
+                    )}
+                    disabled={isCreatingAccount}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="csv-new-account-iban" className="text-xs text-muted-foreground">
+                    {t("components.csvImportCard.createAccount.ibanLabel", "IBAN")}
+                  </Label>
+                  <Input
+                    id="csv-new-account-iban"
+                    value={newAccountIban}
+                    onChange={(e) => setNewAccountIban(e.target.value)}
+                    placeholder="CH93 0076 2011 6238 5295 7"
+                    disabled={isCreatingAccount}
+                  />
+                </div>
+
+                {createAccountError && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {createAccountError}
+                  </p>
                 )}
-              </p>
+
+                <div>
+                  <Button type="submit" size="sm" disabled={isCreatingAccount}>
+                    {isCreatingAccount
+                      ? t("common.creating", "Creating…")
+                      : t("components.csvImportCard.createAccount.submitBtn", "Create account")}
+                  </Button>
+                </div>
+              </form>
             )}
 
             {/* ── Upload button ── */}
