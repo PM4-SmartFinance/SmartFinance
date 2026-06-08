@@ -570,10 +570,11 @@ Returns daily aggregated income and expenses for the requested date range. Front
 
 **Query Parameters:**
 
-| Parameter   | Type   | Required | Validation            | Description                 |
-| ----------- | ------ | -------- | --------------------- | --------------------------- |
-| `startDate` | string | yes      | `^\d{4}-\d{2}-\d{2}$` | Inclusive range start (UTC) |
-| `endDate`   | string | yes      | `^\d{4}-\d{2}-\d{2}$` | Inclusive range end (UTC)   |
+| Parameter   | Type   | Required | Validation            | Description                                        |
+| ----------- | ------ | -------- | --------------------- | -------------------------------------------------- |
+| `startDate` | string | yes      | `^\d{4}-\d{2}-\d{2}$` | Inclusive range start (UTC)                        |
+| `endDate`   | string | yes      | `^\d{4}-\d{2}-\d{2}$` | Inclusive range end (UTC)                          |
+| `accountId` | string | no       | UUID                  | Limit to one account; omit for all active accounts |
 
 The response is ordered from oldest day to newest day. Days without transactions are included with `income = 0` and `expenses = 0` (gap-filled).
 
@@ -1507,6 +1508,8 @@ Widget-friendly summary used by the dashboard `ModuleWidgetCard`. Each item carr
 
 All dashboard endpoints require an authenticated session with the `USER` role.
 
+All dashboard endpoints aggregate only transactions on the user's **active** accounts. The optional `accountId` query parameter narrows the result to a single account; an inactive or non-owned id simply yields zeros.
+
 ### GET /dashboard/summary
 
 Returns aggregated financial totals for the authenticated user within the specified date range.
@@ -1517,6 +1520,7 @@ Returns aggregated financial totals for the authenticated user within the specif
 | ----------- | ------ | -------- | ---------------------------- |
 | `startDate` | string | yes      | ISO date format `YYYY-MM-DD` |
 | `endDate`   | string | yes      | ISO date format `YYYY-MM-DD` |
+| `accountId` | string | no       | UUID — limit to one account  |
 
 **Response 200:**
 
@@ -1551,6 +1555,7 @@ Returns expense totals grouped by category for the authenticated user within the
 | ----------- | ------ | -------- | ---------------------------- |
 | `startDate` | string | yes      | ISO date format `YYYY-MM-DD` |
 | `endDate`   | string | yes      | ISO date format `YYYY-MM-DD` |
+| `accountId` | string | no       | UUID — limit to one account  |
 
 **Response 200:**
 

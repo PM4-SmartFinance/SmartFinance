@@ -160,7 +160,24 @@ describe("getDashboardSummary", () => {
 
     await getDashboardSummary("user-42", "2025-06-01", "2025-06-30");
 
-    expect(mockRepo.getSummary).toHaveBeenCalledWith("user-42", "2025-06-01", "2025-06-30");
+    expect(mockRepo.getSummary).toHaveBeenCalledWith(
+      "user-42",
+      "2025-06-01",
+      "2025-06-30",
+      undefined,
+    );
+  });
+
+  it("forwards the account filter to the repository", async () => {
+    mockRepo.getSummary.mockResolvedValue({
+      incomeAgg: { _sum: { amount: null } },
+      expenseAgg: { _sum: { amount: null } },
+      transactionCount: 0,
+    });
+
+    await getDashboardSummary("user-1", "2025-06-01", "2025-06-30", "acc-9");
+
+    expect(mockRepo.getSummary).toHaveBeenCalledWith("user-1", "2025-06-01", "2025-06-30", "acc-9");
   });
 });
 
@@ -172,7 +189,12 @@ describe("getDashboardCategories", () => {
     const result = await getDashboardCategories("user-1", "2025-01-01", "2025-01-31");
 
     expect(result).toEqual(mockData);
-    expect(mockRepo.getCategoryTotals).toHaveBeenCalledWith("user-1", "2025-01-01", "2025-01-31");
+    expect(mockRepo.getCategoryTotals).toHaveBeenCalledWith(
+      "user-1",
+      "2025-01-01",
+      "2025-01-31",
+      undefined,
+    );
   });
 
   it("returns an empty array when the repository has no matching transactions", async () => {
@@ -187,15 +209,25 @@ describe("getDashboardCategories", () => {
     mockRepo.getCategoryTotals.mockResolvedValue([]);
 
     await expect(getDashboardCategories("user-1", "2025-06-15", "2025-06-15")).resolves.toEqual([]);
-    expect(mockRepo.getCategoryTotals).toHaveBeenCalledWith("user-1", "2025-06-15", "2025-06-15");
+    expect(mockRepo.getCategoryTotals).toHaveBeenCalledWith(
+      "user-1",
+      "2025-06-15",
+      "2025-06-15",
+      undefined,
+    );
   });
 
-  it("passes userId and date range to the repository unchanged", async () => {
+  it("passes userId, date range, and account filter to the repository unchanged", async () => {
     mockRepo.getCategoryTotals.mockResolvedValue([]);
 
-    await getDashboardCategories("user-42", "2025-06-01", "2025-06-30");
+    await getDashboardCategories("user-42", "2025-06-01", "2025-06-30", "acc-9");
 
-    expect(mockRepo.getCategoryTotals).toHaveBeenCalledWith("user-42", "2025-06-01", "2025-06-30");
+    expect(mockRepo.getCategoryTotals).toHaveBeenCalledWith(
+      "user-42",
+      "2025-06-01",
+      "2025-06-30",
+      "acc-9",
+    );
   });
 
   it("throws 400 when startDate is after endDate", async () => {
@@ -310,6 +342,20 @@ describe("getDashboardTrends", () => {
       userId: "user-42",
       startDateId: 20250615,
       endDateId: 20250617,
+      accountId: undefined,
+    });
+  });
+
+  it("forwards the account filter to the repository", async () => {
+    mockRepo.listDailyTrends.mockResolvedValue([]);
+
+    await getDashboardTrends("user-1", "2025-06-15", "2025-06-17", "acc-9");
+
+    expect(mockRepo.listDailyTrends).toHaveBeenCalledWith({
+      userId: "user-1",
+      startDateId: 20250615,
+      endDateId: 20250617,
+      accountId: "acc-9",
     });
   });
 

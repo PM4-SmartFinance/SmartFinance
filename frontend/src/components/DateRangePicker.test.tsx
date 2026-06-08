@@ -4,6 +4,16 @@ import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { DateRangePicker } from "../components/DateRangePicker";
 import { useAppStore } from "../store/appStore";
 
+vi.mock("../lib/queries/accounts", () => ({
+  useAccounts: () => ({
+    data: [
+      { id: "acc-1", name: "Main", iban: "CH00 0001", accountNumber: null, active: true },
+      { id: "acc-2", name: "Old Savings", iban: "CH00 0002", accountNumber: null, active: false },
+    ],
+    error: null,
+  }),
+}));
+
 function renderWithQuery(component: React.ReactElement) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -163,5 +173,21 @@ describe("Dashboard Date Filter Integration", () => {
 
     expect(endInput.getAttribute("min")).toBe(startInput.value);
     expect(startInput.getAttribute("max")).toBe(endInput.value);
+  });
+
+  it("offers only active accounts in the account filter and updates the store", () => {
+    renderWithQuery(<DateRangePicker />);
+
+    const select = screen.getByLabelText("Filter by Account") as HTMLSelectElement;
+    // "All Accounts" + the single active account; the inactive one is excluded.
+    expect(screen.getByRole("option", { name: "All Accounts" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Main" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Old Savings" })).not.toBeInTheDocument();
+
+    fireEvent.change(select, { target: { value: "acc-1" } });
+    expect(useAppStore.getState().accountId).toBe("acc-1");
+
+    fireEvent.change(select, { target: { value: "" } });
+    expect(useAppStore.getState().accountId).toBeNull();
   });
 });

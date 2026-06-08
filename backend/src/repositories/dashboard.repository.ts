@@ -1,5 +1,14 @@
 import { prisma } from "../prisma.js";
 
+// The dashboard counts only transactions on the user's **active** accounts,
+// optionally narrowed to a single account when the user picks one in the
+// account filter (KAN-169). The subquery below is written inline (rather than as
+// a composed Prisma.Sql fragment) so every interpolation stays a primitive bind
+// parameter — keeping the queries introspectable in unit tests. `accountId` is
+// passed as `accountId ?? null`: when null the `(... IS NULL OR ...)` guard is
+// always true, so no narrowing happens. An inactive or non-owned accountId
+// simply yields an empty set (zeros), so no separate ownership check is needed.
+
 export function dateStringToId(dateStr: string): number {
   // Defence-in-depth: callers are expected to pre-validate, but a loose regex
   // (e.g. `^\d{4}-\d{2}-\d{2}$`) would still let through values like
@@ -28,32 +37,30 @@ export function dateStringToId(dateStr: string): number {
   return year * 10000 + month * 100 + day;
 }
 
-export async function getSummary(userId: string, startDate: string, endDate: string) {
+export async function getSummary(
+  userId: string,
+  startDate: string,
+  endDate: string,
+  accountId?: string,
+) {
   const startId = dateStringToId(startDate);
   const endId = dateStringToId(endDate);
 
+  // Only active accounts contribute to the dashboard; an optional accountId
+  // narrows it to a single account (KAN-169).
+  const accountWhere = { account: { active: true }, ...(accountId ? { accountId } : {}) };
+  const base = { userId, isDeleted: false, dateId: { gte: startId, lte: endId }, ...accountWhere };
+
   const [incomeAgg, expenseAgg, transactionCount] = await Promise.all([
     prisma.factTransactions.aggregate({
-      where: {
-        userId,
-        isDeleted: false,
-        dateId: { gte: startId, lte: endId },
-        amount: { gt: 0 },
-      },
+      where: { ...base, amount: { gt: 0 } },
       _sum: { amount: true },
     }),
     prisma.factTransactions.aggregate({
-      where: {
-        userId,
-        isDeleted: false,
-        dateId: { gte: startId, lte: endId },
-        amount: { lt: 0 },
-      },
+      where: { ...base, amount: { lt: 0 } },
       _sum: { amount: true },
     }),
-    prisma.factTransactions.count({
-      where: { userId, isDeleted: false, dateId: { gte: startId, lte: endId } },
-    }),
+    prisma.factTransactions.count({ where: base }),
   ]);
 
   return { incomeAgg, expenseAgg, transactionCount };
@@ -63,6 +70,7 @@ interface ListDailyTrendsArgs {
   userId: string;
   startDateId: number;
   endDateId: number;
+  accountId?: string | undefined;
 }
 
 export interface DailyTrendAggregate {
@@ -86,7 +94,7 @@ function dateIdToIsoString(id: number): string {
 }
 
 export async function listDailyTrends(args: ListDailyTrendsArgs): Promise<DailyTrendAggregate[]> {
-  const { userId, startDateId, endDateId } = args;
+  const { userId, startDateId, endDateId, accountId } = args;
 
   // INNER JOIN (not LEFT JOIN) intentional: we only return days that have at
   // least one transaction. Days with zero transactions are added by the
@@ -101,6 +109,12 @@ export async function listDailyTrends(args: ListDailyTrendsArgs): Promise<DailyT
     INNER JOIN "DimDate" d ON d.id = t."dateId"
     WHERE t."userId" = ${userId}
       AND t."isDeleted" = FALSE
+      AND t."accountId" IN (
+        SELECT id FROM "DimAccount"
+        WHERE "userId" = ${userId}
+          AND active = TRUE
+          AND (${accountId ?? null}::text IS NULL OR id = ${accountId ?? null})
+      )
       AND d.id >= ${startDateId}
       AND d.id <= ${endDateId}
     GROUP BY d.id
@@ -134,9 +148,11 @@ export async function getCategoryTotals(
   userId: string,
   startDate: string,
   endDate: string,
+  accountId?: string,
 ): Promise<CategoryTotalAggregate[]> {
   const startId = dateStringToId(startDate);
   const endId = dateStringToId(endDate);
+  const acct = accountId ?? null;
 
   // Two-part query merged via UNION ALL:
   //  1) LEFT JOIN over the user's categories so zero-spend categories appear
@@ -157,6 +173,12 @@ export async function getCategoryTotals(
       ON t."categoryId" = c.id
       AND t."userId" = ${userId}
       AND t."isDeleted" = FALSE
+      AND t."accountId" IN (
+        SELECT id FROM "DimAccount"
+        WHERE "userId" = ${userId}
+          AND active = TRUE
+          AND (${acct}::text IS NULL OR id = ${acct})
+      )
       AND t."dateId" >= ${startId}
       AND t."dateId" <= ${endId}
       AND t.amount < 0
@@ -174,6 +196,12 @@ export async function getCategoryTotals(
     WHERE "userId" = ${userId}
       AND "isDeleted" = FALSE
       AND "categoryId" IS NULL
+      AND "accountId" IN (
+        SELECT id FROM "DimAccount"
+        WHERE "userId" = ${userId}
+          AND active = TRUE
+          AND (${acct}::text IS NULL OR id = ${acct})
+      )
       AND "dateId" >= ${startId}
       AND "dateId" <= ${endId}
       AND amount < 0

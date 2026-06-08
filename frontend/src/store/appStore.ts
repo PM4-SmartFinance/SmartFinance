@@ -12,8 +12,11 @@ export interface DateRange {
 export interface AppState extends DateRange {
   activePresetKey: PresetKey;
   theme: Theme;
+  // Dashboard account filter: `null` means "all (active) accounts" (KAN-169).
+  accountId: string | null;
   setTheme: (theme: Theme) => void;
   setDateRange: (startDate: string, endDate: string, presetKey: PresetKey) => void;
+  setAccountId: (accountId: string | null) => void;
 }
 
 const getDefaultDateRange = (): DateRange & { activePresetKey: PresetKey } => {
@@ -54,6 +57,7 @@ export const useAppStore = create<AppState>((set) => ({
   startDate: defaultRange.startDate,
   endDate: defaultRange.endDate,
   activePresetKey: defaultRange.activePresetKey,
+  accountId: null,
   theme: getStoredTheme(),
   setTheme: (theme: Theme) =>
     set(() => {
@@ -70,6 +74,7 @@ export const useAppStore = create<AppState>((set) => ({
   setDateRange: (startDate, endDate, presetKey) => {
     set({ startDate, endDate, activePresetKey: presetKey });
   },
+  setAccountId: (accountId) => set({ accountId }),
 }));
 
 // Single app-wide subscription to OS theme changes. Re-applies the DOM class

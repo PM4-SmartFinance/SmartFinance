@@ -184,15 +184,28 @@ describe("getCategoryTotals", () => {
 
     // $queryRaw is a tagged-template call: (strings, ...values). The SQL has
     // two parts (LEFT JOIN over categories, UNION ALL with the uncategorized
-    // bucket) so userId / startId / endId each appear twice and the literal
-    // "Uncategorized" appears once.
+    // bucket). userId appears five times: c.userId + t.userId in part 1,
+    // "userId" in part 2, plus the active-account subquery (KAN-169) which is
+    // interpolated once per part. startId / endId each appear twice and the
+    // literal "Uncategorized" appears once.
     const mockFn = vi.mocked(prisma.$queryRaw);
     expect(mockFn).toHaveBeenCalledTimes(1);
     const values = mockFn.mock.calls[0]!.slice(1);
-    expect(values.filter((v) => v === "user-42")).toHaveLength(3);
+    expect(values.filter((v) => v === "user-42")).toHaveLength(5);
     expect(values.filter((v) => v === 20250101)).toHaveLength(2);
     expect(values.filter((v) => v === 20250131)).toHaveLength(2);
     expect(values).toContain("Uncategorized");
+  });
+
+  it("includes a specific accountId in the interpolated parameters when provided", async () => {
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([] as never);
+
+    await getCategoryTotals("user-1", "2025-01-01", "2025-01-31", "acc-9");
+
+    const values = vi.mocked(prisma.$queryRaw).mock.calls[0]!.slice(1);
+    // The active-account subquery appears once per UNION part and references
+    // accountId twice each → four occurrences.
+    expect(values.filter((v) => v === "acc-9")).toHaveLength(4);
   });
 
   it("scopes the query to the given userId (regression guard against dropping WHERE)", async () => {
@@ -257,7 +270,23 @@ describe("listDailyTrends", () => {
     const mockFn = vi.mocked(prisma.$queryRaw);
     expect(mockFn).toHaveBeenCalledTimes(1);
     const values = mockFn.mock.calls[0]!.slice(1);
-    expect(values).toEqual(["user-42", 20250101, 20250131]);
+    // userId appears twice (main WHERE + active-account subquery); the subquery
+    // also binds accountId twice — null here since none was provided (KAN-169).
+    expect(values).toEqual(["user-42", "user-42", null, null, 20250101, 20250131]);
+  });
+
+  it("includes a specific accountId in the interpolated parameters when provided", async () => {
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([] as never);
+
+    await listDailyTrends({
+      userId: "user-1",
+      startDateId: 20250101,
+      endDateId: 20250131,
+      accountId: "acc-9",
+    });
+
+    const values = vi.mocked(prisma.$queryRaw).mock.calls[0]!.slice(1);
+    expect(values).toContain("acc-9");
   });
 
   it("returns an empty array when the query yields no rows", async () => {
