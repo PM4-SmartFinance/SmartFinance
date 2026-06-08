@@ -26,7 +26,7 @@ async function bootstrapAdmin() {
         body: JSON.stringify({ email, password }),
       });
     } catch {
-      // Backend not accepting connections yet — retry.
+      // Backend not accepting connections yet -- retry.
       if (attempts === 0) {
         console.error("Timeout: Backend API did not become available.");
         process.exit(1);
@@ -37,11 +37,11 @@ async function bootstrapAdmin() {
 
     // 201 (created) or 409 (already exists) both mean the admin is present.
     if (response.ok || response.status === 409) {
-      console.log("✓ Default admin user created (or already present).");
+      console.log("[OK] Default admin user created (or already present).");
       process.exit(0);
     }
 
-    // 5xx can be transient while the backend finishes booting/migrating — retry.
+    // 5xx can be transient while the backend finishes booting/migrating -- retry.
     if (response.status >= 500) {
       if (attempts === 0) {
         console.error("Backend kept returning " + response.status + ": " + (await response.text()));
