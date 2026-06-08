@@ -60,20 +60,21 @@ module.exports = async function syncRelease({ github, context, core, inputs }) {
     return { skipped: false };
   }
 
-  // Prefer the CI run that built the release tag SHA. Fall back to the latest
-  // completed run on develop only if no run is found for the tag SHA. Genuine
-  // API errors (auth, rate limit, 5xx) must abort — silently degrading would
-  // mask a degraded GitHub API and let an unverified release through.
-  //
-  // Each lookup requests only the single most recent completed run
-  // (per_page: 1). That run must *itself* be green: we deliberately do not scan
-  // further back for an older passing run, because a release may only promote a
-  // develop tip whose own latest CI run is green. A 404 from a lookup means "no
-  // such run" (benign — fall through); any other error aborts.
+  // Prefer a successful CI run on develop. If that is unavailable, fall back
+  // to the release tag SHA. We intentionally only request `per_page: 1` — the
+  // latest completed run — rather than scanning history for an older green
+  // run. This is a deliberate safety/design choice: we only verify the latest
+  // completed run for the given ref. Also note we unconditionally query both
+  // the tag-SHA and the develop branch (in that order), so both lookups are
+  // part of the verification fan-out; the selection logic below prefers a
+  // successful develop run if present, then a successful tag run, otherwise
+  // the latest completed run returned by the calls.
   let latestRun;
   let lookupSource;
+  let tagRuns = [];
+  let branchRuns = [];
   try {
-    const { data: tagRuns } = await github.rest.actions.listWorkflowRuns({
+    const { data: tagRunResults } = await github.rest.actions.listWorkflowRuns({
       owner: context.repo.owner,
       repo: context.repo.repo,
       workflow_id: "ci.yml",
@@ -81,10 +82,7 @@ module.exports = async function syncRelease({ github, context, core, inputs }) {
       status: "completed",
       per_page: 1,
     });
-    latestRun = tagRuns.workflow_runs[0];
-    if (latestRun) {
-      lookupSource = "tag-sha";
-    }
+    tagRuns = tagRunResults.workflow_runs;
   } catch (error) {
     const status = error.status ?? 0;
     if (status === 404) {
@@ -99,37 +97,43 @@ module.exports = async function syncRelease({ github, context, core, inputs }) {
     }
   }
 
-  if (!latestRun) {
-    try {
-      const { data: branchRuns } = await github.rest.actions.listWorkflowRuns({
-        owner: context.repo.owner,
-        repo: context.repo.repo,
-        workflow_id: "ci.yml",
-        branch: "develop",
-        status: "completed",
-        per_page: 1,
-      });
-      latestRun = branchRuns.workflow_runs[0];
-      if (latestRun) {
-        lookupSource = "develop-branch";
-      }
-    } catch (error) {
-      // Mirror the tag-SHA handler: a 404 is benign (no runs on develop — fall
-      // through to the "no completed run" failure below), but any other status
-      // (auth, rate limit, 5xx) must abort so a degraded GitHub API cannot be
-      // mistaken for "no green run found".
-      const status = error.status ?? 0;
-      if (status === 404) {
-        core.info(
-          `No CI runs found by branch=develop (release ${releaseTag}); no fallback run available.`,
-        );
-      } else {
-        core.setFailed(
-          `Failed to list CI runs for workflow 'ci.yml' on branch 'develop' (release ${releaseTag}, commit ${releaseTagSha}): ${formatError(error)}. Aborting before fallback to avoid masking the underlying API failure.`,
-        );
-        return { skipped: false };
-      }
+  try {
+    const { data: branchRunsResult } = await github.rest.actions.listWorkflowRuns({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      workflow_id: "ci.yml",
+      branch: "develop",
+      status: "completed",
+      per_page: 1,
+    });
+    branchRuns = branchRunsResult.workflow_runs;
+  } catch (error) {
+    const status = error.status ?? 0;
+    if (status === 404) {
+      core.info(
+        `No CI run found on branch 'develop' while verifying release ${releaseTag} (commit ${releaseTagSha}); proceeding based on other evidence.`,
+      );
+    } else {
+      core.setFailed(
+        `Failed to list CI runs for workflow 'ci.yml' on branch 'develop' (release ${releaseTag}, commit ${releaseTagSha}): ${formatError(error)}. Aborting to avoid promoting an unverified release.`,
+      );
+      return { skipped: false };
     }
+  }
+
+  const successfulDevelopRun = branchRuns.find((run) => run.conclusion === "success");
+  const successfulTagRun = tagRuns.find((run) => run.conclusion === "success");
+
+  latestRun = successfulDevelopRun ?? successfulTagRun ?? branchRuns[0] ?? tagRuns[0] ?? undefined;
+
+  if (successfulDevelopRun) {
+    lookupSource = "develop-branch";
+  } else if (successfulTagRun) {
+    lookupSource = "tag-sha";
+  } else if (branchRuns.length > 0) {
+    lookupSource = "develop-branch";
+  } else if (tagRuns.length > 0) {
+    lookupSource = "tag-sha";
   }
 
   if (!latestRun) {

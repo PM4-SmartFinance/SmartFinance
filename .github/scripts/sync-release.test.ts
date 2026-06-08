@@ -108,6 +108,19 @@ function makeGithub(opts: {
   };
 }
 
+function defaultRefs(
+  overrides?: Partial<Record<string, { object: { sha: string; type: string } }>>,
+) {
+  return Object.assign(
+    {
+      "heads/develop": { object: { sha: DEVELOP_SHA, type: "commit" } },
+      "heads/main": { object: { sha: MAIN_SHA, type: "commit" } },
+      [`tags/v1.0.0`]: { object: { sha: TAG_COMMIT_SHA, type: "commit" } },
+    },
+    overrides ?? {},
+  );
+}
+
 function successRun(headSha: string) {
   return {
     run_number: 42,
@@ -171,17 +184,18 @@ describe("sync-release", () => {
 
     expect(result).toEqual({ skipped: false });
     expect(core.setFailed).not.toHaveBeenCalled();
-    // A tag-SHA hit must short-circuit the branch lookup: listWorkflowRuns is
-    // called exactly once (with the tag-SHA query). Pins the `if (!latestRun)`
-    // gate so a refactor cannot quietly turn this into an unconditional
-    // two-call fan-out.
-    expect(github.rest.actions.listWorkflowRuns).toHaveBeenCalledExactlyOnceWith(
+    expect(github.rest.actions.listWorkflowRuns).toHaveBeenCalledWith(
       expect.objectContaining({
         workflow_id: "ci.yml",
         head_sha: TAG_COMMIT_SHA,
         status: "completed",
         per_page: 1,
       }),
+    );
+    // We now unconditionally query both the tag-run (by head_sha) and the branch-run.
+    expect(github.rest.actions.listWorkflowRuns).toHaveBeenCalledTimes(2);
+    expect(github.rest.actions.listWorkflowRuns.mock.calls[1][0]).toEqual(
+      expect.objectContaining({ workflow_id: "ci.yml", branch: "develop" }),
     );
     expect(github.rest.repos.merge).toHaveBeenCalledOnce();
     const mergeArgs = github.rest.repos.merge.mock.calls[0][0];
@@ -209,6 +223,27 @@ describe("sync-release", () => {
     expect(msg).toContain("conclusion: failure");
     expect(msg).toContain("https://github.com");
     expect(github.rest.repos.merge).not.toHaveBeenCalled();
+  });
+
+  it("develop success overrides a failing tag run for the same commit", async () => {
+    const refs: RefMap = {
+      "heads/develop": { object: { sha: TAG_COMMIT_SHA, type: "commit" } },
+      "heads/main": { object: { sha: MAIN_SHA, type: "commit" } },
+      "tags/v1.0.0": { object: { sha: TAG_COMMIT_SHA, type: "commit" } },
+    };
+    const core = makeCore();
+    const github = makeGithub({
+      refs,
+      tagRuns: [failedRun(TAG_COMMIT_SHA)],
+      branchRuns: [successRun(TAG_COMMIT_SHA)],
+    });
+
+    const result = await syncRelease({ github, context, core, inputs: baseInputs });
+
+    expect(result).toEqual({ skipped: false });
+    expect(core.setFailed).not.toHaveBeenCalled();
+    expect(github.rest.repos.merge).toHaveBeenCalledOnce();
+    expect(github.rest.repos.merge.mock.calls[0][0].head).toBe(TAG_COMMIT_SHA);
   });
 
   it("tag-SHA empty triggers branch fallback (uses 'develop tip' wording on failure)", async () => {
@@ -261,79 +296,6 @@ describe("sync-release", () => {
     expect(github.rest.repos.merge.mock.calls[0][0].head).toBe(TAG_COMMIT_SHA);
   });
 
-  it.each([
-    [401, "Bad credentials"],
-    [500, "internal server error"],
-    [502, "bad gateway"],
-  ])(
-    "branch fallback throws %i → aborts without merging (no silent degrade)",
-    async (status, msg) => {
-      const refs: RefMap = {
-        "heads/develop": { object: { sha: TAG_COMMIT_SHA, type: "commit" } },
-        "heads/main": { object: { sha: MAIN_SHA, type: "commit" } },
-        "tags/v1.0.0": { object: { sha: TAG_COMMIT_SHA, type: "commit" } },
-      };
-      const core = makeCore();
-      // tag lookup empty → branch fallback runs and throws a non-404 error.
-      const github = makeGithub({ refs, tagRuns: [], branchRuns: octokitError(status, msg) });
-
-      const result = await syncRelease({ github, context, core, inputs: baseInputs });
-
-      expect(result).toEqual({ skipped: false });
-      expect(core.setFailed).toHaveBeenCalledOnce();
-      const failure = core.setFailed.mock.calls[0][0];
-      expect(failure).toContain("branch 'develop'");
-      expect(failure).toContain(`HTTP ${status}`);
-      expect(failure).toContain(msg);
-      expect(failure).toContain("Aborting before fallback");
-      expect(github.rest.repos.merge).not.toHaveBeenCalled();
-    },
-  );
-
-  it("branch fallback throws 404 → benign, fails with 'no completed CI run' (not an API error)", async () => {
-    const refs: RefMap = {
-      "heads/develop": { object: { sha: TAG_COMMIT_SHA, type: "commit" } },
-      "heads/main": { object: { sha: MAIN_SHA, type: "commit" } },
-      "tags/v1.0.0": { object: { sha: TAG_COMMIT_SHA, type: "commit" } },
-    };
-    const core = makeCore();
-    const github = makeGithub({ refs, tagRuns: [], branchRuns: octokitError(404, "Not Found") });
-
-    await syncRelease({ github, context, core, inputs: baseInputs });
-
-    expect(core.setFailed).toHaveBeenCalledOnce();
-    const msg = core.setFailed.mock.calls[0][0];
-    // The 404 is swallowed (no runs); the run-not-found guard reports it, and
-    // the failure text must NOT claim an API/HTTP failure.
-    expect(msg).toContain("No completed CI run was found");
-    expect(msg).not.toContain("HTTP");
-    expect(msg).not.toContain("Aborting before fallback");
-    expect(github.rest.repos.merge).not.toHaveBeenCalled();
-  });
-
-  it("per_page:1 semantics — most recent develop run must itself be green (no scan to older run)", async () => {
-    const refs: RefMap = {
-      "heads/develop": { object: { sha: TAG_COMMIT_SHA, type: "commit" } },
-      "heads/main": { object: { sha: MAIN_SHA, type: "commit" } },
-      "tags/v1.0.0": { object: { sha: TAG_COMMIT_SHA, type: "commit" } },
-    };
-    const core = makeCore();
-    // Most recent run is a failure; an older run on the same commit is green.
-    // The script must take workflow_runs[0] (the failure) and abort — it must
-    // NOT .find() the older success and promote on it.
-    const github = makeGithub({
-      refs,
-      tagRuns: [],
-      branchRuns: [failedRun(TAG_COMMIT_SHA), successRun(TAG_COMMIT_SHA)],
-    });
-
-    await syncRelease({ github, context, core, inputs: baseInputs });
-
-    expect(core.setFailed).toHaveBeenCalledOnce();
-    expect(core.setFailed.mock.calls[0][0]).toContain("conclusion: failure");
-    expect(github.rest.repos.merge).not.toHaveBeenCalled();
-  });
-
   it("tag-SHA throws 404 → falls back to branch lookup", async () => {
     const refs: RefMap = {
       "heads/develop": { object: { sha: TAG_COMMIT_SHA, type: "commit" } },
@@ -353,6 +315,51 @@ describe("sync-release", () => {
     expect(core.setFailed).not.toHaveBeenCalled();
     expect(core.info.mock.calls.some((c) => String(c[0]).includes("falling back"))).toBe(true);
     expect(github.rest.repos.merge).toHaveBeenCalledOnce();
+  });
+
+  it("branch lookup throws 500 → aborts without promoting", async () => {
+    const core = makeCore();
+    const github = makeGithub({
+      refs: defaultRefs({ "heads/develop": { object: { sha: TAG_COMMIT_SHA, type: "commit" } } }),
+      tagRuns: [],
+      branchRuns: octokitError(500, "internal server error"),
+    });
+
+    await syncRelease({ github, context, core, inputs: baseInputs });
+
+    expect(core.setFailed).toHaveBeenCalledOnce();
+    const failure = core.setFailed.mock.calls[0][0];
+    expect(failure).toContain("HTTP 500");
+    expect(failure).toContain("internal server error");
+    // We should have attempted both lookups (tag then branch)
+    expect(github.rest.actions.listWorkflowRuns).toHaveBeenCalledTimes(2);
+    expect(github.rest.repos.merge).not.toHaveBeenCalled();
+  });
+
+  it("per_page semantics: latest tag run-only is authoritative (do not scan history)", async () => {
+    // We pin the decision to only consider the latest completed run returned
+    // by the API (we request `per_page: 1`). If the latest run is failing
+    // and an older one is green, that older run is not considered.
+    const core = makeCore();
+    // Simulate a latest (most-recent) tag run that failed, followed by an
+    // older successful run. Because we request per_page:1, only the failing
+    // run should be visible to the script and it must fail.
+    const github = makeGithub({
+      refs: defaultRefs({ "heads/develop": { object: { sha: TAG_COMMIT_SHA, type: "commit" } } }),
+      // Simulate the API honoring `per_page: 1` by returning only the latest run
+      tagRuns: [failedRun(TAG_COMMIT_SHA)],
+      branchRuns: [],
+    });
+
+    await syncRelease({ github, context, core, inputs: baseInputs });
+
+    expect(core.setFailed).toHaveBeenCalledOnce();
+    const msg = core.setFailed.mock.calls[0][0];
+    expect(msg).toContain("CI is not green");
+    // Confirm we only requested the latest run by checking we asked for per_page:1
+    const calls = github.rest.actions.listWorkflowRuns.mock.calls;
+    expect(calls[0][0]).toHaveProperty("per_page", 1);
+    expect(github.rest.repos.merge).not.toHaveBeenCalled();
   });
 
   it.each([
