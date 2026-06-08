@@ -42,7 +42,9 @@ if ! bunx --bun prisma migrate deploy; then
 fi
 
 echo "Seeding development data..."
-if ! bun run prisma/seed.ts; then
+# Dev environments want the demo user (dev@smartfinance.local) and sample data;
+# the seed gates these behind SEED_DEMO_USER so they never reach production.
+if ! SEED_DEMO_USER=true bun run prisma/seed.ts; then
   echo "Seeding failed!"
   exit 1
 fi

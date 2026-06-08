@@ -51,7 +51,19 @@ async function main() {
       },
     });
 
-    // 3. Seed user
+    // 3. Demo user and demo data — only seeded when explicitly enabled.
+    // Production self-hosting (docker-compose.user.yml) sets SEED_DEMO_USER="false",
+    // so a fresh prod DB receives reference data (currencies/date dim) only, and the
+    // real administrator is created by the setup script's first-user bootstrap
+    // (POST /api/v1/users). Without this gate, a public dev credential would ship to
+    // production and pollute the DB with demo data.
+    if (process.env.SEED_DEMO_USER !== "true") {
+      console.log('SEED_DEMO_USER is not "true" — skipping demo user and demo data.');
+      return;
+    }
+
+    console.log("Seeding demo user and demo data...");
+
     // The seed path bypasses user.repository.ts's first-user bootstrap rule, so we
     // explicitly set ADMIN here. update is set so existing dev DBs get promoted, not
     // only fresh ones (otherwise stale local DBs would have a USER-role dev account).
