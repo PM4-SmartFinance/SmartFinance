@@ -23,3 +23,10 @@ export class EmailConflictError extends Error {
     this.name = "EmailConflictError";
   }
 }
+
+export class DuplicateAccountError extends Error {
+  constructor(message = "An account with this IBAN already exists") {
+    super(message);
+    this.name = "DuplicateAccountError";
+  }
+}

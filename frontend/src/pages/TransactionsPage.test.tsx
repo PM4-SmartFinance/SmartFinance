@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router";
 import { TransactionsPage } from "./TransactionsPage";
 import { useTransactionsStore } from "../store/transactionsStore";
+import { useAppStore } from "../store/appStore";
 import * as apiModule from "../lib/api";
 
 const mockTransactionsResponse = {
@@ -65,6 +66,17 @@ vi.mock("../lib/queries/categories", () => ({
   }),
 }));
 
+vi.mock("../lib/queries/accounts", () => ({
+  useAccounts: () => ({
+    data: [
+      { id: "acc-1", name: "Main Account", iban: "CH00 0001", accountNumber: null, active: true },
+      { id: "acc-2", name: "Savings", iban: "CH00 0002", accountNumber: null, active: true },
+    ],
+    isLoading: false,
+    error: null,
+  }),
+}));
+
 describe("TransactionsPage", () => {
   let queryClient: QueryClient;
 
@@ -83,6 +95,7 @@ describe("TransactionsPage", () => {
       endDate: null,
       categoryId: null,
     });
+    useAppStore.setState({ showAccountName: false });
     vi.clearAllMocks();
   });
 
@@ -123,6 +136,27 @@ describe("TransactionsPage", () => {
       expect(screen.getByText("CHF-42.50")).toBeInTheDocument();
       expect(screen.getByText("CHF-15.00")).toBeInTheDocument();
     });
+  });
+
+  it("hides the account column by default", async () => {
+    vi.mocked(apiModule.api.get).mockResolvedValueOnce(mockTransactionsResponse);
+
+    renderTransactionsPage();
+
+    await waitFor(() => expect(screen.getByText("Migros")).toBeInTheDocument());
+    expect(screen.queryByRole("columnheader", { name: "Account" })).not.toBeInTheDocument();
+  });
+
+  it("shows the account column with the account name when the preference is on", async () => {
+    useAppStore.setState({ showAccountName: true });
+    vi.mocked(apiModule.api.get).mockResolvedValueOnce(mockTransactionsResponse);
+
+    renderTransactionsPage();
+
+    await waitFor(() => expect(screen.getByText("Migros")).toBeInTheDocument());
+    expect(screen.getByRole("columnheader", { name: "Account" })).toBeInTheDocument();
+    // Both mocked transactions belong to acc-1 → "Main Account".
+    expect(screen.getAllByText("Main Account").length).toBeGreaterThan(0);
   });
 
   it("shows loading skeleton while fetching", () => {

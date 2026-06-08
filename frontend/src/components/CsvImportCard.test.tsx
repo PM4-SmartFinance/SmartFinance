@@ -481,18 +481,17 @@ describe("account resolution", () => {
     );
   });
 
-  it("shows the no-account message and hides the upload button on 409 NO_MATCH", async () => {
+  it("shows the inline create-account form and hides the upload button on 409 NO_MATCH", async () => {
     mockUpload.mockRejectedValueOnce(noMatchError());
     renderCard();
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
     await userEvent.upload(input, makeCsvFile());
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
 
-    await waitFor(() =>
-      expect(
-        screen.getByText("No account configured. Create an account before importing."),
-      ).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText("No account yet")).toBeInTheDocument());
+    // The inline create-account form replaces the upload action.
+    expect(screen.getByLabelText("Account name")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create account" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Upload" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Continue" })).not.toBeInTheDocument();
   });

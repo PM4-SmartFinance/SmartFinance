@@ -8,6 +8,7 @@ interface TransactionsStore {
   startDate: string | null;
   endDate: string | null;
   categoryId: string | null;
+  accountId: string | null;
   search: string | null;
 
   setPage: (page: number) => void;
@@ -16,6 +17,7 @@ interface TransactionsStore {
   setStartDate: (date: string | null) => void;
   setEndDate: (date: string | null) => void;
   setCategoryId: (categoryId: string | null) => void;
+  setAccountId: (accountId: string | null) => void;
   setSearch: (search: string | null) => void;
   resetFilters: () => void;
 }
@@ -28,6 +30,7 @@ const INITIAL_STATE = {
   startDate: null,
   endDate: null,
   categoryId: null,
+  accountId: null,
   search: null,
 };
 
@@ -44,6 +47,7 @@ export const useTransactionsStore = create<TransactionsStore>((set) => ({
   setStartDate: (startDate) => set({ startDate, page: 1 }),
   setEndDate: (endDate) => set({ endDate, page: 1 }),
   setCategoryId: (categoryId) => set({ categoryId, page: 1 }),
+  setAccountId: (accountId) => set({ accountId, page: 1 }),
   setSearch: (search) => set({ search, page: 1 }),
   resetFilters: () => set(INITIAL_STATE),
 }));

@@ -5,6 +5,7 @@ import * as dashboardService from "../services/dashboard.service.js";
 interface DashboardSummaryQuery {
   startDate: string;
   endDate: string;
+  accountId?: string;
 }
 
 const dashboardSummaryQuerySchema = {
@@ -14,12 +15,14 @@ const dashboardSummaryQuerySchema = {
   properties: {
     startDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
     endDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+    accountId: { type: "string", format: "uuid" },
   },
 } as const;
 
 interface DashboardTrendsQuery {
   startDate: string;
   endDate: string;
+  accountId?: string;
 }
 
 const dashboardTrendsQuerySchema = {
@@ -29,6 +32,7 @@ const dashboardTrendsQuerySchema = {
   properties: {
     startDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
     endDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+    accountId: { type: "string", format: "uuid" },
   },
 } as const;
 
@@ -78,8 +82,13 @@ export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
     },
     async (request, reply) => {
       const session = getSessionUser(request);
-      const { startDate, endDate } = request.query;
-      const summary = await dashboardService.getDashboardSummary(session.id, startDate, endDate);
+      const { startDate, endDate, accountId } = request.query;
+      const summary = await dashboardService.getDashboardSummary(
+        session.id,
+        startDate,
+        endDate,
+        accountId,
+      );
       return reply.send(summary);
     },
   );
@@ -95,8 +104,13 @@ export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
     },
     async (request, reply) => {
       const session = getSessionUser(request);
-      const { startDate, endDate } = request.query;
-      const data = await dashboardService.getDashboardCategories(session.id, startDate, endDate);
+      const { startDate, endDate, accountId } = request.query;
+      const data = await dashboardService.getDashboardCategories(
+        session.id,
+        startDate,
+        endDate,
+        accountId,
+      );
       return reply.send(data);
     },
   );
@@ -109,8 +123,13 @@ export async function dashboardRoutes(app: FastifyInstance): Promise<void> {
     },
     async (request, reply) => {
       const session = getSessionUser(request);
-      const { startDate, endDate } = request.query;
-      const data = await dashboardService.getDashboardTrends(session.id, startDate, endDate);
+      const { startDate, endDate, accountId } = request.query;
+      const data = await dashboardService.getDashboardTrends(
+        session.id,
+        startDate,
+        endDate,
+        accountId,
+      );
       return reply.send({ data });
     },
   );

@@ -1,4 +1,9 @@
 {
+  "404": {
+    "title": "404 - Page non trouvée",
+    "description": "La page que vous recherchez n'existe pas ou a été déplacée.",
+    "homepage": "Aller à la page d'accueil"
+  },
   "common": {
     "add": "Ajouter",
     "apply": "Appliquer",
@@ -126,17 +131,13 @@
     "emailLabel": "E-mail",
     "passwordLabel": "Mot de passe"
   },
-  "404": {
-    "title": "404 - Page non trouvée",
-    "description": "La page que vous recherchez n'existe pas ou a été déplacée.",
-    "homepage": "Aller à la page d'accueil"
-  },
   "settings": {
     "heading": "Paramètres",
     "description": "Gérez votre compte et les paramètres de la plateforme.",
     "nav": {
       "profile": "Profil",
-      "userManagement": "Gestion des Utilisateurs"
+      "userManagement": "Gestion des Utilisateurs",
+      "accounts": "Comptes"
     }
   },
   "settingsUsers": {
@@ -218,14 +219,18 @@
       "heading": "Filtres",
       "category": "Filtrer par catégorie",
       "allCategories": "Toutes les Catégories",
-      "searchPlaceholder": "Rechercher par nom de commerçant..."
+      "searchPlaceholder": "Rechercher par nom de commerçant...",
+      "account": "Filtrer par compte",
+      "allAccounts": "Tous les comptes",
+      "accountsError": "Échec du chargement des comptes"
     },
     "table": {
       "date": "Date",
       "description": "Description",
       "category": "Catégorie",
       "amount": "Montant",
-      "actions": "Actions"
+      "actions": "Actions",
+      "account": "Compte"
     },
     "pagination": {
       "info": "Page {{page}} sur {{totalPages}} ({{totalCount}} au total)"
@@ -370,6 +375,17 @@
         "invalidType": "Seuls les fichiers .csv sont acceptés.",
         "uploadFailed": "Échec de l'importation.",
         "formatsError": "Impossible de charger les formats. Veuillez rafraîchir la page."
+      },
+      "createAccount": {
+        "title": "Aucun compte",
+        "help": "Créez un compte pour l’import, puis téléversez à nouveau.",
+        "nameLabel": "Nom du compte",
+        "namePlaceholder": "p. ex. Compte principal",
+        "ibanLabel": "IBAN",
+        "submitBtn": "Créer un compte",
+        "errorRequired": "Le nom et l’IBAN sont requis.",
+        "errorExists": "Un compte avec cet IBAN existe déjà.",
+        "errorFailed": "Échec de la création du compte."
       }
     },
     "editUserDialog": {
@@ -551,6 +567,49 @@
         "resetPassword": "Réinitialiser le Mot de Passe",
         "deactivate": "Désactiver"
       }
+    }
+  },
+  "settingsAccounts": {
+    "heading": "Comptes",
+    "description": "Gérez vos comptes bancaires. Désactivez un compte pour masquer ses transactions.",
+    "createBtn": "Créer un compte",
+    "createTitle": "Nouveau compte",
+    "editTitle": "Modifier le compte",
+    "nameLabel": "Nom",
+    "namePlaceholder": "p. ex. Compte principal",
+    "ibanLabel": "IBAN",
+    "accountNumberLabel": "Numéro de compte (facultatif)",
+    "accountNumberPlaceholder": "Utilisé pour associer automatiquement les imports",
+    "emptyState": "Aucun compte pour l’instant. Créez-en un pour commencer à importer.",
+    "activate": "Activer",
+    "deactivate": "Désactiver",
+    "status": {
+      "active": "Actif",
+      "inactive": "Inactif"
+    },
+    "table": {
+      "name": "Nom",
+      "iban": "IBAN",
+      "status": "Statut",
+      "actions": "Actions"
+    },
+    "deleteDialog": {
+      "title": "Supprimer le compte ?",
+      "body": "Voulez-vous vraiment supprimer <1>{{name}}</1> ? Cette action est irréversible."
+    },
+    "errors": {
+      "nameRequired": "Le nom est requis",
+      "ibanRequired": "L’IBAN est requis",
+      "ibanExists": "Un compte avec cet IBAN existe déjà",
+      "saveFailed": "Échec de l’enregistrement du compte",
+      "loadFailed": "Échec du chargement des comptes. Veuillez réessayer.",
+      "toggleFailed": "Échec de la mise à jour du compte",
+      "deleteHasTransactions": "Ce compte contient encore des transactions. Désactivez-le au lieu de le supprimer.",
+      "deleteFailed": "Échec de la suppression du compte"
+    },
+    "showAccountName": {
+      "label": "Afficher le nom du compte sur les transactions",
+      "description": "Ajoute une colonne compte à la liste des transactions."
     }
   }
 }

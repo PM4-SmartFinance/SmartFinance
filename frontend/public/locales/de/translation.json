@@ -1,4 +1,9 @@
 {
+  "404": {
+    "title": "404 - Seite nicht gefunden",
+    "description": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
+    "homepage": "Zur Startseite"
+  },
   "common": {
     "add": "Hinzufügen",
     "apply": "Anwenden",
@@ -126,17 +131,13 @@
     "emailLabel": "E-Mail",
     "passwordLabel": "Passwort"
   },
-  "404": {
-    "title": "404 - Seite nicht gefunden",
-    "description": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
-    "homepage": "Zur Startseite"
-  },
   "settings": {
     "heading": "Einstellungen",
     "description": "Verwalten Sie Ihr Konto und die Plattform-Einstellungen.",
     "nav": {
       "profile": "Profil",
-      "userManagement": "Benutzerverwaltung"
+      "userManagement": "Benutzerverwaltung",
+      "accounts": "Konten"
     }
   },
   "settingsUsers": {
@@ -218,14 +219,18 @@
       "heading": "Filter",
       "category": "Nach Kategorie filtern",
       "allCategories": "Alle Kategorien",
-      "searchPlaceholder": "Suche nach Händlername..."
+      "searchPlaceholder": "Suche nach Händlername...",
+      "account": "Nach Konto filtern",
+      "allAccounts": "Alle Konten",
+      "accountsError": "Konten konnten nicht geladen werden"
     },
     "table": {
       "date": "Datum",
       "description": "Beschreibung",
       "category": "Kategorie",
       "amount": "Betrag",
-      "actions": "Aktionen"
+      "actions": "Aktionen",
+      "account": "Konto"
     },
     "pagination": {
       "info": "Seite {{page}} von {{totalPages}} ({{totalCount}} gesamt)"
@@ -370,6 +375,17 @@
         "invalidType": "Nur .csv-Dateien werden akzeptiert.",
         "uploadFailed": "Hochladen fehlgeschlagen.",
         "formatsError": "Formate konnten nicht geladen werden. Bitte Seite neu laden."
+      },
+      "createAccount": {
+        "title": "Noch kein Konto",
+        "help": "Erstelle ein Konto für den Import und lade dann erneut hoch.",
+        "nameLabel": "Kontoname",
+        "namePlaceholder": "z. B. Hauptkonto",
+        "ibanLabel": "IBAN",
+        "submitBtn": "Konto erstellen",
+        "errorRequired": "Name und IBAN sind erforderlich.",
+        "errorExists": "Ein Konto mit dieser IBAN existiert bereits.",
+        "errorFailed": "Konto konnte nicht erstellt werden."
       }
     },
     "editUserDialog": {
@@ -551,6 +567,49 @@
         "resetPassword": "Passwort zurücksetzen",
         "deactivate": "Deaktivieren"
       }
+    }
+  },
+  "settingsAccounts": {
+    "heading": "Konten",
+    "description": "Verwalte deine Bankkonten. Deaktiviere ein Konto, um seine Transaktionen auszublenden.",
+    "createBtn": "Konto erstellen",
+    "createTitle": "Neues Konto",
+    "editTitle": "Konto bearbeiten",
+    "nameLabel": "Name",
+    "namePlaceholder": "z. B. Hauptkonto",
+    "ibanLabel": "IBAN",
+    "accountNumberLabel": "Kontonummer (optional)",
+    "accountNumberPlaceholder": "Wird zum automatischen Zuordnen von Importen verwendet",
+    "emptyState": "Noch keine Konten. Erstelle eines, um mit dem Import zu beginnen.",
+    "activate": "Aktivieren",
+    "deactivate": "Deaktivieren",
+    "status": {
+      "active": "Aktiv",
+      "inactive": "Inaktiv"
+    },
+    "table": {
+      "name": "Name",
+      "iban": "IBAN",
+      "status": "Status",
+      "actions": "Aktionen"
+    },
+    "deleteDialog": {
+      "title": "Konto löschen?",
+      "body": "Möchtest du <1>{{name}}</1> wirklich löschen? Dies kann nicht rückgängig gemacht werden."
+    },
+    "errors": {
+      "nameRequired": "Name ist erforderlich",
+      "ibanRequired": "IBAN ist erforderlich",
+      "ibanExists": "Ein Konto mit dieser IBAN existiert bereits",
+      "saveFailed": "Konto konnte nicht gespeichert werden",
+      "loadFailed": "Konten konnten nicht geladen werden. Bitte versuche es erneut.",
+      "toggleFailed": "Konto konnte nicht aktualisiert werden",
+      "deleteHasTransactions": "Dieses Konto hat noch Transaktionen. Deaktiviere es, anstatt es zu löschen.",
+      "deleteFailed": "Konto konnte nicht gelöscht werden"
+    },
+    "showAccountName": {
+      "label": "Kontoname bei Transaktionen anzeigen",
+      "description": "Fügt der Transaktionsliste eine Kontospalte hinzu."
     }
   }
 }

@@ -43,11 +43,13 @@ export type { Budget };
 export function useDashboardSummary() {
   const startDate = useAppStore((s) => s.startDate);
   const endDate = useAppStore((s) => s.endDate);
+  const accountId = useAppStore((s) => s.accountId);
 
   return useQuery({
-    queryKey: ["dashboard", "summary", { startDate, endDate }] as const,
+    queryKey: ["dashboard", "summary", { startDate, endDate, accountId }] as const,
     queryFn: () => {
       const params = new URLSearchParams({ startDate, endDate });
+      if (accountId) params.set("accountId", accountId);
       return api.get<DashboardSummary>(`/dashboard/summary?${params}`);
     },
     staleTime: DASHBOARD_STALE_TIME,
@@ -58,11 +60,13 @@ export function useDashboardSummary() {
 export function useDashboardTrends() {
   const startDate = useAppStore((s) => s.startDate);
   const endDate = useAppStore((s) => s.endDate);
+  const accountId = useAppStore((s) => s.accountId);
 
   return useQuery({
-    queryKey: ["dashboard", "trends", { startDate, endDate }] as const,
+    queryKey: ["dashboard", "trends", { startDate, endDate, accountId }] as const,
     queryFn: async () => {
       const params = new URLSearchParams({ startDate, endDate });
+      if (accountId) params.set("accountId", accountId);
       const { data } = await api.get<{ data: TrendDataPoint[] }>(`/dashboard/trends?${params}`);
       return data;
     },
@@ -74,11 +78,13 @@ export function useDashboardTrends() {
 export function useDashboardCategories() {
   const startDate = useAppStore((s) => s.startDate);
   const endDate = useAppStore((s) => s.endDate);
+  const accountId = useAppStore((s) => s.accountId);
 
   return useQuery({
-    queryKey: ["dashboard", "categories", { startDate, endDate }] as const,
+    queryKey: ["dashboard", "categories", { startDate, endDate, accountId }] as const,
     queryFn: () => {
       const params = new URLSearchParams({ startDate, endDate });
+      if (accountId) params.set("accountId", accountId);
       return api.get<CategoryBreakdown[]>(`/dashboard/categories?${params}`);
     },
     staleTime: DASHBOARD_STALE_TIME,
