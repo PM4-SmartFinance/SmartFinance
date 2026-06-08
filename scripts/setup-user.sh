@@ -193,21 +193,12 @@ generate_secret() {
   printf '%s' "$value"
 }
 
-# Admin bootstrap credentials. Email and password may be supplied via the
-# BOOTSTRAP_EMAIL / BOOTSTRAP_PASSWORD environment variables; otherwise a strong
-# random password is generated and printed once on completion (no weak default).
+# Admin bootstrap credentials. A documented default is used so first-time
+# self-hosters always know how to log in. Override with BOOTSTRAP_EMAIL /
+# BOOTSTRAP_PASSWORD for a stronger, non-default credential. The completion banner
+# instructs the user to change this password immediately after first login.
 DEFAULT_ADMIN_EMAIL="${BOOTSTRAP_EMAIL:-admin@smartfinance.local}"
-DEFAULT_ADMIN_PASSWORD="${BOOTSTRAP_PASSWORD:-}"
-ADMIN_PASSWORD_GENERATED=false
-if [ -z "$DEFAULT_ADMIN_PASSWORD" ]; then
-  DEFAULT_ADMIN_PASSWORD=$(generate_secret 12)
-  ADMIN_PASSWORD_GENERATED=true
-fi
-if [ -z "$DEFAULT_ADMIN_PASSWORD" ]; then
-  echo "Error: unable to generate a secure admin password (no CSPRNG available)." >&2
-  echo "Install openssl or provide BOOTSTRAP_PASSWORD, then re-run." >&2
-  exit 1
-fi
+DEFAULT_ADMIN_PASSWORD="${BOOTSTRAP_PASSWORD:-changeme123}"
 
 session_secret=$(get_env_value SESSION_SECRET || true)
 if [ -z "$session_secret" ]; then
@@ -260,10 +251,11 @@ echo "Starting core infrastructure containers..."
 docker compose -f docker-compose.user.yml up -d --remove-orphans --scale backend=0
 
 echo "Running production database migrations..."
-# Pass the migration command as args so the image entrypoint's `exec "$@"` branch
-# runs only the migration (no seeding/server start), instead of overriding the
-# entrypoint with /bin/sh.
-docker compose -f docker-compose.user.yml run --rm backend node_modules/.bin/prisma migrate deploy
+# Override the entrypoint with /bin/sh so we run ONLY the migration, regardless of
+# what entrypoint the (possibly older, published) image ships. Passing the command
+# as args would instead depend on the image's `exec "$@"` branch existing, which
+# pre-release images do not have — they would boot the full app and hang here.
+docker compose -f docker-compose.user.yml run --rm --entrypoint /bin/sh backend -c "node_modules/.bin/prisma migrate deploy"
 
 echo "Starting application stack..."
 if [ "$USE_LOCAL_BUILD" = true ]; then
@@ -289,17 +281,12 @@ echo "===================================================="
 echo " Setup Complete!"
 echo " Access your interface at: http://localhost:3000"
 echo
-echo " Log in with the administrator credentials:"
+echo " Log in with the default administrator credentials:"
 echo "   Email:    $DEFAULT_ADMIN_EMAIL"
 echo "   Password: $DEFAULT_ADMIN_PASSWORD"
-if [ "$ADMIN_PASSWORD_GENERATED" = true ]; then
-  echo
-  echo " This password was generated randomly and is shown ONCE."
-  echo " Save it now; it is not stored anywhere by this script."
-fi
 echo
-echo " IMPORTANT: Please change this password immediately"
-echo " after your first login!"
+echo " IMPORTANT: This is a well-known default password. Change it"
+echo " IMMEDIATELY after your first login (Settings > Profile)."
 echo "===================================================="
 
 # Offer lightweight cleanup to reclaim build cache and dangling images older than a day.

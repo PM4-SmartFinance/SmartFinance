@@ -52,14 +52,12 @@ $imageTag = Get-EnvValue 'IMAGE_TAG'
 if ([string]::IsNullOrWhiteSpace($imageTag)) { $imageTag = 'latest' }
 Set-EnvValue 'IMAGE_TAG' $imageTag
 
+# Documented default admin credentials so first-time self-hosters always know how
+# to log in; override with BOOTSTRAP_EMAIL / BOOTSTRAP_PASSWORD for a stronger one.
 $email = $env:BOOTSTRAP_EMAIL
 if ([string]::IsNullOrWhiteSpace($email)) { $email = 'admin@smartfinance.local' }
 
-$generated = 'false'
 $password = $env:BOOTSTRAP_PASSWORD
-if ([string]::IsNullOrWhiteSpace($password)) {
-    $password = New-HexSecret 12
-    $generated = 'true'
-}
+if ([string]::IsNullOrWhiteSpace($password)) { $password = 'changeme123' }
 
-Write-Output ('{0}|{1}|{2}' -f $email, $password, $generated)
+Write-Output ('{0}|{1}' -f $email, $password)

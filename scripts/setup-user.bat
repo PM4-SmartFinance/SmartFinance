@@ -18,13 +18,11 @@ docker info >nul 2>&1 || (echo Error: Docker daemon is not running. Start Docker
 echo Preparing environment and administrator credentials...
 set "ADMIN_EMAIL="
 set "ADMIN_PASSWORD="
-set "ADMIN_GENERATED="
-for /f "usebackq tokens=1-3 delims=|" %%a in (`powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%setup-user-env.ps1"`) do (
+for /f "usebackq tokens=1-2 delims=|" %%a in (`powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%setup-user-env.ps1"`) do (
   set "ADMIN_EMAIL=%%a"
   set "ADMIN_PASSWORD=%%b"
-  set "ADMIN_GENERATED=%%c"
 )
-if "%ADMIN_PASSWORD%"=="" (echo Error: failed to prepare environment ^(could not generate credentials^).& goto :fail)
+if "%ADMIN_PASSWORD%"=="" (echo Error: failed to prepare environment ^(could not generate secrets^).& goto :fail)
 
 echo.
 echo Pulling images (best-effort)...
@@ -34,7 +32,7 @@ echo Starting core infrastructure (backend scaled to 0 for migrations)...
 docker compose -f %COMPOSE_FILE% up -d --remove-orphans --scale backend=0 || goto :fail
 
 echo Running production database migrations...
-docker compose -f %COMPOSE_FILE% run --rm backend node_modules/.bin/prisma migrate deploy || goto :fail
+docker compose -f %COMPOSE_FILE% run --rm --entrypoint /bin/sh backend -c "node_modules/.bin/prisma migrate deploy" || goto :fail
 
 echo Starting application stack...
 docker compose -f %COMPOSE_FILE% up -d --remove-orphans || goto :fail
@@ -47,16 +45,12 @@ echo ====================================================
 echo  Setup Complete!
 echo  Access your interface at: http://localhost:3000
 echo.
-echo  Log in with the administrator credentials:
+echo  Log in with the default administrator credentials:
 echo    Email:    %ADMIN_EMAIL%
 echo    Password: %ADMIN_PASSWORD%
-if "%ADMIN_GENERATED%"=="true" (
-  echo.
-  echo  This password was generated randomly and is shown ONCE.
-  echo  Save it now; it is not stored anywhere by this script.
-)
 echo.
-echo  IMPORTANT: Please change this password immediately after your first login!
+echo  IMPORTANT: This is a well-known default password. Change it
+echo  IMMEDIATELY after your first login (Settings ^> Profile).
 echo ====================================================
 
 popd
