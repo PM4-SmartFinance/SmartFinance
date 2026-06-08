@@ -62,7 +62,7 @@ Before running or developing the application, make sure these are installed.
 ```
 
 3. The script checks GHCR for a published backend/frontend image tag first. If one exists, it pulls that tag; otherwise it builds local images and reuses them on reruns.
-4. Open the app in your browser at `http://localhost` or at your configured domain.
+4. Open the app in your browser at `http://localhost:3000` or at your configured domain. The script prints the administrator email and a one-time generated password on completion.
 
 When you are done using the app, stop the stack to release resources:
 
