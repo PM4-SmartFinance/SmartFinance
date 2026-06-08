@@ -143,6 +143,14 @@ fi
 
 USE_LOCAL_BUILD=false
 
+# Set SMARTFINANCE_BUILD_LOCAL=1 to build images from source instead of pulling the
+# published GHCR images. Use this to run local changes that are not yet released
+# (a plain pull would otherwise overwrite a locally built image with the published one).
+BUILD_LOCAL="${SMARTFINANCE_BUILD_LOCAL:-}"
+if [ "$BUILD_LOCAL" = "1" ] || [ "$BUILD_LOCAL" = "true" ]; then
+  USE_LOCAL_BUILD=true
+fi
+
 # Ensure there's reasonable free space on root before heavy pulls/builds.
 ensure_free_space() {
   local min_kb=$1
@@ -167,7 +175,10 @@ ensure_free_space() {
   return 0
 }
 
-if [ "$LOCAL_BACKEND_IMAGE_PRESENT" = true ] && [ "$LOCAL_FRONTEND_IMAGE_PRESENT" = true ]; then
+if [ "$USE_LOCAL_BUILD" = true ]; then
+  # Building from source needs the larger build headroom.
+  MIN_ROOT_FREE_KB=${SMARTFINANCE_MIN_ROOT_FREE_KB_BUILD:-$((3 * 1024 * 1024))}
+elif [ "$LOCAL_BACKEND_IMAGE_PRESENT" = true ] && [ "$LOCAL_FRONTEND_IMAGE_PRESENT" = true ]; then
   MIN_ROOT_FREE_KB=${SMARTFINANCE_MIN_ROOT_FREE_KB_RUNTIME:-$((512 * 1024))}
 elif [ "$REMOTE_IMAGE_AVAILABLE" = true ]; then
   MIN_ROOT_FREE_KB=${SMARTFINANCE_MIN_ROOT_FREE_KB_RUNTIME:-$((512 * 1024))}
@@ -227,23 +238,34 @@ export POSTGRES_PASSWORD="$postgres_password"
 export IMAGE_TAG="$IMAGE_TAG"
 
 echo
-echo "Checking for newer images on GHCR (pull is best-effort)..."
-# Try to pull. A failure is only acceptable when no upstream image exists for the
-# tag (we then build locally). If the manifest exists but the pull still failed,
-# it is a real error (registry auth, network, or disk) and must abort — silently
-# booting a stale local image via --no-build would hide the problem.
-if ! docker compose -f docker-compose.user.yml pull; then
-  if [ "$REMOTE_IMAGE_AVAILABLE" = true ]; then
-    echo "Error: image pull failed even though upstream images exist for tag '$IMAGE_TAG'." >&2
-    echo "This usually indicates a registry authentication, network, or disk problem. Aborting." >&2
-    exit 1
+if [ "$USE_LOCAL_BUILD" = true ]; then
+  echo "Building images from source (SMARTFINANCE_BUILD_LOCAL set or no published image); skipping pull."
+else
+  echo "Checking for newer images on GHCR (pull is best-effort)..."
+  # Try to pull. A failure is only acceptable when no upstream image exists for the
+  # tag (we then build locally). If the manifest exists but the pull still failed,
+  # it is a real error (registry auth, network, or disk) and must abort — silently
+  # booting a stale local image via --no-build would hide the problem.
+  if ! docker compose -f docker-compose.user.yml pull; then
+    if [ "$REMOTE_IMAGE_AVAILABLE" = true ]; then
+      echo "Error: image pull failed even though upstream images exist for tag '$IMAGE_TAG'." >&2
+      echo "This usually indicates a registry authentication, network, or disk problem. Aborting." >&2
+      exit 1
+    fi
+    echo "No published images for tag '$IMAGE_TAG'; will build locally."
   fi
-  echo "No published images for tag '$IMAGE_TAG'; will build locally."
+
+  # Re-evaluate the presence of the images now that the pull has finished.
+  if ! docker image inspect "$BACKEND_IMAGE" >/dev/null 2>&1 || ! docker image inspect "$FRONTEND_IMAGE" >/dev/null 2>&1; then
+    USE_LOCAL_BUILD=true
+  fi
 fi
 
-# Re-evaluate the presence of the images now that the pull has finished.
-if ! docker image inspect "$BACKEND_IMAGE" >/dev/null 2>&1 || ! docker image inspect "$FRONTEND_IMAGE" >/dev/null 2>&1; then
-  USE_LOCAL_BUILD=true
+# Build up front when needed so the migration run and the scaled-up stack all use
+# the freshly built images (and so the slow build isn't interleaved with startup).
+if [ "$USE_LOCAL_BUILD" = true ]; then
+  echo "Building images from source (this can take several minutes)..."
+  docker compose -f docker-compose.user.yml build
 fi
 
 echo "Starting core infrastructure containers..."
@@ -258,11 +280,8 @@ echo "Running production database migrations..."
 docker compose -f docker-compose.user.yml run --rm --entrypoint /bin/sh backend -c "node_modules/.bin/prisma migrate deploy"
 
 echo "Starting application stack..."
-if [ "$USE_LOCAL_BUILD" = true ]; then
-  docker compose -f docker-compose.user.yml up -d --remove-orphans --build
-else
-  docker compose -f docker-compose.user.yml up -d --remove-orphans --no-build
-fi
+# Images are already present (pulled or built above), so never build implicitly here.
+docker compose -f docker-compose.user.yml up -d --remove-orphans --no-build
 
 echo "Seeding default administrative credentials (waiting for backend to boot)..."
 # Reference data (currencies, date dim) is seeded unconditionally by the backend
