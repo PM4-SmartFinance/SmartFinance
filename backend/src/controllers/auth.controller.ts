@@ -37,27 +37,49 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.post("/auth/logout", async (request, reply) => {
-    const user = request.session.get("user");
-    await authService.recordLogout(user?.id ?? null);
-    request.session.delete();
-    return reply.send({ ok: true });
-  });
+  app.post(
+    "/auth/logout",
+    {
+      config: {
+        rateLimit: {
+          max: 30,
+          timeWindow: "1 minute",
+        },
+      },
+    },
+    async (request, reply) => {
+      const user = request.session.get("user");
+      await authService.recordLogout(user?.id ?? null);
+      request.session.delete();
+      return reply.send({ ok: true });
+    },
+  );
 
-  app.get("/auth/me", async (request, reply) => {
-    const sessionUser = await verifySession(request);
-    try {
-      const user = await userService.getProfile(sessionUser.id);
-      return reply.send({ user });
-    } catch (err) {
-      // Race: verifySession passed, but the user row was deleted before
-      // getProfile ran. Mirror the eviction semantics used inside
-      // verifySession so /auth/me returns 401 with a cleared session.
-      if (err instanceof ServiceError && err.statusCode === 404) {
-        request.session.delete();
-        throw new ServiceError(401, "Unauthorized");
+  app.get(
+    "/auth/me",
+    {
+      config: {
+        rateLimit: {
+          max: 60,
+          timeWindow: "1 minute",
+        },
+      },
+    },
+    async (request, reply) => {
+      const sessionUser = await verifySession(request);
+      try {
+        const user = await userService.getProfile(sessionUser.id);
+        return reply.send({ user });
+      } catch (err) {
+        // Race: verifySession passed, but the user row was deleted before
+        // getProfile ran. Mirror the eviction semantics used inside
+        // verifySession so /auth/me returns 401 with a cleared session.
+        if (err instanceof ServiceError && err.statusCode === 404) {
+          request.session.delete();
+          throw new ServiceError(401, "Unauthorized");
+        }
+        throw err;
       }
-      throw err;
-    }
-  });
+    },
+  );
 }

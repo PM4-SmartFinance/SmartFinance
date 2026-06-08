@@ -6,14 +6,25 @@ import * as transactionRepository from "../repositories/transaction.repository.j
 import { autoCategorize } from "./categorization.service.js";
 import { getLogger } from "../logger.js";
 
+// Hard cap on rule-pattern length. Stops the RegExp engine itself from doing
+// pathological work during parse (independent of safe-regex2's ReDoS check)
+// and bounds the input that any downstream matcher sees.
+const MAX_REGEX_PATTERN_LENGTH = 256;
+
 function assertValidRegex(pattern: string) {
+  if (pattern.length > MAX_REGEX_PATTERN_LENGTH) {
+    throw new ServiceError(400, "Regex pattern is too long");
+  }
+  // Gate ReDoS-prone patterns before any RegExp construction. safe-regex2
+  // parses the pattern with its own (bounded) parser, so it does not itself
+  // touch the V8 regex engine on the candidate string.
+  if (!safeRegex(pattern)) {
+    throw new ServiceError(400, "Regex pattern is too complex");
+  }
   try {
     new RegExp(pattern);
   } catch {
     throw new ServiceError(400, `Invalid regex pattern: ${pattern}`);
-  }
-  if (!safeRegex(pattern)) {
-    throw new ServiceError(400, "Regex pattern is too complex");
   }
 }
 

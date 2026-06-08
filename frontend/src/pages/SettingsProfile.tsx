@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -30,6 +30,18 @@ export function SettingsProfile() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  // Both success flows schedule a delayed redirect to /login. Track the timer
+  // so it can be cleared on unmount — otherwise a pending callback fires after
+  // the component is gone, navigating a page that has since moved on (and, in
+  // tests, leaking a navigate() into the next test).
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (redirectTimerRef.current !== null) clearTimeout(redirectTimerRef.current);
+    },
+    [],
+  );
+
   const { data, isPending: isProfileLoading, isError: isProfileError } = useQuery(PROFILE_QUERY);
   const profile = data?.user;
 
@@ -54,7 +66,7 @@ export function SettingsProfile() {
         // cached auth query before redirecting so the login page cannot
         // briefly render a stale authenticated user.
         setProfileEmailChanged(true);
-        setTimeout(() => {
+        redirectTimerRef.current = setTimeout(() => {
           void queryClient.removeQueries({ queryKey: ["auth", "me"] });
           navigate("/login");
         }, LOGOUT_REDIRECT_DELAY_MS);
@@ -89,7 +101,7 @@ export function SettingsProfile() {
       // /auth/me on mount and the auth guard will treat the cleared cookie as
       // anonymous. Clear the cached auth state just before redirect so the
       // login page cannot briefly reuse a stale authenticated user.
-      setTimeout(() => {
+      redirectTimerRef.current = setTimeout(() => {
         void queryClient.removeQueries({ queryKey: ["auth", "me"] });
         navigate("/login");
       }, LOGOUT_REDIRECT_DELAY_MS);
