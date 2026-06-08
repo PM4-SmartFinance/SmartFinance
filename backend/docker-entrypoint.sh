@@ -1,6 +1,9 @@
 #!/bin/sh
 set -e
 
+# When a command is passed (e.g. `docker compose run backend prisma migrate deploy`),
+# run it instead of the default boot sequence. The setup scripts use this to apply
+# migrations before any traffic is served, without overriding the image entrypoint.
 if [ "$#" -gt 0 ]; then
   exec "$@"
 fi

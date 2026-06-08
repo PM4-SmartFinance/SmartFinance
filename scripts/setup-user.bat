@@ -1,33 +1,71 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 
-echo Setting up SmartFinance for Self-Hosting...
+set "SCRIPT_DIR=%~dp0"
+set "COMPOSE_FILE=docker-compose.user.yml"
 
-:: 1. Handle .env creation and Secret Generation
-if not exist .env (
-    echo Creating .env from template...
-    copy .env.example .env
-    
-    echo Generating secure SESSION_SECRET...
-    :: Generates a 64-character hex string using two GUIDs via PowerShell
-    for /f "tokens=*" %%a in ('powershell -Command "[guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')"') do set SECRET=%%a
-    
-    :: Use PowerShell to perform the text replacement in the file
-    powershell -Command "(get-content .env) -replace 'SESSION_SECRET=.*', 'SESSION_SECRET=%SECRET%' | set-content .env"
-    echo Generated secure SESSION_SECRET in .env
-) else (
-    echo .env already exists. Skipping environment configuration.
+pushd "%SCRIPT_DIR%.." || (echo Error: cannot enter project root.& exit /b 1)
+
+echo ====================================================
+echo       Setting up SmartFinance Production Stack
+echo ====================================================
+echo.
+
+where docker >nul 2>&1 || (echo Error: Docker is not installed or not on PATH.& goto :fail)
+docker compose version >nul 2>&1 || (echo Error: Docker Compose plugin is required.& goto :fail)
+docker info >nul 2>&1 || (echo Error: Docker daemon is not running. Start Docker Desktop and retry.& goto :fail)
+
+echo Preparing environment and administrator credentials...
+set "ADMIN_EMAIL="
+set "ADMIN_PASSWORD="
+set "ADMIN_GENERATED="
+for /f "usebackq tokens=1-3 delims=|" %%a in (`powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%setup-user-env.ps1"`) do (
+  set "ADMIN_EMAIL=%%a"
+  set "ADMIN_PASSWORD=%%b"
+  set "ADMIN_GENERATED=%%c"
 )
+if "%ADMIN_PASSWORD%"=="" (echo Error: failed to prepare environment ^(could not generate credentials^).& goto :fail)
 
-:: 2. Start Infrastructure
-echo Starting Docker stack...
-:: Pulls images and starts containers in detached mode
-docker compose up -d
+echo.
+echo Pulling images (best-effort)...
+docker compose -f %COMPOSE_FILE% pull
 
-:: 3. Final Verification
-echo Setup complete. 
-echo Access the application at http://localhost
-echo If you encounter port conflicts, please refer to the Troubleshooting section in the README.
+echo Starting core infrastructure (backend scaled to 0 for migrations)...
+docker compose -f %COMPOSE_FILE% up -d --remove-orphans --scale backend=0 || goto :fail
 
-pause
+echo Running production database migrations...
+docker compose -f %COMPOSE_FILE% run --rm backend node_modules/.bin/prisma migrate deploy || goto :fail
+
+echo Starting application stack...
+docker compose -f %COMPOSE_FILE% up -d --remove-orphans || goto :fail
+
+echo Seeding default administrative credentials (waiting for backend to boot)...
+docker compose -f %COMPOSE_FILE% exec -T -e BOOTSTRAP_EMAIL=%ADMIN_EMAIL% -e BOOTSTRAP_PASSWORD=%ADMIN_PASSWORD% backend node --input-type=module < "%SCRIPT_DIR%bootstrap-admin.mjs" || goto :fail
+
+echo.
+echo ====================================================
+echo  Setup Complete!
+echo  Access your interface at: http://localhost:3000
+echo.
+echo  Log in with the administrator credentials:
+echo    Email:    %ADMIN_EMAIL%
+echo    Password: %ADMIN_PASSWORD%
+if "%ADMIN_GENERATED%"=="true" (
+  echo.
+  echo  This password was generated randomly and is shown ONCE.
+  echo  Save it now; it is not stored anywhere by this script.
+)
+echo.
+echo  IMPORTANT: Please change this password immediately after your first login!
+echo ====================================================
+
+popd
 endlocal
+exit /b 0
+
+:fail
+echo.
+echo SmartFinance setup failed. Ensure Docker Desktop is installed and running, then re-run.
+popd
+endlocal
+exit /b 1

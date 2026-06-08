@@ -27,10 +27,6 @@ check_dependency() {
   fi
 }
 
-trim() {
-  printf '%s' "$1" | sed 's/^ *//; s/ *$//'
-}
-
 get_env_value() {
   local key="$1"
   if [ -f "$PROJECT_ROOT/.env" ]; then
@@ -84,6 +80,8 @@ EOF
 
   candidate_tags="$candidate_tags latest"
 
+  # Intentional word splitting: candidate_tags is a space-separated tag list.
+  # shellcheck disable=SC2086
   for candidate in $candidate_tags; do
     normalized_tag=$(printf '%s' "$candidate" | sed 's/^[vV]//')
     if docker manifest inspect "ghcr.io/pm4-smartfinance/smartfinance/backend:${normalized_tag}" >/dev/null 2>&1 \
@@ -262,7 +260,10 @@ echo "Starting core infrastructure containers..."
 docker compose -f docker-compose.user.yml up -d --remove-orphans --scale backend=0
 
 echo "Running production database migrations..."
-docker compose -f docker-compose.user.yml run --rm --entrypoint /bin/sh backend -c "node_modules/.bin/prisma migrate deploy"
+# Pass the migration command as args so the image entrypoint's `exec "$@"` branch
+# runs only the migration (no seeding/server start), instead of overriding the
+# entrypoint with /bin/sh.
+docker compose -f docker-compose.user.yml run --rm backend node_modules/.bin/prisma migrate deploy
 
 echo "Starting application stack..."
 if [ "$USE_LOCAL_BUILD" = true ]; then
@@ -274,64 +275,14 @@ fi
 echo "Seeding default administrative credentials (waiting for backend to boot)..."
 # Reference data (currencies, date dim) is seeded unconditionally by the backend
 # entrypoint on a fresh DB before it accepts traffic, so the first-user bootstrap
-# POST below finds the default currency and creates admin@smartfinance.local as
-# the first ADMIN. No currency upsert is needed here.
+# POST finds the default currency and creates the admin as the first ADMIN.
+# The bootstrap logic lives in scripts/bootstrap-admin.mjs and is piped over stdin
+# so it is shared verbatim with the Windows setup script.
 docker compose -f docker-compose.user.yml exec -T \
   -e BOOTSTRAP_EMAIL="$DEFAULT_ADMIN_EMAIL" \
   -e BOOTSTRAP_PASSWORD="$DEFAULT_ADMIN_PASSWORD" \
   backend \
-  node --input-type=module -e "
-    async function seedUser() {
-      const email = process.env.BOOTSTRAP_EMAIL;
-      const password = process.env.BOOTSTRAP_PASSWORD;
-      let attempts = 30;
-      while (attempts > 0) {
-        attempts--;
-        let response;
-        try {
-          response = await fetch('http://localhost:3000/api/v1/users', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-          });
-        } catch (e) {
-          // Backend not accepting connections yet — retry.
-          if (attempts === 0) {
-            console.error('Timeout: Backend API did not become available.');
-            process.exit(1);
-          }
-          await new Promise(r => setTimeout(r, 2000));
-          continue;
-        }
-
-        // 201 (created) or 409 (already exists) both mean the admin is present.
-        if (response.ok || response.status === 409) {
-          console.log('✓ Default admin user created (or already present).');
-          process.exit(0);
-        }
-
-        // 5xx can be transient while the backend finishes booting/migrating — retry.
-        if (response.status >= 500) {
-          if (attempts === 0) {
-            console.error('Backend kept returning ' + response.status + ': ' + (await response.text()));
-            process.exit(1);
-          }
-          await new Promise(r => setTimeout(r, 2000));
-          continue;
-        }
-
-        // 4xx (401/403/400/...) means the bootstrap did NOT create the admin
-        // (e.g. users already exist, or validation failed). Fail loudly so the
-        // operator is not told to log in with credentials that do not work.
-        console.error('Failed to create admin user (HTTP ' + response.status + '): ' + (await response.text()));
-        process.exit(1);
-      }
-    }
-    seedUser().catch((e) => {
-      console.error('Seeding crashed:', e);
-      process.exit(1);
-    });
-  "
+  node --input-type=module < "$SCRIPT_DIR/bootstrap-admin.mjs"
 
 echo
 echo "===================================================="

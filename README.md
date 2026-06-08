@@ -79,7 +79,7 @@ When you are done using the app, stop the stack to release resources:
 scripts\setup-user.bat
 ```
 
-3. Open the app in your browser at `http://localhost` or at your configured domain.
+3. Open the app in your browser at `http://localhost:3000` or at your configured domain. The script prints the administrator email and a one-time generated password on completion.
 
 If you want the full deployment flow, required environment variables, or rollback details, use [Chapter 11: Installation (Deployment)](https://github.com/PM4-SmartFinance/SmartFinance/wiki/11.-Installation-Deployment).
 
