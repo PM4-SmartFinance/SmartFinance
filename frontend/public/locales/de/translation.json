@@ -229,7 +229,8 @@
       "description": "Beschreibung",
       "category": "Kategorie",
       "amount": "Betrag",
-      "actions": "Aktionen"
+      "actions": "Aktionen",
+      "account": "Konto"
     },
     "pagination": {
       "info": "Seite {{page}} von {{totalPages}} ({{totalCount}} gesamt)"
@@ -605,6 +606,10 @@
       "toggleFailed": "Konto konnte nicht aktualisiert werden",
       "deleteHasTransactions": "Dieses Konto hat noch Transaktionen. Deaktiviere es, anstatt es zu löschen.",
       "deleteFailed": "Konto konnte nicht gelöscht werden"
+    },
+    "showAccountName": {
+      "label": "Kontoname bei Transaktionen anzeigen",
+      "description": "Fügt der Transaktionsliste eine Kontospalte hinzu."
     }
   }
 }

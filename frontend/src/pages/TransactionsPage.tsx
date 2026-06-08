@@ -3,6 +3,7 @@ import { useCategories } from "../lib/queries/categories";
 import { useAccounts } from "../lib/queries/accounts";
 import { useTransactions } from "../lib/queries/transactions";
 import { useTransactionsStore } from "../store/transactionsStore";
+import { useAppStore } from "../store/appStore";
 import { formatAmount, formatDate as formatTransactionDate } from "../lib/format";
 import { getDefaultStartDate, getDefaultEndDate } from "../lib/date";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,12 @@ export function TransactionsPage() {
   // Only active accounts have visible transactions, so only they are offered as
   // a filter option.
   const accounts = (accountsData ?? []).filter((account) => account.active);
+
+  // Optional "account name on transactions" display preference (KAN-169).
+  const showAccountName = useAppStore((s) => s.showAccountName);
+  const accountNameById = new Map(
+    (accountsData ?? []).map((account) => [account.id, account.name]),
+  );
 
   const {
     data: transactionsData,
@@ -314,6 +321,14 @@ export function TransactionsPage() {
                         >
                           {t("transactions.table.description", "Description")}
                         </th>
+                        {showAccountName && (
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left font-semibold text-foreground"
+                          >
+                            {t("transactions.table.account", "Account")}
+                          </th>
+                        )}
                         <th
                           scope="col"
                           className="px-6 py-3 text-left font-semibold text-foreground"
@@ -343,6 +358,11 @@ export function TransactionsPage() {
                             {formatTransactionDate(tx.date, i18n.resolvedLanguage)}
                           </td>
                           <td className="px-6 py-3 text-sm text-foreground">{tx.merchant}</td>
+                          {showAccountName && (
+                            <td className="px-6 py-3 text-sm text-muted-foreground">
+                              {accountNameById.get(tx.accountId) ?? "—"}
+                            </td>
+                          )}
                           <td className="px-6 py-3 text-sm text-muted-foreground">
                             {tx.categoryName || "—"}
                           </td>

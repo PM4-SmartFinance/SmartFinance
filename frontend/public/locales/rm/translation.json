@@ -229,7 +229,8 @@
       "description": "Descripziun",
       "category": "Categoria",
       "amount": "Suma",
-      "actions": "Acziuns"
+      "actions": "Acziuns",
+      "account": "Conto"
     },
     "pagination": {
       "info": "Pagina {{page}} da {{totalPages}} ({{totalCount}} en tut)"
@@ -605,6 +606,10 @@
       "toggleFailed": "Betg pussaivel d’actualisar il conto",
       "deleteHasTransactions": "Quest conto ha anc transacziuns. Deactivescha el enstagl da al stizzar.",
       "deleteFailed": "Betg pussaivel da stizzar il conto"
+    },
+    "showAccountName": {
+      "label": "Mussar il num dal conto tar las transacziuns",
+      "description": "Agiunscha ina colonna da conto a la glista da transacziuns."
     }
   }
 }

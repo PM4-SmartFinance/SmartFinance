@@ -229,7 +229,8 @@
       "description": "Description",
       "category": "Catégorie",
       "amount": "Montant",
-      "actions": "Actions"
+      "actions": "Actions",
+      "account": "Compte"
     },
     "pagination": {
       "info": "Page {{page}} sur {{totalPages}} ({{totalCount}} au total)"
@@ -605,6 +606,10 @@
       "toggleFailed": "Échec de la mise à jour du compte",
       "deleteHasTransactions": "Ce compte contient encore des transactions. Désactivez-le au lieu de le supprimer.",
       "deleteFailed": "Échec de la suppression du compte"
+    },
+    "showAccountName": {
+      "label": "Afficher le nom du compte sur les transactions",
+      "description": "Ajoute une colonne compte à la liste des transactions."
     }
   }
 }

@@ -14,9 +14,13 @@ export interface AppState extends DateRange {
   theme: Theme;
   // Dashboard account filter: `null` means "all (active) accounts" (KAN-169).
   accountId: string | null;
+  // Display preference: show the owning account's name on each transaction row.
+  // Persisted in localStorage; toggled from Settings → Accounts (KAN-169).
+  showAccountName: boolean;
   setTheme: (theme: Theme) => void;
   setDateRange: (startDate: string, endDate: string, presetKey: PresetKey) => void;
   setAccountId: (accountId: string | null) => void;
+  setShowAccountName: (show: boolean) => void;
 }
 
 const getDefaultDateRange = (): DateRange & { activePresetKey: PresetKey } => {
@@ -42,6 +46,16 @@ export function getStoredTheme(): Theme {
   }
 }
 
+const SHOW_ACCOUNT_NAME_KEY = "showAccountName";
+
+export function getStoredShowAccountName(): boolean {
+  try {
+    return localStorage.getItem(SHOW_ACCOUNT_NAME_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
 export function applyThemeToDOM(theme: Theme): void {
   if (typeof document === "undefined") return;
   const isDark =
@@ -58,6 +72,7 @@ export const useAppStore = create<AppState>((set) => ({
   endDate: defaultRange.endDate,
   activePresetKey: defaultRange.activePresetKey,
   accountId: null,
+  showAccountName: getStoredShowAccountName(),
   theme: getStoredTheme(),
   setTheme: (theme: Theme) =>
     set(() => {
@@ -75,6 +90,17 @@ export const useAppStore = create<AppState>((set) => ({
     set({ startDate, endDate, activePresetKey: presetKey });
   },
   setAccountId: (accountId) => set({ accountId }),
+  setShowAccountName: (show) =>
+    set(() => {
+      try {
+        localStorage.setItem(SHOW_ACCOUNT_NAME_KEY, String(show));
+      } catch (err) {
+        if (import.meta.env.DEV) {
+          console.warn("[showAccountName] could not persist preference", err);
+        }
+      }
+      return { showAccountName: show };
+    }),
 }));
 
 // Single app-wide subscription to OS theme changes. Re-applies the DOM class

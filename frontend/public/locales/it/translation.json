@@ -229,7 +229,8 @@
       "description": "Descrizione",
       "category": "Categoria",
       "amount": "Importo",
-      "actions": "Azioni"
+      "actions": "Azioni",
+      "account": "Conto"
     },
     "pagination": {
       "info": "Pagina {{page}} di {{totalPages}} ({{totalCount}} in totale)"
@@ -605,6 +606,10 @@
       "toggleFailed": "Impossibile aggiornare il conto",
       "deleteHasTransactions": "Questo conto ha ancora transazioni. Disattivalo invece di eliminarlo.",
       "deleteFailed": "Impossibile eliminare il conto"
+    },
+    "showAccountName": {
+      "label": "Mostra il nome del conto sulle transazioni",
+      "description": "Aggiunge una colonna conto all’elenco delle transazioni."
     }
   }
 }

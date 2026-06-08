@@ -229,7 +229,8 @@
       "description": "Description",
       "category": "Category",
       "amount": "Amount",
-      "actions": "Actions"
+      "actions": "Actions",
+      "account": "Account"
     },
     "pagination": {
       "info": "Page {{page}} of {{totalPages}} ({{totalCount}} total)"
@@ -605,6 +606,10 @@
       "toggleFailed": "Failed to update account",
       "deleteHasTransactions": "This account still has transactions. Deactivate it instead of deleting.",
       "deleteFailed": "Failed to delete account"
+    },
+    "showAccountName": {
+      "label": "Show account name on transactions",
+      "description": "Adds an account column to the transactions list."
     }
   }
 }

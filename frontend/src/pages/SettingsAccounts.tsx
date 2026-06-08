@@ -6,10 +6,12 @@ import {
   type Account,
 } from "../lib/queries/accounts";
 import { ApiError } from "../lib/api";
+import { useAppStore } from "../store/appStore";
 import { AccountFormDialog } from "../components/AccountFormDialog";
 import { ConfirmDeleteDialog } from "../components/ConfirmDeleteDialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Edit2, Power, Trash2 } from "lucide-react";
 import { Trans, useTranslation } from "react-i18next";
@@ -17,6 +19,8 @@ import { Trans, useTranslation } from "react-i18next";
 export function SettingsAccounts() {
   const { t } = useTranslation();
   const { data: accounts, isLoading, error } = useAccounts();
+  const showAccountName = useAppStore((s) => s.showAccountName);
+  const setShowAccountName = useAppStore((s) => s.setShowAccountName);
   const updateMutation = useUpdateAccount();
   const deleteMutation = useDeleteAccount();
 
@@ -78,6 +82,29 @@ export function SettingsAccounts() {
           {t("settingsAccounts.createBtn", "Create Account")}
         </Button>
       </header>
+
+      {/* Display preference — show the owning account's name on each transaction. */}
+      <Card className="p-4">
+        <Label className="flex cursor-pointer items-center gap-3">
+          <input
+            type="checkbox"
+            checked={showAccountName}
+            onChange={(e) => setShowAccountName(e.target.checked)}
+            className="rounded border border-input"
+          />
+          <span className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium text-foreground">
+              {t("settingsAccounts.showAccountName.label", "Show account name on transactions")}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {t(
+                "settingsAccounts.showAccountName.description",
+                "Adds an account column to the transactions list.",
+              )}
+            </span>
+          </span>
+        </Label>
+      </Card>
 
       {error && (
         <Alert variant="destructive">
