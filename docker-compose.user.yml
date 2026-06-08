@@ -29,6 +29,10 @@ services:
       DATABASE_URL: postgresql://smartfinance:${POSTGRES_PASSWORD}@postgres:5432/smartfinance
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
       SEED_DEMO_USER: "false"
+      # Served over plain HTTP on localhost, so the session cookie must not be
+      # Secure (HTTPS-only) or the browser drops it and login silently fails.
+      # Set this to "true" if you put the stack behind HTTPS/TLS.
+      SESSION_COOKIE_SECURE: "false"
     depends_on:
       postgres:
         condition: service_healthy
