@@ -22,6 +22,8 @@ vi.mock("../prisma.js", () => {
 
 import {
   findAccountsByUser,
+  findActiveAccountsByUser,
+  findActiveAccountByNumberAndUser,
   findById,
   findUserDefaultCurrencyId,
   countTransactions,
@@ -100,6 +102,83 @@ describe("findAccountsByUser", () => {
     const result = await findAccountsByUser("user-1");
 
     expect(result).toEqual([]);
+  });
+});
+
+describe("findActiveAccountsByUser", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("queries only active accounts for the user, ordered by name", async () => {
+    mockFindMany.mockResolvedValue([]);
+
+    await findActiveAccountsByUser("user-1");
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: "user-1", active: true },
+        orderBy: { name: "asc" },
+      }),
+    );
+  });
+
+  it("returns the accounts from prisma", async () => {
+    const accounts = [
+      { id: "acc-1", name: "Main", iban: "CH93", accountNumber: null, active: true },
+    ];
+    mockFindMany.mockResolvedValue(accounts as never);
+
+    await expect(findActiveAccountsByUser("user-1")).resolves.toEqual(accounts);
+  });
+});
+
+describe("findActiveAccountByNumberAndUser", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns an empty array for a whitespace-only number without querying", async () => {
+    await expect(findActiveAccountByNumberAndUser("   ", "user-1")).resolves.toEqual([]);
+    expect(mockFindMany).not.toHaveBeenCalled();
+  });
+
+  it("queries active accounts with a non-null accountNumber for the user", async () => {
+    mockFindMany.mockResolvedValue([]);
+
+    await findActiveAccountByNumberAndUser("12345678", "user-1");
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: "user-1", active: true, accountNumber: { not: null } },
+      }),
+    );
+  });
+
+  it("matches account numbers ignoring whitespace differences", async () => {
+    const match = {
+      id: "acc-1",
+      name: "Main",
+      iban: "CH93",
+      accountNumber: "12345678 9101",
+      active: true,
+    };
+    const other = {
+      id: "acc-2",
+      name: "Savings",
+      iban: "CH56",
+      accountNumber: "9999 9999",
+      active: true,
+    };
+    mockFindMany.mockResolvedValue([match, other] as never);
+
+    const result = await findActiveAccountByNumberAndUser("1234 5678 9101", "user-1");
+
+    expect(result).toEqual([match]);
+  });
+
+  it("returns an empty array when no stored number matches", async () => {
+    mockFindMany.mockResolvedValue([
+      { id: "acc-1", name: "Main", iban: "CH93", accountNumber: "0000", active: true },
+    ] as never);
+
+    await expect(findActiveAccountByNumberAndUser("12345678", "user-1")).resolves.toEqual([]);
   });
 });
 

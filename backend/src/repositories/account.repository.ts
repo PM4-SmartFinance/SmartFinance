@@ -106,10 +106,13 @@ export async function update(
         select: ACCOUNT_SELECT,
       });
     } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError) {
-        if (err.code === "P2002") throw new DuplicateAccountError();
-        if (err.code === "P2025") return null;
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        throw new DuplicateAccountError();
       }
+      // P2025 (record vanished between the findFirst check and this update) means
+      // a concurrent delete raced this update inside the transaction. That is
+      // exceptional, not a normal "not found" — let it surface rather than
+      // silently downgrading it to a 404.
       throw err;
     }
   });

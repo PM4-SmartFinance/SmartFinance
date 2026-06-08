@@ -51,7 +51,10 @@ const SHOW_ACCOUNT_NAME_KEY = "showAccountName";
 export function getStoredShowAccountName(): boolean {
   try {
     return localStorage.getItem(SHOW_ACCOUNT_NAME_KEY) === "true";
-  } catch {
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.warn("[showAccountName] could not read preference", err);
+    }
     return false;
   }
 }

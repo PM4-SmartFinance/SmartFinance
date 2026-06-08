@@ -277,6 +277,61 @@ describe("importTransactions", () => {
     expect(accountIdArg).toBe("acc-2");
   });
 
+  it("falls back to AMBIGUOUS_ACCOUNT when the UBS Kontonummer matches no account", async () => {
+    // Hint is present but no active account carries that number → must prompt the
+    // user rather than silently picking one.
+    const candidates = [
+      { id: "acc-1", name: "Main", iban: "CH00 0001" },
+      { id: "acc-2", name: "Cards", iban: "CH00 0002" },
+    ];
+    mockAccountRepo.findActiveAccountsByUser.mockResolvedValue(candidates as never);
+    mockAccountRepo.findActiveAccountByNumberAndUser.mockResolvedValue([]);
+
+    const ubsHeader = `"Kontonummer";"Kartennummer";"Konto-/Karteninhaber";"Einkaufsdatum";"Buchungstext";"Branche";"Betrag";"Originalwährung";"Kurs";"Währung";"Belastung";"Gutschrift";"Buchung"`;
+    const ubsRow = `"1234 5678 9101";"9999 99XX XXXX 9999";"M. MUSTERMANN";"21.07.2025";"Laden6";"Shop";"1.7";"CHF";"";"CHF";"1.7";"";"23.07.2025"`;
+
+    await expect(
+      importTransactions({
+        csvText: [ubsHeader, ubsRow].join("\n"),
+        format: "ubs",
+        userId: "user-1",
+        logger,
+      }),
+    ).rejects.toMatchObject({
+      name: "ServiceError",
+      statusCode: 409,
+      details: { code: "AMBIGUOUS_ACCOUNT", candidates },
+    });
+    expect(mockRepo.bulkImport).not.toHaveBeenCalled();
+  });
+
+  it("falls back to AMBIGUOUS_ACCOUNT when the UBS Kontonummer matches several accounts", async () => {
+    const candidates = [
+      { id: "acc-1", name: "Main", iban: "CH00 0001" },
+      { id: "acc-2", name: "Cards", iban: "CH00 0002" },
+    ];
+    mockAccountRepo.findActiveAccountsByUser.mockResolvedValue(candidates as never);
+    // Two accounts share the number → not a unique match, so prompt the user.
+    mockAccountRepo.findActiveAccountByNumberAndUser.mockResolvedValue(candidates as never);
+
+    const ubsHeader = `"Kontonummer";"Kartennummer";"Konto-/Karteninhaber";"Einkaufsdatum";"Buchungstext";"Branche";"Betrag";"Originalwährung";"Kurs";"Währung";"Belastung";"Gutschrift";"Buchung"`;
+    const ubsRow = `"1234 5678 9101";"9999 99XX XXXX 9999";"M. MUSTERMANN";"21.07.2025";"Laden6";"Shop";"1.7";"CHF";"";"CHF";"1.7";"";"23.07.2025"`;
+
+    await expect(
+      importTransactions({
+        csvText: [ubsHeader, ubsRow].join("\n"),
+        format: "ubs",
+        userId: "user-1",
+        logger,
+      }),
+    ).rejects.toMatchObject({
+      name: "ServiceError",
+      statusCode: 409,
+      details: { code: "AMBIGUOUS_ACCOUNT", candidates },
+    });
+    expect(mockRepo.bulkImport).not.toHaveBeenCalled();
+  });
+
   it("works correctly for the ubs format", async () => {
     const ubsHeader = `"Kontonummer";"Kartennummer";"Konto-/Karteninhaber";"Einkaufsdatum";"Buchungstext";"Branche";"Betrag";"Originalw\u00e4hrung";"Kurs";"W\u00e4hrung";"Belastung";"Gutschrift";"Buchung"`;
     const ubsRow = `"1234 5678 9101";"9999 99XX XXXX 9999";"M. MUSTERMANN";"21.07.2025";"Laden6";"Shop";"1.7";"CHF";"";"CHF";"1.7";"";"23.07.2025"`;
