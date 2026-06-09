@@ -136,6 +136,22 @@ describe("POST /transactions/import/detect", () => {
     const after = await prisma.factTransactions.count({ where: { userId } });
     expect(after).toBe(before);
   });
+
+  it("decodes latin1 (iso-8859-1) umlauts in column names", async () => {
+    const csv = "Währung,Betrag,Empfänger\n2025-01-01,5,Café";
+    const body = Buffer.concat([
+      Buffer.from(`--${BOUNDARY}\r\n`),
+      Buffer.from(`Content-Disposition: form-data; name="file"; filename="latin1.csv"\r\n`),
+      Buffer.from(`Content-Type: text/csv\r\n\r\n`),
+      Buffer.from(csv, "latin1"),
+      Buffer.from(`\r\n--${BOUNDARY}--\r\n`),
+    ]);
+    const res = await post("/api/v1/transactions/import/detect", body);
+    expect(res.statusCode).toBe(200);
+    const json = res.json();
+    expect(json.columns).toEqual(["Währung", "Betrag", "Empfänger"]);
+    expect(json.sampleRow).toEqual(["2025-01-01", "5", "Café"]);
+  });
 });
 
 describe("POST /transactions/import?format=custom", () => {

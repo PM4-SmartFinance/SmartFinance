@@ -291,7 +291,11 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
           throw new ServiceError(400, "No file uploaded");
         }
         const buffer = await fileData.toBuffer();
-        const csvText = decodeCSVBuffer(buffer, "utf-8");
+        // Format (and thus its encoding) is unknown at detection time, so decode
+        // with an iso-8859-1 fallback: valid UTF-8 stays UTF-8, latin1 files
+        // (e.g. UBS, many German bank exports) keep their umlauts instead of
+        // turning into replacement characters in the column dropdown (KAN-163).
+        const csvText = decodeCSVBuffer(buffer, "iso-8859-1");
         const result = await detectImport({ csvText, userId: user.id });
         return reply.status(200).send(result);
       },
@@ -350,7 +354,10 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
           mapping = validateColumnMapping(parsedMapping);
         }
 
-        const encoding = resolveImportEncoding(format);
+        // A custom mapping carries no declared encoding, so use the same
+        // iso-8859-1 fallback as detection (UTF-8 first, latin1 otherwise) to
+        // keep umlauts intact and consistent with the wizard preview (KAN-163).
+        const encoding = isCustom ? "iso-8859-1" : resolveImportEncoding(format);
 
         const buffer = await fileData.toBuffer();
         const csvText = decodeCSVBuffer(buffer, encoding);
