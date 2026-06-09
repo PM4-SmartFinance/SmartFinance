@@ -27,7 +27,12 @@ async function decorate<T>(
   }
 }
 
-export async function getDashboardSummary(userId: string, startDate: string, endDate: string) {
+export async function getDashboardSummary(
+  userId: string,
+  startDate: string,
+  endDate: string,
+  accountId?: string,
+) {
   validateDateRange(startDate, endDate);
 
   return decorate("getDashboardSummary", userId, startDate, endDate, async () => {
@@ -35,6 +40,7 @@ export async function getDashboardSummary(userId: string, startDate: string, end
       userId,
       startDate,
       endDate,
+      accountId,
     );
 
     const totalIncome = Number((incomeAgg._sum.amount?.toNumber() ?? 0).toFixed(2));
@@ -55,6 +61,7 @@ export async function getDashboardTrends(
   userId: string,
   startDateStr: string,
   endDateStr: string,
+  accountId?: string,
 ): Promise<DailyTrendAggregate[]> {
   validateDateRange(startDateStr, endDateStr);
 
@@ -62,7 +69,7 @@ export async function getDashboardTrends(
   const endDateId = dateStringToId(endDateStr);
 
   const aggregates = await decorate("getDashboardTrends", userId, startDateStr, endDateStr, () =>
-    dashboardRepository.listDailyTrends({ userId, startDateId, endDateId }),
+    dashboardRepository.listDailyTrends({ userId, startDateId, endDateId, accountId }),
   );
 
   const aggregateByDate = new Map(aggregates.map((a) => [a.date, a] as const));
@@ -94,10 +101,11 @@ export async function getDashboardCategories(
   userId: string,
   startDate: string,
   endDate: string,
+  accountId?: string,
 ): Promise<CategoryTotalAggregate[]> {
   validateDateRange(startDate, endDate);
 
   return decorate("getCategoryTotals", userId, startDate, endDate, () =>
-    dashboardRepository.getCategoryTotals(userId, startDate, endDate),
+    dashboardRepository.getCategoryTotals(userId, startDate, endDate, accountId),
   );
 }

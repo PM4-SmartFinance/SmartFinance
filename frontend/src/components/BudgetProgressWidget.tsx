@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { Link } from "react-router";
 import { useCategories } from "../lib/queries/categories";
 import { useBudgets, type CategorySpending } from "../lib/queries/budgets";
 import { formatAmount } from "@/lib/format";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { CardContent, CardHeader, CardTitle } from "./ui/card";
+import { DashboardTileLink } from "./DashboardTileLink";
 import { useTranslation } from "react-i18next";
 
 const OUTER_COLORS = {
@@ -143,14 +143,15 @@ export function BudgetProgressWidget() {
 
   if (error) {
     return (
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-2">
+      <DashboardTileLink
+        to="/budgets"
+        ariaLabel={t("components.budgetProgress.viewAll", "View all budgets")}
+        linkClassName="block"
+      >
+        <CardHeader>
           <CardTitle className="text-xs font-semibold uppercase tracking-wider">
             {t("components.budgetProgress.title", "Budget Progress")}
           </CardTitle>
-          <Link to="/budgets" className="text-xs font-medium text-primary hover:underline">
-            {t("components.budgetProgress.viewAll", "View all budgets")}
-          </Link>
         </CardHeader>
         <CardContent>
           <div className="rounded border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
@@ -160,20 +161,21 @@ export function BudgetProgressWidget() {
             )}
           </div>
         </CardContent>
-      </Card>
+      </DashboardTileLink>
     );
   }
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-2">
+      <DashboardTileLink
+        to="/budgets"
+        ariaLabel={t("components.budgetProgress.viewAll", "View all budgets")}
+        linkClassName="block"
+      >
+        <CardHeader>
           <CardTitle className="text-xs font-semibold uppercase tracking-wider">
             {t("components.budgetProgress.title", "Budget Progress")}
           </CardTitle>
-          <Link to="/budgets" className="text-xs font-medium text-primary hover:underline">
-            {t("components.budgetProgress.viewAll", "View all budgets")}
-          </Link>
         </CardHeader>
         <CardContent>
           <div className="flex min-h-72 items-center justify-center rounded bg-muted/30">
@@ -182,7 +184,7 @@ export function BudgetProgressWidget() {
             </p>
           </div>
         </CardContent>
-      </Card>
+      </DashboardTileLink>
     );
   }
 
@@ -190,14 +192,15 @@ export function BudgetProgressWidget() {
 
   if (!hasTrackedBudgets) {
     return (
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-2">
+      <DashboardTileLink
+        to="/budgets"
+        ariaLabel={t("components.budgetProgress.viewAll", "View all budgets")}
+        linkClassName="block"
+      >
+        <CardHeader>
           <CardTitle className="text-xs font-semibold uppercase tracking-wider">
             {t("components.budgetProgress.title", "Budget Progress")}
           </CardTitle>
-          <Link to="/budgets" className="text-xs font-medium text-primary hover:underline">
-            {t("components.budgetProgress.viewAll", "View all budgets")}
-          </Link>
         </CardHeader>
         <CardContent>
           <div className="flex min-h-72 flex-col items-center justify-center gap-2 rounded bg-muted/30 px-4 py-8 text-center">
@@ -214,19 +217,20 @@ export function BudgetProgressWidget() {
             </p>
           </div>
         </CardContent>
-      </Card>
+      </DashboardTileLink>
     );
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-2">
+    <DashboardTileLink
+      to="/budgets"
+      ariaLabel={t("components.budgetProgress.viewAll", "View all budgets")}
+      linkClassName="block"
+    >
+      <CardHeader>
         <CardTitle className="text-xs font-semibold uppercase tracking-wider">
           {t("components.budgetProgress.title", "Budget Progress")}
         </CardTitle>
-        <Link to="/budgets" className="text-xs font-medium text-primary hover:underline">
-          {t("components.budgetProgress.viewAll", "View all budgets")}
-        </Link>
       </CardHeader>
       <CardContent>
         {hasInvalidData && (
@@ -376,6 +380,6 @@ export function BudgetProgressWidget() {
           })}
         </div>
       </CardContent>
-    </Card>
+    </DashboardTileLink>
   );
 }

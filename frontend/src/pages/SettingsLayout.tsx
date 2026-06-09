@@ -2,7 +2,7 @@ import { NavLink, Outlet } from "react-router";
 import { useAuth } from "../hooks/useAuth";
 import { BackToDashboardLink } from "../components/BackToDashboardLink";
 import { UserMenu } from "../components/UserMenu";
-import { User, Users } from "lucide-react";
+import { User, Users, Wallet } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 export function SettingsLayout() {
@@ -36,6 +36,11 @@ export function SettingsLayout() {
               <NavLink to="/settings/profile" className={navLinkClasses}>
                 <User className="size-4" />
                 {t("settings.nav.profile", "Profile")}
+              </NavLink>
+
+              <NavLink to="/settings/accounts" className={navLinkClasses}>
+                <Wallet className="size-4" />
+                {t("settings.nav.accounts", "Accounts")}
               </NavLink>
 
               {user?.role === "ADMIN" && (

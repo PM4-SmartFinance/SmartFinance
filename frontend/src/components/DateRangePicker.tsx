@@ -1,8 +1,11 @@
 import { useAppStore } from "../store/appStore";
+import { useAccounts } from "../lib/queries/accounts";
 import { formatLocalDate } from "../lib/date";
 import { PRESETS } from "../lib/datePresets";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
+import { Label } from "./ui/label";
+import { NativeSelect } from "./ui/native-select";
 import { useTranslation } from "react-i18next";
 
 export function DateRangePicker() {
@@ -10,7 +13,13 @@ export function DateRangePicker() {
   const endDate = useAppStore((s) => s.endDate);
   const activePresetKey = useAppStore((s) => s.activePresetKey);
   const setDateRange = useAppStore((s) => s.setDateRange);
+  const accountId = useAppStore((s) => s.accountId);
+  const setAccountId = useAppStore((s) => s.setAccountId);
   const { t } = useTranslation();
+
+  const { data: accountsData, error: accountsError } = useAccounts();
+  // Only active accounts have visible transactions, so only they are offered.
+  const accounts = (accountsData ?? []).filter((account) => account.active);
 
   const handlePreset = (preset: (typeof PRESETS)[number]) => {
     if (preset.start === null) {
@@ -33,18 +42,44 @@ export function DateRangePicker() {
   return (
     <Card className="mb-6">
       <CardContent className="pt-6">
-        <div className="flex flex-wrap gap-2">
-          {PRESETS.map((preset) => (
-            <Button
-              key={preset.key}
-              variant={activePresetKey === preset.key ? "default" : "outline"}
-              size="sm"
-              aria-pressed={activePresetKey === preset.key}
-              onClick={() => handlePreset(preset)}
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="flex flex-wrap gap-2">
+            {PRESETS.map((preset) => (
+              <Button
+                key={preset.key}
+                variant={activePresetKey === preset.key ? "default" : "outline"}
+                size="sm"
+                aria-pressed={activePresetKey === preset.key}
+                onClick={() => handlePreset(preset)}
+              >
+                {t(preset.translationKey, preset.label)}
+              </Button>
+            ))}
+          </div>
+
+          {/* Account filter — all (active) accounts or one specific account. */}
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="dashboard-account" className="text-xs text-muted-foreground">
+              {t("transactions.filters.account", "Filter by Account")}
+            </Label>
+            <NativeSelect
+              id="dashboard-account"
+              className="w-48"
+              value={accountId ?? ""}
+              onChange={(e) => setAccountId(e.target.value || null)}
             >
-              {t(preset.translationKey, preset.label)}
-            </Button>
-          ))}
+              <option value="">
+                {accountsError
+                  ? t("transactions.filters.accountsError", "Failed to load accounts")
+                  : t("transactions.filters.allAccounts", "All Accounts")}
+              </option>
+              {accounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name}
+                </option>
+              ))}
+            </NativeSelect>
+          </div>
         </div>
 
         {activePresetKey === "custom" && (

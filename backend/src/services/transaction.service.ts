@@ -134,6 +134,7 @@ export interface ListTransactionsParams {
   startDate?: string;
   endDate?: string;
   categoryId?: string;
+  accountId?: string;
   minAmount?: number;
   maxAmount?: number;
   search?: string;
@@ -179,6 +180,7 @@ export async function listTransactions(params: ListTransactionsParams) {
     startDate,
     endDate,
     categoryId,
+    accountId,
     minAmount,
     maxAmount,
     search,
@@ -188,7 +190,13 @@ export async function listTransactions(params: ListTransactionsParams) {
     throw new ServiceError(400, "minAmount must not exceed maxAmount");
   }
 
-  const where: Prisma.FactTransactionsWhereInput = { userId };
+  // Only transactions belonging to active accounts are shown; deactivating an
+  // account hides its transactions from the view without deleting them (KAN-169).
+  const where: Prisma.FactTransactionsWhereInput = { userId, account: { active: true } };
+
+  if (accountId) {
+    where.accountId = accountId;
+  }
 
   if (startDate || endDate) {
     where.dateId = {

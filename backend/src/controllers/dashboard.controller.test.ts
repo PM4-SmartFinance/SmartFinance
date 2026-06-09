@@ -147,6 +147,28 @@ describe("GET /api/v1/dashboard/summary", () => {
         "user-1",
         "2025-06-01",
         "2025-06-30",
+        undefined,
+      );
+    });
+
+    it("forwards the accountId query param to the service", async () => {
+      mockService.getDashboardSummary.mockResolvedValue({
+        totalIncome: 0,
+        totalExpenses: 0,
+        netBalance: 0,
+        transactionCount: 0,
+      });
+
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/dashboard/summary?startDate=2025-06-01&endDate=2025-06-30&accountId=11111111-1111-1111-1111-111111111111",
+      });
+
+      expect(mockService.getDashboardSummary).toHaveBeenCalledWith(
+        "user-1",
+        "2025-06-01",
+        "2025-06-30",
+        "11111111-1111-1111-1111-111111111111",
       );
     });
 
@@ -230,6 +252,7 @@ describe("GET /api/v1/dashboard/categories", () => {
         "user-1",
         "2025-01-01",
         "2025-01-31",
+        undefined,
       );
     });
 
@@ -327,6 +350,7 @@ describe("GET /api/v1/dashboard/trends", () => {
         "user-1",
         "2025-03-01",
         "2025-08-31",
+        undefined,
       );
     });
 

@@ -1,4 +1,9 @@
 {
+  "404": {
+    "title": "404 - Pagina non trovata",
+    "description": "La pagina che stai cercando non esiste o è stata spostata.",
+    "homepage": "Vai alla homepage"
+  },
   "common": {
     "add": "Aggiungi",
     "apply": "Applica",
@@ -126,17 +131,13 @@
     "emailLabel": "E-mail",
     "passwordLabel": "Password"
   },
-  "404": {
-    "title": "404 - Pagina non trovata",
-    "description": "La pagina che stai cercando non esiste o è stata spostata.",
-    "homepage": "Vai alla homepage"
-  },
   "settings": {
     "heading": "Impostazioni",
     "description": "Gestisci il tuo account e le impostazioni della piattaforma.",
     "nav": {
       "profile": "Profilo",
-      "userManagement": "Gestione Utenti"
+      "userManagement": "Gestione Utenti",
+      "accounts": "Conti"
     }
   },
   "settingsUsers": {
@@ -218,14 +219,18 @@
       "heading": "Filtri",
       "category": "Filtra per categoria",
       "allCategories": "Tutte le Categorie",
-      "searchPlaceholder": "Cerca per nome commerciante..."
+      "searchPlaceholder": "Cerca per nome commerciante...",
+      "account": "Filtra per conto",
+      "allAccounts": "Tutti i conti",
+      "accountsError": "Impossibile caricare i conti"
     },
     "table": {
       "date": "Data",
       "description": "Descrizione",
       "category": "Categoria",
       "amount": "Importo",
-      "actions": "Azioni"
+      "actions": "Azioni",
+      "account": "Conto"
     },
     "pagination": {
       "info": "Pagina {{page}} di {{totalPages}} ({{totalCount}} in totale)"
@@ -370,6 +375,17 @@
         "invalidType": "Sono accettati solo i file .csv.",
         "uploadFailed": "Caricamento non riuscito.",
         "formatsError": "Impossibile caricare i formati. Aggiornare la pagina."
+      },
+      "createAccount": {
+        "title": "Nessun conto",
+        "help": "Crea un conto in cui importare, poi carica di nuovo.",
+        "nameLabel": "Nome del conto",
+        "namePlaceholder": "es. Conto principale",
+        "ibanLabel": "IBAN",
+        "submitBtn": "Crea conto",
+        "errorRequired": "Nome e IBAN sono obbligatori.",
+        "errorExists": "Esiste già un conto con questo IBAN.",
+        "errorFailed": "Impossibile creare il conto."
       }
     },
     "editUserDialog": {
@@ -551,6 +567,49 @@
         "resetPassword": "Reimposta Password",
         "deactivate": "Disattiva"
       }
+    }
+  },
+  "settingsAccounts": {
+    "heading": "Conti",
+    "description": "Gestisci i tuoi conti bancari. Disattiva un conto per nascondere le sue transazioni.",
+    "createBtn": "Crea conto",
+    "createTitle": "Nuovo conto",
+    "editTitle": "Modifica conto",
+    "nameLabel": "Nome",
+    "namePlaceholder": "es. Conto principale",
+    "ibanLabel": "IBAN",
+    "accountNumberLabel": "Numero di conto (facoltativo)",
+    "accountNumberPlaceholder": "Usato per abbinare automaticamente le importazioni",
+    "emptyState": "Ancora nessun conto. Creane uno per iniziare a importare.",
+    "activate": "Attiva",
+    "deactivate": "Disattiva",
+    "status": {
+      "active": "Attivo",
+      "inactive": "Inattivo"
+    },
+    "table": {
+      "name": "Nome",
+      "iban": "IBAN",
+      "status": "Stato",
+      "actions": "Azioni"
+    },
+    "deleteDialog": {
+      "title": "Eliminare il conto?",
+      "body": "Vuoi davvero eliminare <1>{{name}}</1>? L’operazione non può essere annullata."
+    },
+    "errors": {
+      "nameRequired": "Il nome è obbligatorio",
+      "ibanRequired": "L’IBAN è obbligatorio",
+      "ibanExists": "Esiste già un conto con questo IBAN",
+      "saveFailed": "Impossibile salvare il conto",
+      "loadFailed": "Impossibile caricare i conti. Riprova.",
+      "toggleFailed": "Impossibile aggiornare il conto",
+      "deleteHasTransactions": "Questo conto ha ancora transazioni. Disattivalo invece di eliminarlo.",
+      "deleteFailed": "Impossibile eliminare il conto"
+    },
+    "showAccountName": {
+      "label": "Mostra il nome del conto sulle transazioni",
+      "description": "Aggiunge una colonna conto all’elenco delle transazioni."
     }
   }
 }

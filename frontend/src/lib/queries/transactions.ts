@@ -30,6 +30,7 @@ export interface TransactionsFilters {
   startDate?: string | null | undefined;
   endDate?: string | null | undefined;
   categoryId?: string | null | undefined;
+  accountId?: string | null | undefined;
   minAmount?: number;
   maxAmount?: number;
   search?: string | null | undefined;
@@ -46,6 +47,7 @@ export const transactionsQueryConfig = (filters: TransactionsFilters = {}) => ({
     if (filters.startDate) params.append("startDate", filters.startDate);
     if (filters.endDate) params.append("endDate", filters.endDate);
     if (filters.categoryId) params.append("categoryId", filters.categoryId);
+    if (filters.accountId) params.append("accountId", filters.accountId);
     if (filters.minAmount !== undefined) params.append("minAmount", filters.minAmount.toString());
     if (filters.maxAmount !== undefined) params.append("maxAmount", filters.maxAmount.toString());
     if (filters.search) params.append("search", filters.search);

@@ -1,4 +1,9 @@
 {
+  "404": {
+    "title": "404 - Pagina betg chattada",
+    "description": "La pagina che vus tschertgais n'exista betg u è vegnida spustada.",
+    "homepage": "Ir a la pagina d'entschatta"
+  },
   "common": {
     "add": "Agiuntar",
     "apply": "Applitgar",
@@ -126,17 +131,13 @@
     "emailLabel": "E-mail",
     "passwordLabel": "Pled-clav"
   },
-  "404": {
-    "title": "404 - Pagina betg chattada",
-    "description": "La pagina che vus tschertgais n'exista betg u è vegnida spustada.",
-    "homepage": "Ir a la pagina d'entschatta"
-  },
   "settings": {
     "heading": "Preferenzas",
     "description": "Administrai voss conto e las preferenzas da la plattafurma.",
     "nav": {
       "profile": "Profil",
-      "userManagement": "Administraziun d'utilisaders"
+      "userManagement": "Administraziun d'utilisaders",
+      "accounts": "Conts"
     }
   },
   "settingsUsers": {
@@ -218,14 +219,18 @@
       "heading": "Filters",
       "category": "Filtrar tenor categoria",
       "allCategories": "Tut las Categorias",
-      "searchPlaceholder": "Tschertgar per num dal vendider..."
+      "searchPlaceholder": "Tschertgar per num dal vendider...",
+      "account": "Filtrar tenor conto",
+      "allAccounts": "Tut ils conts",
+      "accountsError": "Betg pussaivel da chargiar ils conts"
     },
     "table": {
       "date": "Data",
       "description": "Descripziun",
       "category": "Categoria",
       "amount": "Suma",
-      "actions": "Acziuns"
+      "actions": "Acziuns",
+      "account": "Conto"
     },
     "pagination": {
       "info": "Pagina {{page}} da {{totalPages}} ({{totalCount}} en tut)"
@@ -370,6 +375,17 @@
         "invalidType": "Sulet datotecas .csv vegnan acceptadas.",
         "uploadFailed": "La chariga n'è betg reussida.",
         "formatsError": "Ils formats n'han betg pudì vegnir chargads. Actualisai la pagina."
+      },
+      "createAccount": {
+        "title": "Anc nagin conto",
+        "help": "Creescha in conto per l’import, lura chargia anc ina giada.",
+        "nameLabel": "Num dal conto",
+        "namePlaceholder": "p.ex. Conto principal",
+        "ibanLabel": "IBAN",
+        "submitBtn": "Crear conto",
+        "errorRequired": "Num ed IBAN èn obligatorics.",
+        "errorExists": "In conto cun quest IBAN exista gia.",
+        "errorFailed": "Betg pussaivel da crear il conto."
       }
     },
     "editUserDialog": {
@@ -551,6 +567,49 @@
         "resetPassword": "Restituir Pled-clav",
         "deactivate": "Deactivar"
       }
+    }
+  },
+  "settingsAccounts": {
+    "heading": "Conts",
+    "description": "Administrescha tes conts bancars. Deactivescha in conto per zuppentar sias transacziuns.",
+    "createBtn": "Crear conto",
+    "createTitle": "Nov conto",
+    "editTitle": "Modifitgar il conto",
+    "nameLabel": "Num",
+    "namePlaceholder": "p.ex. Conto principal",
+    "ibanLabel": "IBAN",
+    "accountNumberLabel": "Numer da conto (opziunal)",
+    "accountNumberPlaceholder": "Vegn duvrà per attribuir automaticamain ils imports",
+    "emptyState": "Anc nagins conts. Creescha in per cumenzar cun l’import.",
+    "activate": "Activar",
+    "deactivate": "Deactivar",
+    "status": {
+      "active": "Activ",
+      "inactive": "Inactiv"
+    },
+    "table": {
+      "name": "Num",
+      "iban": "IBAN",
+      "status": "Status",
+      "actions": "Acziuns"
+    },
+    "deleteDialog": {
+      "title": "Stizzar il conto?",
+      "body": "Vuls ti propi stizzar <1>{{name}}</1>? Quai na po betg vegnir revocà."
+    },
+    "errors": {
+      "nameRequired": "Il num è obligatoric",
+      "ibanRequired": "L’IBAN è obligatoric",
+      "ibanExists": "In conto cun quest IBAN exista gia",
+      "saveFailed": "Betg pussaivel da memorisar il conto",
+      "loadFailed": "Betg pussaivel da chargiar ils conts. Emprova anc ina giada.",
+      "toggleFailed": "Betg pussaivel d’actualisar il conto",
+      "deleteHasTransactions": "Quest conto ha anc transacziuns. Deactivescha el enstagl da al stizzar.",
+      "deleteFailed": "Betg pussaivel da stizzar il conto"
+    },
+    "showAccountName": {
+      "label": "Mussar il num dal conto tar las transacziuns",
+      "description": "Agiunscha ina colonna da conto a la glista da transacziuns."
     }
   }
 }

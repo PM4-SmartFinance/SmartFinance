@@ -1,4 +1,9 @@
 {
+  "404": {
+    "title": "404 - Page Not Found",
+    "description": "The page you are looking for does not exist or has been moved.",
+    "homepage": "Go to homepage"
+  },
   "common": {
     "add": "Add",
     "apply": "Apply",
@@ -126,17 +131,13 @@
     "emailLabel": "Email",
     "passwordLabel": "Password"
   },
-  "404": {
-    "title": "404 - Page Not Found",
-    "description": "The page you are looking for does not exist or has been moved.",
-    "homepage": "Go to homepage"
-  },
   "settings": {
     "heading": "Settings",
     "description": "Manage your account and platform settings.",
     "nav": {
       "profile": "Profile",
-      "userManagement": "User Management"
+      "userManagement": "User Management",
+      "accounts": "Accounts"
     }
   },
   "settingsUsers": {
@@ -218,14 +219,18 @@
       "heading": "Filters",
       "category": "Filter by Category",
       "allCategories": "All Categories",
-      "searchPlaceholder": "Search by merchant name…"
+      "searchPlaceholder": "Search by merchant name…",
+      "account": "Filter by Account",
+      "allAccounts": "All Accounts",
+      "accountsError": "Failed to load accounts"
     },
     "table": {
       "date": "Date",
       "description": "Description",
       "category": "Category",
       "amount": "Amount",
-      "actions": "Actions"
+      "actions": "Actions",
+      "account": "Account"
     },
     "pagination": {
       "info": "Page {{page}} of {{totalPages}} ({{totalCount}} total)"
@@ -370,6 +375,17 @@
         "invalidType": "Only .csv files are accepted.",
         "uploadFailed": "Upload failed.",
         "formatsError": "Failed to load formats. Please refresh."
+      },
+      "createAccount": {
+        "title": "No account yet",
+        "help": "Create an account to import into, then upload again.",
+        "nameLabel": "Account name",
+        "namePlaceholder": "e.g. Main Account",
+        "ibanLabel": "IBAN",
+        "submitBtn": "Create account",
+        "errorRequired": "Name and IBAN are required.",
+        "errorExists": "An account with this IBAN already exists.",
+        "errorFailed": "Failed to create account."
       }
     },
     "editUserDialog": {
@@ -551,6 +567,49 @@
         "resetPassword": "Reset Password",
         "deactivate": "Deactivate"
       }
+    }
+  },
+  "settingsAccounts": {
+    "heading": "Accounts",
+    "description": "Manage your bank accounts. Deactivate an account to hide its transactions.",
+    "createBtn": "Create Account",
+    "createTitle": "New Account",
+    "editTitle": "Edit Account",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. Main Account",
+    "ibanLabel": "IBAN",
+    "accountNumberLabel": "Account number (optional)",
+    "accountNumberPlaceholder": "Used to auto-match imports",
+    "emptyState": "No accounts yet. Create one to start importing.",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "table": {
+      "name": "Name",
+      "iban": "IBAN",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "deleteDialog": {
+      "title": "Delete Account?",
+      "body": "Are you sure you want to delete <1>{{name}}</1>? This cannot be undone."
+    },
+    "errors": {
+      "nameRequired": "Name is required",
+      "ibanRequired": "IBAN is required",
+      "ibanExists": "An account with this IBAN already exists",
+      "saveFailed": "Failed to save account",
+      "loadFailed": "Failed to load accounts. Please try again.",
+      "toggleFailed": "Failed to update account",
+      "deleteHasTransactions": "This account still has transactions. Deactivate it instead of deleting.",
+      "deleteFailed": "Failed to delete account"
+    },
+    "showAccountName": {
+      "label": "Show account name on transactions",
+      "description": "Adds an account column to the transactions list."
     }
   }
 }
