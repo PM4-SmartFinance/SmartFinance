@@ -367,6 +367,8 @@
         "formatPlaceholder": "Seleziona un formato",
         "savedMappingOption": "Mappatura salvata",
         "customMappingOption": "Mappatura personalizzata",
+        "saveAsLabel": "Salva mappatura come (facoltativo)",
+        "saveAsPlaceholder": "es. La mia banca",
         "accountLabel": "Conto",
         "accountPlaceholder": "Seleziona un conto",
         "noMatchHint": "Non è stato possibile rilevare automaticamente questo file — scegli un formato e un conto.",

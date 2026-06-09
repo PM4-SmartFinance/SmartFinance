@@ -63,12 +63,14 @@ function baseDetect(over: Partial<Record<string, unknown>> = {}) {
     headerSignature: "sig",
     sampleRow: ["2025-01-15", "42.00", "Shop"],
     savedMapping: null,
+    savedMappingName: null,
     suggestedAccountId: "acc-1",
     ...over,
   };
 }
 
 let accountsValue: Acct[];
+let namedMappingsValue: Array<{ id: string; name: string; mapping: unknown }>;
 let detectResponder: () => Promise<unknown>;
 let importResponders: Array<() => Promise<unknown>>;
 let importFallback: () => Promise<unknown>;
@@ -111,12 +113,15 @@ beforeEach(() => {
   mockPost.mockReset();
 
   accountsValue = [ACC1];
+  namedMappingsValue = [];
   detectResponder = ok(baseDetect());
   importResponders = [];
   importFallback = ok({ imported: 3 });
 
   mockGet.mockImplementation((path: string) => {
     if (path === "/transactions/import/formats") return Promise.resolve({ formats: FORMATS });
+    if (path === "/transactions/import/mappings")
+      return Promise.resolve({ mappings: namedMappingsValue });
     if (path === "/accounts") return Promise.resolve({ accounts: accountsValue });
     return Promise.resolve({});
   });
@@ -278,6 +283,68 @@ describe("custom mapping", () => {
 
     expect(screen.getByText("Imported as")).toBeInTheDocument();
     expect(screen.getByText("-1200")).toBeInTheDocument(); // debit → negative
+  });
+});
+
+describe("named mappings", () => {
+  it("sends a mappingName when the user names the mapping", async () => {
+    setDetect(
+      baseDetect({
+        detectedFormat: null,
+        columns: ["Datum", "Beschreibung", "Betrag"],
+        sampleRow: ["2025-01-01", "Coffee", "-4.50"],
+        suggestedAccountId: "acc-1",
+      }),
+    );
+    renderWizard();
+    await screen.findByLabelText("Format");
+
+    await selectOption("Format", "__custom__");
+    await selectOption("Date column", "Datum");
+    await selectOption("Description column", "Beschreibung");
+    await selectOption("Amount column", "Betrag");
+    await userEvent.type(screen.getByLabelText("Save mapping as (optional)"), "My Bank");
+    await userEvent.click(screen.getByRole("button", { name: "Import" }));
+
+    await waitFor(() => expect(importCalls()).toHaveLength(1));
+    const fd = importCalls()[0]![1] as FormData;
+    expect([...fd.keys()]).toEqual(["mapping", "mappingName", "file"]);
+    expect(fd.get("mappingName")).toBe("My Bank");
+  });
+
+  it("offers a saved named mapping as a format option and applies it", async () => {
+    namedMappingsValue = [
+      {
+        id: "m1",
+        name: "My Bank",
+        mapping: { date: "Datum", description: "Beschreibung", amount: "Betrag" },
+      },
+    ];
+    setDetect(
+      baseDetect({
+        detectedFormat: null,
+        columns: ["Datum", "Beschreibung", "Betrag"],
+        suggestedAccountId: "acc-1",
+      }),
+    );
+    renderWizard();
+    await waitFor(() =>
+      expect(screen.getByRole("option", { name: "My Bank" })).toBeInTheDocument(),
+    );
+
+    await selectOption("Format", "saved:m1");
+    await waitFor(() => expect(screen.getByText("Map your columns")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Import" })).toBeEnabled());
+
+    await userEvent.click(screen.getByRole("button", { name: "Import" }));
+    await waitFor(() => expect(importCalls()).toHaveLength(1));
+    const [path, body] = importCalls()[0]!;
+    expect(path).toContain("format=custom");
+    expect(JSON.parse((body as FormData).get("mapping") as string)).toEqual({
+      date: "Datum",
+      description: "Beschreibung",
+      amount: "Betrag",
+    });
   });
 });
 

@@ -43,6 +43,24 @@ function mappingAndFileBody(mapping: unknown, content: string): Buffer {
   ]);
 }
 
+// Like mappingAndFileBody but also carries a `mappingName` field, so the
+// mapping is saved as a reusable named option.
+function namedMappingBody(mapping: unknown, name: string, content: string): Buffer {
+  return Buffer.concat([
+    Buffer.from(`--${BOUNDARY}\r\n`),
+    Buffer.from(`Content-Disposition: form-data; name="mapping"\r\n\r\n`),
+    Buffer.from(JSON.stringify(mapping)),
+    Buffer.from(`\r\n--${BOUNDARY}\r\n`),
+    Buffer.from(`Content-Disposition: form-data; name="mappingName"\r\n\r\n`),
+    Buffer.from(name),
+    Buffer.from(`\r\n--${BOUNDARY}\r\n`),
+    Buffer.from(`Content-Disposition: form-data; name="file"; filename="custom.csv"\r\n`),
+    Buffer.from(`Content-Type: text/csv\r\n\r\n`),
+    Buffer.from(content),
+    Buffer.from(`\r\n--${BOUNDARY}--\r\n`),
+  ]);
+}
+
 function post(url: string, body: Buffer) {
   return app.inject({
     method: "POST",
@@ -51,6 +69,10 @@ function post(url: string, body: Buffer) {
     headers: { "content-type": `multipart/form-data; boundary=${BOUNDARY}` },
     payload: body,
   });
+}
+
+function get(url: string) {
+  return app.inject({ method: "GET", url, cookies: { session: sessionCookie } });
 }
 
 const NEON_HEADER =
@@ -179,5 +201,32 @@ describe("POST /transactions/import?format=custom", () => {
     );
     expect(detectRes.statusCode).toBe(200);
     expect(detectRes.json().savedMapping).toEqual(CUSTOM_MAPPING);
+  });
+});
+
+describe("named mappings", () => {
+  const NAMED_CSV = ["Tag,Wer,Summe", "2025-04-01,Lunch,-9.90"].join("\n");
+  const NAMED_MAPPING = { date: "Tag", description: "Wer", amount: "Summe" };
+
+  it("saves a named mapping on import and lists it; detect echoes the name", async () => {
+    const importRes = await post(
+      "/api/v1/transactions/import?format=custom",
+      namedMappingBody(NAMED_MAPPING, "My Bank", NAMED_CSV),
+    );
+    expect(importRes.statusCode).toBe(200);
+
+    const listRes = await get("/api/v1/transactions/import/mappings");
+    expect(listRes.statusCode).toBe(200);
+    const mappings = listRes.json().mappings as Array<{ name: string; mapping: unknown }>;
+    const mine = mappings.find((m) => m.name === "My Bank");
+    expect(mine).toBeDefined();
+    expect(mine!.mapping).toEqual(NAMED_MAPPING);
+
+    // Detecting the same file surfaces the stored name for the wizard label.
+    const detectRes = await post(
+      "/api/v1/transactions/import/detect",
+      fileOnlyBody("named.csv", NAMED_CSV),
+    );
+    expect(detectRes.json().savedMappingName).toBe("My Bank");
   });
 });

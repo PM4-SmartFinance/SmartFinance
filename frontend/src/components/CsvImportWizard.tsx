@@ -16,10 +16,11 @@ const QUERY_KEYS_TO_INVALIDATE_AFTER_IMPORT = [
   ["transactions"],
 ] as const;
 
-// Sentinels for the two mapping-driven format options. Real bank formats use
-// their own value; both sentinels resolve to `format=custom` on import.
-const SAVED = "__saved__";
+// Format-dropdown values that drive the mapping form (resolve to `format=custom`
+// on import): a fresh custom mapping, or a named saved mapping (`saved:<id>`).
 const CUSTOM = "__custom__";
+const SAVED_PREFIX = "saved:";
+const isMappingValue = (v: string) => v === CUSTOM || v.startsWith(SAVED_PREFIX);
 
 type UploadResult = { imported: number };
 
@@ -49,7 +50,18 @@ interface DetectResult {
   headerSignature: string;
   sampleRow: string[];
   savedMapping: ColumnMapping | null;
+  savedMappingName: string | null;
   suggestedAccountId: string | null;
+}
+
+interface NamedMapping {
+  id: string;
+  name: string;
+  mapping: ColumnMapping;
+}
+
+interface NamedMappingsResponse {
+  mappings: NamedMapping[];
 }
 
 // Preview-only helpers mirroring the backend generic parser's per-row transform
@@ -134,9 +146,9 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
   const [accountId, setAccountId] = useState<string>("");
   const [columns, setColumns] = useState<string[]>([]);
   const [sampleRow, setSampleRow] = useState<string[]>([]);
-  const [savedMapping, setSavedMapping] = useState<ColumnMapping | null>(null);
   const [mapping, setMapping] = useState<ColumnMapping>({ date: "", description: "" });
   const [amountMode, setAmountMode] = useState<"single" | "split">("single");
+  const [mappingName, setMappingName] = useState("");
   const [mappingError, setMappingError] = useState<string | null>(null);
 
   const [newAccountName, setNewAccountName] = useState("");
@@ -154,6 +166,12 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
   });
   const formats = formatsData?.formats ?? [];
 
+  const { data: namedMappingsData } = useQuery({
+    queryKey: ["import-mappings"],
+    queryFn: () => api.get<NamedMappingsResponse>("/transactions/import/mappings"),
+  });
+  const savedMappings = namedMappingsData?.mappings ?? [];
+
   const {
     mutate: runDetect,
     isPending: isDetecting,
@@ -167,13 +185,13 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
     onSuccess: (data) => {
       setColumns(Array.isArray(data.columns) ? data.columns : []);
       setSampleRow(Array.isArray(data.sampleRow) ? data.sampleRow : []);
-      setSavedMapping(data.savedMapping);
 
       if (data.detectedFormat) {
         setFormat(data.detectedFormat);
       } else if (data.savedMapping) {
-        setFormat(SAVED);
+        setFormat(CUSTOM);
         setMapping({ ...data.savedMapping });
+        setMappingName(data.savedMappingName ?? "");
         setAmountMode(
           !data.savedMapping.amount && (data.savedMapping.debit || data.savedMapping.credit)
             ? "split"
@@ -195,18 +213,29 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
     isPending: isImporting,
     error: importError,
   } = useMutation({
-    mutationFn: ({ fmt, columnMapping }: { fmt: string; columnMapping?: ColumnMapping }) => {
+    mutationFn: ({
+      fmt,
+      columnMapping,
+      name,
+    }: {
+      fmt: string;
+      columnMapping?: ColumnMapping;
+      name?: string;
+    }) => {
       const formData = new FormData();
-      // The backend reads the mapping from a field that must precede the file.
+      // The backend reads these from fields that must precede the file.
       if (columnMapping) formData.append("mapping", JSON.stringify(columnMapping));
+      if (name) formData.append("mappingName", name);
       formData.append("file", file);
       const params = new URLSearchParams({ format: fmt });
       params.set("accountId", accountId);
       return api.upload<UploadResult>(`/transactions/import?${params.toString()}`, formData);
     },
     onSuccess: async (data) => {
+      // Also refresh the named-mapping list so a freshly named mapping is
+      // offered on the next import.
       const settled = await Promise.allSettled(
-        QUERY_KEYS_TO_INVALIDATE_AFTER_IMPORT.map((queryKey) =>
+        [...QUERY_KEYS_TO_INVALIDATE_AFTER_IMPORT, ["import-mappings"]].map((queryKey) =>
           queryClient.invalidateQueries({ queryKey }),
         ),
       );
@@ -216,7 +245,7 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
     },
   });
 
-  const isMappingFormat = format === SAVED || format === CUSTOM;
+  const isMappingFormat = isMappingValue(format);
   const builtMapping = isMappingFormat ? buildColumnMapping(mapping, amountMode) : null;
   const noActiveAccounts = !accountsLoading && activeAccounts.length === 0;
 
@@ -239,7 +268,12 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
         return;
       }
       setMappingError(null);
-      importFile({ fmt: "custom", columnMapping: builtMapping });
+      const trimmed = mappingName.trim();
+      importFile({
+        fmt: "custom",
+        columnMapping: builtMapping,
+        ...(trimmed ? { name: trimmed } : {}),
+      });
       return;
     }
     if (!format || !accountId) return;
@@ -291,19 +325,35 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
 
   const formatOptions = [
     ...formats,
-    ...(savedMapping
-      ? [
-          {
-            value: SAVED,
-            label: t("components.csvImportCard.wizard.savedMappingOption", "Saved mapping"),
-          },
-        ]
-      : []),
+    ...savedMappings.map((m) => ({ value: `${SAVED_PREFIX}${m.id}`, label: m.name })),
     {
       value: CUSTOM,
       label: t("components.csvImportCard.wizard.customMappingOption", "Custom mapping"),
     },
   ];
+
+  // Applies the consequences of choosing a format option: a named saved mapping
+  // loads its columns/name; "Custom mapping" starts a blank mapping.
+  function selectFormat(value: string) {
+    setFormat(value);
+    setMappingError(null);
+    if (value.startsWith(SAVED_PREFIX)) {
+      const chosen = savedMappings.find((m) => `${SAVED_PREFIX}${m.id}` === value);
+      if (chosen) {
+        setMapping({ ...chosen.mapping });
+        setMappingName(chosen.name);
+        setAmountMode(
+          !chosen.mapping.amount && (chosen.mapping.debit || chosen.mapping.credit)
+            ? "split"
+            : "single",
+        );
+      }
+    } else if (value === CUSTOM) {
+      setMapping({ date: "", description: "" });
+      setMappingName("");
+      setAmountMode("single");
+    }
+  }
 
   // First-row value for a mapped column, for the live preview.
   const sampleValueOf = (col?: string) => {
@@ -395,19 +445,7 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
             <NativeSelect
               aria-label={t("components.csvImportCard.wizard.formatLabel", "Format")}
               value={format}
-              onChange={(e) => {
-                const v = e.target.value;
-                setFormat(v);
-                if (v === SAVED && savedMapping) {
-                  setMapping({ ...savedMapping });
-                  setAmountMode(
-                    !savedMapping.amount && (savedMapping.debit || savedMapping.credit)
-                      ? "split"
-                      : "single",
-                  );
-                }
-                setMappingError(null);
-              }}
+              onChange={(e) => selectFormat(e.target.value)}
             >
               <option value="">
                 {t("components.csvImportCard.wizard.formatPlaceholder", "Select a format")}
@@ -625,6 +663,21 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
                     {t("components.csvImportCard.mapping.dateFormatDmySlash", "DD/MM/YYYY")}
                   </option>
                 </NativeSelect>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="csv-mapping-name" className="text-xs text-muted-foreground">
+                  {t("components.csvImportCard.wizard.saveAsLabel", "Save mapping as (optional)")}
+                </Label>
+                <Input
+                  id="csv-mapping-name"
+                  value={mappingName}
+                  onChange={(e) => setMappingName(e.target.value)}
+                  placeholder={t(
+                    "components.csvImportCard.wizard.saveAsPlaceholder",
+                    "e.g. My Bank",
+                  )}
+                />
               </div>
 
               {sampleRow.length > 0 && (

@@ -367,6 +367,8 @@
         "formatPlaceholder": "Select a format",
         "savedMappingOption": "Saved mapping",
         "customMappingOption": "Custom mapping",
+        "saveAsLabel": "Save mapping as (optional)",
+        "saveAsPlaceholder": "e.g. My Bank",
         "accountLabel": "Account",
         "accountPlaceholder": "Select an account",
         "noMatchHint": "We couldn't auto-detect this file — choose a format and account.",

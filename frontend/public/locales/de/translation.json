@@ -367,6 +367,8 @@
         "formatPlaceholder": "Format auswählen",
         "savedMappingOption": "Gespeicherte Zuordnung",
         "customMappingOption": "Eigene Zuordnung",
+        "saveAsLabel": "Zuordnung speichern als (optional)",
+        "saveAsPlaceholder": "z.B. Meine Bank",
         "accountLabel": "Konto",
         "accountPlaceholder": "Konto auswählen",
         "noMatchHint": "Diese Datei konnte nicht automatisch erkannt werden – wähle Format und Konto.",

@@ -239,6 +239,9 @@ model ImportColumnMapping {
   userId          String
   user            DimUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
   headerSignature String
+  // User-given name. When set, the mapping is offered as a reusable, named
+  // option in the import wizard's format dropdown for any future file (KAN-163).
+  name            String?
   format          String?
   mapping         Json
   createdAt       DateTime @default(now())

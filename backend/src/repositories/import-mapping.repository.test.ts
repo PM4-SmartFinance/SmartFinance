@@ -4,13 +4,14 @@ vi.mock("../prisma.js", () => ({
   prisma: {
     importColumnMapping: {
       findUnique: vi.fn(),
+      findMany: vi.fn(),
       upsert: vi.fn(),
     },
     $transaction: vi.fn(),
   },
 }));
 
-import { findBySignature, upsertMapping } from "./import-mapping.repository.js";
+import { findBySignature, findNamedByUser, upsertMapping } from "./import-mapping.repository.js";
 import { prisma } from "../prisma.js";
 import type { ColumnMapping } from "../services/importers/generic.parser.js";
 
@@ -43,6 +44,7 @@ describe("import-mapping.repository", () => {
     it("maps a stored row to a typed SavedImportMapping", async () => {
       mockMapping.findUnique.mockResolvedValue({
         headerSignature: "sig",
+        name: "My Bank",
         format: "custom",
         mapping: sampleMapping,
       } as never);
@@ -52,12 +54,38 @@ describe("import-mapping.repository", () => {
       expect(mockMapping.findUnique).toHaveBeenCalledWith({
         where: { userId_headerSignature: { userId: "user-1", headerSignature: "sig" } },
       });
-      expect(result).toEqual({ headerSignature: "sig", format: "custom", mapping: sampleMapping });
+      expect(result).toEqual({
+        headerSignature: "sig",
+        name: "My Bank",
+        format: "custom",
+        mapping: sampleMapping,
+      });
+    });
+  });
+
+  describe("findNamedByUser", () => {
+    it("returns named mappings, de-duplicated by name (latest wins)", async () => {
+      mockMapping.findMany.mockResolvedValue([
+        { id: "m2", name: "My Bank", mapping: sampleMapping },
+        { id: "m1", name: "My Bank", mapping: { date: "old" } },
+        { id: "m3", name: "Other", mapping: sampleMapping },
+      ] as never);
+
+      const result = await findNamedByUser("user-1");
+
+      expect(mockMapping.findMany).toHaveBeenCalledWith({
+        where: { userId: "user-1", name: { not: null } },
+        orderBy: { updatedAt: "desc" },
+      });
+      expect(result).toEqual([
+        { id: "m2", name: "My Bank", mapping: sampleMapping },
+        { id: "m3", name: "Other", mapping: sampleMapping },
+      ]);
     });
   });
 
   describe("upsertMapping", () => {
-    it("upserts within a transaction, defaulting format to null", async () => {
+    it("upserts within a transaction, defaulting format and name to null", async () => {
       mockMapping.upsert.mockResolvedValue({} as never);
 
       await upsertMapping({ userId: "user-1", headerSignature: "sig", mapping: sampleMapping });
@@ -65,9 +93,33 @@ describe("import-mapping.repository", () => {
       expect(mockTransaction).toHaveBeenCalledOnce();
       expect(mockMapping.upsert).toHaveBeenCalledWith({
         where: { userId_headerSignature: { userId: "user-1", headerSignature: "sig" } },
-        create: { userId: "user-1", headerSignature: "sig", format: null, mapping: sampleMapping },
+        create: {
+          userId: "user-1",
+          headerSignature: "sig",
+          name: null,
+          format: null,
+          mapping: sampleMapping,
+        },
         update: { format: null, mapping: sampleMapping },
       });
+    });
+
+    it("stores the name in create and update when provided", async () => {
+      mockMapping.upsert.mockResolvedValue({} as never);
+
+      await upsertMapping({
+        userId: "user-1",
+        headerSignature: "sig",
+        name: "My Bank",
+        mapping: sampleMapping,
+      });
+
+      expect(mockMapping.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({ name: "My Bank" }),
+          update: expect.objectContaining({ name: "My Bank" }),
+        }),
+      );
     });
 
     it("persists an explicit format", async () => {

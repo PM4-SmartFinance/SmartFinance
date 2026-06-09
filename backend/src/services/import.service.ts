@@ -47,6 +47,9 @@ interface ImportParams {
   /** When provided, the CSV is parsed via the generic mapping-driven parser and
    *  the mapping is persisted by header signature for reuse (KAN-163). */
   mapping?: ColumnMapping | undefined;
+  /** Optional user-given name to store with the mapping, making it a reusable
+   *  named option in the wizard. */
+  mappingName?: string | null | undefined;
   accountId?: string | undefined;
   userId: string;
   logger: ImportLogger;
@@ -61,9 +64,16 @@ export interface DetectImportResult {
   sampleRow: string[];
   /** Previously saved mapping for this header signature, if any. */
   savedMapping: ColumnMapping | null;
+  /** Name of the saved mapping for this signature, if it was named. */
+  savedMappingName: string | null;
   /** Account the CSV most likely belongs to, for pre-selecting the wizard's
    *  account dropdown. Null when nothing matched (KAN-163). */
   suggestedAccountId: string | null;
+}
+
+/** Lists the user's named, reusable column mappings for the wizard dropdown. */
+export async function listImportMappings(userId: string) {
+  return importMappingRepository.findNamedByUser(userId);
 }
 
 /**
@@ -124,6 +134,7 @@ export async function detectImport(params: {
     headerSignature: detection.headerSignature,
     sampleRow: extractSampleRow(params.csvText),
     savedMapping: saved?.mapping ?? null,
+    savedMappingName: saved?.name ?? null,
     suggestedAccountId,
   };
 }
@@ -193,6 +204,7 @@ export async function importTransactions({
   csvText,
   format,
   mapping,
+  mappingName,
   accountId,
   userId,
   logger,
@@ -239,6 +251,7 @@ export async function importTransactions({
           await importMappingRepository.upsertMapping({
             userId,
             headerSignature: signature,
+            name: mappingName ?? null,
             mapping,
           });
         }

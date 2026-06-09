@@ -367,6 +367,8 @@
         "formatPlaceholder": "Tscherna in format",
         "savedMappingOption": "Attribuziun memorisada",
         "customMappingOption": "Attribuziun individuala",
+        "saveAsLabel": "Memorisar l'attribuziun sco (facultativ)",
+        "saveAsPlaceholder": "p.ex. Mia banca",
         "accountLabel": "Conto",
         "accountPlaceholder": "Tscherna in conto",
         "noMatchHint": "Impussibel da renconuscher automaticamain quest file — tscherna in format ed in conto.",

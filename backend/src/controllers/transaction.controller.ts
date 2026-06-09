@@ -5,6 +5,7 @@ import { ServiceError } from "../errors.js";
 import {
   detectImport,
   importTransactions,
+  listImportMappings,
   resolveImportEncoding,
   SUPPORTED_FORMATS,
 } from "../services/import.service.js";
@@ -24,13 +25,13 @@ const BUILTIN_FORMAT_LABELS: Record<ImportFormat, string> = {
 };
 
 /**
- * Reads the string value of a non-file multipart `mapping` field. @fastify/multipart
+ * Reads the string value of a named non-file multipart field. @fastify/multipart
  * exposes earlier non-file parts on the file object's `fields`; the entry may be a
  * single value or an array when repeated. Returns undefined when absent or a file.
  */
-function readMappingField(fields: unknown): string | undefined {
+function readTextField(fields: unknown, name: string): string | undefined {
   if (typeof fields !== "object" || fields === null) return undefined;
-  const entry = (fields as Record<string, unknown>)["mapping"];
+  const entry = (fields as Record<string, unknown>)[name];
   const candidate = Array.isArray(entry) ? entry[0] : entry;
   if (typeof candidate !== "object" || candidate === null) return undefined;
   const record = candidate as Record<string, unknown>;
@@ -257,6 +258,17 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
+  // KAN-163: the user's named, reusable column mappings for the wizard dropdown.
+  app.get(
+    "/transactions/import/mappings",
+    { preHandler: requireRole("USER") },
+    async (request, reply) => {
+      const user = getSessionUser(request);
+      const mappings = await listImportMappings(user.id);
+      return reply.send({ mappings });
+    },
+  );
+
   await app.register(async function importRoutes(importApp) {
     await importApp.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } }); // 10 MB
 
@@ -277,6 +289,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
                 headerSignature: { type: "string" },
                 sampleRow: { type: "array", items: { type: "string" } },
                 savedMapping: { type: ["object", "null"], additionalProperties: true },
+                savedMappingName: { type: ["string", "null"] },
                 suggestedAccountId: { type: ["string", "null"] },
               },
               required: ["detectedFormat", "confidence", "columns", "headerSignature"],
@@ -337,11 +350,13 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
           throw new ServiceError(400, "No file uploaded");
         }
 
-        // The column mapping arrives as a multipart `mapping` field (JSON) sent
-        // before the file part, so it is available on `fileData.fields`.
+        // The column mapping arrives as a multipart `mapping` field (JSON), with
+        // an optional `mappingName`, sent before the file part — so both are
+        // available on `fileData.fields`.
         let mapping;
+        let mappingName: string | undefined;
         if (isCustom) {
-          const rawMapping = readMappingField(fileData.fields);
+          const rawMapping = readTextField(fileData.fields, "mapping");
           if (!rawMapping) {
             throw new ServiceError(400, "Custom import requires a 'mapping' field");
           }
@@ -352,6 +367,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
             throw new ServiceError(400, "Invalid mapping JSON");
           }
           mapping = validateColumnMapping(parsedMapping);
+          mappingName = readTextField(fileData.fields, "mappingName")?.trim() || undefined;
         }
 
         // A custom mapping carries no declared encoding, so use the same
@@ -366,6 +382,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
           csvText,
           format,
           mapping,
+          mappingName,
           accountId,
           userId: user.id,
           logger: request.log,

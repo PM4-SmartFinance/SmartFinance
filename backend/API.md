@@ -347,6 +347,7 @@ Inspects an uploaded CSV header and returns a detection verdict for the import w
   "headerSignature": "amount|date|description|subject",
   "sampleRow": ["2025-01-15", "42.00", "Grocery Store", "ref"],
   "savedMapping": null,
+  "savedMappingName": null,
   "suggestedAccountId": "b3f1c8e2-0000-0000-0000-000000000000"
 }
 ```
@@ -359,9 +360,34 @@ Inspects an uploaded CSV header and returns a detection verdict for the import w
 | `headerSignature`    | string         | Order-independent, case-insensitive key for the header, used to store/reuse a column mapping.                                                                                                                              |
 | `sampleRow`          | string[]       | The file's first data row, aligned with `columns`, for the wizard's live mapping preview. Empty when there is no data row.                                                                                                 |
 | `savedMapping`       | object \| null | A previously saved [column mapping](#column-mapping-payload) for this header signature, if one exists.                                                                                                                     |
+| `savedMappingName`   | string \| null | The user-given name of that saved mapping, when named (see `GET /transactions/import/mappings`).                                                                                                                           |
 | `suggestedAccountId` | string \| null | Account the CSV most likely belongs to — matched by an IBAN found in the file, then the UBS account-number hint, then the user's single active account; `null` if none matched. Pre-selects the wizard's account dropdown. |
 
 **Response 400:** No file uploaded
+**Response 401:** Not authenticated
+
+---
+
+### GET /transactions/import/mappings
+
+Lists the authenticated user's named, reusable column mappings, for the import wizard's format dropdown. Most-recent first, de-duplicated by name. Requires an authenticated session with the `USER` role.
+
+**Response 200:**
+
+```json
+{
+  "mappings": [
+    {
+      "id": "f0e1d2c3-...",
+      "name": "My Bank",
+      "mapping": { "date": "Tag", "description": "Wer", "amount": "Summe" }
+    }
+  ]
+}
+```
+
+A mapping becomes named by passing `mappingName` to `POST /transactions/import` with `format=custom`.
+
 **Response 401:** Not authenticated
 
 ---
@@ -377,7 +403,7 @@ Imports transactions from a CSV file into the specified account. Requires an aut
 | `accountId` | string | no       | ID of the account to import into. When omitted, the account is resolved automatically (single account, or via a file-carried account hint). |
 | `format`    | string | yes      | CSV format: `neon`, `zkb`, `wise`, `ubs`, a registered plugin format, or `custom` for a mapping-driven import.                              |
 
-**Request Body:** `multipart/form-data`. Always includes a single `file` field with the CSV (max 10 MB). When `format=custom`, it must **also** include a `mapping` field (a JSON-encoded [column mapping](#column-mapping-payload)) sent **before** the file part. A successful custom import saves the mapping under the file's header signature so the next import of the same bank reuses it (see `savedMapping` on the detect endpoint).
+**Request Body:** `multipart/form-data`. Always includes a single `file` field with the CSV (max 10 MB). When `format=custom`, it must **also** include a `mapping` field (a JSON-encoded [column mapping](#column-mapping-payload)) sent **before** the file part, and may include an optional `mappingName` field. A successful custom import saves the mapping under the file's header signature so the next import of the same bank reuses it (see `savedMapping` on the detect endpoint); when a `mappingName` is given, the mapping also becomes a reusable named option (see `GET /transactions/import/mappings`).
 
 <a id="column-mapping-payload"></a>**Column mapping payload** (`mapping` field / `savedMapping`): maps the file's header names to canonical transaction fields.
 
