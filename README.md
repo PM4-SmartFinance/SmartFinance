@@ -76,6 +76,10 @@ scripts\setup-user.bat
 
 If you want the full deployment flow, required environment variables, or rollback details, use [Chapter 11: Installation (Deployment)](https://github.com/PM4-SmartFinance/SmartFinance/wiki/11.-Installation-Deployment).
 
+### New to SmartFinance?
+
+Once the app is running and you have signed in, the **[End-User Manual (Chapter 18)](https://github.com/PM4-SmartFinance/SmartFinance/wiki/18.-Official-End-User-Manual)** walks you through importing transactions, sorting them with categories and rules, setting budgets, and reading your dashboard — written for non-technical users, no prior knowledge required.
+
 ### Contributing on Linux, macOS, or WSL2
 
 1. Open a terminal.
@@ -163,6 +167,7 @@ After setup, the safest first check is:
 The README stays intentionally short. The wiki is the source of truth for architecture, data model, deployment, and operations.
 
 - [Wiki home](https://github.com/PM4-SmartFinance/SmartFinance/wiki)
+- [End-User Manual](https://github.com/PM4-SmartFinance/SmartFinance/wiki/18.-Official-End-User-Manual)
 - [Architecture](https://github.com/PM4-SmartFinance/SmartFinance/wiki/06.-Architecture)
 - [Data model](https://github.com/PM4-SmartFinance/SmartFinance/wiki/09.-Data)
 - [Deployment](https://github.com/PM4-SmartFinance/SmartFinance/wiki/11.-Installation-Deployment)
