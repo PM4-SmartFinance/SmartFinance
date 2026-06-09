@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { importTransactions } from "./import.service.js";
 import { ServiceError } from "../errors.js";
 import { registerImporter, clearImporterRegistry } from "./importer-registry.service.js";
 
@@ -21,10 +20,17 @@ vi.mock("./module-registry.service.js", () => ({
   fireTransactionImported: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("../repositories/import-mapping.repository.js", () => ({
+  findBySignature: vi.fn(),
+  upsertMapping: vi.fn(),
+}));
+
+import { importTransactions, detectImport } from "./import.service.js";
 import * as repo from "../repositories/transaction.repository.js";
 import * as accountRepo from "../repositories/account.repository.js";
 import * as categorizationService from "./categorization.service.js";
 import * as moduleRegistry from "./module-registry.service.js";
+import * as importMappingRepo from "../repositories/import-mapping.repository.js";
 
 // Spy-able no-op logger that satisfies the ImportLogger interface.
 const logger = { warn: vi.fn() };
@@ -43,6 +49,8 @@ beforeEach(() => {
   mockAccountRepo.findActiveAccountByNumberAndUser.mockResolvedValue([]);
   vi.mocked(categorizationService.autoCategorize).mockResolvedValue({ categorized: 0 });
   vi.mocked(moduleRegistry.fireTransactionImported).mockResolvedValue(undefined);
+  vi.mocked(importMappingRepo.findBySignature).mockResolvedValue(null);
+  vi.mocked(importMappingRepo.upsertMapping).mockResolvedValue(undefined);
 });
 
 describe("importTransactions", () => {
@@ -440,6 +448,115 @@ describe("importTransactions", () => {
     expect(logger.warn).toHaveBeenCalledWith(
       expect.objectContaining({ err: fireErr, userId: "user-1", accountId: "acc-1" }),
       "post-import fireTransactionImported failed",
+    );
+  });
+
+  describe("custom mapping import (KAN-163)", () => {
+    const CSV = ["Date,Name,Amount", "2025-01-15,Shop,-42.50"].join("\n");
+    const mapping = { date: "Date", description: "Name", amount: "Amount" };
+
+    it("parses via the generic mapping parser and imports", async () => {
+      mockAccountRepo.findActiveAccountsByUser.mockResolvedValue([
+        { id: "acc-only", name: "Main", iban: "CH00 0000" },
+      ] as never);
+
+      const result = await importTransactions({
+        csvText: CSV,
+        format: "custom",
+        mapping,
+        userId: "user-1",
+        logger,
+      });
+
+      expect(result.imported).toBe(1);
+      const [parsedArg] = mockRepo.bulkImport.mock.calls[0]!;
+      expect(parsedArg[0]).toMatchObject({ amount: -42.5, description: "Shop" });
+    });
+
+    it("persists the mapping keyed by header signature after a successful import", async () => {
+      const result = await importTransactions({
+        csvText: CSV,
+        format: "custom",
+        mapping,
+        accountId: "acc-1",
+        userId: "user-1",
+        logger,
+      });
+
+      expect(result.imported).toBe(1);
+      expect(vi.mocked(importMappingRepo.upsertMapping)).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: "user-1", mapping }),
+      );
+      const [{ headerSignature }] = vi.mocked(importMappingRepo.upsertMapping).mock.calls[0]!;
+      expect(headerSignature).not.toBe("");
+    });
+
+    it("still succeeds when persisting the mapping fails", async () => {
+      const persistErr = new Error("storage down");
+      vi.mocked(importMappingRepo.upsertMapping).mockRejectedValueOnce(persistErr);
+      const warnSpy = vi.fn();
+
+      const result = await importTransactions({
+        csvText: CSV,
+        format: "custom",
+        mapping,
+        accountId: "acc-1",
+        userId: "user-1",
+        logger: { warn: warnSpy },
+      });
+
+      expect(result.imported).toBe(1);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ err: persistErr, userId: "user-1" }),
+        "post-import persist column mapping failed",
+      );
+    });
+
+    it("propagates a mapping parse error and does not import", async () => {
+      await expect(
+        importTransactions({
+          csvText: ["Date,Name,Value", "2025-01-01,A,1"].join("\n"),
+          format: "custom",
+          mapping, // references "Amount", which the file lacks
+          accountId: "acc-1",
+          userId: "user-1",
+          logger,
+        }),
+      ).rejects.toThrow(ServiceError);
+      expect(mockRepo.bulkImport).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe("detectImport (KAN-163)", () => {
+  beforeEach(() => {
+    vi.mocked(importMappingRepo.findBySignature).mockResolvedValue(null);
+  });
+
+  it("returns a confident built-in detection with no saved mapping", async () => {
+    const result = await detectImport({ csvText: [NEON_HEADER, NEON_ROW].join("\n"), userId: "u" });
+    expect(result.detectedFormat).toBe("neon");
+    expect(result.confidence).toBe(1);
+    expect(result.savedMapping).toBeNull();
+    expect(result.columns.length).toBeGreaterThan(0);
+  });
+
+  it("returns null format plus columns and any saved mapping for an unknown header", async () => {
+    const saved = { date: "Datum", description: "Text", amount: "Wert" };
+    vi.mocked(importMappingRepo.findBySignature).mockResolvedValue({
+      headerSignature: "sig",
+      format: null,
+      mapping: saved,
+    });
+
+    const result = await detectImport({ csvText: "Datum,Text,Wert\n2025-01-01,A,1", userId: "u" });
+
+    expect(result.detectedFormat).toBeNull();
+    expect(result.columns).toEqual(["Datum", "Text", "Wert"]);
+    expect(result.savedMapping).toEqual(saved);
+    expect(vi.mocked(importMappingRepo.findBySignature)).toHaveBeenCalledWith(
+      "u",
+      result.headerSignature,
     );
   });
 });

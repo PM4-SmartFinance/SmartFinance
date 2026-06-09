@@ -10,6 +10,9 @@ import { autoCategorize } from "./categorization.service.js";
 import { importOperations, transactionsImported } from "../metrics/business-metrics.js";
 import { fireTransactionImported } from "./module-registry.service.js";
 import { getImporter } from "./importer-registry.service.js";
+import { detectFormat, extractTable, headerSignature } from "./importers/detect.js";
+import { parseWithMapping, type ColumnMapping } from "./importers/generic.parser.js";
+import * as importMappingRepository from "../repositories/import-mapping.repository.js";
 
 export const SUPPORTED_FORMATS = ["neon", "zkb", "wise", "ubs"] as const;
 export type ImportFormat = (typeof SUPPORTED_FORMATS)[number];
@@ -36,9 +39,44 @@ export interface ImportLogger {
 interface ImportParams {
   csvText: string;
   format: string;
+  /** When provided, the CSV is parsed via the generic mapping-driven parser and
+   *  the mapping is persisted by header signature for reuse (KAN-163). */
+  mapping?: ColumnMapping | undefined;
   accountId?: string | undefined;
   userId: string;
   logger: ImportLogger;
+}
+
+export interface DetectImportResult {
+  detectedFormat: string | null;
+  confidence: number;
+  columns: string[];
+  headerSignature: string;
+  /** Previously saved mapping for this header signature, if any. */
+  savedMapping: ColumnMapping | null;
+}
+
+/**
+ * Inspects an uploaded CSV header and returns a detection verdict plus any saved
+ * column mapping for the same header signature. Read-only: never persists
+ * transactions (KAN-163).
+ */
+export async function detectImport(params: {
+  csvText: string;
+  userId: string;
+}): Promise<DetectImportResult> {
+  const detection = detectFormat(params.csvText);
+  const saved = await importMappingRepository.findBySignature(
+    params.userId,
+    detection.headerSignature,
+  );
+  return {
+    detectedFormat: detection.detectedFormat,
+    confidence: detection.confidence,
+    columns: detection.columns,
+    headerSignature: detection.headerSignature,
+    savedMapping: saved?.mapping ?? null,
+  };
 }
 
 interface AccountCandidate {
@@ -105,6 +143,7 @@ async function resolveAccountId(params: {
 export async function importTransactions({
   csvText,
   format,
+  mapping,
   accountId,
   userId,
   logger,
@@ -118,7 +157,9 @@ export async function importTransactions({
     });
 
     let parsed;
-    if (format === "neon") {
+    if (mapping) {
+      parsed = parseWithMapping(csvText, mapping);
+    } else if (format === "neon") {
       parsed = parseNeonCSV(csvText);
     } else if (format === "zkb") {
       parsed = parseZKBCSV(csvText);
@@ -139,6 +180,23 @@ export async function importTransactions({
     const imported = await transactionRepository.bulkImport(parsed, userId, resolvedAccountId);
     transactionsImported.inc({ format }, imported);
     importOperations.inc({ format, outcome: "success" });
+
+    // Persist a successful manual mapping so a repeat import of the same bank
+    // reuses it. Best-effort: a storage failure must not fail the import.
+    if (mapping) {
+      try {
+        const signature = headerSignature(extractTable(csvText).columns);
+        if (signature) {
+          await importMappingRepository.upsertMapping({
+            userId,
+            headerSignature: signature,
+            mapping,
+          });
+        }
+      } catch (err) {
+        logger.warn({ err, userId }, "post-import persist column mapping failed");
+      }
+    }
 
     try {
       await fireTransactionImported({ userId, accountId: resolvedAccountId, imported });

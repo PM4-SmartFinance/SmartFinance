@@ -331,18 +331,73 @@ All filters are optional and can be combined. `minAmount` must not exceed `maxAm
 
 ---
 
+### POST /transactions/import/detect
+
+Inspects an uploaded CSV header and returns a detection verdict for the import wizard, **without persisting any transactions**. The frontend uploads the file here first: a confident, unambiguous match pre-selects a built-in importer; otherwise the returned `columns` drive a manual column-mapping step. Requires an authenticated session with the `USER` role.
+
+**Request Body:** `multipart/form-data` with a single file field containing the CSV file. Maximum file size: 10 MB.
+
+**Response 200:**
+
+```json
+{
+  "detectedFormat": "neon",
+  "confidence": 1,
+  "columns": ["Date", "Amount", "Description", "Subject"],
+  "headerSignature": "amount|date|description|subject",
+  "savedMapping": null
+}
+```
+
+| Field             | Type           | Description                                                                                                           |
+| ----------------- | -------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `detectedFormat`  | string \| null | Built-in format (`neon`, `zkb`, `wise`, `ubs`) when matched with high confidence and unambiguously; otherwise `null`. |
+| `confidence`      | number         | Confidence of the leading candidate, `0`–`1`.                                                                         |
+| `columns`         | string[]       | Header columns read from the file, shown to the user for manual mapping when `detectedFormat` is `null`.              |
+| `headerSignature` | string         | Order-independent, case-insensitive key for the header, used to store/reuse a column mapping.                         |
+| `savedMapping`    | object \| null | A previously saved [column mapping](#column-mapping-payload) for this header signature, if one exists.                |
+
+**Response 400:** No file uploaded
+**Response 401:** Not authenticated
+
+---
+
 ### POST /transactions/import
 
 Imports transactions from a CSV file into the specified account. Requires an authenticated session with the `USER` role.
 
 **Query Parameters:**
 
-| Parameter   | Type   | Required | Description                                   |
-| ----------- | ------ | -------- | --------------------------------------------- |
-| `accountId` | string | yes      | ID of the account to import transactions into |
-| `format`    | string | yes      | CSV format: `neon`, `zkb`, `wise`, or `ubs`   |
+| Parameter   | Type   | Required | Description                                                                                                                                 |
+| ----------- | ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `accountId` | string | no       | ID of the account to import into. When omitted, the account is resolved automatically (single account, or via a file-carried account hint). |
+| `format`    | string | yes      | CSV format: `neon`, `zkb`, `wise`, `ubs`, a registered plugin format, or `custom` for a mapping-driven import.                              |
 
-**Request Body:** `multipart/form-data` with a single file field containing the CSV file. Maximum file size: 10 MB.
+**Request Body:** `multipart/form-data`. Always includes a single `file` field with the CSV (max 10 MB). When `format=custom`, it must **also** include a `mapping` field (a JSON-encoded [column mapping](#column-mapping-payload)) sent **before** the file part. A successful custom import saves the mapping under the file's header signature so the next import of the same bank reuses it (see `savedMapping` on the detect endpoint).
+
+<a id="column-mapping-payload"></a>**Column mapping payload** (`mapping` field / `savedMapping`): maps the file's header names to canonical transaction fields.
+
+```json
+{
+  "date": "Datum",
+  "description": "Empfaenger",
+  "amount": "Wert",
+  "subject": "Referenz",
+  "dateFormat": "iso"
+}
+```
+
+| Field         | Type   | Required | Description                                                                                    |
+| ------------- | ------ | -------- | ---------------------------------------------------------------------------------------------- |
+| `date`        | string | yes      | Header name of the transaction date column.                                                    |
+| `description` | string | yes      | Header name of the description / booking-text column.                                          |
+| `amount`      | string | cond.    | Header name of a single signed-amount column. Mutually exclusive with `debit`/`credit`.        |
+| `debit`       | string | cond.    | Header name of the debit (outflow) column. Pairs with `credit`; stored as a negative amount.   |
+| `credit`      | string | cond.    | Header name of the credit (inflow) column. Pairs with `debit`; stored as a positive amount.    |
+| `subject`     | string | no       | Header name of a secondary subject/reference column.                                           |
+| `dateFormat`  | string | no       | Pin the date layout: `iso`, `dmy-dot`, `dmy-dash`, or `dmy-slash`. Auto-detected when omitted. |
+
+Exactly one of `amount` or a `debit`/`credit` pair must be provided.
 
 **Response 200:**
 
@@ -352,10 +407,10 @@ Imports transactions from a CSV file into the specified account. Requires an aut
 
 `imported` is the number of transactions persisted. `categorized` is the number of those (or other previously uncategorized) transactions that the rule-based engine assigned a category to as part of the post-import auto-categorization step. If the engine fails (e.g. transient DB error), the import still succeeds and `categorized` is `0` — the failure is logged server-side and users can retry via `POST /transactions/auto-categorize`.
 
-**Response 400:** No file uploaded or missing query parameters
+**Response 400:** No file uploaded, missing/invalid query parameters, or (for `format=custom`) a missing/invalid `mapping` field
 **Response 401:** Not authenticated
 **Response 404:** Account not found or does not belong to the authenticated user
-**Response 422:** CSV file is malformed, has an unrecognized format, or contains invalid data rows
+**Response 422:** CSV file is malformed, has an unrecognized format, references columns absent from the file, or contains invalid data rows
 
 ---
 

@@ -3,10 +3,12 @@ import multipart from "@fastify/multipart";
 import { requireRole, getSessionUser } from "../middleware/rbac.js";
 import { ServiceError } from "../errors.js";
 import {
+  detectImport,
   importTransactions,
   resolveImportEncoding,
   SUPPORTED_FORMATS,
 } from "../services/import.service.js";
+import { validateColumnMapping } from "../services/importers/generic.parser.js";
 import { getImporter, getAllPluginFormats } from "../services/importer-registry.service.js";
 import { decodeCSVBuffer } from "../services/importers/csv.utils.js";
 import type { SortBy, SortOrder } from "../services/transaction.service.js";
@@ -20,6 +22,21 @@ const BUILTIN_FORMAT_LABELS: Record<ImportFormat, string> = {
   wise: "Wise",
   ubs: "UBS",
 };
+
+/**
+ * Reads the string value of a non-file multipart `mapping` field. @fastify/multipart
+ * exposes earlier non-file parts on the file object's `fields`; the entry may be a
+ * single value or an array when repeated. Returns undefined when absent or a file.
+ */
+function readMappingField(fields: unknown): string | undefined {
+  if (typeof fields !== "object" || fields === null) return undefined;
+  const entry = (fields as Record<string, unknown>)["mapping"];
+  const candidate = Array.isArray(entry) ? entry[0] : entry;
+  if (typeof candidate !== "object" || candidate === null) return undefined;
+  const record = candidate as Record<string, unknown>;
+  if (record["type"] === "file") return undefined;
+  return typeof record["value"] === "string" ? record["value"] : undefined;
+}
 
 interface ListTransactionsQuery {
   page: number;
@@ -243,6 +260,41 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
   await app.register(async function importRoutes(importApp) {
     await importApp.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } }); // 10 MB
 
+    // KAN-163: detect the importer from the uploaded header without persisting
+    // anything; returns the columns (for manual mapping) and any saved mapping.
+    importApp.post(
+      "/transactions/import/detect",
+      {
+        preHandler: requireRole("USER"),
+        schema: {
+          response: {
+            200: {
+              type: "object",
+              properties: {
+                detectedFormat: { type: ["string", "null"] },
+                confidence: { type: "number" },
+                columns: { type: "array", items: { type: "string" } },
+                headerSignature: { type: "string" },
+                savedMapping: { type: ["object", "null"], additionalProperties: true },
+              },
+              required: ["detectedFormat", "confidence", "columns", "headerSignature"],
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        const user = getSessionUser(request);
+        const fileData = await request.file();
+        if (!fileData) {
+          throw new ServiceError(400, "No file uploaded");
+        }
+        const buffer = await fileData.toBuffer();
+        const csvText = decodeCSVBuffer(buffer, "utf-8");
+        const result = await detectImport({ csvText, userId: user.id });
+        return reply.status(200).send(result);
+      },
+    );
+
     importApp.post<{ Querystring: { accountId?: string; format: string } }>(
       "/transactions/import",
       {
@@ -263,15 +315,37 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
         const { accountId, format } = request.query;
         const user = getSessionUser(request);
 
-        const isBuiltin = (SUPPORTED_FORMATS as readonly string[]).includes(format);
-        const plugin = isBuiltin ? undefined : getImporter(format);
-        if (!isBuiltin && !plugin) {
-          throw new ServiceError(400, `Unsupported import format: ${format}`);
+        // `custom` drives the generic mapping-driven parser; any other value
+        // must resolve to a built-in or registered plugin importer.
+        const isCustom = format === "custom";
+        if (!isCustom) {
+          const isBuiltin = (SUPPORTED_FORMATS as readonly string[]).includes(format);
+          const plugin = isBuiltin ? undefined : getImporter(format);
+          if (!isBuiltin && !plugin) {
+            throw new ServiceError(400, `Unsupported import format: ${format}`);
+          }
         }
 
         const fileData = await request.file();
         if (!fileData) {
           throw new ServiceError(400, "No file uploaded");
+        }
+
+        // The column mapping arrives as a multipart `mapping` field (JSON) sent
+        // before the file part, so it is available on `fileData.fields`.
+        let mapping;
+        if (isCustom) {
+          const rawMapping = readMappingField(fileData.fields);
+          if (!rawMapping) {
+            throw new ServiceError(400, "Custom import requires a 'mapping' field");
+          }
+          let parsedMapping: unknown;
+          try {
+            parsedMapping = JSON.parse(rawMapping);
+          } catch {
+            throw new ServiceError(400, "Invalid mapping JSON");
+          }
+          mapping = validateColumnMapping(parsedMapping);
         }
 
         const encoding = resolveImportEncoding(format);
@@ -282,6 +356,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
         const result = await importTransactions({
           csvText,
           format,
+          mapping,
           accountId,
           userId: user.id,
           logger: request.log,
