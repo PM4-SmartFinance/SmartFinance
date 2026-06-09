@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { detectFormat, extractTable, headerSignature } from "./detect.js";
+import { detectFormat, extractTable, extractSampleRow, headerSignature } from "./detect.js";
 import { EXPECTED_HEADERS as NEON_HEADERS } from "./neon.parser.js";
 import { EXPECTED_HEADERS as ZKB_HEADERS } from "./zkb.parser.js";
 import { EXPECTED_HEADERS as WISE_HEADERS } from "./wise.parser.js";
@@ -29,6 +29,21 @@ describe("extractTable", () => {
 
   it("returns empty columns for an empty file", () => {
     expect(extractTable("").columns).toEqual([]);
+  });
+});
+
+describe("extractSampleRow", () => {
+  it("returns the first data row aligned with the columns", () => {
+    expect(extractSampleRow("A;B;C\n1;2;3\n4;5;6")).toEqual(["1", "2", "3"]);
+  });
+
+  it("skips a sep= line and trims values", () => {
+    expect(extractSampleRow("sep=;\nA;B\n x ; y ")).toEqual(["x", "y"]);
+  });
+
+  it("returns an empty array when there is no data row", () => {
+    expect(extractSampleRow("A,B,C")).toEqual([]);
+    expect(extractSampleRow("")).toEqual([]);
   });
 });
 

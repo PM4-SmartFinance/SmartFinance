@@ -10,7 +10,12 @@ import { autoCategorize } from "./categorization.service.js";
 import { importOperations, transactionsImported } from "../metrics/business-metrics.js";
 import { fireTransactionImported } from "./module-registry.service.js";
 import { getImporter } from "./importer-registry.service.js";
-import { detectFormat, extractTable, headerSignature } from "./importers/detect.js";
+import {
+  detectFormat,
+  extractTable,
+  extractSampleRow,
+  headerSignature,
+} from "./importers/detect.js";
 import { parseWithMapping, type ColumnMapping } from "./importers/generic.parser.js";
 import * as importMappingRepository from "../repositories/import-mapping.repository.js";
 
@@ -52,6 +57,8 @@ export interface DetectImportResult {
   confidence: number;
   columns: string[];
   headerSignature: string;
+  /** First data row, aligned with `columns`, for the wizard's mapping preview. */
+  sampleRow: string[];
   /** Previously saved mapping for this header signature, if any. */
   savedMapping: ColumnMapping | null;
   /** Account the CSV most likely belongs to, for pre-selecting the wizard's
@@ -115,6 +122,7 @@ export async function detectImport(params: {
     confidence: detection.confidence,
     columns: detection.columns,
     headerSignature: detection.headerSignature,
+    sampleRow: extractSampleRow(params.csvText),
     savedMapping: saved?.mapping ?? null,
     suggestedAccountId,
   };

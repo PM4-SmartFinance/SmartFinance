@@ -345,6 +345,7 @@ Inspects an uploaded CSV header and returns a detection verdict for the import w
   "confidence": 1,
   "columns": ["Date", "Amount", "Description", "Subject"],
   "headerSignature": "amount|date|description|subject",
+  "sampleRow": ["2025-01-15", "42.00", "Grocery Store", "ref"],
   "savedMapping": null,
   "suggestedAccountId": "b3f1c8e2-0000-0000-0000-000000000000"
 }
@@ -356,6 +357,7 @@ Inspects an uploaded CSV header and returns a detection verdict for the import w
 | `confidence`         | number         | Confidence of the leading candidate, `0`–`1`.                                                                                                                                                                              |
 | `columns`            | string[]       | Header columns read from the file, shown to the user for manual mapping when `detectedFormat` is `null`.                                                                                                                   |
 | `headerSignature`    | string         | Order-independent, case-insensitive key for the header, used to store/reuse a column mapping.                                                                                                                              |
+| `sampleRow`          | string[]       | The file's first data row, aligned with `columns`, for the wizard's live mapping preview. Empty when there is no data row.                                                                                                 |
 | `savedMapping`       | object \| null | A previously saved [column mapping](#column-mapping-payload) for this header signature, if one exists.                                                                                                                     |
 | `suggestedAccountId` | string \| null | Account the CSV most likely belongs to — matched by an IBAN found in the file, then the UBS account-number hint, then the user's single active account; `null` if none matched. Pre-selects the wizard's account dropdown. |
 

@@ -371,7 +371,15 @@
         "accountPlaceholder": "Select an account",
         "noMatchHint": "We couldn't auto-detect this file — choose a format and account.",
         "importBtn": "Import",
-        "cancelBtn": "Cancel"
+        "cancelBtn": "Cancel",
+        "preview": {
+          "firstEntry": "First entry",
+          "importedAs": "Imported as",
+          "date": "Date",
+          "amount": "Amount",
+          "description": "Description",
+          "subject": "Subject"
+        }
       },
       "mapping": {
         "title": "Map your columns",

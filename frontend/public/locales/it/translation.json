@@ -371,7 +371,15 @@
         "accountPlaceholder": "Seleziona un conto",
         "noMatchHint": "Non è stato possibile rilevare automaticamente questo file — scegli un formato e un conto.",
         "importBtn": "Importa",
-        "cancelBtn": "Annulla"
+        "cancelBtn": "Annulla",
+        "preview": {
+          "firstEntry": "Prima voce",
+          "importedAs": "Importato come",
+          "date": "Data",
+          "amount": "Importo",
+          "description": "Descrizione",
+          "subject": "Oggetto"
+        }
       },
       "mapping": {
         "title": "Mappa le tue colonne",

@@ -371,7 +371,15 @@
         "accountPlaceholder": "Konto auswählen",
         "noMatchHint": "Diese Datei konnte nicht automatisch erkannt werden – wähle Format und Konto.",
         "importBtn": "Importieren",
-        "cancelBtn": "Abbrechen"
+        "cancelBtn": "Abbrechen",
+        "preview": {
+          "firstEntry": "Erster Eintrag",
+          "importedAs": "Wird importiert als",
+          "date": "Datum",
+          "amount": "Betrag",
+          "description": "Beschreibung",
+          "subject": "Betreff"
+        }
       },
       "mapping": {
         "title": "Spalten zuordnen",

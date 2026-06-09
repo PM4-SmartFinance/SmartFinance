@@ -120,6 +120,9 @@ describe("POST /transactions/import/detect", () => {
     expect(body.confidence).toBe(1);
     // Single active account → suggested automatically.
     expect(body.suggestedAccountId).toBe(accountId);
+    // First data row returned for the mapping preview.
+    expect(Array.isArray(body.sampleRow)).toBe(true);
+    expect(body.sampleRow[0]).toBe("2025-01-15");
     expect(body.savedMapping).toBeNull();
   });
 

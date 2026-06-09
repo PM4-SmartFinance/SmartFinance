@@ -371,7 +371,15 @@
         "accountPlaceholder": "Sélectionner un compte",
         "noMatchHint": "Impossible de détecter automatiquement ce fichier — choisissez un format et un compte.",
         "importBtn": "Importer",
-        "cancelBtn": "Annuler"
+        "cancelBtn": "Annuler",
+        "preview": {
+          "firstEntry": "Première entrée",
+          "importedAs": "Importé comme",
+          "date": "Date",
+          "amount": "Montant",
+          "description": "Description",
+          "subject": "Objet"
+        }
       },
       "mapping": {
         "title": "Associez vos colonnes",

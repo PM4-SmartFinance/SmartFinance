@@ -69,6 +69,17 @@ export function extractTable(csvText: string): ExtractedTable {
   return { columns, delimiter, rows: lines.slice(1) };
 }
 
+/**
+ * Returns the first data row parsed into values aligned with `columns`, for the
+ * import wizard's live mapping preview (KAN-163). Empty array when there is no
+ * data row.
+ */
+export function extractSampleRow(csvText: string): string[] {
+  const { delimiter, rows } = extractTable(csvText);
+  const first = rows[0];
+  return first ? parseCSVLine(first, delimiter).map((c) => c.trim()) : [];
+}
+
 /** Picks the delimiter that splits the header into the most fields. */
 function chooseDelimiter(headerLine: string): string {
   let best = DELIMITER_CANDIDATES[0]!;

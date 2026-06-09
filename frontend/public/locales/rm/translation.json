@@ -371,7 +371,15 @@
         "accountPlaceholder": "Tscherna in conto",
         "noMatchHint": "Impussibel da renconuscher automaticamain quest file — tscherna in format ed in conto.",
         "importBtn": "Importar",
-        "cancelBtn": "Interrumper"
+        "cancelBtn": "Interrumper",
+        "preview": {
+          "firstEntry": "Emprima endataziun",
+          "importedAs": "Importà sco",
+          "date": "Data",
+          "amount": "Import",
+          "description": "Descripziun",
+          "subject": "Object"
+        }
       },
       "mapping": {
         "title": "Attribuescha tias colonnas",

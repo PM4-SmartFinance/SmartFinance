@@ -61,6 +61,7 @@ function baseDetect(over: Partial<Record<string, unknown>> = {}) {
     confidence: 1,
     columns: ["Date", "Amount", "Description"],
     headerSignature: "sig",
+    sampleRow: ["2025-01-15", "42.00", "Shop"],
     savedMapping: null,
     suggestedAccountId: "acc-1",
     ...over,
@@ -223,6 +224,7 @@ describe("custom mapping", () => {
       baseDetect({
         detectedFormat: null,
         columns: ["Datum", "Beschreibung", "Betrag"],
+        sampleRow: ["15.01.2025", "Coffee", "-4,50"],
         savedMapping: null,
         suggestedAccountId: "acc-1",
       }),
@@ -235,6 +237,12 @@ describe("custom mapping", () => {
     await selectOption("Date column", "Datum");
     await selectOption("Description column", "Beschreibung");
     await selectOption("Amount column", "Betrag");
+
+    // Live preview reflects the first row through the chosen mapping.
+    expect(screen.getByText("Imported as")).toBeInTheDocument();
+    expect(screen.getByText("2025-01-15")).toBeInTheDocument(); // 15.01.2025 → ISO
+    expect(screen.getByText("-4.5")).toBeInTheDocument(); // -4,50 → -4.5
+
     await waitFor(() => expect(screen.getByRole("button", { name: "Import" })).toBeEnabled());
 
     await userEvent.click(screen.getByRole("button", { name: "Import" }));
@@ -246,6 +254,30 @@ describe("custom mapping", () => {
       description: "Beschreibung",
       amount: "Betrag",
     });
+  });
+
+  it("previews a negative amount for a debit/credit split mapping", async () => {
+    setDetect(
+      baseDetect({
+        detectedFormat: null,
+        columns: ["Datum", "Text", "Soll", "Haben"],
+        sampleRow: ["2025-02-01", "Rent", "1200", ""],
+        savedMapping: null,
+        suggestedAccountId: "acc-1",
+      }),
+    );
+    renderWizard();
+    await screen.findByLabelText("Format");
+
+    await selectOption("Format", "__custom__");
+    await userEvent.click(screen.getByRole("radio", { name: "Separate debit & credit" }));
+    await selectOption("Date column", "Datum");
+    await selectOption("Description column", "Text");
+    await selectOption("Debit column", "Soll");
+    await selectOption("Credit column", "Haben");
+
+    expect(screen.getByText("Imported as")).toBeInTheDocument();
+    expect(screen.getByText("-1200")).toBeInTheDocument(); // debit → negative
   });
 });
 
