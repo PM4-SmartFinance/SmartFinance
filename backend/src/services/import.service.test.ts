@@ -10,6 +10,7 @@ vi.mock("../repositories/transaction.repository.js", () => ({
 vi.mock("../repositories/account.repository.js", () => ({
   findActiveAccountsByUser: vi.fn(),
   findActiveAccountByNumberAndUser: vi.fn(),
+  findActiveAccountByIbanAndUser: vi.fn(),
 }));
 
 vi.mock("./categorization.service.js", () => ({
@@ -47,6 +48,7 @@ beforeEach(() => {
   mockRepo.bulkImport.mockImplementation((parsed: unknown[]) => Promise.resolve(parsed.length));
   mockAccountRepo.findActiveAccountsByUser.mockResolvedValue([]);
   mockAccountRepo.findActiveAccountByNumberAndUser.mockResolvedValue([]);
+  mockAccountRepo.findActiveAccountByIbanAndUser.mockResolvedValue([]);
   vi.mocked(categorizationService.autoCategorize).mockResolvedValue({ categorized: 0 });
   vi.mocked(moduleRegistry.fireTransactionImported).mockResolvedValue(undefined);
   vi.mocked(importMappingRepo.findBySignature).mockResolvedValue(null);
@@ -558,5 +560,69 @@ describe("detectImport (KAN-163)", () => {
       "u",
       result.headerSignature,
     );
+  });
+
+  describe("suggestedAccountId", () => {
+    const VALID_IBAN_SPACED = "CH93 0076 2011 6238 5295 7";
+
+    it("suggests the account whose IBAN the file carries", async () => {
+      mockAccountRepo.findActiveAccountByIbanAndUser.mockResolvedValue([
+        { id: "acc-iban", name: "Main", iban: "CH93", accountNumber: null, active: true },
+      ] as never);
+      const csv = `Date,Name,Amount,Acct\n2025-01-01,Shop,-5,${VALID_IBAN_SPACED}`;
+
+      const result = await detectImport({ csvText: csv, userId: "u" });
+
+      expect(result.suggestedAccountId).toBe("acc-iban");
+      expect(mockAccountRepo.findActiveAccountByIbanAndUser).toHaveBeenCalledWith(
+        "CH9300762011623852957",
+        "u",
+      );
+    });
+
+    it("falls back to the UBS account-number hint when no IBAN matches", async () => {
+      const ubsHeader = `"Kontonummer";"Kartennummer";"Konto-/Karteninhaber";"Einkaufsdatum";"Buchungstext";"Branche";"Betrag";"Originalwährung";"Kurs";"Währung";"Belastung";"Gutschrift";"Buchung"`;
+      const ubsRow = `"1234 5678 9101";"9999 99XX XXXX 9999";"M. MUSTERMANN";"21.07.2025";"Laden6";"Shop";"1.7";"CHF";"";"CHF";"1.7";"";"23.07.2025"`;
+      mockAccountRepo.findActiveAccountByNumberAndUser.mockResolvedValue([
+        {
+          id: "acc-num",
+          name: "Cards",
+          iban: "CH56",
+          accountNumber: "1234 5678 9101",
+          active: true,
+        },
+      ] as never);
+
+      const result = await detectImport({ csvText: [ubsHeader, ubsRow].join("\n"), userId: "u" });
+
+      expect(result.suggestedAccountId).toBe("acc-num");
+    });
+
+    it("falls back to the user's single active account", async () => {
+      mockAccountRepo.findActiveAccountsByUser.mockResolvedValue([
+        { id: "acc-only", name: "Main", iban: "CH00", accountNumber: null, active: true },
+      ] as never);
+
+      const result = await detectImport({
+        csvText: [NEON_HEADER, NEON_ROW].join("\n"),
+        userId: "u",
+      });
+
+      expect(result.suggestedAccountId).toBe("acc-only");
+    });
+
+    it("is null when nothing matches and the user has several accounts", async () => {
+      mockAccountRepo.findActiveAccountsByUser.mockResolvedValue([
+        { id: "acc-1", name: "A", iban: "CH01", accountNumber: null, active: true },
+        { id: "acc-2", name: "B", iban: "CH02", accountNumber: null, active: true },
+      ] as never);
+
+      const result = await detectImport({
+        csvText: [NEON_HEADER, NEON_ROW].join("\n"),
+        userId: "u",
+      });
+
+      expect(result.suggestedAccountId).toBeNull();
+    });
   });
 });

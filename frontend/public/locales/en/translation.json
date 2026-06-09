@@ -360,6 +360,19 @@
       "detecting": "Analyzing file…",
       "detectedHint": "Detected automatically — change it if it's wrong.",
       "detectFallback": "Couldn't analyze the file — pick a bank format manually.",
+      "wizard": {
+        "title": "Import CSV",
+        "analyzing": "Analyzing file…",
+        "formatLabel": "Format",
+        "formatPlaceholder": "Select a format",
+        "savedMappingOption": "Saved mapping",
+        "customMappingOption": "Custom mapping",
+        "accountLabel": "Account",
+        "accountPlaceholder": "Select an account",
+        "noMatchHint": "We couldn't auto-detect this file — choose a format and account.",
+        "importBtn": "Import",
+        "cancelBtn": "Cancel"
+      },
       "mapping": {
         "title": "Map your columns",
         "help": "We couldn't auto-detect this bank. Match each field to a column from your file.",

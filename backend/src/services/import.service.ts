@@ -5,7 +5,7 @@ import { parseWiseCSV } from "./importers/wise.parser.js";
 import { parseUBSCSV } from "./importers/ubs.parser.js";
 import * as transactionRepository from "../repositories/transaction.repository.js";
 import * as accountRepository from "../repositories/account.repository.js";
-import { extractAccountHint } from "./importers/account-hint.js";
+import { extractAccountHint, extractIbanFromCsv } from "./importers/account-hint.js";
 import { autoCategorize } from "./categorization.service.js";
 import { importOperations, transactionsImported } from "../metrics/business-metrics.js";
 import { fireTransactionImported } from "./module-registry.service.js";
@@ -54,12 +54,47 @@ export interface DetectImportResult {
   headerSignature: string;
   /** Previously saved mapping for this header signature, if any. */
   savedMapping: ColumnMapping | null;
+  /** Account the CSV most likely belongs to, for pre-selecting the wizard's
+   *  account dropdown. Null when nothing matched (KAN-163). */
+  suggestedAccountId: string | null;
 }
 
 /**
- * Inspects an uploaded CSV header and returns a detection verdict plus any saved
- * column mapping for the same header signature. Read-only: never persists
- * transactions (KAN-163).
+ * Suggests the account a CSV belongs to: IBAN match → account-number hint →
+ * the user's single active account → null. Read-only (KAN-163).
+ */
+async function suggestAccountId(params: {
+  csvText: string;
+  format: string;
+  userId: string;
+}): Promise<string | null> {
+  const { csvText, format, userId } = params;
+
+  const iban = extractIbanFromCsv(csvText);
+  if (iban) {
+    const matches = await accountRepository.findActiveAccountByIbanAndUser(iban, userId);
+    if (matches.length === 1) return matches[0]!.id;
+  }
+
+  const hint = extractAccountHint(csvText, format);
+  if (hint?.accountNumber) {
+    const matches = await accountRepository.findActiveAccountByNumberAndUser(
+      hint.accountNumber,
+      userId,
+    );
+    if (matches.length === 1) return matches[0]!.id;
+  }
+
+  const accounts = await accountRepository.findActiveAccountsByUser(userId);
+  if (accounts.length === 1) return accounts[0]!.id;
+
+  return null;
+}
+
+/**
+ * Inspects an uploaded CSV header and returns a detection verdict, any saved
+ * column mapping for the same header signature, and a suggested account.
+ * Read-only: never persists transactions (KAN-163).
  */
 export async function detectImport(params: {
   csvText: string;
@@ -70,12 +105,18 @@ export async function detectImport(params: {
     params.userId,
     detection.headerSignature,
   );
+  const suggestedAccountId = await suggestAccountId({
+    csvText: params.csvText,
+    format: detection.detectedFormat ?? "",
+    userId: params.userId,
+  });
   return {
     detectedFormat: detection.detectedFormat,
     confidence: detection.confidence,
     columns: detection.columns,
     headerSignature: detection.headerSignature,
     savedMapping: saved?.mapping ?? null,
+    suggestedAccountId,
   };
 }
 

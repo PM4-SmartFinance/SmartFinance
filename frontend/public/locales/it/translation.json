@@ -360,6 +360,19 @@
       "detecting": "Analisi del file…",
       "detectedHint": "Rilevato automaticamente — modificalo se necessario.",
       "detectFallback": "Impossibile analizzare il file — scegli manualmente un formato bancario.",
+      "wizard": {
+        "title": "Importa CSV",
+        "analyzing": "Analisi del file…",
+        "formatLabel": "Formato",
+        "formatPlaceholder": "Seleziona un formato",
+        "savedMappingOption": "Mappatura salvata",
+        "customMappingOption": "Mappatura personalizzata",
+        "accountLabel": "Conto",
+        "accountPlaceholder": "Seleziona un conto",
+        "noMatchHint": "Non è stato possibile rilevare automaticamente questo file — scegli un formato e un conto.",
+        "importBtn": "Importa",
+        "cancelBtn": "Annulla"
+      },
       "mapping": {
         "title": "Mappa le tue colonne",
         "help": "Non è stato possibile rilevare automaticamente questa banca. Abbina ogni campo a una colonna del tuo file.",

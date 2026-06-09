@@ -360,6 +360,19 @@
       "detecting": "Datei wird analysiert…",
       "detectedHint": "Automatisch erkannt – bei Bedarf ändern.",
       "detectFallback": "Datei konnte nicht analysiert werden – Bankformat manuell wählen.",
+      "wizard": {
+        "title": "CSV importieren",
+        "analyzing": "Datei wird analysiert…",
+        "formatLabel": "Format",
+        "formatPlaceholder": "Format auswählen",
+        "savedMappingOption": "Gespeicherte Zuordnung",
+        "customMappingOption": "Eigene Zuordnung",
+        "accountLabel": "Konto",
+        "accountPlaceholder": "Konto auswählen",
+        "noMatchHint": "Diese Datei konnte nicht automatisch erkannt werden – wähle Format und Konto.",
+        "importBtn": "Importieren",
+        "cancelBtn": "Abbrechen"
+      },
       "mapping": {
         "title": "Spalten zuordnen",
         "help": "Diese Bank konnte nicht automatisch erkannt werden. Ordne jedem Feld eine Spalte aus deiner Datei zu.",

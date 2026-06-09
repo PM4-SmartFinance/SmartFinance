@@ -360,6 +360,19 @@
       "detecting": "Il file vegn analisà…",
       "detectedHint": "Renconuschì automaticamain — mida sche necessari.",
       "detectFallback": "Impussibel d'analisar il file — tscherna manualmain in format da banca.",
+      "wizard": {
+        "title": "Importar CSV",
+        "analyzing": "Il file vegn analisà…",
+        "formatLabel": "Format",
+        "formatPlaceholder": "Tscherna in format",
+        "savedMappingOption": "Attribuziun memorisada",
+        "customMappingOption": "Attribuziun individuala",
+        "accountLabel": "Conto",
+        "accountPlaceholder": "Tscherna in conto",
+        "noMatchHint": "Impussibel da renconuscher automaticamain quest file — tscherna in format ed in conto.",
+        "importBtn": "Importar",
+        "cancelBtn": "Interrumper"
+      },
       "mapping": {
         "title": "Attribuescha tias colonnas",
         "help": "Questa banca n'è betg pudida vegnir renconuschida automaticamain. Attribuescha mintga champ ad ina colonna da tes file.",

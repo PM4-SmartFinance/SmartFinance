@@ -16,6 +16,7 @@ const BOUNDARY = "----KAN163Boundary";
 let app: FastifyInstance;
 let sessionCookie: string;
 let userId: string;
+let accountId: string;
 
 function fileOnlyBody(filename: string, content: string): Buffer {
   return Buffer.concat([
@@ -78,7 +79,7 @@ beforeAll(async () => {
   });
   userId = user.id;
 
-  await prisma.dimAccount.create({
+  const account = await prisma.dimAccount.create({
     data: {
       name: "KAN-163 Account",
       iban: "CH99 0000 0000 1163 1163 9",
@@ -86,6 +87,7 @@ beforeAll(async () => {
       currencyId: currency.id,
     },
   });
+  accountId = account.id;
 
   app = await buildApp();
   await app.ready();
@@ -116,6 +118,8 @@ describe("POST /transactions/import/detect", () => {
     const body = res.json();
     expect(body.detectedFormat).toBe("neon");
     expect(body.confidence).toBe(1);
+    // Single active account → suggested automatically.
+    expect(body.suggestedAccountId).toBe(accountId);
     expect(body.savedMapping).toBeNull();
   });
 

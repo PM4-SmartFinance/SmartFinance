@@ -345,17 +345,19 @@ Inspects an uploaded CSV header and returns a detection verdict for the import w
   "confidence": 1,
   "columns": ["Date", "Amount", "Description", "Subject"],
   "headerSignature": "amount|date|description|subject",
-  "savedMapping": null
+  "savedMapping": null,
+  "suggestedAccountId": "b3f1c8e2-0000-0000-0000-000000000000"
 }
 ```
 
-| Field             | Type           | Description                                                                                                           |
-| ----------------- | -------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `detectedFormat`  | string \| null | Built-in format (`neon`, `zkb`, `wise`, `ubs`) when matched with high confidence and unambiguously; otherwise `null`. |
-| `confidence`      | number         | Confidence of the leading candidate, `0`–`1`.                                                                         |
-| `columns`         | string[]       | Header columns read from the file, shown to the user for manual mapping when `detectedFormat` is `null`.              |
-| `headerSignature` | string         | Order-independent, case-insensitive key for the header, used to store/reuse a column mapping.                         |
-| `savedMapping`    | object \| null | A previously saved [column mapping](#column-mapping-payload) for this header signature, if one exists.                |
+| Field                | Type           | Description                                                                                                                                                                                                                |
+| -------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `detectedFormat`     | string \| null | Built-in format (`neon`, `zkb`, `wise`, `ubs`) when matched with high confidence and unambiguously; otherwise `null`.                                                                                                      |
+| `confidence`         | number         | Confidence of the leading candidate, `0`–`1`.                                                                                                                                                                              |
+| `columns`            | string[]       | Header columns read from the file, shown to the user for manual mapping when `detectedFormat` is `null`.                                                                                                                   |
+| `headerSignature`    | string         | Order-independent, case-insensitive key for the header, used to store/reuse a column mapping.                                                                                                                              |
+| `savedMapping`       | object \| null | A previously saved [column mapping](#column-mapping-payload) for this header signature, if one exists.                                                                                                                     |
+| `suggestedAccountId` | string \| null | Account the CSV most likely belongs to — matched by an IBAN found in the file, then the UBS account-number hint, then the user's single active account; `null` if none matched. Pre-selects the wizard's account dropdown. |
 
 **Response 400:** No file uploaded
 **Response 401:** Not authenticated

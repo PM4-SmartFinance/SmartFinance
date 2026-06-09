@@ -360,6 +360,19 @@
       "detecting": "Analyse du fichier…",
       "detectedHint": "Détecté automatiquement — modifiez-le si nécessaire.",
       "detectFallback": "Impossible d'analyser le fichier — choisissez un format bancaire manuellement.",
+      "wizard": {
+        "title": "Importer un CSV",
+        "analyzing": "Analyse du fichier…",
+        "formatLabel": "Format",
+        "formatPlaceholder": "Sélectionner un format",
+        "savedMappingOption": "Mappage enregistré",
+        "customMappingOption": "Mappage personnalisé",
+        "accountLabel": "Compte",
+        "accountPlaceholder": "Sélectionner un compte",
+        "noMatchHint": "Impossible de détecter automatiquement ce fichier — choisissez un format et un compte.",
+        "importBtn": "Importer",
+        "cancelBtn": "Annuler"
+      },
       "mapping": {
         "title": "Associez vos colonnes",
         "help": "Cette banque n'a pas pu être détectée automatiquement. Associez chaque champ à une colonne de votre fichier.",

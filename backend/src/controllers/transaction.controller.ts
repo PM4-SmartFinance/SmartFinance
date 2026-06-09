@@ -276,6 +276,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
                 columns: { type: "array", items: { type: "string" } },
                 headerSignature: { type: "string" },
                 savedMapping: { type: ["object", "null"], additionalProperties: true },
+                suggestedAccountId: { type: ["string", "null"] },
               },
               required: ["detectedFormat", "confidence", "columns", "headerSignature"],
             },
