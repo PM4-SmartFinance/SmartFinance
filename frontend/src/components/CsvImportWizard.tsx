@@ -141,6 +141,7 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
 
   const [newAccountName, setNewAccountName] = useState("");
   const [newAccountIban, setNewAccountIban] = useState("");
+  const [newAccountNumber, setNewAccountNumber] = useState("");
   const [createAccountError, setCreateAccountError] = useState<string | null>(null);
 
   const { data: accounts, isLoading: accountsLoading } = useAccounts();
@@ -256,10 +257,16 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
       );
       return;
     }
+    const accountNumber = newAccountNumber.trim();
     try {
-      const { account } = await createAccount({ name, iban });
+      const { account } = await createAccount({
+        name,
+        iban,
+        ...(accountNumber ? { accountNumber } : {}),
+      });
       setNewAccountName("");
       setNewAccountIban("");
+      setNewAccountNumber("");
       setAccountId(account.id);
     } catch (err) {
       setCreateAccountError(
@@ -453,6 +460,24 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
                   value={newAccountIban}
                   onChange={(e) => setNewAccountIban(e.target.value)}
                   placeholder="CH93 0076 2011 6238 5295 7"
+                  disabled={isCreatingAccount}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="csv-new-account-number" className="text-xs text-muted-foreground">
+                  {t(
+                    "components.csvImportCard.createAccount.accountNumberLabel",
+                    "Account number (optional)",
+                  )}
+                </Label>
+                <Input
+                  id="csv-new-account-number"
+                  value={newAccountNumber}
+                  onChange={(e) => setNewAccountNumber(e.target.value)}
+                  placeholder={t(
+                    "components.csvImportCard.createAccount.accountNumberPlaceholder",
+                    "e.g. UBS Kontonummer",
+                  )}
                   disabled={isCreatingAccount}
                 />
               </div>

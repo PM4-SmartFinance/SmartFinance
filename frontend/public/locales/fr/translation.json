@@ -428,6 +428,8 @@
         "nameLabel": "Nom du compte",
         "namePlaceholder": "p. ex. Compte principal",
         "ibanLabel": "IBAN",
+        "accountNumberLabel": "Numéro de compte (facultatif)",
+        "accountNumberPlaceholder": "p. ex. numéro UBS",
         "submitBtn": "Créer un compte",
         "errorRequired": "Le nom et l’IBAN sont requis.",
         "errorExists": "Un compte avec cet IBAN existe déjà.",

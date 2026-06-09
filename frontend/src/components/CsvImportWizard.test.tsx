@@ -292,7 +292,16 @@ describe("inline create account", () => {
 
     await userEvent.type(screen.getByLabelText("Account name"), "New");
     await userEvent.type(screen.getByLabelText("IBAN"), "CH93 0076 2011 6238 5295 7");
+    await userEvent.type(screen.getByLabelText("Account number (optional)"), "1234 5678");
     await userEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+    // The optional account number (e.g. a Kontonummer) is sent so a later
+    // import can match by it.
+    await waitFor(() => expect(mockPost).toHaveBeenCalled());
+    expect(mockPost).toHaveBeenCalledWith(
+      "/accounts",
+      expect.objectContaining({ accountNumber: "1234 5678" }),
+    );
 
     // Create form gone (account now exists) and the new account auto-selected,
     // which — with the pre-filled Neon format — enables Import.

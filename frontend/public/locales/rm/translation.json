@@ -428,6 +428,8 @@
         "nameLabel": "Num dal conto",
         "namePlaceholder": "p.ex. Conto principal",
         "ibanLabel": "IBAN",
+        "accountNumberLabel": "Numer da conto (facultativ)",
+        "accountNumberPlaceholder": "p.ex. numer UBS",
         "submitBtn": "Crear conto",
         "errorRequired": "Num ed IBAN èn obligatorics.",
         "errorExists": "In conto cun quest IBAN exista gia.",
