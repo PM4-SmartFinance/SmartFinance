@@ -8,13 +8,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 
 const QUERY_KEYS_TO_INVALIDATE_AFTER_IMPORT = [
   ["budgets"],
@@ -26,7 +20,6 @@ const QUERY_KEYS_TO_INVALIDATE_AFTER_IMPORT = [
 // their own value; both sentinels resolve to `format=custom` on import.
 const SAVED = "__saved__";
 const CUSTOM = "__custom__";
-const NO_COLUMN = "__none__";
 
 type UploadResult = { imported: number };
 
@@ -290,10 +283,11 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
             <Label className="text-xs text-muted-foreground">
               {t("components.csvImportCard.wizard.formatLabel", "Format")}
             </Label>
-            <Select
+            <NativeSelect
+              aria-label={t("components.csvImportCard.wizard.formatLabel", "Format")}
               value={format}
-              onValueChange={(v) => {
-                if (!v) return;
+              onChange={(e) => {
+                const v = e.target.value;
                 setFormat(v);
                 if (v === SAVED && savedMapping) {
                   setMapping({ ...savedMapping });
@@ -306,25 +300,15 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
                 setMappingError(null);
               }}
             >
-              <SelectTrigger
-                aria-label={t("components.csvImportCard.wizard.formatLabel", "Format")}
-                className="w-full"
-              >
-                <SelectValue
-                  placeholder={t(
-                    "components.csvImportCard.wizard.formatPlaceholder",
-                    "Select a format",
-                  )}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {formatOptions.map((f) => (
-                  <SelectItem key={f.value} value={f.value}>
-                    {f.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <option value="">
+                {t("components.csvImportCard.wizard.formatPlaceholder", "Select a format")}
+              </option>
+              {formatOptions.map((f) => (
+                <option key={f.value} value={f.value}>
+                  {f.label}
+                </option>
+              ))}
+            </NativeSelect>
           </div>
 
           {/* ── Account (or inline create) ── */}
@@ -388,26 +372,20 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
               <Label className="text-xs text-muted-foreground">
                 {t("components.csvImportCard.wizard.accountLabel", "Account")}
               </Label>
-              <Select value={accountId} onValueChange={(v) => v && setAccountId(v)}>
-                <SelectTrigger
-                  aria-label={t("components.csvImportCard.wizard.accountLabel", "Account")}
-                  className="w-full"
-                >
-                  <SelectValue
-                    placeholder={t(
-                      "components.csvImportCard.wizard.accountPlaceholder",
-                      "Select an account",
-                    )}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeAccounts.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.name} — {a.iban}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <NativeSelect
+                aria-label={t("components.csvImportCard.wizard.accountLabel", "Account")}
+                value={accountId}
+                onChange={(e) => setAccountId(e.target.value)}
+              >
+                <option value="">
+                  {t("components.csvImportCard.wizard.accountPlaceholder", "Select an account")}
+                </option>
+                {activeAccounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} — {a.iban}
+                  </option>
+                ))}
+              </NativeSelect>
             </div>
           )}
 
@@ -488,49 +466,38 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
                 <Label className="text-xs text-muted-foreground">
                   {t("components.csvImportCard.mapping.dateFormatLabel", "Date format (optional)")}
                 </Label>
-                <Select
-                  value={mapping.dateFormat ?? NO_COLUMN}
-                  onValueChange={(v) =>
+                <NativeSelect
+                  aria-label={t(
+                    "components.csvImportCard.mapping.dateFormatLabel",
+                    "Date format (optional)",
+                  )}
+                  value={mapping.dateFormat ?? ""}
+                  onChange={(e) =>
                     setMapping((m) => {
                       const next: ColumnMapping = { ...m };
-                      if (!v || v === NO_COLUMN) delete next.dateFormat;
+                      const v = e.target.value;
+                      if (!v) delete next.dateFormat;
                       else next.dateFormat = v as DateFormat;
                       return next;
                     })
                   }
                 >
-                  <SelectTrigger
-                    aria-label={t(
-                      "components.csvImportCard.mapping.dateFormatLabel",
-                      "Date format (optional)",
-                    )}
-                    className="w-56"
-                  >
-                    <SelectValue
-                      placeholder={t(
-                        "components.csvImportCard.mapping.dateFormatPlaceholder",
-                        "Auto",
-                      )}
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NO_COLUMN}>
-                      {t("components.csvImportCard.mapping.dateFormatPlaceholder", "Auto")}
-                    </SelectItem>
-                    <SelectItem value="iso">
-                      {t("components.csvImportCard.mapping.dateFormatIso", "ISO (2025-01-31)")}
-                    </SelectItem>
-                    <SelectItem value="dmy-dot">
-                      {t("components.csvImportCard.mapping.dateFormatDmyDot", "DD.MM.YYYY")}
-                    </SelectItem>
-                    <SelectItem value="dmy-dash">
-                      {t("components.csvImportCard.mapping.dateFormatDmyDash", "DD-MM-YYYY")}
-                    </SelectItem>
-                    <SelectItem value="dmy-slash">
-                      {t("components.csvImportCard.mapping.dateFormatDmySlash", "DD/MM/YYYY")}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                  <option value="">
+                    {t("components.csvImportCard.mapping.dateFormatPlaceholder", "Auto")}
+                  </option>
+                  <option value="iso">
+                    {t("components.csvImportCard.mapping.dateFormatIso", "ISO (2025-01-31)")}
+                  </option>
+                  <option value="dmy-dot">
+                    {t("components.csvImportCard.mapping.dateFormatDmyDot", "DD.MM.YYYY")}
+                  </option>
+                  <option value="dmy-dash">
+                    {t("components.csvImportCard.mapping.dateFormatDmyDash", "DD-MM-YYYY")}
+                  </option>
+                  <option value="dmy-slash">
+                    {t("components.csvImportCard.mapping.dateFormatDmySlash", "DD/MM/YYYY")}
+                  </option>
+                </NativeSelect>
               </div>
 
               {mappingError && (
@@ -563,8 +530,9 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
     </Dialog>
   );
 
-  // One labelled column dropdown for the manual-mapping step. Optional fields
-  // get a "none" sentinel; required fields show the placeholder until chosen.
+  // One labelled column dropdown for the manual-mapping step. The empty option
+  // is the placeholder for required fields and the "none" choice for optional
+  // ones; either way an empty value reads as "unset" in buildColumnMapping.
   function renderColumnSelect(
     field: "date" | "description" | "amount" | "debit" | "credit" | "subject",
     label: string,
@@ -573,41 +541,22 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
     return (
       <div className="flex flex-col gap-1.5">
         <Label className="text-xs text-muted-foreground">{label}</Label>
-        <Select
-          value={mapping[field] ?? (optional ? NO_COLUMN : "")}
-          onValueChange={(v) =>
-            setMapping((m) => {
-              const next: ColumnMapping = { ...m };
-              if (!v || v === NO_COLUMN) {
-                delete (next as Partial<ColumnMapping>)[field];
-              } else {
-                next[field] = v;
-              }
-              return next;
-            })
-          }
+        <NativeSelect
+          aria-label={label}
+          value={mapping[field] ?? ""}
+          onChange={(e) => setMapping((m) => ({ ...m, [field]: e.target.value }))}
         >
-          <SelectTrigger aria-label={label} className="w-56">
-            <SelectValue
-              placeholder={t(
-                "components.csvImportCard.mapping.columnPlaceholder",
-                "Select a column",
-              )}
-            />
-          </SelectTrigger>
-          <SelectContent>
-            {optional && (
-              <SelectItem value={NO_COLUMN}>
-                {t("components.csvImportCard.mapping.subjectNone", "— None —")}
-              </SelectItem>
-            )}
-            {columns.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <option value="">
+            {optional
+              ? t("components.csvImportCard.mapping.subjectNone", "— None —")
+              : t("components.csvImportCard.mapping.columnPlaceholder", "Select a column")}
+          </option>
+          {columns.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </NativeSelect>
       </div>
     );
   }

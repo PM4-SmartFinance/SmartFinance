@@ -100,9 +100,8 @@ function renderWizard(extra?: { onClose?: () => void; onImported?: (r: unknown) 
   return { onClose, onImported };
 }
 
-async function openOption(triggerLabel: string, optionName: string | RegExp) {
-  await userEvent.click(screen.getByLabelText(triggerLabel));
-  await userEvent.click(await screen.findByRole("option", { name: optionName }));
+async function selectOption(label: string, value: string) {
+  await userEvent.selectOptions(screen.getByLabelText(label), value);
 }
 
 beforeEach(() => {
@@ -160,6 +159,16 @@ describe("detection on open", () => {
 });
 
 describe("prefill from detection", () => {
+  it("pre-selects the detected format and suggested account", async () => {
+    setDetect(baseDetect({ detectedFormat: "zkb", suggestedAccountId: "acc-1" }));
+    accountsValue = [ACC1, ACC2];
+    renderWizard();
+
+    await waitFor(() => expect(screen.getByLabelText("Format")).toHaveValue("zkb"));
+    expect(screen.getByLabelText("Account")).toHaveValue("acc-1");
+    expect(screen.getByRole("button", { name: "Import" })).toBeEnabled();
+  });
+
   it("imports a built-in format with format + accountId and no mapping", async () => {
     setDetect(baseDetect({ detectedFormat: "zkb" }));
     renderWizard();
@@ -179,8 +188,8 @@ describe("prefill from detection", () => {
     renderWizard();
 
     await waitFor(() => expect(screen.getByLabelText("Account")).toBeInTheDocument());
-    expect(screen.getByLabelText("Format")).toHaveTextContent("Select a format");
-    expect(screen.getByLabelText("Account")).toHaveTextContent("Select an account");
+    expect(screen.getByLabelText("Format")).toHaveValue("");
+    expect(screen.getByLabelText("Account")).toHaveValue("");
     expect(screen.getByRole("button", { name: "Import" })).toBeDisabled();
   });
 });
@@ -222,10 +231,10 @@ describe("custom mapping", () => {
     // Wait for detection to settle (controls rendered).
     await screen.findByLabelText("Format");
 
-    await openOption("Format", "Custom mapping");
-    await openOption("Date column", "Datum");
-    await openOption("Description column", "Beschreibung");
-    await openOption("Amount column", "Betrag");
+    await selectOption("Format", "__custom__");
+    await selectOption("Date column", "Datum");
+    await selectOption("Description column", "Beschreibung");
+    await selectOption("Amount column", "Betrag");
     await waitFor(() => expect(screen.getByRole("button", { name: "Import" })).toBeEnabled());
 
     await userEvent.click(screen.getByRole("button", { name: "Import" }));
