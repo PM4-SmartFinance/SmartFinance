@@ -62,6 +62,51 @@ function noMatchError() {
   );
 }
 
+// ── Path-aware api.upload mock ────────────────────────────────────────────────
+// Detection (on file select) and the import both go through `api.upload`. We
+// route by path so per-test stubs for the import call never get consumed by the
+// detect call. `detectResponder` defaults to a confident Neon match so the
+// pre-existing (non-wizard) tests keep their original behaviour.
+
+const NEON_COLUMNS = ["Date", "Amount", "Description"];
+const CONFIDENT_DETECT = {
+  detectedFormat: "neon",
+  confidence: 1,
+  columns: NEON_COLUMNS,
+  headerSignature: "neon-sig",
+  savedMapping: null,
+};
+
+function isDetect(path: unknown): boolean {
+  return typeof path === "string" && path.includes("/transactions/import/detect");
+}
+
+let detectResponder: () => Promise<unknown>;
+let importResponders: Array<() => Promise<unknown>>;
+let importFallback: () => Promise<unknown>;
+
+const ok = (value: unknown) => () => Promise.resolve(value);
+const fail = (err: unknown) => () => Promise.reject(err);
+
+function setDetect(result: unknown) {
+  detectResponder = ok(result);
+}
+function setDetectError(err: unknown) {
+  detectResponder = fail(err);
+}
+function setImport(responder: () => Promise<unknown>) {
+  importFallback = responder;
+}
+function queueImport(...responders: Array<() => Promise<unknown>>) {
+  importResponders.push(...responders);
+}
+function importCalls() {
+  return mockUpload.mock.calls.filter(([path]) => !isDetect(path));
+}
+function detectCalls() {
+  return mockUpload.mock.calls.filter(([path]) => isDetect(path));
+}
+
 function renderCard(queryClient?: QueryClient) {
   const client =
     queryClient ??
@@ -82,6 +127,16 @@ function makeCsvFile(name = "export.csv") {
   return new File(["date,amount\n2025-01-01,42"], name, { type: "text/csv" });
 }
 
+async function selectFile(name = "export.csv") {
+  const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+  await userEvent.upload(input, makeCsvFile(name));
+}
+
+// Waits for detection to settle and the upload button to become enabled.
+async function waitForUploadReady() {
+  await waitFor(() => expect(screen.getByRole("button", { name: "Upload" })).toBeEnabled());
+}
+
 const FORMATS = [
   { value: "neon", label: "Neon" },
   { value: "zkb", label: "ZKB" },
@@ -97,6 +152,14 @@ beforeEach(() => {
       return Promise.resolve({ formats: FORMATS });
     }
     return Promise.resolve({});
+  });
+
+  detectResponder = ok(CONFIDENT_DETECT);
+  importResponders = [];
+  importFallback = ok({ imported: 3 });
+  mockUpload.mockImplementation((path: string) => {
+    if (isDetect(path)) return detectResponder();
+    return (importResponders.shift() ?? importFallback)();
   });
 });
 
@@ -151,8 +214,7 @@ describe("initial render", () => {
 describe("file input", () => {
   it("updates the drop zone text when a CSV is selected", async () => {
     renderCard();
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
-    await userEvent.upload(input, makeCsvFile("bank-export.csv"));
+    await selectFile("bank-export.csv");
     expect(screen.getByText("Selected: bank-export.csv")).toBeInTheDocument();
   });
 
@@ -185,10 +247,10 @@ describe("file input", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("enables the upload button once a CSV is selected", async () => {
+  it("enables the upload button once a CSV is selected and detection settles", async () => {
     renderCard();
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
-    await userEvent.upload(input, makeCsvFile());
+    await selectFile();
+    await waitForUploadReady();
     expect(screen.getByRole("button", { name: "Upload" })).toBeEnabled();
   });
 });
@@ -249,17 +311,16 @@ describe("format selector", () => {
 
 describe("upload", () => {
   async function setupReadyCard() {
-    mockUpload.mockResolvedValue({ imported: 3 });
     renderCard();
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
-    await userEvent.upload(input, makeCsvFile());
+    await selectFile();
+    await waitForUploadReady();
   }
 
   it("calls api.upload with a FormData body and without accountId on the first attempt", async () => {
     await setupReadyCard();
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
-    await waitFor(() => expect(mockUpload).toHaveBeenCalledOnce());
-    const [path, formData] = mockUpload.mock.calls[0]!;
+    await waitFor(() => expect(importCalls()).toHaveLength(1));
+    const [path, formData] = importCalls()[0]!;
     expect(path).toContain("/transactions/import");
     expect(path).toContain("format=neon");
     expect(path).not.toContain("accountId=");
@@ -269,8 +330,8 @@ describe("upload", () => {
   it("includes the file under the 'file' field in the FormData", async () => {
     await setupReadyCard();
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
-    await waitFor(() => expect(mockUpload).toHaveBeenCalledOnce());
-    const formData = mockUpload.mock.calls[0]![1] as FormData;
+    await waitFor(() => expect(importCalls()).toHaveLength(1));
+    const formData = importCalls()[0]![1] as FormData;
     expect(formData.get("file")).toBeInstanceOf(File);
   });
 
@@ -284,7 +345,6 @@ describe("upload", () => {
 
   it("refetches BudgetProgressWidget data after successful import", async () => {
     let budgetRequests = 0;
-    mockUpload.mockResolvedValue({ imported: 3 });
     mockGet.mockImplementation((path: string) => {
       if (path === "/transactions/import/formats") {
         return Promise.resolve({ formats: FORMATS });
@@ -335,8 +395,8 @@ describe("upload", () => {
       ).toBeInTheDocument();
     });
 
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
-    await userEvent.upload(input, makeCsvFile());
+    await selectFile();
+    await waitForUploadReady();
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
 
     await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["budgets"] }));
@@ -352,10 +412,10 @@ describe("upload", () => {
   });
 
   it("uses singular 'transaction' when imported count is 1", async () => {
-    mockUpload.mockResolvedValue({ imported: 1 });
+    setImport(ok({ imported: 1 }));
     renderCard();
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
-    await userEvent.upload(input, makeCsvFile());
+    await selectFile();
+    await waitForUploadReady();
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
     await waitFor(() =>
       expect(screen.getByText("1 transaction imported successfully.")).toBeInTheDocument(),
@@ -363,10 +423,10 @@ describe("upload", () => {
   });
 
   it("shows the zero-rows message when imported is 0", async () => {
-    mockUpload.mockResolvedValue({ imported: 0 });
+    setImport(ok({ imported: 0 }));
     renderCard();
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
-    await userEvent.upload(input, makeCsvFile());
+    await selectFile();
+    await waitForUploadReady();
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
     await waitFor(() =>
       expect(
@@ -376,50 +436,47 @@ describe("upload", () => {
   });
 
   it("shows an error message when the upload fails with a non-409 ApiError", async () => {
-    mockUpload.mockRejectedValue(new ApiError(422, null, "Invalid CSV format"));
+    setImport(fail(new ApiError(422, null, "Invalid CSV format")));
     renderCard();
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
-    await userEvent.upload(input, makeCsvFile());
+    await selectFile();
+    await waitForUploadReady();
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Invalid CSV format"));
   });
 
   it("shows the actual error message for non-ApiError errors", async () => {
-    mockUpload.mockRejectedValue(new Error("Network error"));
+    setImport(fail(new Error("Network error")));
     renderCard();
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
-    await userEvent.upload(input, makeCsvFile());
+    await selectFile();
+    await waitForUploadReady();
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Network error"));
   });
 
   it("invalidates the transactions query cache on successful upload", async () => {
-    mockUpload.mockResolvedValue({ imported: 3 });
     const { queryClient } = renderCard();
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
-    await userEvent.upload(input, makeCsvFile());
+    await selectFile();
+    await waitForUploadReady();
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
     await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["transactions"] }));
   });
 
   it("invalidates the budgets and dashboard caches on successful upload", async () => {
-    mockUpload.mockResolvedValue({ imported: 3 });
     const { queryClient } = renderCard();
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
-    await userEvent.upload(input, makeCsvFile());
+    await selectFile();
+    await waitForUploadReady();
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
     await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["budgets"] }));
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["dashboard"] });
   });
 
   it("renders a refresh hint when post-import invalidation fails", async () => {
-    mockUpload.mockResolvedValue({ imported: 3 });
     const { queryClient } = renderCard();
     vi.spyOn(queryClient, "invalidateQueries").mockRejectedValue(new Error("invalidation boom"));
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
-    await userEvent.upload(input, makeCsvFile());
+    await selectFile();
+    await waitForUploadReady();
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
     await waitFor(() =>
       expect(
@@ -429,11 +486,11 @@ describe("upload", () => {
   });
 
   it("does not invalidate the transactions cache when upload fails", async () => {
-    mockUpload.mockRejectedValue(new Error("Network error"));
+    setImport(fail(new Error("Network error")));
     const { queryClient } = renderCard();
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
-    await userEvent.upload(input, makeCsvFile());
+    await selectFile();
+    await waitForUploadReady();
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Network error"));
     expect(invalidateSpy).not.toHaveBeenCalledWith({ queryKey: ["transactions"] });
@@ -444,10 +501,10 @@ describe("upload", () => {
 
 describe("account resolution", () => {
   it("renders an account selector when the server responds 409 AMBIGUOUS_ACCOUNT", async () => {
-    mockUpload.mockRejectedValueOnce(ambiguousError());
+    queueImport(fail(ambiguousError()));
     renderCard();
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
-    await userEvent.upload(input, makeCsvFile());
+    await selectFile();
+    await waitForUploadReady();
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
 
     await waitFor(() =>
@@ -457,11 +514,10 @@ describe("account resolution", () => {
   });
 
   it("resubmits with the chosen accountId after the user picks an account", async () => {
-    mockUpload.mockRejectedValueOnce(ambiguousError());
-    mockUpload.mockResolvedValueOnce({ imported: 4 });
+    queueImport(fail(ambiguousError()), ok({ imported: 4 }));
     renderCard();
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
-    await userEvent.upload(input, makeCsvFile());
+    await selectFile();
+    await waitForUploadReady();
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
 
     await waitFor(() => expect(screen.getByLabelText("Choose import account")).toBeInTheDocument());
@@ -473,8 +529,8 @@ describe("account resolution", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Continue" }));
 
-    await waitFor(() => expect(mockUpload).toHaveBeenCalledTimes(2));
-    const [secondPath] = mockUpload.mock.calls[1]!;
+    await waitFor(() => expect(importCalls()).toHaveLength(2));
+    const [secondPath] = importCalls()[1]!;
     expect(secondPath).toContain("accountId=acc-2");
     await waitFor(() =>
       expect(screen.getByText("4 transactions imported successfully.")).toBeInTheDocument(),
@@ -482,14 +538,13 @@ describe("account resolution", () => {
   });
 
   it("shows the inline create-account form and hides the upload button on 409 NO_MATCH", async () => {
-    mockUpload.mockRejectedValueOnce(noMatchError());
+    queueImport(fail(noMatchError()));
     renderCard();
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
-    await userEvent.upload(input, makeCsvFile());
+    await selectFile();
+    await waitForUploadReady();
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
 
     await waitFor(() => expect(screen.getByText("No account yet")).toBeInTheDocument());
-    // The inline create-account form replaces the upload action.
     expect(screen.getByLabelText("Account name")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create account" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Upload" })).not.toBeInTheDocument();
@@ -497,10 +552,10 @@ describe("account resolution", () => {
   });
 
   it("does not show the generic upload-failed alert when resolution UI is showing", async () => {
-    mockUpload.mockRejectedValueOnce(ambiguousError());
+    queueImport(fail(ambiguousError()));
     renderCard();
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
-    await userEvent.upload(input, makeCsvFile());
+    await selectFile();
+    await waitForUploadReady();
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
 
     await waitFor(() =>
@@ -514,14 +569,215 @@ describe("account resolution", () => {
   });
 });
 
+// ── Auto-detect wizard (KAN-163) ──────────────────────────────────────────────
+
+const UNKNOWN_COLUMNS = ["Buchungsdatum", "Beschreibung", "Betrag", "Soll", "Haben"];
+
+function detectNull(savedMapping: unknown = null) {
+  return {
+    detectedFormat: null,
+    confidence: 0,
+    columns: UNKNOWN_COLUMNS,
+    headerSignature: "unknown-sig",
+    savedMapping,
+  };
+}
+
+// Opens a labelled column Select and clicks the option with the given column name.
+async function mapColumn(label: string, column: string) {
+  await userEvent.click(screen.getByLabelText(label));
+  const option = await screen.findByRole("option", { name: column });
+  await userEvent.click(option);
+}
+
+describe("auto-detect wizard", () => {
+  it("runs detection on file select", async () => {
+    renderCard();
+    await selectFile();
+    await waitFor(() => expect(detectCalls()).toHaveLength(1));
+    const detectBody = detectCalls()[0]![1] as FormData;
+    expect(detectCalls()[0]![0]).toBe("/transactions/import/detect");
+    expect(detectBody.get("file")).toBeInstanceOf(File);
+  });
+
+  it("pre-selects the detected bank format and imports via the normal path", async () => {
+    setDetect({ ...CONFIDENT_DETECT, detectedFormat: "zkb" });
+    renderCard();
+    await selectFile();
+    await waitFor(() => expect(screen.getByLabelText("Bank format")).toHaveTextContent(/zkb/i));
+    await waitForUploadReady();
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+
+    await waitFor(() => expect(importCalls()).toHaveLength(1));
+    const [path, formData] = importCalls()[0]!;
+    expect(path).toContain("format=zkb");
+    expect((formData as FormData).get("mapping")).toBeNull();
+  });
+
+  it("shows the mapping form on no match and imports via format=custom", async () => {
+    setDetect(detectNull());
+    renderCard();
+    await selectFile();
+    await waitFor(() => expect(screen.getByText("Map your columns")).toBeInTheDocument());
+
+    expect(screen.getByRole("button", { name: "Upload" })).toBeDisabled();
+    await mapColumn("Date column", "Buchungsdatum");
+    await mapColumn("Description column", "Beschreibung");
+    await mapColumn("Amount column", "Betrag");
+    await waitForUploadReady();
+
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+    await waitFor(() => expect(importCalls()).toHaveLength(1));
+    const [path, formData] = importCalls()[0]!;
+    expect(path).toContain("format=custom");
+
+    const fd = formData as FormData;
+    expect([...fd.keys()]).toEqual(["mapping", "file"]);
+    expect(JSON.parse(fd.get("mapping") as string)).toEqual({
+      date: "Buchungsdatum",
+      description: "Beschreibung",
+      amount: "Betrag",
+    });
+  });
+
+  it("supports a debit/credit split mapping", async () => {
+    setDetect(detectNull());
+    renderCard();
+    await selectFile();
+    await waitFor(() => expect(screen.getByText("Map your columns")).toBeInTheDocument());
+
+    await mapColumn("Date column", "Buchungsdatum");
+    await mapColumn("Description column", "Beschreibung");
+    await userEvent.click(screen.getByRole("radio", { name: "Separate debit & credit" }));
+    await mapColumn("Debit column", "Soll");
+    await mapColumn("Credit column", "Haben");
+    await waitForUploadReady();
+
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+    await waitFor(() => expect(importCalls()).toHaveLength(1));
+    const fd = importCalls()[0]![1] as FormData;
+    expect(JSON.parse(fd.get("mapping") as string)).toEqual({
+      date: "Buchungsdatum",
+      description: "Beschreibung",
+      debit: "Soll",
+      credit: "Haben",
+    });
+  });
+
+  it("prefills and enables the form from a saved mapping", async () => {
+    const saved = { date: "Buchungsdatum", description: "Beschreibung", amount: "Betrag" };
+    setDetect(detectNull(saved));
+    renderCard();
+    await selectFile();
+    await waitFor(() => expect(screen.getByText("Map your columns")).toBeInTheDocument());
+
+    // Pre-filled → upload immediately available without touching the selects.
+    await waitForUploadReady();
+    expect(screen.getByLabelText("Date column")).toHaveTextContent("Buchungsdatum");
+    expect(screen.getByLabelText("Amount column")).toHaveTextContent("Betrag");
+
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+    await waitFor(() => expect(importCalls()).toHaveLength(1));
+    const fd = importCalls()[0]![1] as FormData;
+    expect(JSON.parse(fd.get("mapping") as string)).toEqual(saved);
+  });
+
+  it("includes optional subject and dateFormat only when set", async () => {
+    setDetect(detectNull());
+    renderCard();
+    await selectFile();
+    await waitFor(() => expect(screen.getByText("Map your columns")).toBeInTheDocument());
+
+    await mapColumn("Date column", "Buchungsdatum");
+    await mapColumn("Description column", "Beschreibung");
+    await mapColumn("Amount column", "Betrag");
+    await mapColumn("Subject column (optional)", "Soll");
+    await userEvent.click(screen.getByLabelText("Date format (optional)"));
+    await userEvent.click(await screen.findByRole("option", { name: "DD.MM.YYYY" }));
+    await waitForUploadReady();
+
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+    await waitFor(() => expect(importCalls()).toHaveLength(1));
+    const fd = importCalls()[0]![1] as FormData;
+    expect(JSON.parse(fd.get("mapping") as string)).toEqual({
+      date: "Buchungsdatum",
+      description: "Beschreibung",
+      amount: "Betrag",
+      subject: "Soll",
+      dateFormat: "dmy-dot",
+    });
+  });
+
+  it("falls back to the manual dropdown when detection errors", async () => {
+    setDetectError(new Error("detect boom"));
+    renderCard();
+    await selectFile();
+    await waitFor(() => expect(screen.getByLabelText("Bank format")).toBeInTheDocument());
+    expect(screen.queryByText("Map your columns")).not.toBeInTheDocument();
+
+    await waitForUploadReady();
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+    await waitFor(() => expect(importCalls()).toHaveLength(1));
+    expect(importCalls()[0]![0]).toContain("format=neon");
+  });
+
+  it("surfaces an actionable backend 422 mapping error", async () => {
+    setDetect(detectNull());
+    setImport(fail(new ApiError(422, null, "Column 'Betrag' is not numeric")));
+    renderCard();
+    await selectFile();
+    await waitFor(() => expect(screen.getByText("Map your columns")).toBeInTheDocument());
+
+    await mapColumn("Date column", "Buchungsdatum");
+    await mapColumn("Description column", "Beschreibung");
+    await mapColumn("Amount column", "Betrag");
+    await waitForUploadReady();
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent("Column 'Betrag' is not numeric"),
+    );
+  });
+
+  it("preserves the mapping across a 409 account-resolution retry", async () => {
+    setDetect(detectNull());
+    queueImport(fail(ambiguousError()), ok({ imported: 2 }));
+    renderCard();
+    await selectFile();
+    await waitFor(() => expect(screen.getByText("Map your columns")).toBeInTheDocument());
+
+    await mapColumn("Date column", "Buchungsdatum");
+    await mapColumn("Description column", "Beschreibung");
+    await mapColumn("Amount column", "Betrag");
+    await waitForUploadReady();
+    await userEvent.click(screen.getByRole("button", { name: "Upload" }));
+
+    const accountSelect = await screen.findByLabelText("Choose import account");
+    await userEvent.click(accountSelect);
+    await userEvent.click(await screen.findByRole("option", { name: /Savings/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    await waitFor(() => expect(importCalls()).toHaveLength(2));
+    const [secondPath, secondBody] = importCalls()[1]!;
+    expect(secondPath).toContain("format=custom");
+    expect(secondPath).toContain("accountId=acc-2");
+    const fd = secondBody as FormData;
+    expect(JSON.parse(fd.get("mapping") as string)).toEqual({
+      date: "Buchungsdatum",
+      description: "Beschreibung",
+      amount: "Betrag",
+    });
+  });
+});
+
 // ── Reset after success ───────────────────────────────────────────────────────
 
 describe("reset", () => {
   it("returns to the idle state when 'Import another file' is clicked", async () => {
-    mockUpload.mockResolvedValue({ imported: 5 });
+    setImport(ok({ imported: 5 }));
     renderCard();
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
-    await userEvent.upload(input, makeCsvFile());
+    await selectFile();
+    await waitForUploadReady();
     await userEvent.click(screen.getByRole("button", { name: "Upload" }));
     await waitFor(() => screen.getByText("Import another file"));
 
