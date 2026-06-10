@@ -46,7 +46,10 @@ services:
       dockerfile: frontend/Dockerfile
     restart: unless-stopped
     ports:
-      - "3000:80"
+      # Bind to loopback by default so the documented default admin credentials are
+      # not reachable from the LAN over plain HTTP before the operator's first login.
+      # Set BIND_ADDRESS=0.0.0.0 in .env to deliberately expose the stack on the network.
+      - "${BIND_ADDRESS:-127.0.0.1}:3000:80"
     depends_on:
       - backend
     networks:

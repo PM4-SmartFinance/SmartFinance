@@ -72,6 +72,8 @@ Log in with the default administrator account (printed on completion):
 
 > **Change this password immediately after your first login** (Settings → Profile). To start with a non-default credential, set `BOOTSTRAP_EMAIL` / `BOOTSTRAP_PASSWORD` in your environment before running the script.
 
+> The app is published on `127.0.0.1:3000` (this machine only) so the default credentials are not exposed on your network. To reach it from other devices, set `BIND_ADDRESS=0.0.0.0` in `.env` — only after changing the default password.
+
 Run `setup-user.sh` only **once**, on a fresh install — it seeds the default administrator. After that, your accounts and data live in a persistent Postgres volume.
 
 When you are done using the app, stop the stack to release resources (this keeps your data):
