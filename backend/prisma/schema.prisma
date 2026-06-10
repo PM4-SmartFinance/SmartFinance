@@ -156,8 +156,9 @@ model DimUser {
   categories    DimCategory[]
   accounts      DimAccount[]
   budgets       DimBudget[]
-  categoryRules CategoryRule[]
-  moduleData    ModuleData[]
+  categoryRules  CategoryRule[]
+  moduleData     ModuleData[]
+  importMappings ImportColumnMapping[]
 }
 
 model DimDate {
@@ -227,6 +228,27 @@ model ModuleData {
 
   @@unique([moduleName, userId, key])
   @@index([moduleName, userId])
+}
+
+// Persisted CSV column mapping for the import wizard (KAN-163). When automatic
+// importer detection fails and the user maps columns manually, the mapping is
+// stored keyed by the file's header signature so a repeat import of the same
+// bank reuses it without re-mapping.
+model ImportColumnMapping {
+  id              String   @id @default(uuid())
+  userId          String
+  user            DimUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  headerSignature String
+  // User-given name. When set, the mapping is offered as a reusable, named
+  // option in the import wizard's format dropdown for any future file (KAN-163).
+  name            String?
+  format          String?
+  mapping         Json
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, headerSignature])
+  @@index([userId])
 }
 
 enum BudgetType {

@@ -12,7 +12,7 @@ const COL = {
   SUBJECT: 6,
 } as const;
 
-const EXPECTED_HEADERS = [
+export const EXPECTED_HEADERS = [
   "Date",
   "Amount",
   "Original amount",

@@ -1,135 +1,28 @@
 import { useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError } from "../lib/api";
-import { DASHBOARD_QUERY_KEY } from "../lib/queries/dashboard";
-import { useCreateAccount } from "../lib/queries/accounts";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useTranslation } from "react-i18next";
-
-const QUERY_KEYS_TO_INVALIDATE_AFTER_IMPORT = [
-  ["budgets"],
-  DASHBOARD_QUERY_KEY,
-  ["transactions"],
-] as const;
-
-type ImportFormat = string;
-
-type UploadResult = { imported: number };
-
-interface ImportFormatsResponse {
-  formats: { value: string; label: string }[];
-}
-
-interface AccountCandidate {
-  id: string;
-  name: string;
-  iban: string;
-}
-
-type Resolution =
-  | { kind: "idle" }
-  | { kind: "needs_choice"; candidates: AccountCandidate[]; chosen?: string | undefined }
-  | { kind: "no_accounts" };
+import { CsvImportWizard } from "./CsvImportWizard";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
-function parseAccountResolutionError(
-  err: unknown,
-): { code: "AMBIGUOUS_ACCOUNT"; candidates: AccountCandidate[] } | { code: "NO_MATCH" } | null {
-  if (!(err instanceof ApiError) || err.status !== 409) return null;
-  const body = err.body as { error?: { code?: string; candidates?: AccountCandidate[] } } | null;
-  const code = body?.error?.code;
-  if (code === "AMBIGUOUS_ACCOUNT") {
-    return { code, candidates: body?.error?.candidates ?? [] };
-  }
-  if (code === "NO_MATCH") {
-    return { code };
-  }
-  return null;
-}
+type ImportResult = { imported: number; refreshHint: boolean };
 
+/**
+ * Dashboard import card (KAN-163). It is just a drop zone: choosing a CSV opens
+ * the {@link CsvImportWizard} modal, which handles detection, format/account
+ * selection, optional column mapping, and the import itself. On success the card
+ * shows a result summary.
+ */
 export function CsvImportCard() {
-  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [format, setFormat] = useState<ImportFormat>("");
+  // Bumped per accepted file so the wizard remounts with fresh state.
+  const [fileKey, setFileKey] = useState(0);
   const [isDragOver, setIsDragOver] = useState(false);
   const [typeError, setTypeError] = useState<string | null>(null);
-  const [result, setResult] = useState<UploadResult | null>(null);
-  const [refreshHint, setRefreshHint] = useState(false);
-  const [resolution, setResolution] = useState<Resolution>({ kind: "idle" });
-  const [newAccountName, setNewAccountName] = useState("");
-  const [newAccountIban, setNewAccountIban] = useState("");
-  const [createAccountError, setCreateAccountError] = useState<string | null>(null);
+  const [result, setResult] = useState<ImportResult | null>(null);
   const { t } = useTranslation();
-
-  const { mutateAsync: createAccount, isPending: isCreatingAccount } = useCreateAccount();
-
-  const { data: formatsData, isError: isFormatsError } = useQuery({
-    queryKey: ["import-formats"],
-    queryFn: () => api.get<ImportFormatsResponse>("/transactions/import/formats"),
-  });
-  const formats = formatsData?.formats ?? [];
-
-  // Derive the active format without writing to state during render.
-  const effectiveFormat = format || formats[0]?.value || "";
-
-  const {
-    mutate: uploadFile,
-    isPending: isUploading,
-    error: uploadError,
-    reset: resetMutation,
-  } = useMutation({
-    mutationFn: ({ f, fmt, acId }: { f: File; fmt: ImportFormat; acId?: string | undefined }) => {
-      const formData = new FormData();
-      formData.append("file", f);
-      const params = new URLSearchParams({ format: fmt });
-      if (acId) params.set("accountId", acId);
-      return api.upload<UploadResult>(`/transactions/import?${params.toString()}`, formData);
-    },
-    onSuccess: async (data) => {
-      setResult(data);
-      setRefreshHint(false);
-      setResolution({ kind: "idle" });
-
-      const invalidations = await Promise.allSettled(
-        QUERY_KEYS_TO_INVALIDATE_AFTER_IMPORT.map((queryKey) =>
-          queryClient.invalidateQueries({ queryKey }),
-        ),
-      );
-
-      let anyRejected = false;
-      invalidations.forEach((result, index) => {
-        if (result.status === "rejected") {
-          anyRejected = true;
-          const key = QUERY_KEYS_TO_INVALIDATE_AFTER_IMPORT[index]!.join("/");
-          console.error(
-            `CsvImportCard: failed to invalidate query '${key}' after import`,
-            result.reason,
-          );
-        }
-      });
-      if (anyRejected) setRefreshHint(true);
-    },
-    onError: (err) => {
-      const parsed = parseAccountResolutionError(err);
-      if (parsed?.code === "AMBIGUOUS_ACCOUNT") {
-        setResolution({ kind: "needs_choice", candidates: parsed.candidates });
-      } else if (parsed?.code === "NO_MATCH") {
-        setResolution({ kind: "no_accounts" });
-      }
-    },
-  });
 
   function acceptFile(f: File) {
     if (!f.name.toLowerCase().endsWith(".csv")) {
@@ -146,9 +39,8 @@ export function CsvImportCard() {
     }
     setTypeError(null);
     setResult(null);
-    setResolution({ kind: "idle" });
-    resetMutation();
     setFile(f);
+    setFileKey((k) => k + 1);
   }
 
   function handleDrop(e: React.DragEvent<HTMLButtonElement>) {
@@ -164,78 +56,16 @@ export function CsvImportCard() {
     e.target.value = "";
   }
 
-  function handleUpload() {
-    if (!file || !effectiveFormat) return;
-    const acId = resolution.kind === "needs_choice" ? resolution.chosen : undefined;
-    uploadFile({ f: file, fmt: effectiveFormat, acId });
-  }
-
-  async function handleCreateAccount(e: React.FormEvent) {
-    e.preventDefault();
-    setCreateAccountError(null);
-
-    const name = newAccountName.trim();
-    const iban = newAccountIban.trim();
-    if (!name || !iban) {
-      setCreateAccountError(
-        t("components.csvImportCard.createAccount.errorRequired", "Name and IBAN are required."),
-      );
-      return;
-    }
-
-    try {
-      await createAccount({ name, iban });
-      // The user now has exactly one account, so import resolution will
-      // auto-select it: clear the inline form and let them upload again.
-      setNewAccountName("");
-      setNewAccountIban("");
-      setResolution({ kind: "idle" });
-      resetMutation();
-    } catch (err) {
-      setCreateAccountError(
-        err instanceof ApiError && err.status === 409
-          ? t(
-              "components.csvImportCard.createAccount.errorExists",
-              "An account with this IBAN already exists.",
-            )
-          : err instanceof Error
-            ? err.message
-            : t("components.csvImportCard.createAccount.errorFailed", "Failed to create account."),
-      );
-    }
+  function handleImported(r: ImportResult) {
+    setResult(r);
+    setFile(null);
   }
 
   function handleReset() {
-    setFile(null);
     setResult(null);
+    setFile(null);
     setTypeError(null);
-    setRefreshHint(false);
-    setResolution({ kind: "idle" });
-    setNewAccountName("");
-    setNewAccountIban("");
-    setCreateAccountError(null);
-    resetMutation();
   }
-
-  // Suppress the generic error message when we have a structured resolution
-  // flow on screen — that flow already explains what to do.
-  const showStructuredResolution = resolution.kind !== "idle";
-  const uploadErrorMessage = showStructuredResolution
-    ? null
-    : uploadError instanceof ApiError
-      ? uploadError.message
-      : uploadError instanceof Error
-        ? uploadError.message
-        : uploadError
-          ? t("components.csvImportCard.errors.uploadFailed", "Upload failed.")
-          : null;
-
-  const canUpload =
-    file !== null &&
-    effectiveFormat !== "" &&
-    !isUploading &&
-    resolution.kind !== "no_accounts" &&
-    (resolution.kind !== "needs_choice" || resolution.chosen !== undefined);
 
   return (
     <Card className="col-span-1 sm:col-span-2 lg:col-span-3">
@@ -273,7 +103,7 @@ export function CsvImportCard() {
                     "No new transactions found (all rows may be duplicates).",
                   )}
             </p>
-            {refreshHint && (
+            {result.refreshHint && (
               <p
                 role="alert"
                 className="rounded border border-destructive bg-destructive/10 px-3 py-2 text-xs text-destructive"
@@ -325,14 +155,10 @@ export function CsvImportCard() {
               <p className="text-sm text-muted-foreground">
                 {isDragOver
                   ? t("components.csvImportCard.dropZoneActive", "Release to select file")
-                  : file
-                    ? t("components.csvImportCard.dropZoneSelected", "Selected: {{name}}", {
-                        name: file.name,
-                      })
-                    : t(
-                        "components.csvImportCard.dropZoneIdle",
-                        "Drop a CSV file here, or click to browse",
-                      )}
+                  : t(
+                      "components.csvImportCard.dropZoneIdle",
+                      "Drop a CSV file here, or click to browse",
+                    )}
               </p>
               <p className="text-xs text-muted-foreground/60">
                 {t("components.csvImportCard.dropZoneSubtext", ".csv files only · max 10 MB")}
@@ -354,198 +180,18 @@ export function CsvImportCard() {
                 {typeError}
               </p>
             )}
-
-            {/* ── Selectors row ── */}
-            <div className="flex flex-wrap gap-4">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="csv-format" className="text-xs text-muted-foreground">
-                  {t("components.csvImportCard.formatLabel", "Bank format")}
-                </Label>
-                {isFormatsError ? (
-                  <p role="alert" className="py-1.5 text-sm text-destructive">
-                    {t(
-                      "components.csvImportCard.errors.formatsError",
-                      "Failed to load formats. Please refresh.",
-                    )}
-                  </p>
-                ) : (
-                  <Select
-                    value={effectiveFormat}
-                    onValueChange={(v) => {
-                      if (v !== null && formats.some((f) => f.value === v)) setFormat(v);
-                    }}
-                  >
-                    <SelectTrigger id="csv-format" className="w-40">
-                      <SelectValue placeholder="Select format" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {formats.map((f) => (
-                        <SelectItem key={f.value} value={f.value}>
-                          {f.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-            </div>
-
-            {resolution.kind === "needs_choice" && (
-              <div
-                role="group"
-                aria-labelledby="csv-account-title"
-                className="flex flex-col gap-2 rounded border border-border bg-muted/30 p-3"
-              >
-                <p id="csv-account-title" className="text-sm font-medium">
-                  {t("components.csvImportCard.chooseAccountTitle", "Multiple accounts available")}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {t(
-                    "components.csvImportCard.chooseAccountHelp",
-                    "Pick which account this CSV belongs to and continue.",
-                  )}
-                </p>
-                <Select
-                  value={resolution.chosen ?? ""}
-                  onValueChange={(v) =>
-                    setResolution({
-                      kind: "needs_choice",
-                      candidates: resolution.candidates,
-                      chosen: v ?? undefined,
-                    })
-                  }
-                >
-                  <SelectTrigger
-                    aria-label={t(
-                      "components.csvImportCard.chooseAccountAriaLabel",
-                      "Choose import account",
-                    )}
-                    className="w-72"
-                  >
-                    <SelectValue
-                      placeholder={t(
-                        "components.csvImportCard.chooseAccountPlaceholder",
-                        "Select an account",
-                      )}
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {resolution.candidates.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        {a.name} — {a.iban}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {resolution.kind === "no_accounts" && (
-              <form
-                onSubmit={handleCreateAccount}
-                aria-labelledby="csv-create-account-title"
-                className="flex flex-col gap-2 rounded border border-border bg-muted/30 p-3"
-              >
-                <p id="csv-create-account-title" className="text-sm font-medium">
-                  {t("components.csvImportCard.createAccount.title", "No account yet")}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {t(
-                    "components.csvImportCard.createAccount.help",
-                    "Create an account to import into, then upload again.",
-                  )}
-                </p>
-
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="csv-new-account-name" className="text-xs text-muted-foreground">
-                    {t("components.csvImportCard.createAccount.nameLabel", "Account name")}
-                  </Label>
-                  <Input
-                    id="csv-new-account-name"
-                    value={newAccountName}
-                    onChange={(e) => setNewAccountName(e.target.value)}
-                    placeholder={t(
-                      "components.csvImportCard.createAccount.namePlaceholder",
-                      "e.g. Main Account",
-                    )}
-                    disabled={isCreatingAccount}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="csv-new-account-iban" className="text-xs text-muted-foreground">
-                    {t("components.csvImportCard.createAccount.ibanLabel", "IBAN")}
-                  </Label>
-                  <Input
-                    id="csv-new-account-iban"
-                    value={newAccountIban}
-                    onChange={(e) => setNewAccountIban(e.target.value)}
-                    placeholder="CH93 0076 2011 6238 5295 7"
-                    disabled={isCreatingAccount}
-                  />
-                </div>
-
-                {createAccountError && (
-                  <p role="alert" className="text-xs text-destructive">
-                    {createAccountError}
-                  </p>
-                )}
-
-                <div>
-                  <Button type="submit" size="sm" disabled={isCreatingAccount}>
-                    {isCreatingAccount
-                      ? t("common.creating", "Creating…")
-                      : t("components.csvImportCard.createAccount.submitBtn", "Create account")}
-                  </Button>
-                </div>
-              </form>
-            )}
-
-            {/* ── Upload button ── */}
-            {resolution.kind !== "no_accounts" && (
-              <div className="flex items-center gap-3">
-                <Button disabled={!canUpload} onClick={handleUpload}>
-                  {isUploading ? (
-                    <>
-                      <svg
-                        className="h-4 w-4 animate-spin"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                        />
-                      </svg>
-                      {t("components.csvImportCard.uploading", "Uploading…")}
-                    </>
-                  ) : resolution.kind === "needs_choice" ? (
-                    t("components.csvImportCard.continueBtn", "Continue")
-                  ) : (
-                    t("components.csvImportCard.uploadBtn", "Upload")
-                  )}
-                </Button>
-              </div>
-            )}
-
-            {uploadErrorMessage && (
-              <p role="alert" className="text-xs text-destructive">
-                {uploadErrorMessage}
-              </p>
-            )}
           </>
         )}
       </CardContent>
+
+      {file && (
+        <CsvImportWizard
+          key={fileKey}
+          file={file}
+          onClose={() => setFile(null)}
+          onImported={handleImported}
+        />
+      )}
     </Card>
   );
 }

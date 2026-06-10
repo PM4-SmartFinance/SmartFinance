@@ -10,7 +10,7 @@ const COL = {
   CREDIT_CHF: 7,
 } as const;
 
-const EXPECTED_HEADERS = [
+export const EXPECTED_HEADERS = [
   "Date",
   "Booking text",
   "Curr",

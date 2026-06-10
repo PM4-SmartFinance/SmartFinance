@@ -1,16 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { importTransactions } from "./import.service.js";
 import { ServiceError } from "../errors.js";
 import { registerImporter, clearImporterRegistry } from "./importer-registry.service.js";
 
 vi.mock("../repositories/transaction.repository.js", () => ({
   findAccountByIdAndUser: vi.fn(),
   bulkImport: vi.fn(),
+  findTransactionKeysForAccount: vi.fn(),
 }));
 
 vi.mock("../repositories/account.repository.js", () => ({
   findActiveAccountsByUser: vi.fn(),
   findActiveAccountByNumberAndUser: vi.fn(),
+  findActiveAccountByIbanAndUser: vi.fn(),
 }));
 
 vi.mock("./categorization.service.js", () => ({
@@ -21,10 +22,17 @@ vi.mock("./module-registry.service.js", () => ({
   fireTransactionImported: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("../repositories/import-mapping.repository.js", () => ({
+  findBySignature: vi.fn(),
+  upsertMapping: vi.fn(),
+}));
+
+import { importTransactions, detectImport, forceImport } from "./import.service.js";
 import * as repo from "../repositories/transaction.repository.js";
 import * as accountRepo from "../repositories/account.repository.js";
 import * as categorizationService from "./categorization.service.js";
 import * as moduleRegistry from "./module-registry.service.js";
+import * as importMappingRepo from "../repositories/import-mapping.repository.js";
 
 // Spy-able no-op logger that satisfies the ImportLogger interface.
 const logger = { warn: vi.fn() };
@@ -39,10 +47,14 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockRepo.findAccountByIdAndUser.mockResolvedValue({ id: "acc-1" } as never);
   mockRepo.bulkImport.mockImplementation((parsed: unknown[]) => Promise.resolve(parsed.length));
+  mockRepo.findTransactionKeysForAccount.mockResolvedValue([]);
   mockAccountRepo.findActiveAccountsByUser.mockResolvedValue([]);
   mockAccountRepo.findActiveAccountByNumberAndUser.mockResolvedValue([]);
+  mockAccountRepo.findActiveAccountByIbanAndUser.mockResolvedValue([]);
   vi.mocked(categorizationService.autoCategorize).mockResolvedValue({ categorized: 0 });
   vi.mocked(moduleRegistry.fireTransactionImported).mockResolvedValue(undefined);
+  vi.mocked(importMappingRepo.findBySignature).mockResolvedValue(null);
+  vi.mocked(importMappingRepo.upsertMapping).mockResolvedValue(undefined);
 });
 
 describe("importTransactions", () => {
@@ -72,7 +84,7 @@ describe("importTransactions", () => {
       logger,
     });
 
-    expect(result).toEqual({ imported: 3, categorized: 2 });
+    expect(result).toEqual({ imported: 3, categorized: 2, duplicates: [] });
   });
 
   it("calls bulkImport with the parsed transactions and correct ids", async () => {
@@ -150,7 +162,7 @@ describe("importTransactions", () => {
       logger: { warn: warnSpy },
     });
 
-    expect(result).toEqual({ imported: 1, categorized: 0 });
+    expect(result).toEqual({ imported: 1, categorized: 0, duplicates: [] });
     expect(warnSpy).toHaveBeenCalledOnce();
     const [logObj, logMsg] = warnSpy.mock.calls[0]!;
     expect(logObj).toMatchObject({ userId: "user-1" });
@@ -170,7 +182,7 @@ describe("importTransactions", () => {
       logger,
     });
 
-    expect(result).toEqual({ imported: 1, categorized: 0 });
+    expect(result).toEqual({ imported: 1, categorized: 0, duplicates: [] });
   });
 
   it("works correctly for the wise format", async () => {
@@ -185,7 +197,7 @@ describe("importTransactions", () => {
       logger,
     });
 
-    expect(result).toEqual({ imported: 1, categorized: 0 });
+    expect(result).toEqual({ imported: 1, categorized: 0, duplicates: [] });
   });
 
   it("falls back to the user's single account when no accountId is provided", async () => {
@@ -344,7 +356,7 @@ describe("importTransactions", () => {
       logger,
     });
 
-    expect(result).toEqual({ imported: 1, categorized: 0 });
+    expect(result).toEqual({ imported: 1, categorized: 0, duplicates: [] });
   });
 
   it("throws 400 for an unknown format not in registry", async () => {
@@ -436,10 +448,282 @@ describe("importTransactions", () => {
       logger,
     });
 
-    expect(result).toEqual({ imported: 2, categorized: 0 });
+    expect(result).toEqual({ imported: 2, categorized: 0, duplicates: [] });
     expect(logger.warn).toHaveBeenCalledWith(
       expect.objectContaining({ err: fireErr, userId: "user-1", accountId: "acc-1" }),
       "post-import fireTransactionImported failed",
     );
+  });
+
+  describe("custom mapping import (KAN-163)", () => {
+    const CSV = ["Date,Name,Amount", "2025-01-15,Shop,-42.50"].join("\n");
+    const mapping = { date: "Date", description: "Name", amount: "Amount" };
+
+    it("parses via the generic mapping parser and imports", async () => {
+      mockAccountRepo.findActiveAccountsByUser.mockResolvedValue([
+        { id: "acc-only", name: "Main", iban: "CH00 0000" },
+      ] as never);
+
+      const result = await importTransactions({
+        csvText: CSV,
+        format: "custom",
+        mapping,
+        userId: "user-1",
+        logger,
+      });
+
+      expect(result.imported).toBe(1);
+      const [parsedArg] = mockRepo.bulkImport.mock.calls[0]!;
+      expect(parsedArg[0]).toMatchObject({ amount: -42.5, description: "Shop" });
+    });
+
+    it("persists the mapping keyed by header signature after a successful import", async () => {
+      const result = await importTransactions({
+        csvText: CSV,
+        format: "custom",
+        mapping,
+        accountId: "acc-1",
+        userId: "user-1",
+        logger,
+      });
+
+      expect(result.imported).toBe(1);
+      expect(vi.mocked(importMappingRepo.upsertMapping)).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: "user-1", mapping }),
+      );
+      const [{ headerSignature }] = vi.mocked(importMappingRepo.upsertMapping).mock.calls[0]!;
+      expect(headerSignature).not.toBe("");
+    });
+
+    it("still succeeds when persisting the mapping fails", async () => {
+      const persistErr = new Error("storage down");
+      vi.mocked(importMappingRepo.upsertMapping).mockRejectedValueOnce(persistErr);
+      const warnSpy = vi.fn();
+
+      const result = await importTransactions({
+        csvText: CSV,
+        format: "custom",
+        mapping,
+        accountId: "acc-1",
+        userId: "user-1",
+        logger: { warn: warnSpy },
+      });
+
+      expect(result.imported).toBe(1);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ err: persistErr, userId: "user-1" }),
+        "post-import persist column mapping failed",
+      );
+    });
+
+    it("propagates a mapping parse error and does not import", async () => {
+      await expect(
+        importTransactions({
+          csvText: ["Date,Name,Value", "2025-01-01,A,1"].join("\n"),
+          format: "custom",
+          mapping, // references "Amount", which the file lacks
+          accountId: "acc-1",
+          userId: "user-1",
+          logger,
+        }),
+      ).rejects.toThrow(ServiceError);
+      expect(mockRepo.bulkImport).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe("detectImport (KAN-163)", () => {
+  beforeEach(() => {
+    vi.mocked(importMappingRepo.findBySignature).mockResolvedValue(null);
+  });
+
+  it("returns a confident built-in detection with no saved mapping", async () => {
+    const result = await detectImport({ csvText: [NEON_HEADER, NEON_ROW].join("\n"), userId: "u" });
+    expect(result.detectedFormat).toBe("neon");
+    expect(result.confidence).toBe(1);
+    expect(result.savedMapping).toBeNull();
+    expect(result.columns.length).toBeGreaterThan(0);
+  });
+
+  it("returns null format plus columns and any saved mapping for an unknown header", async () => {
+    const saved = { date: "Datum", description: "Text", amount: "Wert" };
+    vi.mocked(importMappingRepo.findBySignature).mockResolvedValue({
+      headerSignature: "sig",
+      format: null,
+      mapping: saved,
+    });
+
+    const result = await detectImport({ csvText: "Datum,Text,Wert\n2025-01-01,A,1", userId: "u" });
+
+    expect(result.detectedFormat).toBeNull();
+    expect(result.columns).toEqual(["Datum", "Text", "Wert"]);
+    expect(result.savedMapping).toEqual(saved);
+    expect(vi.mocked(importMappingRepo.findBySignature)).toHaveBeenCalledWith(
+      "u",
+      result.headerSignature,
+    );
+  });
+
+  describe("suggestedAccountId", () => {
+    const VALID_IBAN_SPACED = "CH93 0076 2011 6238 5295 7";
+
+    it("suggests the account whose IBAN the file carries", async () => {
+      mockAccountRepo.findActiveAccountByIbanAndUser.mockResolvedValue([
+        { id: "acc-iban", name: "Main", iban: "CH93", accountNumber: null, active: true },
+      ] as never);
+      const csv = `Date,Name,Amount,Acct\n2025-01-01,Shop,-5,${VALID_IBAN_SPACED}`;
+
+      const result = await detectImport({ csvText: csv, userId: "u" });
+
+      expect(result.suggestedAccountId).toBe("acc-iban");
+      expect(mockAccountRepo.findActiveAccountByIbanAndUser).toHaveBeenCalledWith(
+        "CH9300762011623852957",
+        "u",
+      );
+    });
+
+    it("falls back to the UBS account-number hint when no IBAN matches", async () => {
+      const ubsHeader = `"Kontonummer";"Kartennummer";"Konto-/Karteninhaber";"Einkaufsdatum";"Buchungstext";"Branche";"Betrag";"Originalwährung";"Kurs";"Währung";"Belastung";"Gutschrift";"Buchung"`;
+      const ubsRow = `"1234 5678 9101";"9999 99XX XXXX 9999";"M. MUSTERMANN";"21.07.2025";"Laden6";"Shop";"1.7";"CHF";"";"CHF";"1.7";"";"23.07.2025"`;
+      mockAccountRepo.findActiveAccountByNumberAndUser.mockResolvedValue([
+        {
+          id: "acc-num",
+          name: "Cards",
+          iban: "CH56",
+          accountNumber: "1234 5678 9101",
+          active: true,
+        },
+      ] as never);
+
+      const result = await detectImport({ csvText: [ubsHeader, ubsRow].join("\n"), userId: "u" });
+
+      expect(result.suggestedAccountId).toBe("acc-num");
+    });
+
+    it("falls back to the user's single active account", async () => {
+      mockAccountRepo.findActiveAccountsByUser.mockResolvedValue([
+        { id: "acc-only", name: "Main", iban: "CH00", accountNumber: null, active: true },
+      ] as never);
+
+      const result = await detectImport({
+        csvText: [NEON_HEADER, NEON_ROW].join("\n"),
+        userId: "u",
+      });
+
+      expect(result.suggestedAccountId).toBe("acc-only");
+    });
+
+    it("is null when nothing matches and the user has several accounts", async () => {
+      mockAccountRepo.findActiveAccountsByUser.mockResolvedValue([
+        { id: "acc-1", name: "A", iban: "CH01", accountNumber: null, active: true },
+        { id: "acc-2", name: "B", iban: "CH02", accountNumber: null, active: true },
+      ] as never);
+
+      const result = await detectImport({
+        csvText: [NEON_HEADER, NEON_ROW].join("\n"),
+        userId: "u",
+      });
+
+      expect(result.suggestedAccountId).toBeNull();
+    });
+  });
+});
+
+describe("duplicate handling (KAN-163)", () => {
+  it("skips rows that match an existing transaction and returns them", async () => {
+    // The single Neon row is 2025-01-15 / 42 / "Grocery Store".
+    mockRepo.findTransactionKeysForAccount.mockResolvedValue([
+      { dateId: 20250115, amount: 42, merchantName: "Grocery Store" },
+    ] as never);
+
+    const result = await importTransactions({
+      csvText: [NEON_HEADER, NEON_ROW].join("\n"),
+      format: "neon",
+      accountId: "acc-1",
+      userId: "user-1",
+      logger,
+    });
+
+    expect(result.imported).toBe(0);
+    expect(mockRepo.bulkImport).not.toHaveBeenCalled();
+    expect(result.duplicates).toEqual([
+      {
+        date: "2025-01-15T00:00:00.000Z",
+        amount: 42,
+        description: "Grocery Store",
+        subject: "ref",
+      },
+    ]);
+  });
+
+  it("imports only the non-duplicate rows", async () => {
+    mockRepo.findTransactionKeysForAccount.mockResolvedValue([
+      { dateId: 20250115, amount: 42, merchantName: "Grocery Store" },
+    ] as never);
+    const other = `"2025-01-16";"9.90";"";"";"";"Bakery";"r";"uncategorized";"";"no";"no"`;
+
+    const result = await importTransactions({
+      csvText: [NEON_HEADER, NEON_ROW, other].join("\n"),
+      format: "neon",
+      accountId: "acc-1",
+      userId: "user-1",
+      logger,
+    });
+
+    expect(result.imported).toBe(1);
+    expect(result.duplicates).toHaveLength(1);
+    const [importedRows] = mockRepo.bulkImport.mock.calls[0]!;
+    expect(importedRows).toHaveLength(1);
+    expect(importedRows[0]).toMatchObject({ description: "Bakery" });
+  });
+});
+
+describe("forceImport (KAN-163)", () => {
+  it("imports the provided rows without dedup", async () => {
+    const result = await forceImport({
+      userId: "user-1",
+      accountId: "acc-1",
+      transactions: [
+        {
+          date: "2025-01-15T00:00:00.000Z",
+          amount: 42,
+          description: "Grocery Store",
+          subject: "ref",
+        },
+      ],
+      logger,
+    });
+
+    expect(result.imported).toBe(1);
+    expect(mockRepo.findTransactionKeysForAccount).not.toHaveBeenCalled();
+    const [rows, userId, accountId] = mockRepo.bulkImport.mock.calls[0]!;
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ amount: 42, description: "Grocery Store" });
+    expect(userId).toBe("user-1");
+    expect(accountId).toBe("acc-1");
+  });
+
+  it("throws 404 when the account does not belong to the user", async () => {
+    mockRepo.findAccountByIdAndUser.mockResolvedValue(null);
+
+    await expect(
+      forceImport({
+        userId: "user-1",
+        accountId: "acc-x",
+        transactions: [{ date: "2025-01-15T00:00:00.000Z", amount: 1, description: "X" }],
+        logger,
+      }),
+    ).rejects.toThrow(new ServiceError(404, "Account not found"));
+  });
+
+  it("returns zero for an empty selection without importing", async () => {
+    const result = await forceImport({
+      userId: "user-1",
+      accountId: "acc-1",
+      transactions: [],
+      logger,
+    });
+    expect(result).toEqual({ imported: 0, categorized: 0 });
+    expect(mockRepo.bulkImport).not.toHaveBeenCalled();
   });
 });

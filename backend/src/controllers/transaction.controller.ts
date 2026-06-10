@@ -3,10 +3,14 @@ import multipart from "@fastify/multipart";
 import { requireRole, getSessionUser } from "../middleware/rbac.js";
 import { ServiceError } from "../errors.js";
 import {
+  detectImport,
+  forceImport,
   importTransactions,
+  listImportMappings,
   resolveImportEncoding,
   SUPPORTED_FORMATS,
 } from "../services/import.service.js";
+import { validateColumnMapping } from "../services/importers/generic.parser.js";
 import { getImporter, getAllPluginFormats } from "../services/importer-registry.service.js";
 import { decodeCSVBuffer } from "../services/importers/csv.utils.js";
 import type { SortBy, SortOrder } from "../services/transaction.service.js";
@@ -20,6 +24,21 @@ const BUILTIN_FORMAT_LABELS: Record<ImportFormat, string> = {
   wise: "Wise",
   ubs: "UBS",
 };
+
+/**
+ * Reads the string value of a named non-file multipart field. @fastify/multipart
+ * exposes earlier non-file parts on the file object's `fields`; the entry may be a
+ * single value or an array when repeated. Returns undefined when absent or a file.
+ */
+function readTextField(fields: unknown, name: string): string | undefined {
+  if (typeof fields !== "object" || fields === null) return undefined;
+  const entry = (fields as Record<string, unknown>)[name];
+  const candidate = Array.isArray(entry) ? entry[0] : entry;
+  if (typeof candidate !== "object" || candidate === null) return undefined;
+  const record = candidate as Record<string, unknown>;
+  if (record["type"] === "file") return undefined;
+  return typeof record["value"] === "string" ? record["value"] : undefined;
+}
 
 interface ListTransactionsQuery {
   page: number;
@@ -240,8 +259,109 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
+  // KAN-163: the user's named, reusable column mappings for the wizard dropdown.
+  app.get(
+    "/transactions/import/mappings",
+    { preHandler: requireRole("USER") },
+    async (request, reply) => {
+      const user = getSessionUser(request);
+      const mappings = await listImportMappings(user.id);
+      return reply.send({ mappings });
+    },
+  );
+
+  // KAN-163: import rows the user chose to keep despite the duplicate warning.
+  app.post<{
+    Body: {
+      accountId: string;
+      transactions: Array<{ date: string; amount: number; description: string; subject?: string }>;
+    };
+  }>(
+    "/transactions/import/force",
+    {
+      preHandler: requireRole("USER"),
+      schema: {
+        body: {
+          type: "object",
+          required: ["accountId", "transactions"],
+          additionalProperties: false,
+          properties: {
+            accountId: { type: "string", minLength: 1 },
+            transactions: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["date", "amount", "description"],
+                additionalProperties: false,
+                properties: {
+                  date: { type: "string", minLength: 1 },
+                  amount: { type: "number" },
+                  description: { type: "string" },
+                  subject: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const user = getSessionUser(request);
+      const { accountId, transactions } = request.body;
+      const result = await forceImport({
+        userId: user.id,
+        accountId,
+        transactions,
+        logger: request.log,
+      });
+      return reply.status(200).send(result);
+    },
+  );
+
   await app.register(async function importRoutes(importApp) {
     await importApp.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } }); // 10 MB
+
+    // KAN-163: detect the importer from the uploaded header without persisting
+    // anything; returns the columns (for manual mapping) and any saved mapping.
+    importApp.post(
+      "/transactions/import/detect",
+      {
+        preHandler: requireRole("USER"),
+        schema: {
+          response: {
+            200: {
+              type: "object",
+              properties: {
+                detectedFormat: { type: ["string", "null"] },
+                confidence: { type: "number" },
+                columns: { type: "array", items: { type: "string" } },
+                headerSignature: { type: "string" },
+                sampleRow: { type: "array", items: { type: "string" } },
+                savedMapping: { type: ["object", "null"], additionalProperties: true },
+                savedMappingName: { type: ["string", "null"] },
+                suggestedAccountId: { type: ["string", "null"] },
+              },
+              required: ["detectedFormat", "confidence", "columns", "headerSignature"],
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        const user = getSessionUser(request);
+        const fileData = await request.file();
+        if (!fileData) {
+          throw new ServiceError(400, "No file uploaded");
+        }
+        const buffer = await fileData.toBuffer();
+        // Format (and thus its encoding) is unknown at detection time, so decode
+        // with an iso-8859-1 fallback: valid UTF-8 stays UTF-8, latin1 files
+        // (e.g. UBS, many German bank exports) keep their umlauts instead of
+        // turning into replacement characters in the column dropdown (KAN-163).
+        const csvText = decodeCSVBuffer(buffer, "iso-8859-1");
+        const result = await detectImport({ csvText, userId: user.id });
+        return reply.status(200).send(result);
+      },
+    );
 
     importApp.post<{ Querystring: { accountId?: string; format: string } }>(
       "/transactions/import",
@@ -263,10 +383,15 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
         const { accountId, format } = request.query;
         const user = getSessionUser(request);
 
-        const isBuiltin = (SUPPORTED_FORMATS as readonly string[]).includes(format);
-        const plugin = isBuiltin ? undefined : getImporter(format);
-        if (!isBuiltin && !plugin) {
-          throw new ServiceError(400, `Unsupported import format: ${format}`);
+        // `custom` drives the generic mapping-driven parser; any other value
+        // must resolve to a built-in or registered plugin importer.
+        const isCustom = format === "custom";
+        if (!isCustom) {
+          const isBuiltin = (SUPPORTED_FORMATS as readonly string[]).includes(format);
+          const plugin = isBuiltin ? undefined : getImporter(format);
+          if (!isBuiltin && !plugin) {
+            throw new ServiceError(400, `Unsupported import format: ${format}`);
+          }
         }
 
         const fileData = await request.file();
@@ -274,7 +399,30 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
           throw new ServiceError(400, "No file uploaded");
         }
 
-        const encoding = resolveImportEncoding(format);
+        // The column mapping arrives as a multipart `mapping` field (JSON), with
+        // an optional `mappingName`, sent before the file part — so both are
+        // available on `fileData.fields`.
+        let mapping;
+        let mappingName: string | undefined;
+        if (isCustom) {
+          const rawMapping = readTextField(fileData.fields, "mapping");
+          if (!rawMapping) {
+            throw new ServiceError(400, "Custom import requires a 'mapping' field");
+          }
+          let parsedMapping: unknown;
+          try {
+            parsedMapping = JSON.parse(rawMapping);
+          } catch {
+            throw new ServiceError(400, "Invalid mapping JSON");
+          }
+          mapping = validateColumnMapping(parsedMapping);
+          mappingName = readTextField(fileData.fields, "mappingName")?.trim() || undefined;
+        }
+
+        // A custom mapping carries no declared encoding, so use the same
+        // iso-8859-1 fallback as detection (UTF-8 first, latin1 otherwise) to
+        // keep umlauts intact and consistent with the wizard preview (KAN-163).
+        const encoding = isCustom ? "iso-8859-1" : resolveImportEncoding(format);
 
         const buffer = await fileData.toBuffer();
         const csvText = decodeCSVBuffer(buffer, encoding);
@@ -282,6 +430,8 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
         const result = await importTransactions({
           csvText,
           format,
+          mapping,
+          mappingName,
           accountId,
           userId: user.id,
           logger: request.log,

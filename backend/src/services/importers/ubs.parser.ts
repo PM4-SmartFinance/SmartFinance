@@ -10,7 +10,7 @@ const COL = {
   CREDIT: 11,
 } as const;
 
-const EXPECTED_HEADERS = [
+export const EXPECTED_HEADERS = [
   "Kontonummer",
   "Kartennummer",
   "Konto-/Karteninhaber",

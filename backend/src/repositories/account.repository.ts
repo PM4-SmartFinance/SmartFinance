@@ -51,6 +51,21 @@ export async function findActiveAccountByNumberAndUser(accountNumber: string, us
 }
 
 /**
+ * Matches an active account by IBAN (KAN-163). IBANs are stored as entered, so
+ * both sides are normalised (whitespace stripped, uppercased) before comparing.
+ * IBAN is unique per user, so this returns at most one account.
+ */
+export async function findActiveAccountByIbanAndUser(iban: string, userId: string) {
+  const normalized = iban.replace(/\s+/g, "").toUpperCase();
+  if (!normalized) return [];
+  const accounts = await prisma.dimAccount.findMany({
+    where: { userId, active: true },
+    select: ACCOUNT_SELECT,
+  });
+  return accounts.filter((a) => a.iban.replace(/\s+/g, "").toUpperCase() === normalized);
+}
+
+/**
  * The account currency is not user-selectable in the UI (KAN-169). Creation
  * defaults to the user's configured default currency, so the service needs to
  * resolve it without reaching across to the user repository for a single field.

@@ -331,31 +331,148 @@ All filters are optional and can be combined. `minAmount` must not exceed `maxAm
 
 ---
 
-### POST /transactions/import
+### POST /transactions/import/detect
 
-Imports transactions from a CSV file into the specified account. Requires an authenticated session with the `USER` role.
-
-**Query Parameters:**
-
-| Parameter   | Type   | Required | Description                                   |
-| ----------- | ------ | -------- | --------------------------------------------- |
-| `accountId` | string | yes      | ID of the account to import transactions into |
-| `format`    | string | yes      | CSV format: `neon`, `zkb`, `wise`, or `ubs`   |
+Inspects an uploaded CSV header and returns a detection verdict for the import wizard, **without persisting any transactions**. The frontend uploads the file here first: a confident, unambiguous match pre-selects a built-in importer; otherwise the returned `columns` drive a manual column-mapping step. Requires an authenticated session with the `USER` role.
 
 **Request Body:** `multipart/form-data` with a single file field containing the CSV file. Maximum file size: 10 MB.
 
 **Response 200:**
 
 ```json
-{ "imported": 42, "categorized": 17 }
+{
+  "detectedFormat": "neon",
+  "confidence": 1,
+  "columns": ["Date", "Amount", "Description", "Subject"],
+  "headerSignature": "amount|date|description|subject",
+  "sampleRow": ["2025-01-15", "42.00", "Grocery Store", "ref"],
+  "savedMapping": null,
+  "savedMappingName": null,
+  "suggestedAccountId": "b3f1c8e2-0000-0000-0000-000000000000"
+}
+```
+
+| Field                | Type           | Description                                                                                                                                                                                                                |
+| -------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `detectedFormat`     | string \| null | Built-in format (`neon`, `zkb`, `wise`, `ubs`) when matched with high confidence and unambiguously; otherwise `null`.                                                                                                      |
+| `confidence`         | number         | Confidence of the leading candidate, `0`–`1`.                                                                                                                                                                              |
+| `columns`            | string[]       | Header columns read from the file, shown to the user for manual mapping when `detectedFormat` is `null`.                                                                                                                   |
+| `headerSignature`    | string         | Order-independent, case-insensitive key for the header, used to store/reuse a column mapping.                                                                                                                              |
+| `sampleRow`          | string[]       | The file's first data row, aligned with `columns`, for the wizard's live mapping preview. Empty when there is no data row.                                                                                                 |
+| `savedMapping`       | object \| null | A previously saved [column mapping](#column-mapping-payload) for this header signature, if one exists.                                                                                                                     |
+| `savedMappingName`   | string \| null | The user-given name of that saved mapping, when named (see `GET /transactions/import/mappings`).                                                                                                                           |
+| `suggestedAccountId` | string \| null | Account the CSV most likely belongs to — matched by an IBAN found in the file, then the UBS account-number hint, then the user's single active account; `null` if none matched. Pre-selects the wizard's account dropdown. |
+
+**Response 400:** No file uploaded
+**Response 401:** Not authenticated
+
+---
+
+### GET /transactions/import/mappings
+
+Lists the authenticated user's named, reusable column mappings, for the import wizard's format dropdown. Most-recent first, de-duplicated by name. Requires an authenticated session with the `USER` role.
+
+**Response 200:**
+
+```json
+{
+  "mappings": [
+    {
+      "id": "f0e1d2c3-...",
+      "name": "My Bank",
+      "mapping": { "date": "Tag", "description": "Wer", "amount": "Summe" }
+    }
+  ]
+}
+```
+
+A mapping becomes named by passing `mappingName` to `POST /transactions/import` with `format=custom`.
+
+**Response 401:** Not authenticated
+
+---
+
+### POST /transactions/import
+
+Imports transactions from a CSV file into the specified account. Requires an authenticated session with the `USER` role.
+
+**Query Parameters:**
+
+| Parameter   | Type   | Required | Description                                                                                                                                 |
+| ----------- | ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `accountId` | string | no       | ID of the account to import into. When omitted, the account is resolved automatically (single account, or via a file-carried account hint). |
+| `format`    | string | yes      | CSV format: `neon`, `zkb`, `wise`, `ubs`, a registered plugin format, or `custom` for a mapping-driven import.                              |
+
+**Request Body:** `multipart/form-data`. Always includes a single `file` field with the CSV (max 10 MB). When `format=custom`, it must **also** include a `mapping` field (a JSON-encoded [column mapping](#column-mapping-payload)) sent **before** the file part, and may include an optional `mappingName` field. A successful custom import saves the mapping under the file's header signature so the next import of the same bank reuses it (see `savedMapping` on the detect endpoint); when a `mappingName` is given, the mapping also becomes a reusable named option (see `GET /transactions/import/mappings`).
+
+<a id="column-mapping-payload"></a>**Column mapping payload** (`mapping` field / `savedMapping`): maps the file's header names to canonical transaction fields.
+
+```json
+{
+  "date": "Datum",
+  "description": "Empfaenger",
+  "amount": "Wert",
+  "subject": "Referenz",
+  "dateFormat": "iso"
+}
+```
+
+| Field         | Type   | Required | Description                                                                                    |
+| ------------- | ------ | -------- | ---------------------------------------------------------------------------------------------- |
+| `date`        | string | yes      | Header name of the transaction date column.                                                    |
+| `description` | string | yes      | Header name of the description / booking-text column.                                          |
+| `amount`      | string | cond.    | Header name of a single signed-amount column. Mutually exclusive with `debit`/`credit`.        |
+| `debit`       | string | cond.    | Header name of the debit (outflow) column. Pairs with `credit`; stored as a negative amount.   |
+| `credit`      | string | cond.    | Header name of the credit (inflow) column. Pairs with `debit`; stored as a positive amount.    |
+| `subject`     | string | no       | Header name of a secondary subject/reference column.                                           |
+| `dateFormat`  | string | no       | Pin the date layout: `iso`, `dmy-dot`, `dmy-dash`, or `dmy-slash`. Auto-detected when omitted. |
+
+Exactly one of `amount` or a `debit`/`credit` pair must be provided.
+
+**Response 200:**
+
+```json
+{
+  "imported": 42,
+  "categorized": 17,
+  "duplicates": [
+    { "date": "2025-07-01T00:00:00.000Z", "amount": -30, "description": "Gym", "subject": "" }
+  ]
+}
 ```
 
 `imported` is the number of transactions persisted. `categorized` is the number of those (or other previously uncategorized) transactions that the rule-based engine assigned a category to as part of the post-import auto-categorization step. If the engine fails (e.g. transient DB error), the import still succeeds and `categorized` is `0` — the failure is logged server-side and users can retry via `POST /transactions/auto-categorize`.
 
-**Response 400:** No file uploaded or missing query parameters
+`duplicates` lists rows that were **not** imported because they duplicate a live transaction already on the account (same date, amount and merchant). They are returned so the user can review them and re-submit the chosen ones to `POST /transactions/import/force`.
+
+**Response 400:** No file uploaded, missing/invalid query parameters, or (for `format=custom`) a missing/invalid `mapping` field
 **Response 401:** Not authenticated
 **Response 404:** Account not found or does not belong to the authenticated user
-**Response 422:** CSV file is malformed, has an unrecognized format, or contains invalid data rows
+**Response 422:** CSV file is malformed, has an unrecognized format, references columns absent from the file, or contains invalid data rows
+
+---
+
+### POST /transactions/import/force
+
+Imports transactions the user chose to keep despite the duplicate warning from `POST /transactions/import`. No duplicate check is applied. Requires an authenticated session with the `USER` role.
+
+**Request Body:** `application/json`
+
+```json
+{
+  "accountId": "b3f1c8e2-...",
+  "transactions": [
+    { "date": "2025-07-01T00:00:00.000Z", "amount": -30, "description": "Gym", "subject": "" }
+  ]
+}
+```
+
+Each transaction object requires `date` (ISO string), `amount` (number) and `description`; `subject` is optional. The objects are the `duplicates` returned by the import endpoint.
+
+**Response 200:** `{ "imported": 1, "categorized": 0 }`
+**Response 400:** Invalid body or an invalid `date`
+**Response 401:** Not authenticated
+**Response 404:** Account not found or does not belong to the authenticated user
 
 ---
 
