@@ -181,47 +181,57 @@ export async function insertTransactions(
   await tx.factTransactions.createMany({ data: rows.map((r) => ({ ...r, isDeleted: false })) });
 }
 
+// A full 50,000-row import (the supported maximum) runs in a single
+// all-or-nothing transaction and takes well over Prisma's 5s interactive
+// default, which otherwise aborts the commit with P2028. Size the timeout to
+// the target import volume with headroom.
+const BULK_IMPORT_TIMEOUT_MS = 120_000;
+const BULK_IMPORT_MAX_WAIT_MS = 15_000;
+
 export async function bulkImport(
   parsed: ParsedTransaction[],
   userId: string,
   accountId: string,
 ): Promise<number> {
-  await prisma.$transaction(async (tx) => {
-    // 1. Deduplicate and upsert dates
-    const uniqueDates = new Map<number, Date>();
-    for (const t of parsed) {
-      const year = t.date.getUTCFullYear();
-      const month = t.date.getUTCMonth() + 1;
-      const day = t.date.getUTCDate();
-      const id = year * 10000 + month * 100 + day;
-      if (!uniqueDates.has(id)) uniqueDates.set(id, t.date);
-    }
-    await Promise.all([...uniqueDates.values()].map((date) => upsertDate(date, tx)));
+  await prisma.$transaction(
+    async (tx) => {
+      // 1. Deduplicate and upsert dates
+      const uniqueDates = new Map<number, Date>();
+      for (const t of parsed) {
+        const year = t.date.getUTCFullYear();
+        const month = t.date.getUTCMonth() + 1;
+        const day = t.date.getUTCDate();
+        const id = year * 10000 + month * 100 + day;
+        if (!uniqueDates.has(id)) uniqueDates.set(id, t.date);
+      }
+      await Promise.all([...uniqueDates.values()].map((date) => upsertDate(date, tx)));
 
-    // 2. Deduplicate and find-or-create merchants
-    const uniqueMerchantNames = new Set(parsed.map((t) => t.description));
-    const merchants = await Promise.all(
-      [...uniqueMerchantNames].map((name) => findOrCreateMerchant(name, tx)),
-    );
-    const merchantByName = new Map(merchants.map((m) => [m.name, m.id]));
+      // 2. Deduplicate and find-or-create merchants
+      const uniqueMerchantNames = new Set(parsed.map((t) => t.description));
+      const merchants = await Promise.all(
+        [...uniqueMerchantNames].map((name) => findOrCreateMerchant(name, tx)),
+      );
+      const merchantByName = new Map(merchants.map((m) => [m.name, m.id]));
 
-    // 3. Build rows (sync lookups only)
-    const rows = parsed.map((t) => {
-      const year = t.date.getUTCFullYear();
-      const month = t.date.getUTCMonth() + 1;
-      const day = t.date.getUTCDate();
-      return {
-        amount: t.amount,
-        userId,
-        accountId,
-        merchantId: merchantByName.get(t.description)!,
-        dateId: year * 10000 + month * 100 + day,
-      };
-    });
+      // 3. Build rows (sync lookups only)
+      const rows = parsed.map((t) => {
+        const year = t.date.getUTCFullYear();
+        const month = t.date.getUTCMonth() + 1;
+        const day = t.date.getUTCDate();
+        return {
+          amount: t.amount,
+          userId,
+          accountId,
+          merchantId: merchantByName.get(t.description)!,
+          dateId: year * 10000 + month * 100 + day,
+        };
+      });
 
-    // 4. Bulk insert
-    await insertTransactions(rows, tx);
-  });
+      // 4. Bulk insert
+      await insertTransactions(rows, tx);
+    },
+    { timeout: BULK_IMPORT_TIMEOUT_MS, maxWait: BULK_IMPORT_MAX_WAIT_MS },
+  );
 
   return parsed.length;
 }
