@@ -52,14 +52,39 @@ try {
 Write-Host ''
 Write-Host 'Seeding default administrative credentials (waiting for backend to boot)...'
 $bootstrap = Join-Path $ScriptDir 'bootstrap-admin.mjs'
-Get-Content -Raw $bootstrap | & docker compose -f $ComposeFile exec -T `
-    -e "BOOTSTRAP_EMAIL=$adminEmail" `
-    -e "BOOTSTRAP_PASSWORD=$adminPassword" `
-    backend node --input-type=module
-if ($LASTEXITCODE -ne 0) {
+# Run under Continue so the container's stderr cannot become a terminating error in
+# Windows PowerShell 5.1. exit 3 = a user already existed (a re-run against a
+# configured install) — success, but the default password may not match that
+# account, so it must not be printed.
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+try {
+    Get-Content -Raw $bootstrap | & docker compose -f $ComposeFile exec -T `
+        -e "BOOTSTRAP_EMAIL=$adminEmail" `
+        -e "BOOTSTRAP_PASSWORD=$adminPassword" `
+        backend node --input-type=module
+} finally {
+    $ErrorActionPreference = $prevEap
+}
+$bootstrapRc = $LASTEXITCODE
+
+if ($bootstrapRc -eq 3) {
     Write-Host ''
-    Write-Host 'Seeding the default administrator failed.'
-    Write-Host 'If this database already has users, do not run setup again -- use scripts\start-user.bat to resume.'
+    Write-Host '===================================================='
+    Write-Host ' Stack is up — an administrator already existed.'
+    Write-Host ' Access your interface at: http://localhost:3000'
+    Write-Host ''
+    Write-Host ' Log in with your existing credentials. The default password is NOT'
+    Write-Host ' printed because it may not match this installation.'
+    Write-Host ''
+    Write-Host ' Tip: to bring the stack up later without seeding, use:'
+    Write-Host '   scripts\start-user.bat'
+    Write-Host '===================================================='
+    exit 0
+} elseif ($bootstrapRc -ne 0) {
+    Write-Host ''
+    Write-Host "Seeding the default administrator failed (exit $bootstrapRc). See the messages above."
+    Write-Host 'To bring up an already-configured install without seeding, use scripts\start-user.bat.'
     exit 1
 }
 

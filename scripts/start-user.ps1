@@ -43,9 +43,25 @@ function Test-Command([string]$Name) {
     $null -ne (Get-Command $Name -ErrorAction SilentlyContinue)
 }
 
+# Runs a native-command scriptblock with stderr-as-terminating disabled. Windows
+# PowerShell 5.1 (which start-user.bat launches) turns a native command's redirected
+# stderr into a TERMINATING NativeCommandError under $ErrorActionPreference='Stop' —
+# which would crash the very probes written to handle failures gracefully (docker
+# info when the daemon is down, manifest inspect on an unpublished tag, git describe
+# with no tags). Returns the merged output; the caller checks $LASTEXITCODE.
+function Invoke-Native([scriptblock]$Action) {
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $Action 2>&1
+    } finally {
+        $ErrorActionPreference = $prev
+    }
+}
+
 function Test-DockerQuiet([string[]]$DockerArgs) {
     # Runs docker silently; returns $true when it exits 0.
-    & docker @DockerArgs *> $null
+    Invoke-Native { & docker @DockerArgs } | Out-Null
     return ($LASTEXITCODE -eq 0)
 }
 
@@ -83,12 +99,14 @@ function Test-RemoteImage([string]$Tag) {
 function Get-ImageTag {
     $candidates = New-Object System.Collections.Generic.List[string]
     if ((Test-Command git) -and (Test-Path (Join-Path $ProjectRoot '.git'))) {
-        $latest = (& git describe --tags --abbrev=0 --match 'v*' 2>$null)
-        if ($LASTEXITCODE -eq 0 -and $latest) { $candidates.Add($latest.Trim()) }
-        $tags = (& git tag --sort=-v:refname --list 'v*' 2>$null)
+        $latest = Invoke-Native { & git describe --tags --abbrev=0 --match 'v*' }
+        if ($LASTEXITCODE -eq 0 -and $latest) {
+            $candidates.Add((($latest | Select-Object -First 1) -as [string]).Trim())
+        }
+        $tags = Invoke-Native { & git tag --sort=-v:refname --list 'v*' }
         if ($LASTEXITCODE -eq 0 -and $tags) {
             foreach ($t in $tags) {
-                $t = $t.Trim()
+                $t = ($t -as [string]).Trim()
                 if ($t -and -not $candidates.Contains($t)) { $candidates.Add($t) }
             }
         }
@@ -119,6 +137,15 @@ Write-Host "Using published image tag: $ImageTag"
 $BackendImage = "${BackendRepo}:$ImageTag"
 $FrontendImage = "${FrontendRepo}:$ImageTag"
 $RemoteAvailable = Test-RemoteImage $ImageTag
+if (-not $RemoteAvailable) {
+    # Distinguish "tag genuinely not published" from "could not reach GHCR" so a
+    # registry/network/auth failure is not silently mistaken for an absent image.
+    $manifestErr = (Invoke-Native { & docker manifest inspect $BackendImage } | Out-String)
+    if ($manifestErr -and $manifestErr -notmatch 'manifest unknown|not found|no such manifest') {
+        $firstLine = (($manifestErr -split "`n")[0]).Trim()
+        Write-Warning "Could not query GHCR for tag '$ImageTag' ($firstLine). Proceeding with local images or a source build."
+    }
+}
 
 $BuildLocal = $env:SMARTFINANCE_BUILD_LOCAL
 $UseLocalBuild = ($BuildLocal -eq '1' -or $BuildLocal -eq 'true')
@@ -144,14 +171,23 @@ if ($UseLocalBuild) {
     Write-Host 'Building images from source (SMARTFINANCE_BUILD_LOCAL set); skipping pull.'
 } else {
     Write-Host 'Checking for newer images on GHCR (pull is best-effort)...'
+    $pullFailed = $false
     & docker compose -f $ComposeFile pull
     if ($LASTEXITCODE -ne 0) {
         if ($RemoteAvailable) {
             Stop-Start "Image pull failed even though upstream images exist for tag '$ImageTag' (registry auth, network, or disk?)."
         }
-        Write-Host "No published images for tag '$ImageTag'; will build locally."
+        $pullFailed = $true
+        Write-Host "No published images could be pulled for tag '$ImageTag'."
     }
-    if (-not ((Test-DockerQuiet @('image', 'inspect', $BackendImage)) -and (Test-DockerQuiet @('image', 'inspect', $FrontendImage)))) {
+    # Report honestly which path we take — never claim a build while booting a
+    # stale local image.
+    if ((Test-DockerQuiet @('image', 'inspect', $BackendImage)) -and (Test-DockerQuiet @('image', 'inspect', $FrontendImage))) {
+        if ($pullFailed) {
+            Write-Warning "Reusing existing local images for tag '$ImageTag'; the pull did not succeed, so they may be outdated."
+        }
+    } else {
+        Write-Host "No usable images for tag '$ImageTag'; will build from source."
         $UseLocalBuild = $true
     }
 }
@@ -162,9 +198,13 @@ if ($UseLocalBuild) {
     if ($LASTEXITCODE -ne 0) { Stop-Start 'Image build failed.' }
 }
 
-Write-Host 'Starting core infrastructure containers...'
-& docker compose -f $ComposeFile up -d --remove-orphans --scale backend=0
-if ($LASTEXITCODE -ne 0) { Stop-Start 'Failed to start core infrastructure (is the database healthy?).' }
+Write-Host 'Starting the database...'
+# Bring up ONLY postgres first: migrations must apply before the backend serves
+# traffic, and starting the frontend now would leave its nginx proxy crash-looping
+# against an absent backend. The migration `docker compose run` below starts the
+# backend's depends_on as needed.
+& docker compose -f $ComposeFile up -d --remove-orphans postgres
+if ($LASTEXITCODE -ne 0) { Stop-Start 'Failed to start the database (is Docker healthy?).' }
 
 Write-Host 'Running database migrations (no-op when already up to date)...'
 & docker compose -f $ComposeFile run --rm --entrypoint /bin/sh backend -c 'node_modules/.bin/prisma migrate deploy'

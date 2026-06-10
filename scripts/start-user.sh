@@ -157,6 +157,19 @@ fi
 REMOTE_IMAGE_AVAILABLE=false
 if remote_image_available_for_tag "$IMAGE_TAG"; then
   REMOTE_IMAGE_AVAILABLE=true
+else
+  # The probe is silenced, so a GHCR outage / auth / proxy failure looks identical
+  # to "tag not published" and silently routes us to the local image / build path.
+  # Re-probe once with stderr captured and warn when the failure is NOT a plain
+  # "manifest unknown", so the real cause is visible.
+  manifest_err=$(docker manifest inspect "ghcr.io/pm4-smartfinance/smartfinance/backend:${IMAGE_TAG}" 2>&1 >/dev/null || true)
+  case "$manifest_err" in
+    "" | *"manifest unknown"* | *"not found"* | *"no such manifest"*) ;;
+    *)
+      echo "Warning: could not query GHCR for tag '$IMAGE_TAG' ($(printf '%s' "$manifest_err" | head -n1))." >&2
+      echo "Proceeding with local images or a source build." >&2
+      ;;
+  esac
 fi
 
 USE_LOCAL_BUILD=false
@@ -260,17 +273,26 @@ else
   # tag (we then build locally). If the manifest exists but the pull still failed,
   # it is a real error (registry auth, network, or disk) and must abort -- silently
   # booting a stale local image via --no-build would hide the problem.
+  pull_failed=false
   if ! docker compose -f docker-compose.user.yml pull; then
     if [ "$REMOTE_IMAGE_AVAILABLE" = true ]; then
       echo "Error: image pull failed even though upstream images exist for tag '$IMAGE_TAG'." >&2
       echo "This usually indicates a registry authentication, network, or disk problem. Aborting." >&2
       exit 1
     fi
-    echo "No published images for tag '$IMAGE_TAG'; will build locally."
+    pull_failed=true
+    echo "No published images could be pulled for tag '$IMAGE_TAG'."
   fi
 
-  # Re-evaluate the presence of the images now that the pull has finished.
-  if ! docker image inspect "$BACKEND_IMAGE" >/dev/null 2>&1 || ! docker image inspect "$FRONTEND_IMAGE" >/dev/null 2>&1; then
+  # Re-evaluate image presence now the pull has finished, and report honestly which
+  # path we take -- never claim "will build locally" while actually booting a stale
+  # local image.
+  if docker image inspect "$BACKEND_IMAGE" >/dev/null 2>&1 && docker image inspect "$FRONTEND_IMAGE" >/dev/null 2>&1; then
+    if [ "$pull_failed" = true ]; then
+      echo "Warning: reusing existing local images for tag '$IMAGE_TAG'; the pull did not succeed, so they may be outdated." >&2
+    fi
+  else
+    echo "No usable images for tag '$IMAGE_TAG'; will build from source."
     USE_LOCAL_BUILD=true
   fi
 fi
@@ -282,9 +304,12 @@ if [ "$USE_LOCAL_BUILD" = true ]; then
   docker compose -f docker-compose.user.yml build
 fi
 
-echo "Starting core infrastructure containers..."
-# Scale backend down to 0 temporarily so migrations apply before traffic starts
-docker compose -f docker-compose.user.yml up -d --remove-orphans --scale backend=0
+echo "Starting the database..."
+# Bring up ONLY postgres first. Migrations must apply before the backend serves
+# traffic, and starting the frontend now would leave its nginx proxy crash-looping
+# against an absent backend (static upstream resolves once at startup). The
+# migration `docker compose run` below starts the backend's depends_on as needed.
+docker compose -f docker-compose.user.yml up -d --remove-orphans postgres
 
 echo "Running database migrations (no-op when already up to date)..."
 # Override the entrypoint with /bin/sh so we run ONLY the migration, regardless of

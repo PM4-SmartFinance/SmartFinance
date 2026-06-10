@@ -42,15 +42,34 @@ echo "Seeding default administrative credentials (waiting for backend to boot)..
 # POST finds the default currency and creates the admin as the first ADMIN.
 # The bootstrap logic lives in scripts/bootstrap-admin.mjs and is piped over stdin
 # so it is shared verbatim with the Windows setup script.
-if ! docker compose -f docker-compose.user.yml exec -T \
+# Capture the bootstrap exit code without tripping `set -e`. exit 3 means a user
+# already existed (setup re-run against a configured install): the stack is up and
+# healthy, so succeed gracefully instead of erroring — but do not print the default
+# password, which may not match the existing account.
+bootstrap_rc=0
+docker compose -f docker-compose.user.yml exec -T \
   -e BOOTSTRAP_EMAIL="$DEFAULT_ADMIN_EMAIL" \
   -e BOOTSTRAP_PASSWORD="$DEFAULT_ADMIN_PASSWORD" \
   backend \
-  node --input-type=module < "$SCRIPT_DIR/bootstrap-admin.mjs"; then
+  node --input-type=module < "$SCRIPT_DIR/bootstrap-admin.mjs" || bootstrap_rc=$?
+
+if [ "$bootstrap_rc" -eq 3 ]; then
+  echo
+  echo "===================================================="
+  echo " Stack is up — an administrator already existed."
+  echo " Access your interface at: http://localhost:3000"
+  echo
+  echo " Log in with your existing credentials. The default password is NOT"
+  echo " printed because it may not match this installation."
+  echo
+  echo " Tip: to bring the stack up later without seeding, use:"
+  echo "   ./scripts/start-user.sh"
+  echo "===================================================="
+  exit 0
+elif [ "$bootstrap_rc" -ne 0 ]; then
   echo >&2
-  echo "Seeding the default administrator failed." >&2
-  echo "If this database already has users, do not run setup again -- use" >&2
-  echo "./scripts/start-user.sh to resume the existing installation instead." >&2
+  echo "Seeding the default administrator failed (exit $bootstrap_rc). See the messages above." >&2
+  echo "To bring up an already-configured install without seeding, use ./scripts/start-user.sh." >&2
   exit 1
 fi
 
