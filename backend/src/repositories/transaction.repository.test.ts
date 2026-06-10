@@ -30,20 +30,29 @@ import { ServiceError } from "../errors.js";
 
 const mockTransaction = vi.mocked(prisma.$transaction);
 
-function makeTx() {
+// Set-based bulkImport: dates and merchants are resolved with batched
+// createMany/findMany. The merchant mock models a tiny in-memory table so the
+// two-phase read → create → read flow returns ids the way Postgres would.
+function makeTx(existingMerchants: string[] = []) {
+  const merchantDb = new Set(existingMerchants);
   return {
     dimDate: {
-      upsert: vi
-        .fn()
-        .mockImplementation(({ where, create }) => Promise.resolve({ id: where.id, ...create })),
+      createMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
     dimMerchant: {
-      findFirst: vi.fn().mockResolvedValue(null),
-      create: vi
+      findMany: vi
         .fn()
-        .mockImplementation(({ data }) =>
-          Promise.resolve({ id: `m-${data.name}`, name: data.name }),
+        .mockImplementation(({ where }: { where: { name: { in: string[] } } }) =>
+          Promise.resolve(
+            where.name.in
+              .filter((name) => merchantDb.has(name))
+              .map((name) => ({ id: `m-${name}`, name })),
+          ),
         ),
+      createMany: vi.fn().mockImplementation(({ data }: { data: { name: string }[] }) => {
+        data.forEach((d) => merchantDb.add(d.name));
+        return Promise.resolve({ count: data.length });
+      }),
     },
     factTransactions: {
       createMany: vi.fn().mockResolvedValue({ count: 0 }),
@@ -71,7 +80,7 @@ describe("bulkImport", () => {
     mockTransaction.mockImplementation((cb) => cb(tx));
   });
 
-  it("upserts each unique date exactly once", async () => {
+  it("inserts each unique date once via a single skipDuplicates createMany", async () => {
     await bulkImport(
       [
         parsed({ date: new Date("2025-01-15T00:00:00Z") }),
@@ -82,10 +91,20 @@ describe("bulkImport", () => {
       "a1",
     );
 
-    expect(tx.dimDate.upsert).toHaveBeenCalledTimes(2);
+    expect(tx.dimDate.createMany).toHaveBeenCalledTimes(1);
+    const arg = tx.dimDate.createMany.mock.calls[0]![0] as {
+      data: Array<{ id: number }>;
+      skipDuplicates: boolean;
+    };
+    expect(arg.skipDuplicates).toBe(true);
+    expect(arg.data.map((d) => d.id).sort()).toEqual([20250115, 20250307]);
   });
 
-  it("finds or creates each unique merchant exactly once", async () => {
+  it("creates only the merchants that do not already exist", async () => {
+    tx = makeTx(["Store A"]); // Store A already in DB
+    // @ts-expect-error -- partial mock tx
+    mockTransaction.mockImplementation((cb) => cb(tx));
+
     await bulkImport(
       [
         parsed({ description: "Store A" }),
@@ -96,19 +115,23 @@ describe("bulkImport", () => {
       "a1",
     );
 
-    expect(tx.dimMerchant.findFirst).toHaveBeenCalledTimes(2);
+    // Only the missing name is inserted.
+    const { data } = tx.dimMerchant.createMany.mock.calls[0]![0] as { data: { name: string }[] };
+    expect(data).toEqual([{ name: "Store B" }]);
   });
 
   it("reuses existing merchants without creating new ones", async () => {
-    tx.dimMerchant.findFirst.mockResolvedValue({ id: "existing-id", name: "Known" });
+    tx = makeTx(["Known"]);
+    // @ts-expect-error -- partial mock tx
+    mockTransaction.mockImplementation((cb) => cb(tx));
 
     await bulkImport([parsed({ description: "Known" })], "u1", "a1");
 
-    expect(tx.dimMerchant.create).not.toHaveBeenCalled();
+    expect(tx.dimMerchant.createMany).not.toHaveBeenCalled();
     const { data } = tx.factTransactions.createMany.mock.calls[0]![0] as {
       data: Array<{ merchantId: string }>;
     };
-    expect(data[0]!.merchantId).toBe("existing-id");
+    expect(data[0]!.merchantId).toBe("m-Known");
   });
 
   it("inserts all rows in a single createMany call", async () => {
@@ -169,8 +192,11 @@ describe("bulkImport", () => {
 
     await bulkImport(rows, "u1", "a1");
 
-    expect(tx.dimDate.upsert).toHaveBeenCalledTimes(1);
-    expect(tx.dimMerchant.findFirst).toHaveBeenCalledTimes(1);
+    // One date row, one merchant created — regardless of row count.
+    expect(tx.dimDate.createMany).toHaveBeenCalledTimes(1);
+    expect(tx.dimDate.createMany.mock.calls[0]![0].data).toHaveLength(1);
+    expect(tx.dimMerchant.createMany).toHaveBeenCalledTimes(1);
+    expect(tx.dimMerchant.createMany.mock.calls[0]![0].data).toHaveLength(1);
     const { data } = tx.factTransactions.createMany.mock.calls[0]![0] as {
       data: unknown[];
     };
