@@ -1,6 +1,13 @@
 #!/bin/sh
 set -e
 
+# When a command is passed (e.g. `docker compose run backend <cmd>`), run it
+# instead of the default migrate-seed-serve boot sequence. Escape hatch for
+# one-off container tasks.
+if [ "$#" -gt 0 ]; then
+  exec "$@"
+fi
+
 echo "Running database migrations..."
 node_modules/.bin/prisma migrate deploy
 

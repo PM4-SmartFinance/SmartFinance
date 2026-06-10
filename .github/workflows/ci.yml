@@ -255,6 +255,96 @@ jobs:
           echo "Testing Docker infrastructure..."
           docker compose build
 
+  self-hosting-verify:
+    name: Verify Self-Hosting Setup
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # shellcheck ships preinstalled on GitHub-hosted ubuntu runners.
+      - name: Lint self-hosting shell scripts
+        run: shellcheck scripts/setup-user.sh scripts/start-user.sh scripts/stop-user.sh backend/docker-entrypoint.sh
+
+      - name: Validate self-hosted compose file
+        env:
+          POSTGRES_PASSWORD: "dummy_password"
+          SESSION_SECRET: "dummy_secret"
+        run: docker compose -f docker-compose.user.yml config >/dev/null
+
+  self-hosting-smoke:
+    name: Smoke-test Self-Hosting Stack
+    runs-on: ubuntu-24.04
+    env:
+      COMPOSE: docker-compose.user.yml
+      POSTGRES_PASSWORD: smoke_password
+      SESSION_SECRET: smoke_session_secret_at_least_32_chars
+      IMAGE_TAG: smoke
+      BOOTSTRAP_EMAIL: admin@smartfinance.local
+      BOOTSTRAP_PASSWORD: changeme123
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build images for the user stack
+        run: docker compose -f "$COMPOSE" build
+
+      - name: Migrate, then boot the full stack
+        run: |
+          set -euo pipefail
+          # DB first, then migrate, then the full stack — mirrors start-user.sh
+          # (and exercises the migration-before-traffic ordering).
+          docker compose -f "$COMPOSE" up -d --remove-orphans postgres
+          docker compose -f "$COMPOSE" run --rm --entrypoint /bin/sh backend \
+            -c "node_modules/.bin/prisma migrate deploy"
+          docker compose -f "$COMPOSE" up -d --remove-orphans --no-build
+
+      - name: Bootstrap admin — first run creates, re-run is idempotent (exit 3)
+        run: |
+          set -euo pipefail
+          run_bootstrap() {
+            docker compose -f "$COMPOSE" exec -T \
+              -e BOOTSTRAP_EMAIL="$BOOTSTRAP_EMAIL" \
+              -e BOOTSTRAP_PASSWORD="$BOOTSTRAP_PASSWORD" \
+              backend node --input-type=module < scripts/bootstrap-admin.mjs
+          }
+          rc=0; run_bootstrap || rc=$?
+          test "$rc" -eq 0 || { echo "first bootstrap must exit 0, got $rc"; exit 1; }
+          # Re-running setup against a populated DB must succeed, not abort: the
+          # backend returns 401 (not 409) to the unauthenticated POST, which the
+          # script treats as "already bootstrapped" → exit 3.
+          rc=0; run_bootstrap || rc=$?
+          test "$rc" -eq 3 || { echo "re-run bootstrap must exit 3 (already exists), got $rc"; exit 1; }
+
+      - name: Login through the nginx proxy returns a session cookie
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/login.json -w '%{http_code}' -c /tmp/cookies.txt \
+            -X POST http://127.0.0.1:3000/api/v1/auth/login \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"$BOOTSTRAP_EMAIL\",\"password\":\"$BOOTSTRAP_PASSWORD\"}")
+          test "$code" = "200" || { echo "login failed ($code):"; cat /tmp/login.json; exit 1; }
+          grep -q "session" /tmp/cookies.txt || { echo "no session cookie set"; cat /tmp/cookies.txt; exit 1; }
+
+      - name: nginx proxies a >1 MB upload without 413
+        run: |
+          set -euo pipefail
+          # 2 MB body: must pass nginx (client_max_body_size 10m) and reach the
+          # backend, which then rejects the bogus CSV — anything but 413 proves the
+          # body-size limit is not the gatekeeper.
+          head -c 2000000 /dev/zero | tr '\0' 'a' > /tmp/big.csv
+          code=$(curl -sS -o /dev/null -w '%{http_code}' -b /tmp/cookies.txt \
+            -X POST "http://127.0.0.1:3000/api/v1/transactions/import?format=neon" \
+            -F "file=@/tmp/big.csv;type=text/csv")
+          test "$code" != "413" || { echo "nginx returned 413 — client_max_body_size too small"; exit 1; }
+          echo "upload reached the backend (HTTP $code, not 413)"
+
+      - name: Stack logs on failure
+        if: failure()
+        run: docker compose -f "$COMPOSE" logs --tail=100
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f "$COMPOSE" down -v
+
   coverage-report:
     name: Coverage Report
     runs-on: ubuntu-24.04

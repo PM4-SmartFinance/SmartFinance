@@ -61,7 +61,32 @@ Before running or developing the application, make sure these are installed.
 ./scripts/setup-user.sh
 ```
 
-3. Open the app in your browser at `http://localhost` or at your configured domain.
+3. The script checks GHCR for a published backend/frontend image tag first. If one exists, it pulls that tag; otherwise it builds local images and reuses them on reruns.
+4. Open the app in your browser at `http://localhost:3000` or at your configured domain.
+
+Log in with the default administrator account (printed on completion):
+
+| Email | Password |
+| --- | --- |
+| `admin@smartfinance.local` | `changeme123` |
+
+> **Change this password immediately after your first login** (Settings → Profile). To start with a non-default credential, set `BOOTSTRAP_EMAIL` / `BOOTSTRAP_PASSWORD` in your environment before running the script.
+
+> The app is published on `127.0.0.1:3000` (this machine only) so the default credentials are not exposed on your network. To reach it from other devices, set `BIND_ADDRESS=0.0.0.0` in `.env` — only after changing the default password.
+
+Run `setup-user.sh` only **once**, on a fresh install — it seeds the default administrator. After that, your accounts and data live in a persistent Postgres volume.
+
+When you are done using the app, stop the stack to release resources (this keeps your data):
+
+```bash
+./scripts/stop-user.sh
+```
+
+To start the stack again later — after a reboot or after stopping it — resume where you left off **without** re-seeding the admin:
+
+```bash
+./scripts/start-user.sh
+```
 
 ### Self-Hosting on Windows
 
@@ -72,7 +97,9 @@ Before running or developing the application, make sure these are installed.
 scripts\setup-user.bat
 ```
 
-3. Open the app in your browser at `http://localhost` or at your configured domain.
+3. Open the app in your browser at `http://localhost:3000` or at your configured domain. Log in with the default administrator account (`admin@smartfinance.local` / `changeme123`) and **change the password immediately after your first login**.
+
+Run `setup-user.bat` only **once**, on a fresh install. Afterwards, resume the stack with `scripts\start-user.bat` (no re-seeding) and shut it down with `scripts\stop-user.bat`. Both keep your data.
 
 If you want the full deployment flow, required environment variables, or rollback details, use [Chapter 11: Installation (Deployment)](https://github.com/PM4-SmartFinance/SmartFinance/wiki/11.-Installation-Deployment).
 

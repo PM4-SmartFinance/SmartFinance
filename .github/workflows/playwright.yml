@@ -95,7 +95,10 @@ jobs:
         working-directory: backend
 
       - name: Seed database
-        run: bun prisma/seed.ts
+        # SEED_DEMO_USER gates the demo user + sample data so they never reach a
+        # production self-hosted DB. The e2e suite logs in as that demo user, so
+        # enable it explicitly here.
+        run: SEED_DEMO_USER=true bun prisma/seed.ts
         working-directory: backend
 
       - name: Verify admin seed

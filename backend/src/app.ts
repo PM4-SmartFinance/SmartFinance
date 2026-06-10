@@ -94,6 +94,26 @@ export async function buildApp(options: BuildAppOptions = {}) {
   const finalSecret =
     sessionSecret.length >= 32 ? sessionSecret : "dev_secret_do_not_use_in_prod_32";
 
+  // Session cookies are Secure (HTTPS-only) in production by default. A self-hosted
+  // deployment served over plain HTTP (e.g. http://localhost:3000 behind the nginx
+  // proxy, with no TLS) must set SESSION_COOKIE_SECURE=false — otherwise the browser
+  // silently drops the session cookie and login appears to do nothing. Deployments
+  // behind HTTPS (e.g. the Traefik stack) keep the secure default.
+  //
+  // Parse strictly: a typo or a truthy-looking value (`1`, `TRUE`, `yes`) must not
+  // silently disable Secure on an HTTPS deployment — that is the exact cookie-drop
+  // class of bug, inverted. Only the literal "true"/"false" are accepted.
+  const cookieSecureRaw = process.env["SESSION_COOKIE_SECURE"];
+  let cookieSecure: boolean;
+  if (cookieSecureRaw === undefined) {
+    cookieSecure = process.env["NODE_ENV"] === "production";
+  } else if (cookieSecureRaw === "true" || cookieSecureRaw === "false") {
+    cookieSecure = cookieSecureRaw === "true";
+  } else {
+    throw new Error(`SESSION_COOKIE_SECURE must be "true" or "false", got "${cookieSecureRaw}"`);
+  }
+  app.log.info({ cookieSecure }, "session cookie security mode resolved");
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await app.register(secureSession as any, {
     key: Buffer.from(finalSecret).subarray(0, 32),
@@ -101,7 +121,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
       path: "/",
       httpOnly: true,
       sameSite: "lax",
-      secure: process.env["NODE_ENV"] === "production",
+      secure: cookieSecure,
     },
   });
 

@@ -1,21 +1,92 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-echo "Setting up SmartFinance for Self-Hosting..."
+# First-time install for the SmartFinance self-hosted stack.
+#
+# This brings the stack up (delegated to scripts/start-user.sh, which pulls or
+# builds images, migrates the database, and starts the containers) and then
+# seeds a single default administrator on the fresh database.
+#
+# Run this ONCE, on a brand new database. On every subsequent start -- after a
+# reboot, or after `./scripts/stop-user.sh` -- use ./scripts/start-user.sh
+# instead. Re-running setup against a database that already has users would fail:
+# the first-user bootstrap endpoint returns 401 once an administrator exists, and
+# we deliberately do not re-inject a default user over a configured installation.
 
-if [ ! -f .env ]; then
-  echo "Creating .env from template..."
-  cp .env.example .env
-  # Generate a secure 64-character hex string for the session secret
-  SECRET=$(openssl rand -hex 32)
-  # Replace placeholder in .env
-  sed -i.bak "s/SESSION_SECRET=.*/SESSION_SECRET=${SECRET}/" .env && rm .env.bak
-  echo "Generated secure SESSION_SECRET in .env"
-else
-  echo ".env already exists. Skipping..."
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+PROJECT_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
+
+cd "$PROJECT_ROOT"
+
+echo "===================================================="
+echo "      Setting up SmartFinance Production Stack      "
+echo "===================================================="
+echo
+
+# Admin bootstrap credentials. A documented default is used so first-time
+# self-hosters always know how to log in. Override with BOOTSTRAP_EMAIL /
+# BOOTSTRAP_PASSWORD for a stronger, non-default credential. The completion banner
+# instructs the user to change this password immediately after first login.
+DEFAULT_ADMIN_EMAIL="${BOOTSTRAP_EMAIL:-admin@smartfinance.local}"
+DEFAULT_ADMIN_PASSWORD="${BOOTSTRAP_PASSWORD:-changeme123}"
+
+# Bring the whole stack up. start-user.sh owns dependency checks, image
+# resolution, .env secrets, migrations, and container startup; SMARTFINANCE_QUIET
+# suppresses its standalone banner so we can print a single first-time banner.
+SMARTFINANCE_QUIET=1 "$SCRIPT_DIR/start-user.sh"
+
+echo
+echo "Seeding default administrative credentials (waiting for backend to boot)..."
+# Reference data (currencies, date dim) is seeded unconditionally by the backend
+# entrypoint on a fresh DB before it accepts traffic, so the first-user bootstrap
+# POST finds the default currency and creates the admin as the first ADMIN.
+# The bootstrap logic lives in scripts/bootstrap-admin.mjs and is piped over stdin
+# so it is shared verbatim with the Windows setup script.
+# Capture the bootstrap exit code without tripping `set -e`. exit 3 means a user
+# already existed (setup re-run against a configured install): the stack is up and
+# healthy, so succeed gracefully instead of erroring — but do not print the default
+# password, which may not match the existing account.
+bootstrap_rc=0
+docker compose -f docker-compose.user.yml exec -T \
+  -e BOOTSTRAP_EMAIL="$DEFAULT_ADMIN_EMAIL" \
+  -e BOOTSTRAP_PASSWORD="$DEFAULT_ADMIN_PASSWORD" \
+  backend \
+  node --input-type=module < "$SCRIPT_DIR/bootstrap-admin.mjs" || bootstrap_rc=$?
+
+if [ "$bootstrap_rc" -eq 3 ]; then
+  echo
+  echo "===================================================="
+  echo " Stack is up — an administrator already existed."
+  echo " Access your interface at: http://localhost:3000"
+  echo
+  echo " Log in with your existing credentials. The default password is NOT"
+  echo " printed because it may not match this installation."
+  echo
+  echo " Tip: to bring the stack up later without seeding, use:"
+  echo "   ./scripts/start-user.sh"
+  echo "===================================================="
+  exit 0
+elif [ "$bootstrap_rc" -ne 0 ]; then
+  echo >&2
+  echo "Seeding the default administrator failed (exit $bootstrap_rc). See the messages above." >&2
+  echo "To bring up an already-configured install without seeding, use ./scripts/start-user.sh." >&2
+  exit 1
 fi
 
-echo "Pulling Docker images and starting the stack..."
-docker compose up -d
-
-echo "Setup complete. Access the app at http://localhost"
+echo
+echo "===================================================="
+echo " Setup Complete!"
+echo " Access your interface at: http://localhost:3000"
+echo
+echo " Log in with the default administrator credentials:"
+echo "   Email:    $DEFAULT_ADMIN_EMAIL"
+echo "   Password: $DEFAULT_ADMIN_PASSWORD"
+echo
+echo " IMPORTANT: This is a well-known default password. Change it"
+echo " IMMEDIATELY after your first login (Settings > Profile)."
+echo
+echo " To start the stack again later (without re-seeding), run:"
+echo "   ./scripts/start-user.sh"
+echo " To stop the stack, run:"
+echo "   ./scripts/stop-user.sh"
+echo "===================================================="

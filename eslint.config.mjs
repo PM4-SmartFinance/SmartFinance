@@ -44,6 +44,13 @@ export default defineConfig([
     },
   },
   {
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      sourceType: "module",
+      globals: globals.node,
+    },
+  },
+  {
     files: [".github/scripts/**/*.test.ts"],
     plugins: { vitest },
     rules: { ...vitest.configs.recommended.rules },
