@@ -7,7 +7,7 @@
     ".github/scripts"
   ],
   "scripts": {
-    "dev": "concurrently --names fe,be --prefix-colors cyan,green \"bun run dev --cwd frontend\" \"bun run dev --cwd backend\"",
+    "dev": "concurrently --names fe,be --prefix-colors cyan,green \"bun run --cwd=frontend dev\" \"bun run --cwd=backend dev\"",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

@@ -24,6 +24,7 @@ import {
   findAccountsByUser,
   findActiveAccountsByUser,
   findActiveAccountByNumberAndUser,
+  findActiveAccountByIbanAndUser,
   findById,
   findUserDefaultCurrencyId,
   countTransactions,
@@ -179,6 +180,57 @@ describe("findActiveAccountByNumberAndUser", () => {
     ] as never);
 
     await expect(findActiveAccountByNumberAndUser("12345678", "user-1")).resolves.toEqual([]);
+  });
+});
+
+describe("findActiveAccountByIbanAndUser", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns an empty array for a whitespace-only IBAN without querying", async () => {
+    await expect(findActiveAccountByIbanAndUser("   ", "user-1")).resolves.toEqual([]);
+    expect(mockFindMany).not.toHaveBeenCalled();
+  });
+
+  it("queries only active accounts for the user", async () => {
+    mockFindMany.mockResolvedValue([]);
+
+    await findActiveAccountByIbanAndUser("CH93 0076 2011 6238 5295 7", "user-1");
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: "user-1", active: true } }),
+    );
+  });
+
+  it("matches the IBAN ignoring whitespace and case", async () => {
+    const match = {
+      id: "acc-1",
+      name: "Main",
+      iban: "ch93 0076 2011 6238 5295 7",
+      accountNumber: null,
+      active: true,
+    };
+    const other = {
+      id: "acc-2",
+      name: "Savings",
+      iban: "CH56 0483 5012 3456 7800 9",
+      accountNumber: null,
+      active: true,
+    };
+    mockFindMany.mockResolvedValue([match, other] as never);
+
+    const result = await findActiveAccountByIbanAndUser("CH9300762011623852957", "user-1");
+
+    expect(result).toEqual([match]);
+  });
+
+  it("returns an empty array when no stored IBAN matches", async () => {
+    mockFindMany.mockResolvedValue([
+      { id: "acc-1", name: "Main", iban: "CH56", accountNumber: null, active: true },
+    ] as never);
+
+    await expect(
+      findActiveAccountByIbanAndUser("CH93 0076 2011 6238 5295 7", "user-1"),
+    ).resolves.toEqual([]);
   });
 });
 

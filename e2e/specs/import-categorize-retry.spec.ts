@@ -100,10 +100,12 @@ test.describe("import → partial categorization → retry → full categorizati
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();
 
-    // CsvImportCard defaults to format=neon; dev user has one account so
-    // the importer auto-resolves the target. We just attach the file and click Upload.
+    // Selecting a file opens the import wizard (KAN-163). Detection pre-fills
+    // the format (Neon fixture) and the account (admin has exactly one), so the
+    // Import button enables once detect settles; Playwright's click auto-waits.
     await page.locator('input[type="file"]').setInputFiles(FIXTURE);
-    await page.getByRole("button", { name: /^Upload$/ }).click();
+    await expect(page.getByRole("heading", { name: "Import CSV" })).toBeVisible();
+    await page.getByRole("button", { name: /^Import$/ }).click();
 
     await expect(page.getByText(/^20 transactions imported successfully\.?$/)).toBeVisible();
 

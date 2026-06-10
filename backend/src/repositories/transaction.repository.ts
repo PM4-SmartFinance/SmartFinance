@@ -148,26 +148,6 @@ export async function findAccountByIdAndUser(accountId: string, userId: string) 
   return prisma.dimAccount.findFirst({ where: { id: accountId, userId } });
 }
 
-export async function upsertDate(date: Date, tx: Prisma.TransactionClient) {
-  const year = date.getUTCFullYear();
-  const month = date.getUTCMonth() + 1;
-  const day = date.getUTCDate();
-  const id = year * 10000 + month * 100 + day;
-  const dayOfWeek = date.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
-
-  return tx.dimDate.upsert({
-    where: { id },
-    update: {},
-    create: { id, dayOfWeek, month, year },
-  });
-}
-
-export async function findOrCreateMerchant(name: string, tx: Prisma.TransactionClient) {
-  const existing = await tx.dimMerchant.findFirst({ where: { name } });
-  if (existing) return existing;
-  return tx.dimMerchant.create({ data: { name } });
-}
-
 export async function insertTransactions(
   rows: Array<{
     amount: number;
@@ -181,49 +161,102 @@ export async function insertTransactions(
   await tx.factTransactions.createMany({ data: rows.map((r) => ({ ...r, isDeleted: false })) });
 }
 
+// A full 50,000-row import (the supported maximum) runs in a single
+// all-or-nothing transaction and takes well over Prisma's 5s interactive
+// default, which otherwise aborts the commit with P2028. Size the timeout to
+// the target import volume with headroom.
+const BULK_IMPORT_TIMEOUT_MS = 120_000;
+const BULK_IMPORT_MAX_WAIT_MS = 15_000;
+
 export async function bulkImport(
   parsed: ParsedTransaction[],
   userId: string,
   accountId: string,
 ): Promise<number> {
-  await prisma.$transaction(async (tx) => {
-    // 1. Deduplicate and upsert dates
-    const uniqueDates = new Map<number, Date>();
-    for (const t of parsed) {
-      const year = t.date.getUTCFullYear();
-      const month = t.date.getUTCMonth() + 1;
-      const day = t.date.getUTCDate();
-      const id = year * 10000 + month * 100 + day;
-      if (!uniqueDates.has(id)) uniqueDates.set(id, t.date);
-    }
-    await Promise.all([...uniqueDates.values()].map((date) => upsertDate(date, tx)));
+  const dateId = (d: Date) =>
+    d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
 
-    // 2. Deduplicate and find-or-create merchants
-    const uniqueMerchantNames = new Set(parsed.map((t) => t.description));
-    const merchants = await Promise.all(
-      [...uniqueMerchantNames].map((name) => findOrCreateMerchant(name, tx)),
-    );
-    const merchantByName = new Map(merchants.map((m) => [m.name, m.id]));
+  await prisma.$transaction(
+    async (tx) => {
+      // 1. Dates — collect the distinct DimDate rows and insert them in one
+      //    statement. The PK `id` (YYYYMMDD) is unique, so `skipDuplicates`
+      //    leaves existing dates untouched.
+      const datesById = new Map<
+        number,
+        { id: number; dayOfWeek: string; month: number; year: number }
+      >();
+      for (const t of parsed) {
+        const id = dateId(t.date);
+        if (!datesById.has(id)) {
+          datesById.set(id, {
+            id,
+            dayOfWeek: t.date.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" }),
+            month: t.date.getUTCMonth() + 1,
+            year: t.date.getUTCFullYear(),
+          });
+        }
+      }
+      if (datesById.size > 0) {
+        await tx.dimDate.createMany({ data: [...datesById.values()], skipDuplicates: true });
+      }
 
-    // 3. Build rows (sync lookups only)
-    const rows = parsed.map((t) => {
-      const year = t.date.getUTCFullYear();
-      const month = t.date.getUTCMonth() + 1;
-      const day = t.date.getUTCDate();
-      return {
+      // 2. Merchants — resolve every unique name with one read, create only the
+      //    missing ones, then build the name→id map. (DimMerchant.name is not
+      //    unique, so the missing set is filtered explicitly rather than relying
+      //    on skipDuplicates.) This replaces a per-merchant find-or-create that
+      //    cost ~2N round-trips on the single transaction connection.
+      const uniqueNames = [...new Set(parsed.map((t) => t.description))];
+      const existing = await tx.dimMerchant.findMany({
+        where: { name: { in: uniqueNames } },
+        select: { id: true, name: true },
+      });
+      const known = new Set(existing.map((m) => m.name));
+      const missing = uniqueNames.filter((name) => !known.has(name));
+      if (missing.length > 0) {
+        await tx.dimMerchant.createMany({ data: missing.map((name) => ({ name })) });
+      }
+      const merchants =
+        missing.length > 0
+          ? await tx.dimMerchant.findMany({
+              where: { name: { in: uniqueNames } },
+              select: { id: true, name: true },
+            })
+          : existing;
+      const merchantByName = new Map(merchants.map((m) => [m.name, m.id]));
+
+      // 3. Build rows (sync lookups only).
+      const rows = parsed.map((t) => ({
         amount: t.amount,
         userId,
         accountId,
         merchantId: merchantByName.get(t.description)!,
-        dateId: year * 10000 + month * 100 + day,
-      };
-    });
+        dateId: dateId(t.date),
+      }));
 
-    // 4. Bulk insert
-    await insertTransactions(rows, tx);
-  });
+      // 4. Bulk insert.
+      await insertTransactions(rows, tx);
+    },
+    { timeout: BULK_IMPORT_TIMEOUT_MS, maxWait: BULK_IMPORT_MAX_WAIT_MS },
+  );
 
   return parsed.length;
+}
+
+/**
+ * Returns the dedup keys (date, amount, merchant name) of an account's live
+ * transactions, so an import can skip rows that duplicate an existing one
+ * (KAN-163).
+ */
+export async function findTransactionKeysForAccount(accountId: string) {
+  const rows = await prisma.factTransactions.findMany({
+    where: { accountId, isDeleted: false },
+    select: { dateId: true, amount: true, merchant: { select: { name: true } } },
+  });
+  return rows.map((r) => ({
+    dateId: r.dateId,
+    amount: r.amount,
+    merchantName: r.merchant.name,
+  }));
 }
 
 export async function findUncategorizedForUser(userId: string) {
