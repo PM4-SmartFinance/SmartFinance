@@ -432,15 +432,47 @@ Exactly one of `amount` or a `debit`/`credit` pair must be provided.
 **Response 200:**
 
 ```json
-{ "imported": 42, "categorized": 17 }
+{
+  "imported": 42,
+  "categorized": 17,
+  "duplicates": [
+    { "date": "2025-07-01T00:00:00.000Z", "amount": -30, "description": "Gym", "subject": "" }
+  ]
+}
 ```
 
 `imported` is the number of transactions persisted. `categorized` is the number of those (or other previously uncategorized) transactions that the rule-based engine assigned a category to as part of the post-import auto-categorization step. If the engine fails (e.g. transient DB error), the import still succeeds and `categorized` is `0` — the failure is logged server-side and users can retry via `POST /transactions/auto-categorize`.
+
+`duplicates` lists rows that were **not** imported because they duplicate a live transaction already on the account (same date, amount and merchant). They are returned so the user can review them and re-submit the chosen ones to `POST /transactions/import/force`.
 
 **Response 400:** No file uploaded, missing/invalid query parameters, or (for `format=custom`) a missing/invalid `mapping` field
 **Response 401:** Not authenticated
 **Response 404:** Account not found or does not belong to the authenticated user
 **Response 422:** CSV file is malformed, has an unrecognized format, references columns absent from the file, or contains invalid data rows
+
+---
+
+### POST /transactions/import/force
+
+Imports transactions the user chose to keep despite the duplicate warning from `POST /transactions/import`. No duplicate check is applied. Requires an authenticated session with the `USER` role.
+
+**Request Body:** `application/json`
+
+```json
+{
+  "accountId": "b3f1c8e2-...",
+  "transactions": [
+    { "date": "2025-07-01T00:00:00.000Z", "amount": -30, "description": "Gym", "subject": "" }
+  ]
+}
+```
+
+Each transaction object requires `date` (ISO string), `amount` (number) and `description`; `subject` is optional. The objects are the `duplicates` returned by the import endpoint.
+
+**Response 200:** `{ "imported": 1, "categorized": 0 }`
+**Response 400:** Invalid body or an invalid `date`
+**Response 401:** Not authenticated
+**Response 404:** Account not found or does not belong to the authenticated user
 
 ---
 

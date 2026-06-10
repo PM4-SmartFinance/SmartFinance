@@ -360,6 +360,13 @@
       "detecting": "Il file vegn analisà…",
       "detectedHint": "Renconuschì automaticamain — mida sche necessari.",
       "detectFallback": "Impussibel d'analisar il file — tscherna manualmain in format da banca.",
+      "duplicates": {
+        "result": "{{imported}} importadas, {{skipped}} sursiglidas",
+        "summary": "{{count}} dublettas pussaivlas sursiglidas",
+        "selectAll": "Tscherner tut",
+        "forceBtn": "Importar tschernids ({{count}})",
+        "doneBtn": "Finì"
+      },
       "wizard": {
         "title": "Importar CSV",
         "analyzing": "Il file vegn analisà…",

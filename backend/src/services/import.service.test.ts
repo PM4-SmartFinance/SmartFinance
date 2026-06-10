@@ -5,6 +5,7 @@ import { registerImporter, clearImporterRegistry } from "./importer-registry.ser
 vi.mock("../repositories/transaction.repository.js", () => ({
   findAccountByIdAndUser: vi.fn(),
   bulkImport: vi.fn(),
+  findTransactionKeysForAccount: vi.fn(),
 }));
 
 vi.mock("../repositories/account.repository.js", () => ({
@@ -26,7 +27,7 @@ vi.mock("../repositories/import-mapping.repository.js", () => ({
   upsertMapping: vi.fn(),
 }));
 
-import { importTransactions, detectImport } from "./import.service.js";
+import { importTransactions, detectImport, forceImport } from "./import.service.js";
 import * as repo from "../repositories/transaction.repository.js";
 import * as accountRepo from "../repositories/account.repository.js";
 import * as categorizationService from "./categorization.service.js";
@@ -46,6 +47,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockRepo.findAccountByIdAndUser.mockResolvedValue({ id: "acc-1" } as never);
   mockRepo.bulkImport.mockImplementation((parsed: unknown[]) => Promise.resolve(parsed.length));
+  mockRepo.findTransactionKeysForAccount.mockResolvedValue([]);
   mockAccountRepo.findActiveAccountsByUser.mockResolvedValue([]);
   mockAccountRepo.findActiveAccountByNumberAndUser.mockResolvedValue([]);
   mockAccountRepo.findActiveAccountByIbanAndUser.mockResolvedValue([]);
@@ -82,7 +84,7 @@ describe("importTransactions", () => {
       logger,
     });
 
-    expect(result).toEqual({ imported: 3, categorized: 2 });
+    expect(result).toEqual({ imported: 3, categorized: 2, duplicates: [] });
   });
 
   it("calls bulkImport with the parsed transactions and correct ids", async () => {
@@ -160,7 +162,7 @@ describe("importTransactions", () => {
       logger: { warn: warnSpy },
     });
 
-    expect(result).toEqual({ imported: 1, categorized: 0 });
+    expect(result).toEqual({ imported: 1, categorized: 0, duplicates: [] });
     expect(warnSpy).toHaveBeenCalledOnce();
     const [logObj, logMsg] = warnSpy.mock.calls[0]!;
     expect(logObj).toMatchObject({ userId: "user-1" });
@@ -180,7 +182,7 @@ describe("importTransactions", () => {
       logger,
     });
 
-    expect(result).toEqual({ imported: 1, categorized: 0 });
+    expect(result).toEqual({ imported: 1, categorized: 0, duplicates: [] });
   });
 
   it("works correctly for the wise format", async () => {
@@ -195,7 +197,7 @@ describe("importTransactions", () => {
       logger,
     });
 
-    expect(result).toEqual({ imported: 1, categorized: 0 });
+    expect(result).toEqual({ imported: 1, categorized: 0, duplicates: [] });
   });
 
   it("falls back to the user's single account when no accountId is provided", async () => {
@@ -354,7 +356,7 @@ describe("importTransactions", () => {
       logger,
     });
 
-    expect(result).toEqual({ imported: 1, categorized: 0 });
+    expect(result).toEqual({ imported: 1, categorized: 0, duplicates: [] });
   });
 
   it("throws 400 for an unknown format not in registry", async () => {
@@ -446,7 +448,7 @@ describe("importTransactions", () => {
       logger,
     });
 
-    expect(result).toEqual({ imported: 2, categorized: 0 });
+    expect(result).toEqual({ imported: 2, categorized: 0, duplicates: [] });
     expect(logger.warn).toHaveBeenCalledWith(
       expect.objectContaining({ err: fireErr, userId: "user-1", accountId: "acc-1" }),
       "post-import fireTransactionImported failed",
@@ -624,5 +626,104 @@ describe("detectImport (KAN-163)", () => {
 
       expect(result.suggestedAccountId).toBeNull();
     });
+  });
+});
+
+describe("duplicate handling (KAN-163)", () => {
+  it("skips rows that match an existing transaction and returns them", async () => {
+    // The single Neon row is 2025-01-15 / 42 / "Grocery Store".
+    mockRepo.findTransactionKeysForAccount.mockResolvedValue([
+      { dateId: 20250115, amount: 42, merchantName: "Grocery Store" },
+    ] as never);
+
+    const result = await importTransactions({
+      csvText: [NEON_HEADER, NEON_ROW].join("\n"),
+      format: "neon",
+      accountId: "acc-1",
+      userId: "user-1",
+      logger,
+    });
+
+    expect(result.imported).toBe(0);
+    expect(mockRepo.bulkImport).not.toHaveBeenCalled();
+    expect(result.duplicates).toEqual([
+      {
+        date: "2025-01-15T00:00:00.000Z",
+        amount: 42,
+        description: "Grocery Store",
+        subject: "ref",
+      },
+    ]);
+  });
+
+  it("imports only the non-duplicate rows", async () => {
+    mockRepo.findTransactionKeysForAccount.mockResolvedValue([
+      { dateId: 20250115, amount: 42, merchantName: "Grocery Store" },
+    ] as never);
+    const other = `"2025-01-16";"9.90";"";"";"";"Bakery";"r";"uncategorized";"";"no";"no"`;
+
+    const result = await importTransactions({
+      csvText: [NEON_HEADER, NEON_ROW, other].join("\n"),
+      format: "neon",
+      accountId: "acc-1",
+      userId: "user-1",
+      logger,
+    });
+
+    expect(result.imported).toBe(1);
+    expect(result.duplicates).toHaveLength(1);
+    const [importedRows] = mockRepo.bulkImport.mock.calls[0]!;
+    expect(importedRows).toHaveLength(1);
+    expect(importedRows[0]).toMatchObject({ description: "Bakery" });
+  });
+});
+
+describe("forceImport (KAN-163)", () => {
+  it("imports the provided rows without dedup", async () => {
+    const result = await forceImport({
+      userId: "user-1",
+      accountId: "acc-1",
+      transactions: [
+        {
+          date: "2025-01-15T00:00:00.000Z",
+          amount: 42,
+          description: "Grocery Store",
+          subject: "ref",
+        },
+      ],
+      logger,
+    });
+
+    expect(result.imported).toBe(1);
+    expect(mockRepo.findTransactionKeysForAccount).not.toHaveBeenCalled();
+    const [rows, userId, accountId] = mockRepo.bulkImport.mock.calls[0]!;
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ amount: 42, description: "Grocery Store" });
+    expect(userId).toBe("user-1");
+    expect(accountId).toBe("acc-1");
+  });
+
+  it("throws 404 when the account does not belong to the user", async () => {
+    mockRepo.findAccountByIdAndUser.mockResolvedValue(null);
+
+    await expect(
+      forceImport({
+        userId: "user-1",
+        accountId: "acc-x",
+        transactions: [{ date: "2025-01-15T00:00:00.000Z", amount: 1, description: "X" }],
+        logger,
+      }),
+    ).rejects.toThrow(new ServiceError(404, "Account not found"));
+  });
+
+  it("returns zero for an empty selection without importing", async () => {
+    const result = await forceImport({
+      userId: "user-1",
+      accountId: "acc-1",
+      transactions: [],
+      logger,
+    });
+    expect(result).toEqual({ imported: 0, categorized: 0 });
+    expect(mockRepo.bulkImport).not.toHaveBeenCalled();
   });
 });

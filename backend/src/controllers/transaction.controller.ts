@@ -4,6 +4,7 @@ import { requireRole, getSessionUser } from "../middleware/rbac.js";
 import { ServiceError } from "../errors.js";
 import {
   detectImport,
+  forceImport,
   importTransactions,
   listImportMappings,
   resolveImportEncoding,
@@ -266,6 +267,54 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       const user = getSessionUser(request);
       const mappings = await listImportMappings(user.id);
       return reply.send({ mappings });
+    },
+  );
+
+  // KAN-163: import rows the user chose to keep despite the duplicate warning.
+  app.post<{
+    Body: {
+      accountId: string;
+      transactions: Array<{ date: string; amount: number; description: string; subject?: string }>;
+    };
+  }>(
+    "/transactions/import/force",
+    {
+      preHandler: requireRole("USER"),
+      schema: {
+        body: {
+          type: "object",
+          required: ["accountId", "transactions"],
+          additionalProperties: false,
+          properties: {
+            accountId: { type: "string", minLength: 1 },
+            transactions: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["date", "amount", "description"],
+                additionalProperties: false,
+                properties: {
+                  date: { type: "string", minLength: 1 },
+                  amount: { type: "number" },
+                  description: { type: "string" },
+                  subject: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const user = getSessionUser(request);
+      const { accountId, transactions } = request.body;
+      const result = await forceImport({
+        userId: user.id,
+        accountId,
+        transactions,
+        logger: request.log,
+      });
+      return reply.status(200).send(result);
     },
   );
 

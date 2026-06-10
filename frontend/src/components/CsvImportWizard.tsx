@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
+import { formatAmount, formatDate } from "../lib/format";
 
 const QUERY_KEYS_TO_INVALIDATE_AFTER_IMPORT = [
   ["budgets"],
@@ -22,7 +23,14 @@ const CUSTOM = "__custom__";
 const SAVED_PREFIX = "saved:";
 const isMappingValue = (v: string) => v === CUSTOM || v.startsWith(SAVED_PREFIX);
 
-type UploadResult = { imported: number };
+interface DuplicateRow {
+  date: string;
+  amount: number;
+  description: string;
+  subject?: string;
+}
+
+type UploadResult = { imported: number; categorized?: number; duplicates?: DuplicateRow[] };
 
 interface ImportFormatsResponse {
   formats: { value: string; label: string }[];
@@ -140,7 +148,7 @@ interface Props {
  */
 export function CsvImportWizard({ file, onClose, onImported }: Props) {
   const queryClient = useQueryClient();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const [format, setFormat] = useState<string>("");
   const [accountId, setAccountId] = useState<string>("");
@@ -150,6 +158,15 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
   const [amountMode, setAmountMode] = useState<"single" | "split">("single");
   const [mappingName, setMappingName] = useState("");
   const [mappingError, setMappingError] = useState<string | null>(null);
+
+  // After an import that skipped duplicates, the wizard switches to this review
+  // state instead of closing, so the user can force-import selected rows.
+  const [review, setReview] = useState<{
+    importedCount: number;
+    refreshHint: boolean;
+    duplicates: DuplicateRow[];
+  } | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
 
   const [newAccountName, setNewAccountName] = useState("");
   const [newAccountIban, setNewAccountIban] = useState("");
@@ -208,6 +225,17 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
     runDetect(file);
   }, [file, runDetect]);
 
+  // Refresh the data an import affects (and the named-mapping list). Returns
+  // true if any invalidation failed, surfaced to the user as a refresh hint.
+  async function invalidateAfterImport(): Promise<boolean> {
+    const settled = await Promise.allSettled(
+      [...QUERY_KEYS_TO_INVALIDATE_AFTER_IMPORT, ["import-mappings"]].map((queryKey) =>
+        queryClient.invalidateQueries({ queryKey }),
+      ),
+    );
+    return settled.some((r) => r.status === "rejected");
+  }
+
   const {
     mutate: importFile,
     isPending: isImporting,
@@ -232,15 +260,36 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
       return api.upload<UploadResult>(`/transactions/import?${params.toString()}`, formData);
     },
     onSuccess: async (data) => {
-      // Also refresh the named-mapping list so a freshly named mapping is
-      // offered on the next import.
-      const settled = await Promise.allSettled(
-        [...QUERY_KEYS_TO_INVALIDATE_AFTER_IMPORT, ["import-mappings"]].map((queryKey) =>
-          queryClient.invalidateQueries({ queryKey }),
-        ),
-      );
-      const refreshHint = settled.some((r) => r.status === "rejected");
+      const refreshHint = await invalidateAfterImport();
+      const duplicates = data.duplicates ?? [];
+      if (duplicates.length > 0) {
+        // Stay open and let the user review/force-import the skipped rows.
+        setReview({ importedCount: data.imported, refreshHint, duplicates });
+        setSelected(new Set());
+        return;
+      }
       onImported({ imported: data.imported, refreshHint });
+      onClose();
+    },
+  });
+
+  const {
+    mutate: forceImport,
+    isPending: isForcing,
+    error: forceError,
+  } = useMutation({
+    mutationFn: (rows: DuplicateRow[]) =>
+      api.post<{ imported: number }>("/transactions/import/force", {
+        accountId,
+        transactions: rows,
+      }),
+    onSuccess: async (data) => {
+      const refreshHint = await invalidateAfterImport();
+      const base = review?.importedCount ?? 0;
+      onImported({
+        imported: base + data.imported,
+        refreshHint: refreshHint || !!review?.refreshHint,
+      });
       onClose();
     },
   });
@@ -415,6 +464,42 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
     subject: sampleValueOf(mapping.subject).trim(),
   };
 
+  const allDuplicatesSelected =
+    review !== null && review.duplicates.length > 0 && selected.size === review.duplicates.length;
+
+  function toggleDuplicate(index: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }
+  function toggleAllDuplicates() {
+    setSelected((prev) =>
+      review && prev.size < review.duplicates.length
+        ? new Set(review.duplicates.map((_, i) => i))
+        : new Set(),
+    );
+  }
+  function forceSelected() {
+    if (!review) return;
+    const rows = review.duplicates.filter((_, i) => selected.has(i));
+    if (rows.length > 0) forceImport(rows);
+  }
+  function finishReview() {
+    if (!review) return;
+    onImported({ imported: review.importedCount, refreshHint: review.refreshHint });
+    onClose();
+  }
+
+  const forceErrorMessage =
+    forceError instanceof Error
+      ? forceError.message
+      : forceError
+        ? t("components.csvImportCard.errors.uploadFailed", "Upload failed.")
+        : null;
+
   return (
     <Dialog isOpen onClose={onClose} size="md">
       <h2 className="mb-1 text-lg font-semibold text-foreground">
@@ -426,6 +511,82 @@ export function CsvImportWizard({ file, onClose, onImported }: Props) {
         <p className="py-6 text-center text-sm text-muted-foreground">
           {t("components.csvImportCard.wizard.analyzing", "Analyzing file…")}
         </p>
+      ) : review ? (
+        <div className="flex flex-col gap-4">
+          <p className="text-sm font-medium text-foreground">
+            {t(
+              "components.csvImportCard.duplicates.result",
+              "{{imported}} imported, {{skipped}} skipped",
+              { imported: review.importedCount, skipped: review.duplicates.length },
+            )}
+          </p>
+
+          <details className="rounded border border-border">
+            <summary className="cursor-pointer px-3 py-2 text-sm">
+              {t(
+                "components.csvImportCard.duplicates.summary",
+                "{{count}} possible duplicates skipped",
+                { count: review.duplicates.length },
+              )}
+            </summary>
+            <div className="flex flex-col gap-2 border-t border-border p-3">
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  className="rounded border border-input"
+                  checked={allDuplicatesSelected}
+                  onChange={toggleAllDuplicates}
+                />
+                {t("components.csvImportCard.duplicates.selectAll", "Select all")}
+              </label>
+              <ul className="flex flex-col gap-1">
+                {review.duplicates.map((d, i) => (
+                  <li key={i}>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="rounded border border-input"
+                        checked={selected.has(i)}
+                        onChange={() => toggleDuplicate(i)}
+                      />
+                      <span className="flex-1 truncate">
+                        {formatDate(d.date, i18n.resolvedLanguage)} · {d.description}
+                      </span>
+                      <span className="font-medium">
+                        {formatAmount(d.amount, i18n.resolvedLanguage)}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </details>
+
+          {forceErrorMessage && (
+            <p role="alert" className="text-xs text-destructive">
+              {forceErrorMessage}
+            </p>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={finishReview} disabled={isForcing}>
+              {t("components.csvImportCard.duplicates.doneBtn", "Done")}
+            </Button>
+            <Button
+              type="button"
+              disabled={selected.size === 0 || isForcing}
+              onClick={forceSelected}
+            >
+              {isForcing
+                ? t("components.csvImportCard.uploading", "Uploading…")
+                : t(
+                    "components.csvImportCard.duplicates.forceBtn",
+                    "Force import selected ({{count}})",
+                    { count: selected.size },
+                  )}
+            </Button>
+          </div>
+        </div>
       ) : (
         <div className="flex flex-col gap-4">
           {detectFailed && (

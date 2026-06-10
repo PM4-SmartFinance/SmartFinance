@@ -360,6 +360,13 @@
       "detecting": "Analisi del file…",
       "detectedHint": "Rilevato automaticamente — modificalo se necessario.",
       "detectFallback": "Impossibile analizzare il file — scegli manualmente un formato bancario.",
+      "duplicates": {
+        "result": "{{imported}} importate, {{skipped}} saltate",
+        "summary": "{{count}} possibili duplicati saltati",
+        "selectAll": "Seleziona tutto",
+        "forceBtn": "Importa selezionati ({{count}})",
+        "doneBtn": "Fatto"
+      },
       "wizard": {
         "title": "Importa CSV",
         "analyzing": "Analisi del file…",

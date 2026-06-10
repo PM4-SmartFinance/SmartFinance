@@ -142,6 +142,10 @@ beforeEach(() => {
       accountsValue = [...accountsValue, created];
       return Promise.resolve({ account: created });
     }
+    if (path === "/transactions/import/force") {
+      const input = body as { transactions: unknown[] };
+      return Promise.resolve({ imported: input.transactions.length });
+    }
     return Promise.resolve({});
   });
 });
@@ -405,5 +409,57 @@ describe("errors and lifecycle", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument());
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+describe("duplicate review", () => {
+  const DUP = { date: "2025-07-01T00:00:00.000Z", amount: -30, description: "Gym" };
+
+  async function importWithDuplicates() {
+    setImport(ok({ imported: 1, duplicates: [DUP] }));
+    const ctx = renderWizard();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Import" })).toBeEnabled());
+    await userEvent.click(screen.getByRole("button", { name: "Import" }));
+    await waitFor(() => expect(screen.getByText("1 imported, 1 skipped")).toBeInTheDocument());
+    return ctx;
+  }
+
+  it("shows the review with a closed collapsible instead of closing", async () => {
+    const { onClose } = await importWithDuplicates();
+    expect(onClose).not.toHaveBeenCalled();
+    const details = screen.getByText(/possible duplicates skipped/).closest("details");
+    expect(details).not.toHaveAttribute("open"); // closed by default
+    expect(screen.getByText(/Gym/)).toBeInTheDocument();
+  });
+
+  it("force-imports the selected duplicates and closes with the total", async () => {
+    const { onImported, onClose } = await importWithDuplicates();
+    const checkboxes = screen.getAllByRole("checkbox"); // [0] = select all, [1] = the row
+    await userEvent.click(checkboxes[1]!);
+    await userEvent.click(screen.getByRole("button", { name: "Force import selected (1)" }));
+
+    await waitFor(() =>
+      expect(mockPost).toHaveBeenCalledWith(
+        "/transactions/import/force",
+        expect.objectContaining({ accountId: "acc-1", transactions: [DUP] }),
+      ),
+    );
+    await waitFor(() =>
+      expect(onImported).toHaveBeenCalledWith({ imported: 2, refreshHint: false }),
+    );
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("closes with the partial count on Done", async () => {
+    const { onImported, onClose } = await importWithDuplicates();
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(onImported).toHaveBeenCalledWith({ imported: 1, refreshHint: false });
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("select-all ticks every duplicate", async () => {
+    await importWithDuplicates();
+    await userEvent.click(screen.getAllByRole("checkbox")[0]!); // select all
+    expect(screen.getByRole("button", { name: "Force import selected (1)" })).toBeEnabled();
   });
 });

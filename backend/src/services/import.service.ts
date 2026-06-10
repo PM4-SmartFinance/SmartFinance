@@ -17,7 +17,25 @@ import {
   headerSignature,
 } from "./importers/detect.js";
 import { parseWithMapping, type ColumnMapping } from "./importers/generic.parser.js";
+import type { ParsedTransaction } from "./importers/types.js";
 import * as importMappingRepository from "../repositories/import-mapping.repository.js";
+
+export interface DuplicateTransaction {
+  /** ISO date string, so the wizard can echo it back to force-import. */
+  date: string;
+  amount: number;
+  description: string;
+  subject: string;
+}
+
+function toDateId(date: Date): number {
+  return date.getUTCFullYear() * 10000 + (date.getUTCMonth() + 1) * 100 + date.getUTCDate();
+}
+
+// Duplicate key: same account (caller-scoped), date, amount and merchant.
+function dedupKey(dateId: number, amount: number, merchant: string): string {
+  return `${dateId}|${amount.toFixed(2)}|${merchant}`;
+}
 
 export const SUPPORTED_FORMATS = ["neon", "zkb", "wise", "ubs"] as const;
 export type ImportFormat = (typeof SUPPORTED_FORMATS)[number];
@@ -208,7 +226,11 @@ export async function importTransactions({
   accountId,
   userId,
   logger,
-}: ImportParams): Promise<{ imported: number; categorized: number }> {
+}: ImportParams): Promise<{
+  imported: number;
+  categorized: number;
+  duplicates: DuplicateTransaction[];
+}> {
   try {
     const resolvedAccountId = await resolveAccountId({
       format,
@@ -235,10 +257,36 @@ export async function importTransactions({
     }
 
     if (parsed.length === 0) {
-      return { imported: 0, categorized: 0 };
+      return { imported: 0, categorized: 0, duplicates: [] };
     }
 
-    const imported = await transactionRepository.bulkImport(parsed, userId, resolvedAccountId);
+    // Skip rows that duplicate a live transaction already on this account (same
+    // date, amount and merchant). Skipped rows are returned so the user can
+    // review and force-import them (KAN-163).
+    const existingKeys = new Set(
+      (await transactionRepository.findTransactionKeysForAccount(resolvedAccountId)).map((e) =>
+        dedupKey(e.dateId, Number(e.amount), e.merchantName),
+      ),
+    );
+    const toImport: ParsedTransaction[] = [];
+    const duplicates: DuplicateTransaction[] = [];
+    for (const t of parsed) {
+      if (existingKeys.has(dedupKey(toDateId(t.date), t.amount, t.description))) {
+        duplicates.push({
+          date: t.date.toISOString(),
+          amount: t.amount,
+          description: t.description,
+          subject: t.subject,
+        });
+      } else {
+        toImport.push(t);
+      }
+    }
+
+    const imported =
+      toImport.length > 0
+        ? await transactionRepository.bulkImport(toImport, userId, resolvedAccountId)
+        : 0;
     transactionsImported.inc({ format }, imported);
     importOperations.inc({ format, outcome: "success" });
 
@@ -277,11 +325,55 @@ export async function importTransactions({
       logger.warn({ err, userId }, "post-import auto-categorize failed");
     }
 
-    return { imported, categorized };
+    return { imported, categorized, duplicates };
   } catch (err) {
     const outcome =
       err instanceof ServiceError && err.statusCode < 500 ? "failed_user" : "failed_system";
     importOperations.inc({ format, outcome });
     throw err;
   }
+}
+
+/**
+ * Imports transactions the user explicitly chose to keep despite being flagged
+ * as duplicates — no dedup is applied (KAN-163).
+ */
+export async function forceImport(params: {
+  userId: string;
+  accountId: string;
+  transactions: Array<{ date: string; amount: number; description: string; subject?: string }>;
+  logger: ImportLogger;
+}): Promise<{ imported: number; categorized: number }> {
+  const { userId, accountId, transactions, logger } = params;
+
+  const account = await transactionRepository.findAccountByIdAndUser(accountId, userId);
+  if (!account) throw new ServiceError(404, "Account not found");
+  if (transactions.length === 0) return { imported: 0, categorized: 0 };
+
+  const parsed: ParsedTransaction[] = transactions.map((t) => {
+    const date = new Date(t.date);
+    if (isNaN(date.getTime())) throw new ServiceError(400, `Invalid date: ${t.date}`);
+    return { date, amount: t.amount, description: t.description, subject: t.subject ?? "" };
+  });
+
+  const imported = await transactionRepository.bulkImport(parsed, userId, account.id);
+  transactionsImported.inc({ format: "custom" }, imported);
+
+  try {
+    await fireTransactionImported({ userId, accountId: account.id, imported });
+  } catch (err) {
+    logger.warn(
+      { err, userId, accountId: account.id },
+      "post-import fireTransactionImported failed",
+    );
+  }
+
+  let categorized = 0;
+  try {
+    categorized = (await autoCategorize(userId)).categorized;
+  } catch (err) {
+    logger.warn({ err, userId }, "post-import auto-categorize failed");
+  }
+
+  return { imported, categorized };
 }

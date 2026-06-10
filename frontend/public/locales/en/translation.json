@@ -360,6 +360,13 @@
       "detecting": "Analyzing file…",
       "detectedHint": "Detected automatically — change it if it's wrong.",
       "detectFallback": "Couldn't analyze the file — pick a bank format manually.",
+      "duplicates": {
+        "result": "{{imported}} imported, {{skipped}} skipped",
+        "summary": "{{count}} possible duplicates skipped",
+        "selectAll": "Select all",
+        "forceBtn": "Force import selected ({{count}})",
+        "doneBtn": "Done"
+      },
       "wizard": {
         "title": "Import CSV",
         "analyzing": "Analyzing file…",

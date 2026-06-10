@@ -242,6 +242,23 @@ export async function bulkImport(
   return parsed.length;
 }
 
+/**
+ * Returns the dedup keys (date, amount, merchant name) of an account's live
+ * transactions, so an import can skip rows that duplicate an existing one
+ * (KAN-163).
+ */
+export async function findTransactionKeysForAccount(accountId: string) {
+  const rows = await prisma.factTransactions.findMany({
+    where: { accountId, isDeleted: false },
+    select: { dateId: true, amount: true, merchant: { select: { name: true } } },
+  });
+  return rows.map((r) => ({
+    dateId: r.dateId,
+    amount: r.amount,
+    merchantName: r.merchant.name,
+  }));
+}
+
 export async function findUncategorizedForUser(userId: string) {
   return prisma.factTransactions.findMany({
     where: { userId, categoryId: null, manualOverride: false, isDeleted: false },

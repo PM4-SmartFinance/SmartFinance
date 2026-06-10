@@ -230,3 +230,39 @@ describe("named mappings", () => {
     expect(detectRes.json().savedMappingName).toBe("My Bank");
   });
 });
+
+describe("duplicate detection", () => {
+  const DEDUP_CSV = ["Datum,Empfaenger,Wert", "2025-07-01,Gym,-30.00"].join("\n");
+  const DEDUP_MAPPING = { date: "Datum", description: "Empfaenger", amount: "Wert" };
+
+  it("skips an already-imported row, returns it, and force-imports it on request", async () => {
+    const first = await post(
+      "/api/v1/transactions/import?format=custom",
+      mappingAndFileBody(DEDUP_MAPPING, DEDUP_CSV),
+    );
+    expect(first.statusCode).toBe(200);
+    expect(first.json().imported).toBe(1);
+    expect(first.json().duplicates).toEqual([]);
+
+    // Second import of the same row → skipped and returned.
+    const second = await post(
+      "/api/v1/transactions/import?format=custom",
+      mappingAndFileBody(DEDUP_MAPPING, DEDUP_CSV),
+    );
+    expect(second.statusCode).toBe(200);
+    expect(second.json().imported).toBe(0);
+    const dups = second.json().duplicates as Array<{ amount: number; description: string }>;
+    expect(dups).toHaveLength(1);
+    expect(dups[0]).toMatchObject({ amount: -30, description: "Gym" });
+
+    // Force-import the flagged duplicate.
+    const force = await app.inject({
+      method: "POST",
+      url: "/api/v1/transactions/import/force",
+      cookies: { session: sessionCookie },
+      payload: { accountId, transactions: dups },
+    });
+    expect(force.statusCode).toBe(200);
+    expect(force.json().imported).toBe(1);
+  });
+});
