@@ -7,13 +7,24 @@ import { CardContent, CardHeader, CardTitle } from "./ui/card";
 import { DashboardTileLink } from "./DashboardTileLink";
 import { useTranslation } from "react-i18next";
 
+// Theme tokens (oklch) resolved at paint time — adapt to light/dark automatically.
 const OUTER_COLORS = {
-  spent: "hsl(var(--primary))",
-  remaining: "hsl(var(--muted))",
-  over: "hsl(var(--destructive))",
+  spent: "var(--primary)",
+  remaining: "var(--muted)",
+  over: "var(--destructive)",
 } as const;
 
-const INNER_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
+const INNER_COLORS = [
+  "var(--chart-cat-1)",
+  "var(--chart-cat-2)",
+  "var(--chart-cat-3)",
+  "var(--chart-cat-4)",
+  "var(--chart-cat-5)",
+  "var(--chart-cat-6)",
+];
+
+/** Number of categories shown in the inner ring and legend before collapsing into a "+N more" row. */
+const TOP_CATEGORY_LIMIT = 4;
 
 interface PeriodSnapshot {
   label: string;
@@ -279,14 +290,49 @@ export function BudgetProgressWidget() {
                     {
                       name: t("components.budgetProgress.chart.noSpending", "No category spending"),
                       value: 1,
-                      fill: "hsl(var(--muted))",
+                      fill: "var(--muted)",
                     },
                   ];
+
+            const lng = i18n.resolvedLanguage;
+            const topCategories = snapshot.categories.slice(0, TOP_CATEGORY_LIMIT);
+            const overflowCount = snapshot.categories.length - topCategories.length;
+            const categoriesPart =
+              snapshot.categories.length > 0
+                ? t("components.budgetProgress.aria.categories", "Top categories: {{list}}.", {
+                    list: topCategories
+                      .map(
+                        (c) => `${getCategoryLabel(c.categoryId)} ${formatAmount(c.spending, lng)}`,
+                      )
+                      .join(", "),
+                  })
+                : t("components.budgetProgress.aria.noCategories", "No category spending.");
+            const overPart =
+              snapshot.overBudget > 0
+                ? t("components.budgetProgress.aria.over", " Over budget by {{amount}}.", {
+                    amount: formatAmount(snapshot.overBudget, lng),
+                  })
+                : "";
+            const chartAriaLabel = t(
+              "components.budgetProgress.aria.label",
+              "{{period}} budget: spent {{spent}} of {{limit}}.{{over}} {{categories}}",
+              {
+                period: snapshot.label,
+                spent: formatAmount(snapshot.totalSpent, lng),
+                limit: formatAmount(snapshot.totalLimit, lng),
+                over: overPart,
+                categories: categoriesPart,
+              },
+            );
 
             return (
               <div key={snapshot.label} className="rounded border border-border p-4">
                 <p className="mb-2 text-sm font-semibold">{snapshot.label}</p>
-                <div className="h-52 w-full outline-none [&_svg]:outline-none [&_svg:focus]:outline-none">
+                <figure
+                  role="img"
+                  aria-label={chartAriaLabel}
+                  className="m-0 h-52 w-full [&_svg]:outline-none"
+                >
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -319,11 +365,11 @@ export function BudgetProgressWidget() {
                       </Pie>
                     </PieChart>
                   </ResponsiveContainer>
-                </div>
+                </figure>
 
                 {snapshot.categories.length > 0 ? (
                   <ul className="mt-3 space-y-1">
-                    {snapshot.categories.slice(0, 4).map((cat, index) => (
+                    {topCategories.map((cat, index) => (
                       <li
                         key={`${snapshot.label}-${cat.categoryId}`}
                         className="flex items-center justify-between text-xs"
@@ -336,11 +382,16 @@ export function BudgetProgressWidget() {
                           />
                           {getCategoryLabel(cat.categoryId)}
                         </span>
-                        <span className="font-medium">
-                          {formatAmount(cat.spending, i18n.resolvedLanguage)}
-                        </span>
+                        <span className="font-medium">{formatAmount(cat.spending, lng)}</span>
                       </li>
                     ))}
+                    {overflowCount > 0 && (
+                      <li className="pt-0.5 text-xs text-muted-foreground">
+                        {t("components.budgetProgress.moreCategories", "+{{count}} more", {
+                          count: overflowCount,
+                        })}
+                      </li>
+                    )}
                   </ul>
                 ) : (
                   <p className="mt-3 text-xs text-muted-foreground">

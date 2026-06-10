@@ -293,6 +293,14 @@
         "noSpending": "No category spending"
       },
       "noCategorySpending": "No category spending yet.",
+      "moreCategories_one": "+{{count}} more",
+      "moreCategories_other": "+{{count}} more",
+      "aria": {
+        "label": "{{period}} budget: spent {{spent}} of {{limit}}.{{over}} {{categories}}",
+        "categories": "Top categories: {{list}}.",
+        "noCategories": "No category spending.",
+        "over": " Over budget by {{amount}}."
+      },
       "spent": "Spent",
       "trackedTotal": "Tracked total",
       "overBudget": "Over budget"

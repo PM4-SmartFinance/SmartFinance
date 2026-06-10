@@ -288,6 +288,62 @@ describe("BudgetProgressWidget", () => {
     expect(overValue?.textContent).toContain("50");
   });
 
+  it("exposes an accessible label on each donut describing spend and top categories", () => {
+    setPeriods({
+      MONTHLY: {
+        isLoading: false,
+        error: null,
+        data: {
+          budgets: [],
+          categorySpending: [
+            {
+              categoryId: "cat-1",
+              spending: "80.00",
+              scaledLimit: "200.00",
+              sourceBudgetType: "MONTHLY",
+            },
+          ],
+        },
+      },
+    });
+    mockUseCategories.mockReturnValue({
+      data: [{ id: "cat-1", categoryName: "Food" }],
+      isLoading: false,
+      isSuccess: true,
+      error: null,
+    });
+
+    renderWidget();
+
+    const donut = screen.getByRole("img", { name: /Monthly budget: spent/ });
+    expect(donut.getAttribute("aria-label")).toContain("Food");
+  });
+
+  it("indicates overflow with a '+N more' affordance when more than four categories spend", () => {
+    const categorySpending = Array.from({ length: 6 }, (_, i) => ({
+      categoryId: `cat-${i + 1}`,
+      spending: `${(i + 1) * 10}.00`,
+      scaledLimit: "1000.00",
+      sourceBudgetType: "MONTHLY" as const,
+    }));
+    setPeriods({
+      MONTHLY: { isLoading: false, error: null, data: { budgets: [], categorySpending } },
+    });
+    mockUseCategories.mockReturnValue({
+      data: categorySpending.map((c) => ({
+        id: c.categoryId,
+        categoryName: `Cat ${c.categoryId}`,
+      })),
+      isLoading: false,
+      isSuccess: true,
+      error: null,
+    });
+
+    renderWidget();
+
+    expect(screen.getByText("+2 more")).toBeInTheDocument();
+  });
+
   it("renders 'Unknown' for category ids missing from categories data", () => {
     setPeriods({
       MONTHLY: {

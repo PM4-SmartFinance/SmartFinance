@@ -18,8 +18,9 @@ import { useTranslation } from "react-i18next";
 import { formatDate, formatAmount, getSwissLocale, FALLBACK } from "@/lib/format";
 import type { TFunction } from "i18next";
 
-const INCOME_COLOR = "hsl(142 71% 45%)";
-const EXPENSES_COLOR = "hsl(0 72% 51%)";
+// Theme-aware series colours — resolve to light/dark variants via CSS variables.
+const INCOME_COLOR = "var(--chart-income)";
+const EXPENSES_COLOR = "var(--chart-expense)";
 
 type SeriesKey = "income" | "expenses";
 type Visibility = Record<SeriesKey, boolean>;
