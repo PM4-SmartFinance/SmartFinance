@@ -263,7 +263,7 @@ jobs:
 
       # shellcheck ships preinstalled on GitHub-hosted ubuntu runners.
       - name: Lint self-hosting shell scripts
-        run: shellcheck scripts/setup-user.sh scripts/stop-user.sh backend/docker-entrypoint.sh
+        run: shellcheck scripts/setup-user.sh scripts/start-user.sh scripts/stop-user.sh backend/docker-entrypoint.sh
 
       - name: Validate self-hosted compose file
         env:
