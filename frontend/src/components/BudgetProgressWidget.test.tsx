@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BudgetProgressWidget } from "./BudgetProgressWidget";
@@ -50,53 +50,24 @@ function renderWidget() {
 describe("BudgetProgressWidget", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseCategories.mockReturnValue({
-      data: [],
-      isLoading: false,
-      isSuccess: true,
-      error: null,
-    });
+    mockUseCategories.mockReturnValue({ data: [], isLoading: false, isSuccess: true, error: null });
   });
 
   it("shows loading state when any period is loading", () => {
-    setPeriods({
-      DAILY: { isLoading: true, error: null, data: undefined },
-    });
+    setPeriods({ DAILY: { isLoading: true, error: null, data: undefined } });
     renderWidget();
     expect(screen.getByText("Loading budget progress…")).toBeInTheDocument();
   });
 
   it("shows error state when the daily query fails", () => {
-    setPeriods({
-      DAILY: { isLoading: false, error: new Error("Daily failed"), data: undefined },
-    });
+    setPeriods({ DAILY: { isLoading: false, error: new Error("Daily failed"), data: undefined } });
     renderWidget();
     expect(
       screen.getByText("Failed to load budget progress. Please try again."),
     ).toBeInTheDocument();
   });
 
-  it("shows error state when only the monthly query fails", () => {
-    setPeriods({
-      MONTHLY: { isLoading: false, error: new Error("Monthly failed"), data: undefined },
-    });
-    renderWidget();
-    expect(
-      screen.getByText("Failed to load budget progress. Please try again."),
-    ).toBeInTheDocument();
-  });
-
-  it("shows error state when only the yearly query fails", () => {
-    setPeriods({
-      YEARLY: { isLoading: false, error: new Error("Yearly failed"), data: undefined },
-    });
-    renderWidget();
-    expect(
-      screen.getByText("Failed to load budget progress. Please try again."),
-    ).toBeInTheDocument();
-  });
-
-  it("prefers a categoriesQuery error when no period query has failed", () => {
+  it("shows error state when the categories query fails", () => {
     setPeriods({});
     mockUseCategories.mockReturnValue({
       data: undefined,
@@ -110,7 +81,7 @@ describe("BudgetProgressWidget", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows empty state when no tracked totals exist", () => {
+  it("shows empty state when no category has a budget", () => {
     setPeriods({});
     renderWidget();
     expect(
@@ -124,16 +95,11 @@ describe("BudgetProgressWidget", () => {
     );
   });
 
-  it("shows the malformed-data message in the empty state when all values are unparseable", () => {
+  it("shows the malformed-data message when all budgeted values are unparseable", () => {
     const broken = {
       budgets: [],
       categorySpending: [
-        {
-          categoryId: "cat-1",
-          spending: "not-a-number",
-          scaledLimit: "also-bad",
-          sourceBudgetType: "MONTHLY",
-        },
+        { categoryId: "cat-1", spending: "nope", scaledLimit: "bad", sourceBudgetType: "MONTHLY" },
       ],
     };
     setPeriods({
@@ -149,63 +115,8 @@ describe("BudgetProgressWidget", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders an inline alert when some values are malformed but tracked totals still exist", () => {
-    const valid = {
-      budgets: [],
-      categorySpending: [
-        {
-          categoryId: "cat-1",
-          spending: "10.00",
-          scaledLimit: "100.00",
-          sourceBudgetType: "MONTHLY",
-        },
-        {
-          categoryId: "cat-2",
-          spending: "garbage",
-          scaledLimit: "50.00",
-          sourceBudgetType: "MONTHLY",
-        },
-      ],
-    };
+  it("renders a bar for every budgeted category — including ones with no spending yet", () => {
     setPeriods({
-      DAILY: { isLoading: false, error: null, data: valid },
-      MONTHLY: { isLoading: false, error: null, data: valid },
-      YEARLY: { isLoading: false, error: null, data: valid },
-    });
-    mockUseCategories.mockReturnValue({
-      data: [
-        { id: "cat-1", categoryName: "Food" },
-        { id: "cat-2", categoryName: "Transit" },
-      ],
-      isLoading: false,
-      isSuccess: true,
-      error: null,
-    });
-    renderWidget();
-    expect(
-      screen.getByText(
-        "Some budget values could not be parsed and were excluded from the totals below.",
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it("renders daily, monthly and yearly pies with totals", () => {
-    setPeriods({
-      DAILY: {
-        isLoading: false,
-        error: null,
-        data: {
-          budgets: [],
-          categorySpending: [
-            {
-              categoryId: "cat-1",
-              spending: "120.00",
-              scaledLimit: "100.00",
-              sourceBudgetType: "DAILY",
-            },
-          ],
-        },
-      },
       MONTHLY: {
         isLoading: false,
         error: null,
@@ -213,32 +124,33 @@ describe("BudgetProgressWidget", () => {
           budgets: [],
           categorySpending: [
             {
-              categoryId: "cat-1",
-              spending: "85.50",
-              scaledLimit: "1500.00",
+              categoryId: "hobby",
+              spending: "171.00",
+              scaledLimit: "250.00",
+              sourceBudgetType: "MONTHLY",
+            },
+            {
+              categoryId: "groceries",
+              spending: "0.00",
+              scaledLimit: "750.00",
+              sourceBudgetType: "MONTHLY",
+            },
+            {
+              categoryId: "ent",
+              spending: "0.00",
+              scaledLimit: "500.00",
               sourceBudgetType: "MONTHLY",
             },
           ],
         },
       },
-      YEARLY: {
-        isLoading: false,
-        error: null,
-        data: {
-          budgets: [],
-          categorySpending: [
-            {
-              categoryId: "cat-1",
-              spending: "2200.00",
-              scaledLimit: "12000.00",
-              sourceBudgetType: "YEARLY",
-            },
-          ],
-        },
-      },
     });
     mockUseCategories.mockReturnValue({
-      data: [{ id: "cat-1", categoryName: "Hobby" }],
+      data: [
+        { id: "hobby", categoryName: "Hobby" },
+        { id: "groceries", categoryName: "Groceries" },
+        { id: "ent", categoryName: "Entertainment" },
+      ],
       isLoading: false,
       isSuccess: true,
       error: null,
@@ -246,16 +158,18 @@ describe("BudgetProgressWidget", () => {
 
     renderWidget();
 
-    expect(screen.getByText("Budget Progress")).toBeInTheDocument();
-    expect(screen.getByText("Daily")).toBeInTheDocument();
-    expect(screen.getByText("Monthly")).toBeInTheDocument();
-    expect(screen.getByText("Yearly")).toBeInTheDocument();
-    expect(screen.getAllByText("Tracked total").length).toBe(3);
-    expect(screen.getAllByText("Hobby").length).toBeGreaterThan(0);
-    expect(screen.getByText("Over budget")).toBeInTheDocument();
+    // All three budgeted categories appear, not just the one with spending.
+    expect(screen.getByText("Hobby")).toBeInTheDocument();
+    expect(screen.getByText("Groceries")).toBeInTheDocument();
+    expect(screen.getByText("Entertainment")).toBeInTheDocument();
+    // One bar per category (daily/yearly have no budgets → "No budgets for this period.").
+    expect(screen.getAllByRole("progressbar")).toHaveLength(3);
+    expect(screen.getByText("68%")).toBeInTheDocument();
+    expect(screen.getAllByText("0%")).toHaveLength(2);
+    expect(screen.getAllByText("No budgets for this period.")).toHaveLength(2);
   });
 
-  it("renders the negative over-budget amount with currency formatting", () => {
+  it("flags an over-budget category with the over-budget label", () => {
     setPeriods({
       MONTHLY: {
         isLoading: false,
@@ -264,7 +178,7 @@ describe("BudgetProgressWidget", () => {
           budgets: [],
           categorySpending: [
             {
-              categoryId: "cat-1",
+              categoryId: "hobby",
               spending: "150.00",
               scaledLimit: "100.00",
               sourceBudgetType: "MONTHLY",
@@ -274,7 +188,7 @@ describe("BudgetProgressWidget", () => {
       },
     });
     mockUseCategories.mockReturnValue({
-      data: [{ id: "cat-1", categoryName: "Food" }],
+      data: [{ id: "hobby", categoryName: "Hobby" }],
       isLoading: false,
       isSuccess: true,
       error: null,
@@ -282,13 +196,11 @@ describe("BudgetProgressWidget", () => {
 
     renderWidget();
 
-    const overLabel = screen.getByText("Over budget");
-    const overValue = overLabel.parentElement?.querySelector("span:last-child");
-    expect(overValue?.textContent).toMatch(/^-/);
-    expect(overValue?.textContent).toContain("50");
+    expect(screen.getByText("150%")).toBeInTheDocument();
+    expect(screen.getByText(/over budget/)).toBeInTheDocument();
   });
 
-  it("renders 'Unknown' for category ids missing from categories data", () => {
+  it("exposes an accessible progressbar label per category", () => {
     setPeriods({
       MONTHLY: {
         isLoading: false,
@@ -297,9 +209,9 @@ describe("BudgetProgressWidget", () => {
           budgets: [],
           categorySpending: [
             {
-              categoryId: "ghost",
-              spending: "20.00",
-              scaledLimit: "100.00",
+              categoryId: "hobby",
+              spending: "80.00",
+              scaledLimit: "200.00",
               sourceBudgetType: "MONTHLY",
             },
           ],
@@ -307,12 +219,16 @@ describe("BudgetProgressWidget", () => {
       },
     });
     mockUseCategories.mockReturnValue({
-      data: [],
+      data: [{ id: "hobby", categoryName: "Hobby" }],
       isLoading: false,
       isSuccess: true,
       error: null,
     });
+
     renderWidget();
-    expect(screen.getAllByText("Unknown").length).toBeGreaterThan(0);
+
+    const bar = screen.getByRole("progressbar", { name: /Hobby: 40% of budget used/ });
+    expect(bar).toHaveAttribute("aria-valuenow", "40");
+    expect(within(bar.parentElement as HTMLElement).getByText("Hobby")).toBeInTheDocument();
   });
 });

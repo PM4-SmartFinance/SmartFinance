@@ -293,6 +293,10 @@
         "noSpending": "Aucune dépense par catégorie"
       },
       "noCategorySpending": "Aucune dépense par catégorie pour le moment.",
+      "noPeriodBudgets": "Aucun budget pour cette période.",
+      "aria": {
+        "categoryUsage": "{{category}} : {{percent}}% du budget utilisé"
+      },
       "spent": "Dépensé",
       "trackedTotal": "Total suivi",
       "overBudget": "Hors budget"
