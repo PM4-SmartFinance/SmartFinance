@@ -293,9 +293,9 @@
         "noSpending": "No category spending"
       },
       "noCategorySpending": "No category spending yet.",
+      "noPeriodBudgets": "No budgets for this period.",
       "aria": {
-        "label": "{{period}} budget: spent {{spent}} of {{limit}}.{{over}}",
-        "over": " Over budget by {{amount}}."
+        "categoryUsage": "{{category}}: {{percent}}% of budget used"
       },
       "spent": "Spent",
       "trackedTotal": "Tracked total",

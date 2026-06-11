@@ -293,9 +293,9 @@
         "noSpending": "Naginas expensas da la categoria"
       },
       "noCategorySpending": "Anc naginas expensas da la categoria.",
+      "noPeriodBudgets": "Nagins budgets per questa perioda.",
       "aria": {
-        "label": "Budget {{period}}: dapendì {{spent}} da {{limit}}.{{over}}",
-        "over": " Sur il budget per {{amount}}."
+        "categoryUsage": "{{category}}: {{percent}}% dal budget duvrà"
       },
       "spent": "Dapendì",
       "trackedTotal": "Total persequità",
