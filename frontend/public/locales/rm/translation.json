@@ -293,12 +293,8 @@
         "noSpending": "Naginas expensas da la categoria"
       },
       "noCategorySpending": "Anc naginas expensas da la categoria.",
-      "moreCategories_one": "+{{count}} dapli",
-      "moreCategories_other": "+{{count}} dapli",
       "aria": {
-        "label": "Budget {{period}}: dapendì {{spent}} da {{limit}}.{{over}} {{categories}}",
-        "categories": "Categorias principalas: {{list}}.",
-        "noCategories": "Naginas expensas da categoria.",
+        "label": "Budget {{period}}: dapendì {{spent}} da {{limit}}.{{over}}",
         "over": " Sur il budget per {{amount}}."
       },
       "spent": "Dapendì",

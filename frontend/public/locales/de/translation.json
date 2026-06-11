@@ -293,12 +293,8 @@
         "noSpending": "Keine Ausgaben in der Kategorie"
       },
       "noCategorySpending": "Noch keine Ausgaben in der Kategorie.",
-      "moreCategories_one": "+{{count}} weitere",
-      "moreCategories_other": "+{{count}} weitere",
       "aria": {
-        "label": "{{period}}-Budget: {{spent}} von {{limit}} ausgegeben.{{over}} {{categories}}",
-        "categories": "Top-Kategorien: {{list}}.",
-        "noCategories": "Keine Ausgaben nach Kategorie.",
+        "label": "{{period}}-Budget: {{spent}} von {{limit}} ausgegeben.{{over}}",
         "over": " {{amount}} über Budget."
       },
       "spent": "Ausgegeben",

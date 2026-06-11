@@ -293,12 +293,8 @@
         "noSpending": "Nessuna spesa di categoria"
       },
       "noCategorySpending": "Ancora nessuna spesa di categoria.",
-      "moreCategories_one": "+{{count}} altra",
-      "moreCategories_other": "+{{count}} altre",
       "aria": {
-        "label": "Budget {{period}}: spesi {{spent}} su {{limit}}.{{over}} {{categories}}",
-        "categories": "Categorie principali: {{list}}.",
-        "noCategories": "Nessuna spesa per categoria.",
+        "label": "Budget {{period}}: spesi {{spent}} su {{limit}}.{{over}}",
         "over": " Fuori budget di {{amount}}."
       },
       "spent": "Spesi",
