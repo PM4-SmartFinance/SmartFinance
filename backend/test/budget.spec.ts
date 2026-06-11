@@ -372,6 +372,7 @@ describe("Budget CRUD", () => {
           userId: testUserId,
           accountId: account.id,
           merchantId: merchant.id,
+          categoryId: testCategoryId,
           dateId,
         },
         {
@@ -379,6 +380,7 @@ describe("Budget CRUD", () => {
           userId: testUserId,
           accountId: account.id,
           merchantId: merchant.id,
+          categoryId: testCategoryId,
           dateId,
         },
       ],
@@ -455,6 +457,7 @@ describe("Budget CRUD", () => {
         userId: testUserId,
         accountId: account.id,
         merchantId: merchant.id,
+        categoryId: category.id,
         dateId,
       },
     });
@@ -545,6 +548,7 @@ describe("Budget CRUD", () => {
           userId: testUserId,
           accountId: account.id,
           merchantId: merchant.id,
+          categoryId: category.id,
           dateId: todayDateId,
         },
         // Yesterday's transaction — should NOT count for daily budget
@@ -555,6 +559,7 @@ describe("Budget CRUD", () => {
                 userId: testUserId,
                 accountId: account.id,
                 merchantId: merchant.id,
+                categoryId: category.id,
                 dateId: yesterdayDateId,
               },
             ]
@@ -640,6 +645,7 @@ describe("Budget CRUD", () => {
           userId: testUserId,
           accountId: account.id,
           merchantId: merchant.id,
+          categoryId: category.id,
           dateId: dateId1,
         },
         {
@@ -647,6 +653,7 @@ describe("Budget CRUD", () => {
           userId: testUserId,
           accountId: account.id,
           merchantId: merchant.id,
+          categoryId: category.id,
           dateId: dateId2,
         },
       ],

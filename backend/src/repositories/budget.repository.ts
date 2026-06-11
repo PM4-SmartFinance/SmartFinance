@@ -165,7 +165,7 @@ async function computeSpendingSingle(
     where: {
       userId,
       isDeleted: false,
-      merchant: { mappings: { some: { userId, categoryId } } },
+      categoryId,
       ...dateFilter,
     },
   });
@@ -248,48 +248,33 @@ async function computeSpendingBatch(
     where: {
       userId,
       isDeleted: false,
-      merchant: { mappings: { some: { userId, categoryId: { in: uniqueCategories } } } },
+      categoryId: { in: uniqueCategories },
       OR: dateFilters,
     },
     select: {
       amount: true,
-      merchantId: true,
+      categoryId: true,
       dateId: true,
     },
   });
 
-  // Batch-fetch related merchants' category mappings and dates
-  const merchantIds = [...new Set(transactions.map((t) => t.merchantId))];
+  // Batch-fetch the dates referenced by the matched transactions
   const dateIds = [...new Set(transactions.map((t) => t.dateId))];
-
-  const [mappings, dates] = await Promise.all([
-    prisma.userMerchantMapping.findMany({
-      where: { userId, merchantId: { in: merchantIds } },
-      select: { merchantId: true, categoryId: true },
-    }),
-    prisma.dimDate.findMany({
-      where: { id: { in: dateIds } },
-      select: { id: true, month: true, year: true },
-    }),
-  ]);
-
-  const mappingsByMerchant = new Map<string, string[]>();
-  for (const m of mappings) {
-    const cats = mappingsByMerchant.get(m.merchantId) ?? [];
-    cats.push(m.categoryId);
-    mappingsByMerchant.set(m.merchantId, cats);
-  }
+  const dates = await prisma.dimDate.findMany({
+    where: { id: { in: dateIds } },
+    select: { id: true, month: true, year: true },
+  });
 
   const dateById = new Map(dates.map((d) => [d.id, d]));
 
-  // For each budget, accumulate matching transaction amounts
+  // For each budget, accumulate matching transaction amounts. A transaction
+  // counts toward a budget when its own categoryId matches the budget's category.
   for (const tx of transactions) {
     const date = dateById.get(tx.dateId);
-    const cats = mappingsByMerchant.get(tx.merchantId);
-    if (!date || !cats) continue;
+    if (!date || tx.categoryId === null) continue;
 
     for (const budget of budgets) {
-      if (!cats.includes(budget.categoryId)) continue;
+      if (tx.categoryId !== budget.categoryId) continue;
 
       let matches = false;
       switch (budget.type) {
@@ -325,8 +310,9 @@ async function computeSpendingBatch(
 }
 
 /**
- * Compute total spending per category for a date range, using the same
- * merchant→UserMerchantMapping→category attribution path as budget spending.
+ * Compute total spending per category for a date range, attributed by each
+ * transaction's own categoryId — the same source of truth the rest of the app
+ * (e.g. the dashboard "Spending by Category") uses.
  */
 export async function computeCategorySpendingForPeriod(
   userId: string,
@@ -337,30 +323,17 @@ export async function computeCategorySpendingForPeriod(
     where: {
       userId,
       isDeleted: false,
+      categoryId: { not: null },
       dateId: { gte: startDateId, lte: endDateId },
     },
-    select: { amount: true, merchantId: true },
+    select: { amount: true, categoryId: true },
   });
-
-  if (transactions.length === 0) return new Map();
-
-  const merchantIds = [...new Set(transactions.map((t) => t.merchantId))];
-  const mappings = await prisma.userMerchantMapping.findMany({
-    where: { userId, merchantId: { in: merchantIds } },
-    select: { merchantId: true, categoryId: true },
-  });
-
-  const categoryByMerchant = new Map<string, string>();
-  for (const m of mappings) {
-    categoryByMerchant.set(m.merchantId, m.categoryId);
-  }
 
   const result = new Map<string, Prisma.Decimal>();
   for (const tx of transactions) {
-    const categoryId = categoryByMerchant.get(tx.merchantId);
-    if (!categoryId) continue;
-    const current = result.get(categoryId) ?? new Prisma.Decimal(0);
-    result.set(categoryId, current.add(tx.amount.negated()));
+    if (tx.categoryId === null) continue;
+    const current = result.get(tx.categoryId) ?? new Prisma.Decimal(0);
+    result.set(tx.categoryId, current.add(tx.amount.negated()));
   }
 
   return result;
