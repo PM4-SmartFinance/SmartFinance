@@ -293,6 +293,10 @@
         "noSpending": "Nessuna spesa di categoria"
       },
       "noCategorySpending": "Ancora nessuna spesa di categoria.",
+      "noPeriodBudgets": "Nessun budget per questo periodo.",
+      "aria": {
+        "categoryUsage": "{{category}}: {{percent}}% del budget utilizzato"
+      },
       "spent": "Spesi",
       "trackedTotal": "Totale tracciato",
       "overBudget": "Fuori budget"

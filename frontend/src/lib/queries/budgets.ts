@@ -95,9 +95,8 @@ export function useCreateBudget() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BUDGETS_KEY_PREFIX });
     },
-    onError: () => {
-      // TODO: replace with toast/notification once a notification system is in place
-    },
+    // Failures are surfaced at the call site (CreateEditBudgetDialog awaits mutateAsync
+    // and renders the error in the form), so no global handler is needed here.
   });
 }
 
@@ -110,9 +109,8 @@ export function useUpdateBudget() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BUDGETS_KEY_PREFIX });
     },
-    onError: () => {
-      // TODO: replace with toast/notification once a notification system is in place
-    },
+    // Failures are surfaced at the call site (CreateEditBudgetDialog awaits mutateAsync
+    // and renders the error in the form), so no global handler is needed here.
   });
 }
 
@@ -124,9 +122,8 @@ export function useDeleteBudget() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: BUDGETS_KEY_PREFIX });
     },
-    onError: () => {
-      // TODO: replace with toast/notification once a notification system is in place
-    },
+    // Failures are surfaced at the call site (BudgetsPage awaits deleteBudget and renders
+    // the error in the delete dialog), so no global handler is needed here.
   });
 }
 

@@ -1,29 +1,30 @@
-import { useEffect, useMemo, useRef } from "react";
-import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { useMemo } from "react";
 import { useCategories } from "../lib/queries/categories";
 import { useBudgets, type CategorySpending } from "../lib/queries/budgets";
+import { getBudgetStatus, budgetBarColorClass, budgetTextColorClass } from "./budgetUtils";
 import { formatAmount } from "@/lib/format";
 import { CardContent, CardHeader, CardTitle } from "./ui/card";
 import { DashboardTileLink } from "./DashboardTileLink";
 import { useTranslation } from "react-i18next";
 
-const OUTER_COLORS = {
-  spent: "hsl(var(--primary))",
-  remaining: "hsl(var(--muted))",
-  over: "hsl(var(--destructive))",
-} as const;
+// One progress bar per budgeted category per period (Daily / Monthly / Yearly):
+// spent / limit, percentage used, and remaining or over-budget. Bars are
+// coloured by spend status (blue on track, yellow approaching, red exceeded),
+// which carries more signal than a category colour. Every category that has a
+// budget for the period is shown — including ones with no spending yet — so the
+// widget never collapses to "only the categories you happened to spend in".
 
-const INNER_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
+interface CategoryUsage {
+  categoryId: string;
+  spending: number;
+  limit: number;
+}
 
 interface PeriodSnapshot {
   label: string;
   totalLimit: number;
-  totalSpent: number;
-  spentWithinLimit: number;
-  remaining: number;
-  overBudget: number;
   hasInvalidValue: boolean;
-  categories: Array<{ categoryId: string; spending: number }>;
+  categories: CategoryUsage[];
 }
 
 function toNumber(value: string | null): number | null {
@@ -32,18 +33,22 @@ function toNumber(value: string | null): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function usageRatio(c: CategoryUsage): number {
+  return c.limit > 0 ? c.spending / c.limit : 0;
+}
+
 function buildSnapshot(
   label: string,
   categorySpending: CategorySpending[] | undefined,
 ): PeriodSnapshot {
-  const tracked = (categorySpending ?? []).filter((c) => c.scaledLimit !== null);
+  // A non-null scaledLimit means the category has a budget for this period.
+  const budgeted = (categorySpending ?? []).filter((c) => c.scaledLimit !== null);
 
   let hasInvalidValue = false;
   let totalLimit = 0;
-  let totalSpent = 0;
-  const categories: Array<{ categoryId: string; spending: number }> = [];
+  const categories: CategoryUsage[] = [];
 
-  for (const c of tracked) {
+  for (const c of budgeted) {
     const limit = toNumber(c.scaledLimit);
     const spending = toNumber(c.spending);
     if (limit === null || spending === null) {
@@ -51,26 +56,13 @@ function buildSnapshot(
       continue;
     }
     totalLimit += limit;
-    totalSpent += spending;
-    if (spending > 0) categories.push({ categoryId: c.categoryId, spending });
+    categories.push({ categoryId: c.categoryId, spending, limit });
   }
 
-  categories.sort((a, b) => b.spending - a.spending);
+  // Most-consumed budgets first so the ones nearest their limit lead.
+  categories.sort((a, b) => usageRatio(b) - usageRatio(a));
 
-  return {
-    label,
-    totalLimit,
-    totalSpent,
-    spentWithinLimit: Math.min(totalSpent, totalLimit),
-    remaining: Math.max(totalLimit - totalSpent, 0),
-    overBudget: Math.max(totalSpent - totalLimit, 0),
-    hasInvalidValue,
-    categories,
-  };
-}
-
-function getCategoryColor(index: number): string {
-  return INNER_COLORS[index % INNER_COLORS.length] ?? INNER_COLORS[0]!;
+  return { label, totalLimit, hasInvalidValue, categories };
 }
 
 export function BudgetProgressWidget() {
@@ -78,29 +70,17 @@ export function BudgetProgressWidget() {
   const monthly = useBudgets({ period: "MONTHLY" });
   const yearly = useBudgets({ period: "YEARLY" });
   const categoriesQuery = useCategories();
-  const loggedMissingCategoryIdsRef = useRef<Set<string>>(new Set());
   const { t, i18n } = useTranslation();
+  const lng = i18n.resolvedLanguage;
 
   const categoryNames = useMemo(() => {
     const map = new Map<string, string>();
-    for (const c of categoriesQuery.data ?? []) {
-      map.set(c.id, c.categoryName);
-    }
+    for (const c of categoriesQuery.data ?? []) map.set(c.id, c.categoryName);
     return map;
   }, [categoriesQuery.data]);
 
-  const periodErrors = useMemo(
-    () =>
-      [
-        { label: t("budgets.periods.daily", "Daily"), error: daily.error },
-        { label: t("budgets.periods.monthly", "Monthly"), error: monthly.error },
-        { label: t("budgets.periods.yearly", "Yearly"), error: yearly.error },
-      ].filter((entry) => entry.error != null),
-    [daily.error, monthly.error, yearly.error, t],
-  );
-
   const isLoading = daily.isLoading || monthly.isLoading || yearly.isLoading;
-  const error = periodErrors[0]?.error ?? categoriesQuery.error;
+  const error = daily.error ?? monthly.error ?? yearly.error ?? categoriesQuery.error;
 
   const snapshots = useMemo(
     () => [
@@ -117,25 +97,6 @@ export function BudgetProgressWidget() {
   );
 
   const hasInvalidData = snapshots.some((s) => s.hasInvalidValue);
-
-  const missingCategoryIds = useMemo(() => {
-    if (!categoriesQuery.isSuccess) return [] as string[];
-    const seen = new Set<string>();
-    for (const snapshot of snapshots) {
-      for (const cat of snapshot.categories) {
-        if (!categoryNames.has(cat.categoryId)) seen.add(cat.categoryId);
-      }
-    }
-    return [...seen];
-  }, [snapshots, categoryNames, categoriesQuery.isSuccess]);
-
-  useEffect(() => {
-    for (const categoryId of missingCategoryIds) {
-      if (loggedMissingCategoryIdsRef.current.has(categoryId)) continue;
-      loggedMissingCategoryIdsRef.current.add(categoryId);
-      console.warn("BudgetProgressWidget: missing category name for categoryId", { categoryId });
-    }
-  }, [missingCategoryIds]);
 
   function getCategoryLabel(categoryId: string): string {
     return categoryNames.get(categoryId) ?? t("common.unknown", "Unknown");
@@ -188,7 +149,7 @@ export function BudgetProgressWidget() {
     );
   }
 
-  const hasTrackedBudgets = snapshots.some((s) => s.totalLimit > 0);
+  const hasTrackedBudgets = snapshots.some((s) => s.categories.length > 0);
 
   if (!hasTrackedBudgets) {
     return (
@@ -245,139 +206,67 @@ export function BudgetProgressWidget() {
           </p>
         )}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {snapshots.map((snapshot) => {
-            const outerData = [
-              {
-                name: t("components.budgetProgress.chart.spent", "Spent"),
-                value: snapshot.spentWithinLimit,
-                fill: OUTER_COLORS.spent,
-              },
-              {
-                name: t("components.budgetProgress.chart.remaining", "Remaining"),
-                value: snapshot.remaining,
-                fill: OUTER_COLORS.remaining,
-              },
-              ...(snapshot.overBudget > 0
-                ? [
-                    {
-                      name: t("components.budgetProgress.chart.over", "Over"),
-                      value: snapshot.overBudget,
-                      fill: OUTER_COLORS.over,
-                    },
-                  ]
-                : []),
-            ].filter((d) => d.value > 0);
+          {snapshots.map((snapshot) => (
+            <div key={snapshot.label} className="rounded border border-border p-4">
+              <p className="mb-3 text-sm font-semibold">{snapshot.label}</p>
+              {snapshot.categories.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  {t("components.budgetProgress.noPeriodBudgets", "No budgets for this period.")}
+                </p>
+              ) : (
+                <ul className="space-y-3">
+                  {snapshot.categories.map((cat) => {
+                    const name = getCategoryLabel(cat.categoryId);
+                    const percent = cat.limit > 0 ? (cat.spending / cat.limit) * 100 : 0;
+                    const percentRounded = Math.round(percent);
+                    const status = getBudgetStatus(percent);
+                    const isOverBudget = cat.spending > cat.limit;
+                    const remaining = cat.limit - cat.spending;
 
-            const innerData =
-              snapshot.categories.length > 0
-                ? snapshot.categories.map((c, index) => ({
-                    name: getCategoryLabel(c.categoryId),
-                    value: c.spending,
-                    fill: getCategoryColor(index),
-                  }))
-                : [
-                    {
-                      name: t("components.budgetProgress.chart.noSpending", "No category spending"),
-                      value: 1,
-                      fill: "hsl(var(--muted))",
-                    },
-                  ];
-
-            return (
-              <div key={snapshot.label} className="rounded border border-border p-4">
-                <p className="mb-2 text-sm font-semibold">{snapshot.label}</p>
-                <div className="h-52 w-full outline-none [&_svg]:outline-none [&_svg:focus]:outline-none">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={outerData}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={58}
-                        outerRadius={80}
-                        stroke="none"
-                      >
-                        {outerData.map((entry) => (
-                          <Cell key={`${snapshot.label}-${entry.name}`} fill={entry.fill} />
-                        ))}
-                      </Pie>
-                      <Pie
-                        data={innerData}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={35}
-                        outerRadius={54}
-                        stroke="none"
-                      >
-                        {innerData.map((entry) => (
-                          <Cell key={`${snapshot.label}-${entry.name}-inner`} fill={entry.fill} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {snapshot.categories.length > 0 ? (
-                  <ul className="mt-3 space-y-1">
-                    {snapshot.categories.slice(0, 4).map((cat, index) => (
-                      <li
-                        key={`${snapshot.label}-${cat.categoryId}`}
-                        className="flex items-center justify-between text-xs"
-                      >
-                        <span className="inline-flex items-center gap-2 text-muted-foreground">
-                          <span
-                            className="inline-block h-2.5 w-2.5 rounded-full"
-                            style={{ backgroundColor: getCategoryColor(index) }}
-                            aria-hidden="true"
+                    return (
+                      <li key={`${snapshot.label}-${cat.categoryId}`}>
+                        <div className="mb-1 flex items-baseline justify-between gap-2 text-xs">
+                          <span className="truncate font-medium">{name}</span>
+                          <span className="shrink-0 tabular-nums text-muted-foreground">
+                            {formatAmount(cat.spending, lng)} / {formatAmount(cat.limit, lng)}
+                          </span>
+                        </div>
+                        <div
+                          role="progressbar"
+                          aria-valuenow={Math.min(percentRounded, 100)}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-label={t(
+                            "components.budgetProgress.aria.categoryUsage",
+                            "{{category}}: {{percent}}% of budget used",
+                            { category: name, percent: percentRounded },
+                          )}
+                          className="h-2 w-full overflow-hidden rounded-full bg-muted"
+                        >
+                          <div
+                            className={`h-full ${budgetBarColorClass(status)}`}
+                            style={{ width: `${Math.min(percent, 100)}%` }}
                           />
-                          {getCategoryLabel(cat.categoryId)}
-                        </span>
-                        <span className="font-medium">
-                          {formatAmount(cat.spending, i18n.resolvedLanguage)}
-                        </span>
+                        </div>
+                        <div className="mt-1 flex items-baseline justify-between gap-2 text-[11px]">
+                          <span className={`font-medium ${budgetTextColorClass(status)}`}>
+                            {percentRounded}%
+                          </span>
+                          <span
+                            className={isOverBudget ? "text-destructive" : "text-muted-foreground"}
+                          >
+                            {isOverBudget
+                              ? `${formatAmount(Math.abs(remaining), lng)} ${t("components.budgetCategoryGroup.overBudget", "over budget")}`
+                              : `${formatAmount(remaining, lng)} ${t("components.budgetCategoryGroup.remaining", "remaining")}`}
+                          </span>
+                        </div>
                       </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    {" "}
-                    {t("components.budgetProgress.noCategorySpending", "No category spending yet.")}
-                  </p>
-                )}
-
-                <div className="mt-3 flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">
-                    {t("components.budgetProgress.spent", "Spent")}
-                  </span>
-                  <span className="font-medium">
-                    {formatAmount(snapshot.totalSpent, i18n.resolvedLanguage)}
-                  </span>
-                </div>
-                <div className="mt-1 flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">
-                    {t("components.budgetProgress.trackedTotal", "Tracked total")}
-                  </span>
-                  <span className="font-medium">
-                    {formatAmount(snapshot.totalLimit, i18n.resolvedLanguage)}
-                  </span>
-                </div>
-                {snapshot.overBudget > 0 && (
-                  <div className="mt-1 flex items-center justify-between text-xs">
-                    <span className="text-destructive">
-                      {t("components.budgetProgress.overBudget", "Over budget")}
-                    </span>
-                    <span className="font-medium text-destructive">
-                      - {formatAmount(snapshot.overBudget, i18n.resolvedLanguage)}
-                    </span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          ))}
         </div>
       </CardContent>
     </DashboardTileLink>
