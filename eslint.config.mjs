@@ -6,6 +6,7 @@ import eslintReact from "@eslint-react/eslint-plugin";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import vitest from "@vitest/eslint-plugin";
+import globals from "globals";
 
 export default defineConfig([
   {
@@ -33,6 +34,34 @@ export default defineConfig([
     rules: { ...vitest.configs.recommended.rules },
     languageOptions: {
       globals: vitest.environments.env.globals,
+    },
+  },
+  {
+    files: [".github/scripts/**/*.js"],
+    languageOptions: {
+      sourceType: "commonjs",
+      globals: globals.node,
+    },
+  },
+  {
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      sourceType: "module",
+      globals: globals.node,
+    },
+  },
+  {
+    files: [".github/scripts/**/*.test.ts"],
+    plugins: { vitest },
+    rules: { ...vitest.configs.recommended.rules },
+    languageOptions: {
+      globals: { ...vitest.environments.env.globals, ...globals.node },
+    },
+  },
+  {
+    files: ["e2e/**/*.ts"],
+    languageOptions: {
+      globals: { ...globals.node },
     },
   },
   eslintConfigPrettier, // Must always remain at the very bottom!

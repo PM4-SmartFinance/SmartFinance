@@ -6,30 +6,53 @@ vi.mock("../prisma.js", () => ({
     $transaction: vi.fn(),
     factTransactions: {
       findMany: vi.fn(),
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      update: vi.fn(),
       updateMany: vi.fn(),
+      count: vi.fn(),
     },
   },
 }));
 
-import { bulkImport, findUncategorizedForUser, bulkSetCategory } from "./transaction.repository.js";
+import {
+  bulkImport,
+  findUncategorizedForUser,
+  bulkSetCategory,
+  findByIdForUser,
+  updateById,
+  deleteById,
+  findPreviewMatchesForUser,
+  clearCategoryAssignments,
+} from "./transaction.repository.js";
 import { prisma } from "../prisma.js";
+import { ServiceError } from "../errors.js";
 
 const mockTransaction = vi.mocked(prisma.$transaction);
 
-function makeTx() {
+// Set-based bulkImport: dates and merchants are resolved with batched
+// createMany/findMany. The merchant mock models a tiny in-memory table so the
+// two-phase read → create → read flow returns ids the way Postgres would.
+function makeTx(existingMerchants: string[] = []) {
+  const merchantDb = new Set(existingMerchants);
   return {
     dimDate: {
-      upsert: vi
-        .fn()
-        .mockImplementation(({ where, create }) => Promise.resolve({ id: where.id, ...create })),
+      createMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
     dimMerchant: {
-      findFirst: vi.fn().mockResolvedValue(null),
-      create: vi
+      findMany: vi
         .fn()
-        .mockImplementation(({ data }) =>
-          Promise.resolve({ id: `m-${data.name}`, name: data.name }),
+        .mockImplementation(({ where }: { where: { name: { in: string[] } } }) =>
+          Promise.resolve(
+            where.name.in
+              .filter((name) => merchantDb.has(name))
+              .map((name) => ({ id: `m-${name}`, name })),
+          ),
         ),
+      createMany: vi.fn().mockImplementation(({ data }: { data: { name: string }[] }) => {
+        data.forEach((d) => merchantDb.add(d.name));
+        return Promise.resolve({ count: data.length });
+      }),
     },
     factTransactions: {
       createMany: vi.fn().mockResolvedValue({ count: 0 }),
@@ -57,7 +80,7 @@ describe("bulkImport", () => {
     mockTransaction.mockImplementation((cb) => cb(tx));
   });
 
-  it("upserts each unique date exactly once", async () => {
+  it("inserts each unique date once via a single skipDuplicates createMany", async () => {
     await bulkImport(
       [
         parsed({ date: new Date("2025-01-15T00:00:00Z") }),
@@ -68,10 +91,20 @@ describe("bulkImport", () => {
       "a1",
     );
 
-    expect(tx.dimDate.upsert).toHaveBeenCalledTimes(2);
+    expect(tx.dimDate.createMany).toHaveBeenCalledTimes(1);
+    const arg = tx.dimDate.createMany.mock.calls[0]![0] as {
+      data: Array<{ id: number }>;
+      skipDuplicates: boolean;
+    };
+    expect(arg.skipDuplicates).toBe(true);
+    expect(arg.data.map((d) => d.id).sort()).toEqual([20250115, 20250307]);
   });
 
-  it("finds or creates each unique merchant exactly once", async () => {
+  it("creates only the merchants that do not already exist", async () => {
+    tx = makeTx(["Store A"]); // Store A already in DB
+    // @ts-expect-error -- partial mock tx
+    mockTransaction.mockImplementation((cb) => cb(tx));
+
     await bulkImport(
       [
         parsed({ description: "Store A" }),
@@ -82,19 +115,23 @@ describe("bulkImport", () => {
       "a1",
     );
 
-    expect(tx.dimMerchant.findFirst).toHaveBeenCalledTimes(2);
+    // Only the missing name is inserted.
+    const { data } = tx.dimMerchant.createMany.mock.calls[0]![0] as { data: { name: string }[] };
+    expect(data).toEqual([{ name: "Store B" }]);
   });
 
   it("reuses existing merchants without creating new ones", async () => {
-    tx.dimMerchant.findFirst.mockResolvedValue({ id: "existing-id", name: "Known" });
+    tx = makeTx(["Known"]);
+    // @ts-expect-error -- partial mock tx
+    mockTransaction.mockImplementation((cb) => cb(tx));
 
     await bulkImport([parsed({ description: "Known" })], "u1", "a1");
 
-    expect(tx.dimMerchant.create).not.toHaveBeenCalled();
+    expect(tx.dimMerchant.createMany).not.toHaveBeenCalled();
     const { data } = tx.factTransactions.createMany.mock.calls[0]![0] as {
       data: Array<{ merchantId: string }>;
     };
-    expect(data[0]!.merchantId).toBe("existing-id");
+    expect(data[0]!.merchantId).toBe("m-Known");
   });
 
   it("inserts all rows in a single createMany call", async () => {
@@ -155,8 +192,11 @@ describe("bulkImport", () => {
 
     await bulkImport(rows, "u1", "a1");
 
-    expect(tx.dimDate.upsert).toHaveBeenCalledTimes(1);
-    expect(tx.dimMerchant.findFirst).toHaveBeenCalledTimes(1);
+    // One date row, one merchant created — regardless of row count.
+    expect(tx.dimDate.createMany).toHaveBeenCalledTimes(1);
+    expect(tx.dimDate.createMany.mock.calls[0]![0].data).toHaveLength(1);
+    expect(tx.dimMerchant.createMany).toHaveBeenCalledTimes(1);
+    expect(tx.dimMerchant.createMany.mock.calls[0]![0].data).toHaveLength(1);
     const { data } = tx.factTransactions.createMany.mock.calls[0]![0] as {
       data: unknown[];
     };
@@ -170,12 +210,17 @@ describe("findUncategorizedForUser", () => {
     vi.mocked(prisma.factTransactions.findMany).mockResolvedValue([]);
   });
 
-  it("filters by userId, categoryId null, and manualOverride false", async () => {
+  it("filters by userId, categoryId null, manualOverride false, and isDeleted false", async () => {
     await findUncategorizedForUser("user-1");
 
     expect(prisma.factTransactions.findMany).toHaveBeenCalledWith({
-      where: { userId: "user-1", categoryId: null, manualOverride: false },
-      select: { id: true, merchant: { select: { name: true } } },
+      where: { userId: "user-1", categoryId: null, manualOverride: false, isDeleted: false },
+      select: {
+        id: true,
+        amount: true,
+        dateId: true,
+        merchant: { select: { name: true } },
+      },
     });
   });
 
@@ -187,7 +232,7 @@ describe("findUncategorizedForUser", () => {
   });
 
   it("returns the results from the query", async () => {
-    const rows = [{ id: "tx-1", merchant: { name: "Migros" } }];
+    const rows = [{ id: "tx-1", amount: -12.5, dateId: 20260412, merchant: { name: "Migros" } }];
     // @ts-expect-error -- mock returns a partial shape
     vi.mocked(prisma.factTransactions.findMany).mockResolvedValue(rows);
 
@@ -204,11 +249,13 @@ describe("bulkSetCategory", () => {
     vi.mocked(prisma.factTransactions.updateMany).mockResolvedValue({ count: 1 });
   });
 
-  it("scopes every update to the requesting userId to prevent cross-user writes", async () => {
+  it("scopes every update to the requesting userId and isDeleted: false to prevent cross-user writes", async () => {
     await bulkSetCategory("user-1", [{ id: "tx-1", categoryId: "cat-a" }]);
 
     expect(prisma.factTransactions.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ userId: "user-1" }) }),
+      expect.objectContaining({
+        where: expect.objectContaining({ userId: "user-1", isDeleted: false }),
+      }),
     );
   });
 
@@ -235,11 +282,16 @@ describe("bulkSetCategory", () => {
 
     expect(prisma.factTransactions.updateMany).toHaveBeenCalledTimes(2);
     expect(prisma.factTransactions.updateMany).toHaveBeenCalledWith({
-      where: { id: { in: ["tx-1", "tx-2"] }, userId: "user-1", manualOverride: false },
+      where: {
+        id: { in: ["tx-1", "tx-2"] },
+        userId: "user-1",
+        manualOverride: false,
+        isDeleted: false,
+      },
       data: { categoryId: "cat-a" },
     });
     expect(prisma.factTransactions.updateMany).toHaveBeenCalledWith({
-      where: { id: { in: ["tx-3"] }, userId: "user-1", manualOverride: false },
+      where: { id: { in: ["tx-3"] }, userId: "user-1", manualOverride: false, isDeleted: false },
       data: { categoryId: "cat-b" },
     });
   });
@@ -293,5 +345,337 @@ describe("bulkSetCategory", () => {
     expect(idLists[0]).toHaveLength(1000);
     expect(idLists[1]).toHaveLength(1000);
     expect(idLists[2]).toHaveLength(500);
+  });
+});
+
+const TX_ID = "tx-1";
+const USER_ID = "user-1";
+const CAT_ID = "cat-1";
+
+const baseTxRecord = {
+  id: TX_ID,
+  userId: USER_ID,
+  amount: 42,
+  notes: null,
+  manualOverride: false,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  accountId: "acc-1",
+  account: { name: "My Account", iban: "CH9300762011623852957" },
+  merchantId: "merchant-1",
+  merchant: { name: "Grocery Store" },
+  dateId: 20260326,
+  date: { id: 20260326, dayOfWeek: "Thursday", month: 3, year: 2026 },
+  categoryId: null,
+  category: null,
+};
+
+function makeCrudTx() {
+  return {
+    factTransactions: {
+      findFirst: vi.fn().mockResolvedValue({ id: TX_ID, userId: USER_ID, isDeleted: false }),
+      update: vi.fn().mockResolvedValue(baseTxRecord),
+    },
+    dimCategory: {
+      findFirst: vi.fn().mockResolvedValue({ id: CAT_ID }),
+    },
+  };
+}
+
+describe("findByIdForUser", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // @ts-expect-error -- mock returns a partial shape
+    vi.mocked(prisma.factTransactions.findFirst).mockResolvedValue(baseTxRecord);
+  });
+
+  it("returns the transaction when it exists and belongs to the requesting user", async () => {
+    const result = await findByIdForUser(TX_ID, USER_ID);
+    expect(result).toEqual(baseTxRecord);
+  });
+
+  it("queries by the given id and isDeleted: false", async () => {
+    await findByIdForUser(TX_ID, USER_ID);
+    expect(prisma.factTransactions.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: TX_ID, isDeleted: false } }),
+    );
+  });
+
+  it("throws ServiceError 404 when the transaction does not exist", async () => {
+    vi.mocked(prisma.factTransactions.findFirst).mockResolvedValue(null);
+    await expect(findByIdForUser(TX_ID, USER_ID)).rejects.toThrow(
+      new ServiceError(404, "Transaction not found"),
+    );
+  });
+
+  it("throws ServiceError 404 when the transaction belongs to a different user (IDOR guard)", async () => {
+    // @ts-expect-error -- mock returns a partial shape
+    vi.mocked(prisma.factTransactions.findFirst).mockResolvedValue({
+      ...baseTxRecord,
+      userId: "other-user",
+    });
+    await expect(findByIdForUser(TX_ID, USER_ID)).rejects.toThrow(
+      new ServiceError(404, "Transaction not found"),
+    );
+  });
+});
+
+describe("updateById", () => {
+  let crudTx: ReturnType<typeof makeCrudTx>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    crudTx = makeCrudTx();
+    // @ts-expect-error -- partial stub of TransactionClient
+    vi.mocked(prisma.$transaction).mockImplementation((cb) => cb(crudTx));
+  });
+
+  it("throws ServiceError 404 when the transaction does not exist", async () => {
+    crudTx.factTransactions.findFirst.mockResolvedValue(null);
+    await expect(updateById(TX_ID, USER_ID, { notes: "x" })).rejects.toThrow(
+      new ServiceError(404, "Transaction not found"),
+    );
+  });
+
+  it("throws ServiceError 404 when the transaction belongs to a different user (IDOR guard)", async () => {
+    crudTx.factTransactions.findFirst.mockResolvedValue({ id: TX_ID, userId: "other" });
+    await expect(updateById(TX_ID, USER_ID, { notes: "x" })).rejects.toThrow(
+      new ServiceError(404, "Transaction not found"),
+    );
+  });
+
+  it("throws ServiceError 404 when the category does not exist or is inaccessible", async () => {
+    crudTx.dimCategory.findFirst.mockResolvedValue(null);
+    await expect(updateById(TX_ID, USER_ID, { categoryId: CAT_ID })).rejects.toThrow(
+      new ServiceError(404, "Category not found"),
+    );
+  });
+
+  it("skips category validation when only notes are updated", async () => {
+    await updateById(TX_ID, USER_ID, { notes: "memo" });
+    expect(crudTx.dimCategory.findFirst).not.toHaveBeenCalled();
+    expect(crudTx.factTransactions.update).toHaveBeenCalledOnce();
+  });
+
+  it("skips category validation when categoryId is explicitly null (clearing)", async () => {
+    // KAN-156: null means "clear the category" — no category to validate.
+    await updateById(TX_ID, USER_ID, { categoryId: null });
+    expect(crudTx.dimCategory.findFirst).not.toHaveBeenCalled();
+    expect(crudTx.factTransactions.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: TX_ID }, data: { categoryId: null } }),
+    );
+  });
+
+  it("calls factTransactions.update with the correct where and data", async () => {
+    await updateById(TX_ID, USER_ID, { notes: "memo", categoryId: CAT_ID });
+    expect(crudTx.factTransactions.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: TX_ID },
+        data: { notes: "memo", categoryId: CAT_ID },
+      }),
+    );
+  });
+
+  it("returns the updated transaction from the database", async () => {
+    const updated = { ...baseTxRecord, notes: "memo" };
+    crudTx.factTransactions.update.mockResolvedValue(updated);
+    const result = await updateById(TX_ID, USER_ID, { notes: "memo" });
+    expect(result).toBe(updated);
+  });
+});
+
+describe("deleteById", () => {
+  let crudTx: ReturnType<typeof makeCrudTx>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    crudTx = makeCrudTx();
+    // @ts-expect-error -- partial stub of TransactionClient
+    vi.mocked(prisma.$transaction).mockImplementation((cb) => cb(crudTx));
+  });
+
+  it("throws ServiceError 404 when the transaction does not exist", async () => {
+    crudTx.factTransactions.findFirst.mockResolvedValue(null);
+    await expect(deleteById(TX_ID, USER_ID)).rejects.toThrow(
+      new ServiceError(404, "Transaction not found"),
+    );
+  });
+
+  it("throws ServiceError 404 when the transaction belongs to a different user (IDOR guard)", async () => {
+    crudTx.factTransactions.findFirst.mockResolvedValue({ id: TX_ID, userId: "other" });
+    await expect(deleteById(TX_ID, USER_ID)).rejects.toThrow(
+      new ServiceError(404, "Transaction not found"),
+    );
+  });
+
+  it("calls factTransactions.update with isDeleted: true", async () => {
+    await deleteById(TX_ID, USER_ID);
+    expect(crudTx.factTransactions.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: TX_ID }, data: { isDeleted: true } }),
+    );
+  });
+
+  it("resolves without error on successful deletion", async () => {
+    await expect(deleteById(TX_ID, USER_ID)).resolves.not.toThrow();
+  });
+});
+
+describe("findPreviewMatchesForUser", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.$transaction).mockResolvedValue([0, []]);
+  });
+
+  it("returns zero matches when no transactions match the pattern", async () => {
+    vi.mocked(prisma.$transaction).mockResolvedValue([0, []]);
+
+    const result = await findPreviewMatchesForUser("user-1", "nomatch", "contains", 3);
+
+    expect(result).toEqual({ matchCount: 0, matchedTransactions: [] });
+  });
+
+  it("does not return transactions with null merchant even if pattern matches other fields", async () => {
+    vi.mocked(prisma.$transaction).mockResolvedValue([
+      1,
+      [
+        {
+          id: "tx-1",
+          amount: { toNumber: () => -12.5 },
+          dateId: 20260412,
+          merchant: { name: "Migros" },
+        },
+      ],
+    ]);
+
+    const result = await findPreviewMatchesForUser("user-1", "migros", "contains", 3);
+
+    expect(result.matchCount).toBe(1);
+    expect(result.matchedTransactions).toHaveLength(1);
+    expect(result.matchedTransactions[0]).toMatchObject({
+      id: "tx-1",
+      merchantName: "Migros",
+      amount: -12.5,
+      dateId: 20260412,
+    });
+  });
+
+  it("applies exact match filter when matchType is 'exact'", async () => {
+    vi.mocked(prisma.$transaction).mockResolvedValue([0, []]);
+
+    await findPreviewMatchesForUser("user-1", "Migros", "exact", 3);
+
+    const expectedWhere = {
+      userId: "user-1",
+      categoryId: null,
+      manualOverride: false,
+      merchant: { name: { equals: "Migros", mode: "insensitive" } },
+      isDeleted: false,
+    };
+    expect(prisma.factTransactions.count).toHaveBeenCalledWith({ where: expectedWhere });
+    expect(prisma.factTransactions.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expectedWhere }),
+    );
+  });
+
+  it("applies contains match filter when matchType is 'contains'", async () => {
+    vi.mocked(prisma.$transaction).mockResolvedValue([0, []]);
+
+    await findPreviewMatchesForUser("user-1", "migr", "contains", 3);
+
+    const expectedWhere = {
+      userId: "user-1",
+      categoryId: null,
+      manualOverride: false,
+      merchant: { name: { contains: "migr", mode: "insensitive" } },
+      isDeleted: false,
+    };
+    expect(prisma.factTransactions.count).toHaveBeenCalledWith({ where: expectedWhere });
+    expect(prisma.factTransactions.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expectedWhere }),
+    );
+  });
+
+  it("limits results to sampleLimit parameter", async () => {
+    vi.mocked(prisma.$transaction).mockResolvedValue([
+      5,
+      [
+        {
+          id: "tx-1",
+          amount: { toNumber: () => -12.5 },
+          dateId: 20260412,
+          merchant: { name: "Migros" },
+        },
+      ],
+    ]);
+
+    const result = await findPreviewMatchesForUser("user-1", "migros", "contains", 1);
+
+    expect(result.matchedTransactions).toHaveLength(1);
+    expect(result.matchCount).toBe(5);
+  });
+
+  it("maps Postgres 'invalid regular expression' errors to ServiceError(400)", async () => {
+    vi.mocked(prisma.$transaction).mockRejectedValue(
+      Object.assign(new Error("invalid regular expression: parentheses () not balanced"), {
+        name: "PrismaClientUnknownRequestError",
+      }),
+    );
+    // Patch the prototype name check used by `instanceof` so the err is
+    // recognised — vitest mock doesn't have @prisma/client's prototype chain.
+    const { Prisma } = await import("@prisma/client");
+    const err = new Prisma.PrismaClientUnknownRequestError(
+      "invalid regular expression: parentheses () not balanced",
+      { clientVersion: "x" },
+    );
+    vi.mocked(prisma.$transaction).mockRejectedValue(err);
+
+    const error = await findPreviewMatchesForUser("user-1", "(?<name>x)", "regex", 3).catch(
+      (e: ServiceError) => e,
+    );
+
+    expect(error).toBeInstanceOf(ServiceError);
+    expect(error.statusCode).toBe(400);
+    expect(error.message).toMatch(/not supported by the database regex engine/i);
+  });
+
+  it("maps Postgres statement_timeout cancellation to ServiceError(400)", async () => {
+    const { Prisma } = await import("@prisma/client");
+    const err = new Prisma.PrismaClientUnknownRequestError(
+      "canceling statement due to statement timeout",
+      { clientVersion: "x" },
+    );
+    vi.mocked(prisma.$transaction).mockRejectedValue(err);
+
+    const error = await findPreviewMatchesForUser("user-1", "(a+)+b", "regex", 3).catch(
+      (e: ServiceError) => e,
+    );
+
+    expect(error).toBeInstanceOf(ServiceError);
+    expect(error.statusCode).toBe(400);
+    expect(error.message).toMatch(/took too long/i);
+  });
+});
+
+describe("clearCategoryAssignments", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("clears categoryId and resets manualOverride for the user/category pair", async () => {
+    vi.mocked(prisma.factTransactions.updateMany).mockResolvedValue({ count: 7 });
+
+    const count = await clearCategoryAssignments("user-1", "cat-1");
+
+    expect(prisma.factTransactions.updateMany).toHaveBeenCalledExactlyOnceWith({
+      where: { userId: "user-1", categoryId: "cat-1", isDeleted: false },
+      data: { categoryId: null, manualOverride: false },
+    });
+    expect(count).toBe(7);
+  });
+
+  it("returns 0 when no transactions matched", async () => {
+    vi.mocked(prisma.factTransactions.updateMany).mockResolvedValue({ count: 0 });
+    const count = await clearCategoryAssignments("user-1", "cat-1");
+    expect(count).toBe(0);
   });
 });

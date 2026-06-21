@@ -1,54 +1,61 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import { userEvent } from "@testing-library/user-event";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router";
-import { BudgetWidget, getBudgetStatus } from "./BudgetWidget";
+import { BudgetWidget } from "./BudgetWidget";
+import { getBudgetStatus } from "./budgetUtils";
 import type { Budget } from "../lib/queries/budgets";
-
-const now = new Date();
-const currentMonth = now.getMonth() + 1;
-const currentYear = now.getFullYear();
 
 const mockBudgets: Budget[] = [
   {
     id: "budget-1",
     categoryId: "cat-1",
-    month: currentMonth,
-    year: currentYear,
+    type: "MONTHLY",
+    month: 0,
+    year: 0,
     limitAmount: "500.00",
     currentSpending: "250.00",
     percentageUsed: 50,
     remainingAmount: "250.00",
     isOverBudget: false,
     active: true,
+    isActive: true,
+    priority: 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
   {
     id: "budget-2",
     categoryId: "cat-2",
-    month: currentMonth,
-    year: currentYear,
+    type: "MONTHLY",
+    month: 0,
+    year: 0,
     limitAmount: "300.00",
     currentSpending: "210.00",
     percentageUsed: 70,
     remainingAmount: "90.00",
     isOverBudget: false,
     active: true,
+    isActive: true,
+    priority: 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
   {
     id: "budget-3",
     categoryId: "cat-3",
-    month: currentMonth,
-    year: currentYear,
+    type: "MONTHLY",
+    month: 0,
+    year: 0,
     limitAmount: "200.00",
     currentSpending: "220.00",
     percentageUsed: 110,
     remainingAmount: "-20.00",
     isOverBudget: true,
     active: true,
+    isActive: true,
+    priority: 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -101,28 +108,22 @@ describe("BudgetWidget", () => {
     });
   });
 
-  it("displays current month and budget count", async () => {
+  it("displays active budget count", async () => {
     renderWithRouter(<BudgetWidget />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText(new RegExp(`3 active budgets for ${currentMonth}/${currentYear}`)),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/3 active budgets/)).toBeInTheDocument();
     });
   });
 
-  it("shows empty state when no budgets exist for current month", async () => {
+  it("shows empty state when no budgets exist", async () => {
     const apiMock = await vi.importMock("../lib/api");
     apiMock.api.get.mockResolvedValueOnce({ budgets: [] });
 
     renderWithRouter(<BudgetWidget />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText(
-          new RegExp(`No budgets set for ${currentMonth}/${currentYear}. Click to create one.`),
-        ),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/No active budgets\. Click to create one\./)).toBeInTheDocument();
     });
   });
 
@@ -139,8 +140,14 @@ describe("BudgetWidget", () => {
 
   it("renders as a clickable link to /budgets", () => {
     renderWithRouter(<BudgetWidget />);
-    const link = screen.getByRole("link");
+    const link = screen.getByRole("link", { name: /view budgets/i });
     expect(link).toHaveAttribute("href", "/budgets");
+  });
+
+  it("wraps the card content inside the link", () => {
+    renderWithRouter(<BudgetWidget />);
+    const link = screen.getByRole("link", { name: /view budgets/i });
+    expect(link).toContainElement(screen.getByText("Budget Status"));
   });
 
   it("correctly categorizes budgets by status", async () => {
@@ -152,6 +159,37 @@ describe("BudgetWidget", () => {
       const statusText = screen.getByText(/1 on track, 1 approaching limit, 1 exceeded/);
       expect(statusText).toBeInTheDocument();
     });
+  });
+
+  it("supports keyboard navigation to /budgets link", async () => {
+    const user = userEvent.setup();
+    renderWithRouter(<BudgetWidget />);
+
+    const link = screen.getByRole("link", { name: /view budgets/i });
+
+    // Initially not focused
+    expect(link).not.toHaveFocus();
+
+    // Tab to focus the link
+    await user.tab();
+    expect(link).toHaveFocus();
+
+    // Verify link has correct href
+    expect(link).toHaveAttribute("href", "/budgets");
+  });
+
+  it("does not render link in error state", async () => {
+    const apiMock = await vi.importMock("../lib/api");
+    apiMock.api.get.mockRejectedValueOnce(new Error("Failed to fetch"));
+
+    renderWithRouter(<BudgetWidget />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Failed to load budget data. Please try again.")).toBeInTheDocument();
+    });
+
+    // Verify no link in error state
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 });
 

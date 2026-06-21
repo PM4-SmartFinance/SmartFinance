@@ -7,11 +7,12 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "start:ci": "tsx src/index.ts",
     "lint": "eslint .",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
-    "test:stress": "vitest run --config vitest.config.ts --include 'test/**/*.stress.spec.ts' --exclude ''",
+    "test:stress": "vitest run --config vitest.stress.config.ts",
     "test:db:up": "docker compose -f ../docker-compose.test.yml up -d --wait",
     "test:db:down": "docker compose -f ../docker-compose.test.yml down -v"
   },
@@ -24,8 +25,11 @@
     "argon2": "^0.44.0",
     "dotenv": "^17.3.1",
     "fastify": "^5.8.4",
+    "fastify-metrics": "^13.2.0",
     "pg": "^8.20.0",
-    "prisma": "^7.5.0"
+    "prisma": "^7.5.0",
+    "prom-client": "^15.1.3",
+    "safe-regex2": "^5.1.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

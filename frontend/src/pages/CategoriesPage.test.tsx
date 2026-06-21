@@ -1,4 +1,5 @@
 import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi, beforeEach } from "vitest";
@@ -26,6 +27,16 @@ vi.mock("../lib/api", () => {
   };
 });
 
+vi.mock("../hooks/useAuth", async () => {
+  const { authMockFactory } = await import("../test/authFixtures");
+  return authMockFactory();
+});
+
+vi.mock("../hooks/useLogout", async () => {
+  const { logoutMockFactory } = await import("../test/authFixtures");
+  return logoutMockFactory();
+});
+
 import { CategoriesPage } from "./CategoriesPage";
 
 let categories: Category[] = [
@@ -39,7 +50,7 @@ let categories: Category[] = [
   {
     id: "cat-2",
     categoryName: "Rent",
-    userId: null,
+    userId: "user-1",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -53,6 +64,16 @@ let rules: CategoryRule[] = [
     pattern: "coop",
     matchType: "contains" as const,
     priority: 1,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "rule-2",
+    userId: "user-1",
+    categoryId: "cat-1",
+    pattern: "netflix",
+    matchType: "exact" as const,
+    priority: 2,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -90,7 +111,7 @@ describe("CategoriesPage", () => {
       {
         id: "cat-2",
         categoryName: "Rent",
-        userId: null,
+        userId: "user-1",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -104,6 +125,16 @@ describe("CategoriesPage", () => {
         pattern: "coop",
         matchType: "contains",
         priority: 1,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: "rule-2",
+        userId: "user-1",
+        categoryId: "cat-1",
+        pattern: "netflix",
+        matchType: "exact",
+        priority: 2,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -156,7 +187,29 @@ describe("CategoriesPage", () => {
       }
 
       if (path === "/category-rules/preview") {
-        return Promise.resolve({ matchCount: 7 });
+        return Promise.resolve({
+          matchCount: 7,
+          matchedTransactions: [
+            {
+              id: "tx-1",
+              merchantName: "Coop",
+              amount: -12.5,
+              dateId: 20260412,
+            },
+            {
+              id: "tx-2",
+              merchantName: "Coop City",
+              amount: -8.75,
+              dateId: 20260413,
+            },
+            {
+              id: "tx-3",
+              merchantName: "Coop Extra",
+              amount: -5.25,
+              dateId: 20260414,
+            },
+          ],
+        });
       }
 
       return Promise.resolve({});
@@ -181,8 +234,7 @@ describe("CategoriesPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Groceries")).toBeInTheDocument();
       expect(screen.getByText("Rent")).toBeInTheDocument();
-      expect(screen.getByText("Global category (read-only)")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("coop")).toBeInTheDocument();
+      expect(screen.getByText("coop")).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "Back to Dashboard" })).toBeInTheDocument();
     });
   });
@@ -204,6 +256,30 @@ describe("CategoriesPage", () => {
     await waitFor(() => {
       const categoryGetCalls = mockGet.mock.calls.filter((call) => call[0] === "/categories");
       expect(categoryGetCalls.length).toBeGreaterThan(1);
+    });
+  });
+
+  it("shows matching transactions from live preview", async () => {
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+    });
+
+    const input = screen.getByLabelText("New rule pattern for Groceries");
+    fireEvent.change(input, { target: { value: "co" } });
+
+    await waitFor(() => {
+      expect(screen.getByText("7 existing transactions would match.")).toBeInTheDocument();
+      const matchingSection = screen
+        .getByText("7 existing transactions would match.")
+        .closest("div");
+      expect(matchingSection).toBeTruthy();
+      const transactionItems = within(matchingSection!).getAllByRole("listitem");
+      expect(transactionItems).toHaveLength(3);
+      expect(transactionItems[0]).toHaveTextContent("Coop");
+      expect(transactionItems[1]).toHaveTextContent("Coop City");
+      expect(transactionItems[2]).toHaveTextContent("Coop Extra");
     });
   });
 
@@ -236,7 +312,7 @@ describe("CategoriesPage", () => {
     });
   });
 
-  it("calls match preview endpoint and shows result", async () => {
+  it("calls preview endpoint live and updates the preview chip", async () => {
     renderWithProviders();
 
     await waitFor(() => {
@@ -246,9 +322,6 @@ describe("CategoriesPage", () => {
     fireEvent.change(screen.getByLabelText("New rule pattern for Groceries"), {
       target: { value: "coop" },
     });
-    const previewButtons = screen.getAllByRole("button", { name: "Match Preview" });
-    expect(previewButtons.length).toBeGreaterThan(0);
-    fireEvent.click(previewButtons[0]!);
 
     await waitFor(() => {
       expect(mockPost).toHaveBeenCalledWith("/category-rules/preview", {
@@ -258,6 +331,84 @@ describe("CategoriesPage", () => {
         priority: 0,
       });
       expect(screen.getByText("7 existing transactions would match.")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("New rule match type for Groceries"), {
+      target: { value: "exact" },
+    });
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith("/category-rules/preview", {
+        categoryId: "cat-1",
+        pattern: "coop",
+        matchType: "exact",
+        priority: 0,
+      });
+    });
+  });
+
+  it("shows inline preview error for invalid live preview requests", async () => {
+    const { ApiError: MockApiError } = await import("../lib/api");
+    mockPost.mockImplementation((path: string, body: unknown) => {
+      if (path === "/categories") {
+        const payload = body as { categoryName: string };
+        categories = [
+          ...categories,
+          {
+            id: `cat-${categories.length + 1}`,
+            categoryName: payload.categoryName,
+            userId: "user-1",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ];
+        return Promise.resolve(categories[categories.length - 1]);
+      }
+
+      if (path === "/category-rules") {
+        const payload = body as {
+          categoryId: string;
+          pattern: string;
+          matchType: "exact" | "contains";
+          priority: number;
+        };
+        rules = [
+          ...rules,
+          {
+            id: `rule-${rules.length + 1}`,
+            userId: "user-1",
+            ...payload,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ];
+        return Promise.resolve({ rule: rules[rules.length - 1] });
+      }
+
+      if (path === "/category-rules/preview") {
+        return Promise.reject(new MockApiError(422, "Pattern must be at least 2 characters."));
+      }
+
+      return Promise.resolve({});
+    });
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("New rule pattern for Groceries"), {
+      target: { value: "x" },
+    });
+
+    const groceriesCard = screen.getByText("Groceries").closest('[data-slot="card"]');
+    expect(groceriesCard).toBeTruthy();
+
+    await waitFor(() => {
+      expect(
+        within(groceriesCard!).getByText("Pattern must be at least 2 characters."),
+      ).toBeInTheDocument();
     });
   });
 
@@ -290,7 +441,7 @@ describe("CategoriesPage", () => {
     renderWithProviders();
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue("coop")).toBeInTheDocument();
+      expect(screen.getByText("coop")).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Delete rule rule-1" }));
@@ -393,8 +544,10 @@ describe("CategoriesPage", () => {
     renderWithProviders();
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue("coop")).toBeInTheDocument();
+      expect(screen.getByText("coop")).toBeInTheDocument();
     });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit rule rule-1" }));
 
     fireEvent.change(screen.getByLabelText("Rule pattern rule-1"), {
       target: { value: "migros" },
@@ -415,8 +568,10 @@ describe("CategoriesPage", () => {
     renderWithProviders();
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue("coop")).toBeInTheDocument();
+      expect(screen.getByText("coop")).toBeInTheDocument();
     });
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit rule rule-1" }));
 
     fireEvent.change(screen.getByLabelText("Rule pattern rule-1"), {
       target: { value: "" },
@@ -431,5 +586,165 @@ describe("CategoriesPage", () => {
       expect(within(groceriesCard!).getByText("Rule pattern is required.")).toBeInTheDocument();
     });
     expect(mockPatch).not.toHaveBeenCalled();
+  });
+
+  it("auto-categorize button calls the API and renders the result message", async () => {
+    mockPost.mockImplementationOnce((path: string) => {
+      if (path === "/transactions/auto-categorize") {
+        return Promise.resolve({ categorized: 3 });
+      }
+      return Promise.resolve({});
+    });
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Auto-categorize uncategorized/i }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith("/transactions/auto-categorize", null);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Categorized 3 transactions.")).toBeInTheDocument();
+    });
+  });
+
+  it("recategorize panel blocks the API call when start date is after end date", async () => {
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Recategorize date range/i }));
+
+    fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-02-01" } });
+    fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-01-01" } });
+
+    mockPost.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Run" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Start date must not be after end date.")).toBeInTheDocument();
+    });
+    expect(mockPost).not.toHaveBeenCalledWith("/transactions/recategorize", expect.anything());
+  });
+
+  it("renders the overlap warning when /category-rules/overlap reports conflicts", async () => {
+    mockGet.mockImplementation((path: string) => {
+      if (path === "/categories") return Promise.resolve({ categories });
+      if (path === "/category-rules") return Promise.resolve({ rules });
+      if (path.startsWith("/category-rules/overlap")) {
+        return Promise.resolve({
+          conflicts: [
+            {
+              id: "rule-other",
+              pattern: "coop migros",
+              matchType: "contains",
+              priority: 5,
+              categoryId: "cat-2",
+              categoryName: "Rent",
+            },
+            {
+              id: "rule-another",
+              pattern: "coop supercenter",
+              matchType: "exact",
+              priority: 6,
+              categoryId: "cat-2",
+              categoryName: "Rent",
+            },
+          ],
+        });
+      }
+      return Promise.resolve({});
+    });
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("New rule pattern for Groceries"), {
+      target: { value: "coop" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Pattern overlaps with 2/i)).toBeInTheDocument();
+    });
+  });
+
+  it("renders a degraded-state notice when /category-rules/overlap fails", async () => {
+    const { ApiError } = await vi.importMock<typeof import("../lib/api")>("../lib/api");
+    mockGet.mockImplementation((path: string) => {
+      if (path === "/categories") return Promise.resolve({ categories });
+      if (path === "/category-rules") return Promise.resolve({ rules });
+      if (path.startsWith("/category-rules/overlap")) {
+        return Promise.reject(new ApiError(500, "boom"));
+      }
+      return Promise.resolve({});
+    });
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("New rule pattern for Groceries"), {
+      target: { value: "coop" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("overlap-degraded-new")).toBeInTheDocument();
+    });
+  });
+
+  it("exposes Sign out from the user menu", async () => {
+    renderWithProviders();
+
+    await waitFor(() => expect(screen.getByText("Groceries")).toBeInTheDocument());
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "User menu" }));
+
+    expect(await screen.findByRole("menuitem", { name: /sign out/i })).toBeInTheDocument();
+  });
+
+  it("recategorize panel calls the API on a valid range and renders the result", async () => {
+    mockPost.mockImplementation((path: string) => {
+      if (path === "/transactions/recategorize") {
+        return Promise.resolve({ recategorized: 2 });
+      }
+      return Promise.resolve({});
+    });
+
+    renderWithProviders();
+
+    await waitFor(() => {
+      expect(screen.getByText("Groceries")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Recategorize date range/i }));
+
+    fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-01-01" } });
+    fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-01-31" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Run" }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith("/transactions/recategorize", {
+        startDate: "2026-01-01",
+        endDate: "2026-01-31",
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Recategorized 2 transactions.")).toBeInTheDocument();
+    });
   });
 });

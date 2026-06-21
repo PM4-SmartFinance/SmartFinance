@@ -26,9 +26,10 @@ model FactTransactions {
   date   DimDate @relation(fields: [dateId], references: [id])
 
   categoryId     String?
-  category       DimCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  category       DimCategory? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   notes          String?
   manualOverride Boolean      @default(false)
+  isDeleted      Boolean      @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -51,7 +52,7 @@ model UserMerchantMapping {
   merchant   DimMerchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
 
   categoryId String
-  category   DimCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category   DimCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -76,8 +77,8 @@ model DimMerchant {
 model DimCategory {
   id           String   @id @default(uuid())
   categoryName String
-  userId       String?
-  user         DimUser? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  user         DimUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -96,6 +97,16 @@ model DimAccount {
   name String
   iban String
 
+  // Bank-provided account/card number (e.g. UBS "Kontonummer"). Optional —
+  // not every export carries one. Used to auto-match a CSV import to the right
+  // account when the user has several (KAN-169).
+  accountNumber String?
+
+  // Soft-deactivation flag. Deactivated accounts keep their transactions but
+  // are hidden from the transactions view and excluded from import resolution
+  // (KAN-169). Hard delete is only permitted for accounts with no transactions.
+  active Boolean @default(true)
+
   currencyId String
   currency   DimCurrency @relation(fields: [currencyId], references: [id])
 
@@ -110,6 +121,7 @@ model DimAccount {
   @@unique([userId, iban])
   @@index([userId])
   @@index([currencyId])
+  @@index([active])
 }
 
 model DimCurrency {
@@ -144,7 +156,9 @@ model DimUser {
   categories    DimCategory[]
   accounts      DimAccount[]
   budgets       DimBudget[]
-  categoryRules CategoryRule[]
+  categoryRules  CategoryRule[]
+  moduleData     ModuleData[]
+  importMappings ImportColumnMapping[]
 }
 
 model DimDate {
@@ -162,24 +176,34 @@ model DimDate {
 // --- AUDIT LOG ---
 
 model AuditLog {
-  id        String   @id @default(uuid())
-  action    String
-  userId    String?
-  details   String? // JSON string
-  createdAt DateTime @default(now())
+  id             String   @id @default(uuid())
+  action         String
+  userId         String?
+  transactionId  String?
+  previousValues Json?
+  changedValues  Json?
+  reason         String?
+  createdAt      DateTime @default(now())
 
   @@index([userId])
   @@index([action])
+  @@index([transactionId])
+}
+
+enum MatchType {
+  exact
+  contains
+  regex
 }
 
 model CategoryRule {
-  id        String @id @default(uuid())
+  id        String    @id @default(uuid())
   pattern   String
-  matchType String // "exact" or "contains"
-  priority  Int    @default(0)
+  matchType MatchType
+  priority  Int       @default(0)
 
   categoryId String
-  category   DimCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category   DimCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
   userId String
   user   DimUser @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -192,18 +216,60 @@ model CategoryRule {
   @@index([categoryId])
 }
 
+model ModuleData {
+  id         String   @id @default(uuid())
+  moduleName String
+  userId     String
+  user       DimUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key        String
+  value      String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([moduleName, userId, key])
+  @@index([moduleName, userId])
+}
+
+// Persisted CSV column mapping for the import wizard (KAN-163). When automatic
+// importer detection fails and the user maps columns manually, the mapping is
+// stored keyed by the file's header signature so a repeat import of the same
+// bank reuses it without re-mapping.
+model ImportColumnMapping {
+  id              String   @id @default(uuid())
+  userId          String
+  user            DimUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  headerSignature String
+  // User-given name. When set, the mapping is offered as a reusable, named
+  // option in the import wizard's format dropdown for any future file (KAN-163).
+  name            String?
+  format          String?
+  mapping         Json
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, headerSignature])
+  @@index([userId])
+}
+
+enum BudgetType {
+  DAILY
+  MONTHLY
+  YEARLY
+  SPECIFIC_MONTH
+  SPECIFIC_YEAR
+  SPECIFIC_MONTH_YEAR
+}
+
 model DimBudget {
-  id               String   @id @default(uuid())
-  month            Int // 1–12
-  year             Int
-  limitAmount      Decimal  @db.Decimal(12, 2)
-  budgetLimitDay   Decimal? @db.Decimal(12, 2)
-  budgetLimitMonth Decimal? @db.Decimal(12, 2)
-  budgetLimitYear  Decimal? @db.Decimal(12, 2)
-  active           Boolean  @default(true)
+  id          String     @id @default(uuid())
+  type        BudgetType @default(MONTHLY)
+  month       Int        @default(0)
+  year        Int        @default(0)
+  limitAmount Decimal    @db.Decimal(12, 2)
+  active      Boolean    @default(true)
 
   categoryId String
-  category   DimCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category   DimCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
   userId String
   user   DimUser @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -211,7 +277,7 @@ model DimBudget {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([userId, categoryId, month, year])
+  @@unique([userId, categoryId, type, month, year])
   @@index([userId])
   @@index([categoryId])
 }

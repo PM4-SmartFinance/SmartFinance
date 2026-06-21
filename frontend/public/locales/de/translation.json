@@ -1,0 +1,676 @@
+{
+  "404": {
+    "title": "404 - Seite nicht gefunden",
+    "description": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
+    "homepage": "Zur Startseite"
+  },
+  "common": {
+    "add": "Hinzufügen",
+    "apply": "Anwenden",
+    "cancel": "Abbrechen",
+    "clear": "Löschen",
+    "delete": "Löschen",
+    "deleteReason": {
+      "label": "Grund für die Löschung (Audit-Log - Optional)",
+      "placeholder": "z.B. Doppelter Eintrag"
+    },
+    "dismiss": "Ausblenden",
+    "edit": "Bearbeiten",
+    "name": "Name",
+    "next": "Weiter",
+    "previous": "Zurück",
+    "run": "Ausführen",
+    "save": "Speichern",
+    "search": "Suchen",
+    "startDate": "Startdatum",
+    "endDate": "Enddatum",
+    "loading": "Wird geladen…",
+    "backToDashboard": "Zurück zum Dashboard",
+    "deleting": "Wird gelöscht…",
+    "inactive": "Inaktiv",
+    "unknown": "Unbekannt",
+    "category": "Kategorie",
+    "saving": "Wird gespeichert…",
+    "creating": "Wird erstellt…",
+    "saveChanges": "Änderungen speichern",
+    "retry": "Erneut versuchen",
+    "roles": {
+      "user": "Benutzer",
+      "admin": "Admin"
+    },
+    "presets": {
+      "last7days": "Letzte 7 Tage",
+      "last30days": "Letzte 30 Tage",
+      "last3months": "Letzte 3 Monate",
+      "lastYear": "Letztes Jahr",
+      "custom": "Benutzerdefiniert"
+    }
+  },
+  "errors": {
+    "generic": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+    "loadCategories": "Kategorien konnten nicht geladen werden",
+    "invalidDateRange": "Das Startdatum darf nicht nach dem Enddatum liegen."
+  },
+  "categories": {
+    "title": "Kategorien & Regeln",
+    "description": "Verwalten Sie Ihre Kategorien und automatischen Kategorisierungsregeln an einem Ort.",
+    "loading": "Kategorien und Regeln werden geladen…",
+    "loadingError": "Kategorien oder Regeln konnten nicht geladen werden. Bitte aktualisieren.",
+    "refreshHint": "Gespeichert, aber das Dashboard muss möglicherweise manuell aktualisiert werden.",
+    "noCategories": "Noch keine Kategorien.",
+    "createCategoryTitle": "Kategorie erstellen",
+    "newCategoryPlaceholder": "z.B. Abonnements",
+    "applyRulesTitle": "Regeln anwenden",
+    "applyRulesDescription": "Die automatische Kategorisierung verarbeitet nur nicht kategorisierte Transaktionen. Die Neukategorisierung wendet jede Regel (höchste Priorität zuerst) auf alle nicht manuell bearbeiteten Transaktionen im ausgewählten Zeitraum an und überschreibt frühere automatische Kategorisierungen.",
+    "autoCategorizeBtn": "Nicht kategorisierte automatisch zuordnen",
+    "autoCategorizing": "Wird automatisch kategorisiert…",
+    "recategorizeBtn": "Datumsbereich neu kategorisieren…",
+    "recategorizing": "Wird neu kategorisiert…",
+    "recategorizeFrom": "Von",
+    "recategorizeTo": "Bis",
+    "existingRules": "Bestehende Regeln",
+    "noRules": "Noch keine Regeln.",
+    "matchCount_one": "{{count}} bestehende Transaktion würde übereinstimmen.",
+    "matchCount_other": "{{count}} bestehende Transaktionen würden übereinstimmen.",
+    "autoCategorizeNone": "Keine nicht kategorisierten Transaktionen entsprachen einer Regel.",
+    "autoCategorizeSuccess_one": "{{count}} Transaktion kategorisiert.",
+    "autoCategorizeSuccess_other": "{{count}} Transaktionen kategorisiert.",
+    "recategorizeNone": "Es wurden keine Transaktionen im ausgewählten Bereich geändert.",
+    "recategorizeSuccess_one": "{{count}} Transaktion neu kategorisiert.",
+    "recategorizeSuccess_other": "{{count}} Transaktionen neu kategorisiert.",
+    "uncategorizeAllBtn": "Alle als unkategorisiert markieren",
+    "confirmUncategorizeAll": "Die Kategorie von allen Transaktionen entfernen, die derzeit ‘{{name}}’ zugewiesen sind? Sie werden unkategorisiert.",
+    "uncategorizeAllNone": "Keine Transaktionen waren ‘{{name}}’ zugewiesen.",
+    "uncategorizeAllSuccess_one": "Kategorie von {{count}} Transaktion in ‘{{name}}’ entfernt.",
+    "uncategorizeAllSuccess_other": "Kategorie von {{count}} Transaktionen in ‘{{name}}’ entfernt.",
+    "errors": {
+      "nameRequired": "Kategoriename ist erforderlich.",
+      "createFailed": "Kategorie konnte nicht erstellt werden.",
+      "updateFailed": "Kategorie konnte nicht aktualisiert werden.",
+      "deleteFailed": "Kategorie konnte nicht gelöscht werden.",
+      "rulePatternRequired": "Regelmuster ist erforderlich.",
+      "createRuleFailed": "Regel konnte nicht erstellt werden.",
+      "previewFailed": "Regelübereinstimmungen konnten nicht in der Vorschau angezeigt werden.",
+      "updateRuleFailed": "Regel konnte nicht aktualisiert werden.",
+      "deleteRuleFailed": "Regel konnte nicht gelöscht werden.",
+      "autoCategorizeFailed": "Automatische Kategorisierung fehlgeschlagen.",
+      "recategorizeFailed": "Neukategorisierung des ausgewählten Bereichs fehlgeschlagen.",
+      "uncategorizeAllFailed": "Transaktionen konnten nicht zu unkategorisiert verschoben werden."
+    },
+    "aria": {
+      "editCategory": "Kategorie {{name}} bearbeiten",
+      "saveCategory": "Kategorie {{name}} speichern",
+      "deleteCategory": "Kategorie {{name}} löschen",
+      "uncategorizeAll": "Alle Transaktionen in {{name}} zu unkategorisiert verschieben"
+    }
+  },
+  "nav": {
+    "transactions": "Transaktionen",
+    "budgets": "Budgets",
+    "categories": "Kategorien",
+    "settings": "Einstellungen"
+  },
+  "dashboard": {
+    "heading": "Dashboard",
+    "subtitle": "Sehen Sie Ihre finanzielle Übersicht auf einen Blick",
+    "greeting": "Willkommen zurück, {{name}}"
+  },
+  "modules": {
+    "backToDashboard": "Dashboard",
+    "noWidgets": "Dieses Modul hat keine Dashboard-Widgets.",
+    "loadError": "Moduldaten konnten nicht geladen werden.",
+    "widgetLoadError": "Widget-Daten konnten nicht geladen werden.",
+    "widgetNoData": "Keine Daten verfügbar."
+  },
+  "login": {
+    "brand": "⬡ SmartFinance",
+    "title": "Anmelden",
+    "description": "Geben Sie Ihre Zugangsdaten ein, um auf Ihr Konto zuzugreifen",
+    "submit": "Anmelden",
+    "submitting": "Anmeldung läuft…",
+    "emailLabel": "E-Mail",
+    "passwordLabel": "Passwort"
+  },
+  "settings": {
+    "heading": "Einstellungen",
+    "description": "Verwalten Sie Ihr Konto und die Plattform-Einstellungen.",
+    "nav": {
+      "profile": "Profil",
+      "userManagement": "Benutzerverwaltung",
+      "accounts": "Konten"
+    }
+  },
+  "settingsUsers": {
+    "heading": "Benutzer",
+    "description": "Verwalten Sie Plattformbenutzer und Zugriffsrechte",
+    "createUserBtn": "Benutzer erstellen",
+    "deleteDialog": {
+      "title": "Benutzer löschen?",
+      "body": "Möchten Sie den Benutzer <1>{{email}}</1> endgültig löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+    },
+    "errors": {
+      "deactivateFailed": "Benutzer konnte nicht deaktiviert werden",
+      "deleteFailed": "Benutzer konnte nicht gelöscht werden",
+      "loadFailed": "Benutzer konnten nicht geladen werden. Bitte versuchen Sie es erneut."
+    }
+  },
+  "budgets": {
+    "heading": "Budgets",
+    "description": "Legen Sie Ausgabenlimits pro Kategorie fest und überwachen Sie den Fortschritt",
+    "loading": "Budgets werden geladen…",
+    "createBtn": "Budget erstellen",
+    "emptyState": "Noch keine Budgets. Erstellen Sie eines, um loszulegen.",
+    "types": {
+      "daily": "Tägliches Budget",
+      "monthly": "Monatliches Budget",
+      "yearly": "Jährliches Budget",
+      "specificMonth": "{{month}} (wiederkehrend)"
+    },
+    "periods": {
+      "daily": "Täglich",
+      "monthly": "Monatlich",
+      "yearly": "Jährlich",
+      "dateRange": "Datumsbereich"
+    },
+    "filters": {
+      "viewPeriod": "Zeitraum anzeigen"
+    },
+    "deleteDialog": {
+      "title": "Budget löschen?",
+      "body": "Möchten Sie das <1>{{type}}</1>-Budget für <3>{{name}}</3> wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+    },
+    "errors": {
+      "deleteFailed": "Budget konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.",
+      "loadFailed": "Budgets konnten nicht geladen werden"
+    }
+  },
+  "settingsProfile": {
+    "heading": "Profil",
+    "errors": {
+      "passwordsMismatch": "Die neuen Passwörter stimmen nicht überein."
+    },
+    "account": {
+      "title": "Kontoinformationen",
+      "description": "Aktualisieren Sie Ihren Anzeigenamen und Ihre E-Mail-Adresse.",
+      "loadFailed": "Ihr Profil konnte nicht geladen werden. Bitte aktualisieren Sie die Seite.",
+      "displayNameLabel": "Anzeigename",
+      "displayNamePlaceholder": "Ihr Name",
+      "emailLabel": "E-Mail-Adresse",
+      "success": "Profil erfolgreich aktualisiert.",
+      "emailChangedSignInAgain": "Profil aktualisiert. Bitte melden Sie sich mit Ihrer neuen E-Mail-Adresse erneut an.",
+      "saving": "Wird gespeichert…",
+      "saveBtn": "Änderungen speichern"
+    },
+    "password": {
+      "title": "Passwort ändern",
+      "description": "Geben Sie Ihr aktuelles Passwort ein, bevor Sie ein neues festlegen. Sie werden nach einer erfolgreichen Änderung abgemeldet.",
+      "currentLabel": "Aktuelles Passwort",
+      "newLabel": "Neues Passwort",
+      "confirmLabel": "Neues Passwort bestätigen",
+      "success": "Passwort geändert. Bitte melden Sie sich erneut an.",
+      "changing": "Wird geändert…",
+      "changeBtn": "Passwort ändern"
+    }
+  },
+  "transactions": {
+    "heading": "Transaktionen",
+    "emptyState": "Keine Transaktionen gefunden. Versuchen Sie, Ihre Filter anzupassen.",
+    "filters": {
+      "heading": "Filter",
+      "category": "Nach Kategorie filtern",
+      "allCategories": "Alle Kategorien",
+      "searchPlaceholder": "Suche nach Händlername...",
+      "account": "Nach Konto filtern",
+      "allAccounts": "Alle Konten",
+      "accountsError": "Konten konnten nicht geladen werden"
+    },
+    "table": {
+      "date": "Datum",
+      "description": "Beschreibung",
+      "category": "Kategorie",
+      "amount": "Betrag",
+      "actions": "Aktionen",
+      "account": "Konto"
+    },
+    "pagination": {
+      "info": "Seite {{page}} von {{totalPages}} ({{totalCount}} gesamt)"
+    },
+    "delete": {
+      "title": "Transaktion löschen",
+      "body": "Möchten Sie die Transaktion mit <1>{{merchant}}</1> vom <3>{{date}}</3> über <5>{{amount}}</5> wirklich löschen?<7/>Diese Aktion kann von einem Administrator rückgängig gemacht werden."
+    },
+    "edit": {
+      "title": "Transaktion bearbeiten",
+      "dateLabel": "Datum",
+      "amountLabel": "Betrag",
+      "categoryLabel": "Kategorie",
+      "noCategory": "Keine Kategorie",
+      "notesLabel": "Notizen",
+      "notesPlaceholder": "Notizen hinzufügen…",
+      "reasonLabel": "Grund für die Änderung (Audit-Log)",
+      "reasonPlaceholder": "z.B. Datum korrigiert",
+      "saving": "Wird gespeichert…",
+      "save": "Änderungen speichern"
+    },
+    "errors": {
+      "loadFailed": "Transaktionen konnten nicht geladen werden. Bitte versuchen Sie es später erneut."
+    }
+  },
+  "components": {
+    "budgetWidget": {
+      "error": "Budgetdaten konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
+      "title": "Budgetstatus",
+      "empty": "Keine aktiven Budgets. Klicken Sie, um eines zu erstellen.",
+      "statusSummary": "{{onTrack}} auf Kurs, {{approaching}} nähern sich dem Limit, {{exceeded}} überschritten",
+      "activeCount_one": "{{count}} aktives Budget",
+      "activeCount_other": "{{count}} aktive Budgets",
+      "ariaView": "Budgets anzeigen"
+    },
+    "budgetCategoryGroup": {
+      "basedOn": "Basierend auf {{type}} Budget",
+      "noBudget": "Kein Budget festgelegt",
+      "of": "von",
+      "overBudget": "über Budget",
+      "remaining": "verbleibend",
+      "spent": "ausgegeben",
+      "editAria": "{{type}} bearbeiten",
+      "deleteAria": "{{type}} löschen",
+      "over": "drüber",
+      "left": "übrig"
+    },
+    "budgetProgress": {
+      "title": "Budgetfortschritt",
+      "viewAll": "Alle Budgets anzeigen",
+      "error": "Budgetfortschritt konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
+      "loading": "Budgetfortschritt wird geladen…",
+      "parseError": "Einige Budgetwerte konnten nicht analysiert werden. Bitte aktualisieren – wenn das Problem weiterhin besteht, kontaktieren Sie den Support.",
+      "empty": "Noch keine verfolgten Budgetsummen. Erstellen Sie Budgets und importieren Sie Transaktionen, um diese Diagramme zu füllen.",
+      "excludedWarning": "Einige Budgetwerte konnten nicht analysiert werden und wurden von den unten stehenden Summen ausgeschlossen.",
+      "chart": {
+        "spent": "Ausgegeben",
+        "remaining": "Verbleibend",
+        "over": "Drüber",
+        "noSpending": "Keine Ausgaben in der Kategorie"
+      },
+      "noCategorySpending": "Noch keine Ausgaben in der Kategorie.",
+      "noPeriodBudgets": "Keine Budgets für diesen Zeitraum.",
+      "aria": {
+        "categoryUsage": "{{category}}: {{percent}}% des Budgets verbraucht"
+      },
+      "spent": "Ausgegeben",
+      "trackedTotal": "Verfolgte Summe",
+      "overBudget": "Über Budget"
+    },
+    "categoryBreakdownChart": {
+      "title": "Ausgaben nach Kategorie",
+      "error": "Kategoriendaten konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
+      "loading": "Diagramm wird geladen…",
+      "empty": "Noch keine Ausgabenaufschlüsselung. Importieren Sie Transaktionen, um Ausgaben nach Kategorie zu sehen.",
+      "viewCategoriesAria": "Kategorien anzeigen",
+      "tooltipSpent": "Ausgegeben"
+    },
+    "createEditBudgetDialog": {
+      "titleCreate": "Budget erstellen",
+      "titleEdit": "Budget bearbeiten",
+      "selectCategory": "Kategorie auswählen…",
+      "budgetType": "Budgettyp",
+      "general": "Allgemein",
+      "specific": "Spezifisch",
+      "period": "Zeitraum",
+      "monthOptional": "Monat (optional)",
+      "anyMonth": "Jeder Monat",
+      "yearOptional": "Jahr (optional)",
+      "anyYear": "Jedes Jahr",
+      "spendingLimit": "Ausgabenlimit",
+      "limitPlaceholder": "Limit eingeben",
+      "active": "Aktiv",
+      "createBtn": "Budget erstellen",
+      "errors": {
+        "invalidLimit": "Bitte geben Sie einen gültigen Betrag ein",
+        "missingCategory": "Bitte wählen Sie eine Kategorie",
+        "missingMonthYear": "Bitte wählen Sie mindestens einen Monat oder ein Jahr für spezifische Budgets aus",
+        "updateFailed": "Budget konnte nicht aktualisiert werden",
+        "createFailed": "Budget konnte nicht erstellt werden"
+      }
+    },
+    "createUserDialog": {
+      "title": "Neuen Benutzer erstellen",
+      "emailLabel": "E-Mail",
+      "passwordLabel": "Passwort",
+      "displayNameLabel": "Anzeigename",
+      "roleLabel": "Rolle",
+      "createBtn": "Benutzer erstellen",
+      "placeholders": {
+        "email": "benutzer@beispiel.com",
+        "password": "Mindestens 8 Zeichen",
+        "displayName": "Max Mustermann (optional)"
+      },
+      "errors": {
+        "emailRequired": "E-Mail ist erforderlich",
+        "passwordRequired": "Passwort ist erforderlich",
+        "passwordLength": "Das Passwort muss mindestens 8 Zeichen lang sein",
+        "emailExists": "E-Mail existiert bereits",
+        "createFailed": "Benutzer konnte nicht erstellt werden"
+      }
+    },
+    "csvImportCard": {
+      "title": "Transaktionen importieren",
+      "dropZoneIdle": "Ziehen Sie eine CSV-Datei hierher oder klicken Sie zum Durchsuchen",
+      "dropZoneActive": "Loslassen, um Datei auszuwählen",
+      "dropZoneSelected": "Ausgewählt: {{name}}",
+      "dropZoneAria": "Datei-Ablagebereich",
+      "dropZoneSubtext": "Nur .csv Dateien · max 10 MB",
+      "formatLabel": "Bankformat",
+      "detecting": "Datei wird analysiert…",
+      "detectedHint": "Automatisch erkannt – bei Bedarf ändern.",
+      "detectFallback": "Datei konnte nicht analysiert werden – Bankformat manuell wählen.",
+      "duplicates": {
+        "result": "{{imported}} importiert, {{skipped}} übersprungen",
+        "summary": "{{count}} mögliche Duplikate übersprungen",
+        "selectAll": "Alle auswählen",
+        "forceBtn": "Ausgewählte importieren ({{count}})",
+        "doneBtn": "Fertig"
+      },
+      "wizard": {
+        "title": "CSV importieren",
+        "analyzing": "Datei wird analysiert…",
+        "formatLabel": "Format",
+        "formatPlaceholder": "Format auswählen",
+        "savedMappingOption": "Gespeicherte Zuordnung",
+        "customMappingOption": "Eigene Zuordnung",
+        "saveAsLabel": "Zuordnung speichern als (optional)",
+        "saveAsPlaceholder": "z.B. Meine Bank",
+        "accountLabel": "Konto",
+        "accountPlaceholder": "Konto auswählen",
+        "noMatchHint": "Diese Datei konnte nicht automatisch erkannt werden – wähle Format und Konto.",
+        "importBtn": "Importieren",
+        "cancelBtn": "Abbrechen",
+        "preview": {
+          "firstEntry": "Erster Eintrag",
+          "importedAs": "Wird importiert als",
+          "date": "Datum",
+          "amount": "Betrag",
+          "description": "Beschreibung",
+          "subject": "Betreff"
+        }
+      },
+      "mapping": {
+        "title": "Spalten zuordnen",
+        "help": "Diese Bank konnte nicht automatisch erkannt werden. Ordne jedem Feld eine Spalte aus deiner Datei zu.",
+        "dateLabel": "Datumsspalte",
+        "descriptionLabel": "Beschreibungsspalte",
+        "amountModeLegend": "Betragsspalten",
+        "amountModeSingle": "Einzelne Betragsspalte",
+        "amountModeSplit": "Soll & Haben getrennt",
+        "amountLabel": "Betragsspalte",
+        "debitLabel": "Sollspalte",
+        "creditLabel": "Habenspalte",
+        "subjectLabel": "Betreffspalte (optional)",
+        "subjectNone": "— Keine —",
+        "dateFormatLabel": "Datumsformat (optional)",
+        "dateFormatPlaceholder": "Automatisch",
+        "dateFormatIso": "ISO (2025-01-31)",
+        "dateFormatDmyDot": "TT.MM.JJJJ",
+        "dateFormatDmyDash": "TT-MM-JJJJ",
+        "dateFormatDmySlash": "TT/MM/JJJJ",
+        "columnPlaceholder": "Spalte auswählen",
+        "errorRequired": "Ordne vor dem Import die Spalten für Datum, Beschreibung und Betrag (oder Soll und Haben) zu."
+      },
+      "chooseAccountTitle": "Mehrere Konten verfügbar",
+      "chooseAccountHelp": "Wähle das Konto aus, zu dem diese CSV gehört, und fahre fort.",
+      "chooseAccountPlaceholder": "Konto auswählen",
+      "chooseAccountAriaLabel": "Importkonto wählen",
+      "continueBtn": "Weiter",
+      "noAccountsTitle": "Kein Konto eingerichtet. Lege zuerst ein Konto an.",
+      "uploadBtn": "Hochladen",
+      "uploading": "Wird hochgeladen…",
+      "resultSuccess_one": "{{count}} Transaktion erfolgreich importiert.",
+      "resultSuccess_other": "{{count}} Transaktionen erfolgreich importiert.",
+      "resultZero": "Keine neuen Transaktionen gefunden (möglicherweise sind alle Zeilen Duplikate).",
+      "resetBtn": "Eine weitere Datei importieren",
+      "refreshHint": "Importiert, aber das Dashboard muss möglicherweise manuell aktualisiert werden.",
+      "errors": {
+        "fileTooLarge": "Die Datei überschreitet das Größenlimit von 10 MB.",
+        "invalidType": "Nur .csv-Dateien werden akzeptiert.",
+        "uploadFailed": "Hochladen fehlgeschlagen.",
+        "formatsError": "Formate konnten nicht geladen werden. Bitte Seite neu laden."
+      },
+      "createAccount": {
+        "title": "Noch kein Konto",
+        "help": "Erstelle ein Konto für den Import und lade dann erneut hoch.",
+        "nameLabel": "Kontoname",
+        "namePlaceholder": "z. B. Hauptkonto",
+        "ibanLabel": "IBAN",
+        "accountNumberLabel": "Kontonummer (optional)",
+        "accountNumberPlaceholder": "z.B. UBS Kontonummer",
+        "submitBtn": "Konto erstellen",
+        "errorRequired": "Name und IBAN sind erforderlich.",
+        "errorExists": "Ein Konto mit dieser IBAN existiert bereits.",
+        "errorFailed": "Konto konnte nicht erstellt werden."
+      }
+    },
+    "editUserDialog": {
+      "title": "Benutzer bearbeiten: {{email}}",
+      "roleLabel": "Rolle",
+      "activeLabel": "Aktiv",
+      "warnings": {
+        "cannotChangeAdmin": "Die Rolle anderer Admin-Benutzer kann nicht geändert werden",
+        "cannotDemoteSelf": "Sie können sich nicht selbst vom Admin herabstufen"
+      },
+      "errors": {
+        "noChanges": "Keine Änderungen zum Speichern",
+        "updateFailed": "Benutzer konnte nicht aktualisiert werden"
+      }
+    },
+    "newRuleForm": {
+      "title": "Neue Regel",
+      "ariaPattern": "Neues Regelmuster für {{category}}",
+      "patternPlaceholder": "Muster",
+      "patternPlaceholderRegex": "z. B. Migros.*Online",
+      "ariaMatchType": "Neuer Regel-Übereinstimmungstyp für {{category}}",
+      "matchTypeContains": "enthält",
+      "matchTypeExact": "exakt",
+      "matchTypeRegex": "regex",
+      "ariaPriority": "Neue Regelpriorität für {{category}}",
+      "priorityTitle": "Regeln mit höherer Priorität werden zuerst ausgewertet",
+      "addRuleBtn": "Regel hinzufügen",
+      "conflictUnavailable": "Konfliktprüfung nicht verfügbar.",
+      "overlapSkippedRegex": "Überschneidungsprüfung ist für Regex-Regeln nicht verfügbar.",
+      "overlapWarning_one": "Muster überschneidet sich mit {{count}} bestehenden Regel.",
+      "overlapWarning_other": "Muster überschneidet sich mit {{count}} bestehenden Regeln.",
+      "overlapSubtext": "Regeln mit höherer Priorität gewinnen, wenn beide übereinstimmen. Sie können trotzdem speichern.",
+      "priorityLabel": "Priorität {{priority}}"
+    },
+    "recentTransactionsWidget": {
+      "title": "Letzte Transaktionen",
+      "navLabel": "Transaktionen anzeigen",
+      "empty": "Noch keine Transaktionen.",
+      "error": "Letzte Transaktionen konnten nicht geladen werden.",
+      "merchant": "Händler"
+    },
+    "resetPasswordDialog": {
+      "title": "Passwort zurücksetzen",
+      "description": "Geben Sie ein neues Passwort für {{email}} ein. Das neue Passwort muss bei der nächsten Anmeldung verwendet werden.",
+      "newPasswordLabel": "Neues Passwort",
+      "confirmPasswordLabel": "Neues Passwort bestätigen",
+      "successMessage": "Passwort erfolgreich zurückgesetzt.",
+      "resettingBtn": "Wird zurückgesetzt…",
+      "resetBtn": "Passwort zurücksetzen",
+      "errors": {
+        "passwordMismatch": "Die Passwörter stimmen nicht überein.",
+        "resetFailed": "Passwort konnte nicht zurückgesetzt werden."
+      }
+    },
+    "ruleRow": {
+      "ariaPattern": "Regelmuster {{id}}",
+      "ariaMatchType": "Übereinstimmungstyp für Regel {{id}}",
+      "matchTypeContains": "enthält",
+      "matchTypeExact": "exakt",
+      "matchTypeRegex": "regex",
+      "patternPlaceholderRegex": "z. B. Migros.*Online",
+      "ariaPriority": "Regelpriorität {{id}}",
+      "priorityTitle": "Regeln mit höherer Priorität werden zuerst ausgewertet",
+      "ariaSave": "Regel {{id}} speichern",
+      "conflictUnavailable": "Konfliktprüfung nicht verfügbar.",
+      "overlapSkippedRegex": "Überschneidungsprüfung ist für Regex-Regeln nicht verfügbar.",
+      "overlapWarning_one": "Muster überschneidet sich mit {{count}} anderen Regel.",
+      "overlapWarning_other": "Muster überschneidet sich mit {{count}} anderen Regeln.",
+      "priorityLabel": "Priorität {{priority}}",
+      "priorityDisplay": "Priorität: {{priority}}",
+      "ariaEdit": "Regel {{id}} bearbeiten",
+      "ariaDelete": "Regel {{id}} löschen",
+      "invalidRegexBadge": "Ungültiger Regex – Muster korrigieren"
+    },
+    "regexHelper": {
+      "captionPrefix": "Gross-/Kleinschreibung wird ignoriert.",
+      "captionAny": "beliebige Zeichen",
+      "captionAnchors": "Anker",
+      "captionEither": "entweder/oder",
+      "captionCharClass": "Zeichenklasse",
+      "captionMaxChars": "Max. 256 Zeichen.",
+      "validityTypePrompt": "Muster eingeben, um zu prüfen.",
+      "validityValid": "Gültiges Muster.",
+      "validitySlow": "Warnung: {{message}}",
+      "validityInvalid": "Ungültig: {{message}}",
+      "slowMessage": "Muster könnte katastrophales Backtracking verursachen",
+      "testAgainstLabel": "Testen gegen:",
+      "testPlaceholder": "z. B. Migros Online",
+      "testMatches": "✓ trifft zu",
+      "testNoMatch": "✗ kein Treffer"
+    },
+    "spendingTrendChart": {
+      "title": "Monatliche Einnahmen vs. Ausgaben",
+      "viewTransactions": "Transaktionen anzeigen →",
+      "income": "Einnahmen",
+      "expenses": "Ausgaben",
+      "singleBucketHelp": "Passen Sie den Datumsbereich oder die Granularität an, um einen Trend zu sehen.",
+      "footerSummary": "Zeigt {{count}} {{granularity}} an Einnahmen und Ausgaben.",
+      "aria": {
+        "empty": "Diagramm für Einnahmen und Ausgaben, keine Daten.",
+        "describe": "{{date}}: Einnahmen {{income}}, Ausgaben {{expenses}}",
+        "short": "Diagramm für Einnahmen und Ausgaben. {{details}}.",
+        "long": "Diagramm für Einnahmen und Ausgaben mit {{total}} Zeiträumen. {{head}}. … {{skipped}} Zeiträume ausgelassen. {{tail}}."
+      },
+      "states": {
+        "error": "Ausgabentrenddaten konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
+        "loading": "Diagramm wird geladen…",
+        "empty": "Keine Ausgabendaten für den ausgewählten Zeitraum. Passen Sie den Datumsbereich an oder importieren Sie Transaktionen."
+      },
+      "controls": {
+        "bucket": "Zeitraum",
+        "granularityAria": "Granularität",
+        "labels": "Beschriftungen",
+        "labelsAria": "Anzahl der Achsenbeschriftungen",
+        "chartStyleAria": "Diagrammstil",
+        "line": "Linie",
+        "bar": "Balken",
+        "toggleSeriesAria": "Diagrammreihen umschalten",
+        "options": {
+          "auto": "Auto",
+          "day": "Tag",
+          "week": "Woche",
+          "month": "Monat",
+          "quarter": "Quartal",
+          "year": "Jahr"
+        }
+      },
+      "granularities": {
+        "auto_one": "Automatische Skalierung",
+        "auto_other": "Automatische Skalierungen",
+        "day_one": "Tag",
+        "day_other": "Tage",
+        "week_one": "Woche",
+        "week_other": "Wochen",
+        "month_one": "Monat",
+        "month_other": "Monate",
+        "quarter_one": "Quartal",
+        "quarter_other": "Quartale",
+        "year_one": "Jahr",
+        "year_other": "Jahre"
+      }
+    },
+    "summaryMetricsWidget": {
+      "fromSelectedPeriod": "Aus dem gewählten Zeitraum",
+      "error": "Zusammenfassungsdaten konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
+      "viewTransactionsAria": "Transaktionen anzeigen",
+      "netBalance": "Nettosaldo",
+      "totalExpenses": "Gesamtausgaben",
+      "totalIncome": "Gesamteinnahmen"
+    },
+    "userMenu": {
+      "ariaLabel": "Benutzermenü",
+      "theme": "Design",
+      "language": "Sprache",
+      "signingOut": "Abmelden…",
+      "signOut": "Abmelden",
+      "themes": {
+        "light": "Hell",
+        "dark": "Dunkel",
+        "system": "System"
+      }
+    },
+    "userTable": {
+      "empty": "Keine Benutzer gefunden. Erstellen Sie Ihren ersten Benutzer, um loszulegen.",
+      "noActions": "Keine Aktionen verfügbar",
+      "headers": {
+        "email": "E-Mail",
+        "name": "Name",
+        "role": "Rolle",
+        "status": "Status",
+        "created": "Erstellt am",
+        "actions": "Aktionen"
+      },
+      "status": {
+        "active": "Aktiv",
+        "deactivated": "Deaktiviert"
+      },
+      "actions": {
+        "resetPassword": "Passwort zurücksetzen",
+        "deactivate": "Deaktivieren"
+      }
+    }
+  },
+  "settingsAccounts": {
+    "heading": "Konten",
+    "description": "Verwalte deine Bankkonten. Deaktiviere ein Konto, um seine Transaktionen auszublenden.",
+    "createBtn": "Konto erstellen",
+    "createTitle": "Neues Konto",
+    "editTitle": "Konto bearbeiten",
+    "nameLabel": "Name",
+    "namePlaceholder": "z. B. Hauptkonto",
+    "ibanLabel": "IBAN",
+    "accountNumberLabel": "Kontonummer (optional)",
+    "accountNumberPlaceholder": "Wird zum automatischen Zuordnen von Importen verwendet",
+    "emptyState": "Noch keine Konten. Erstelle eines, um mit dem Import zu beginnen.",
+    "activate": "Aktivieren",
+    "deactivate": "Deaktivieren",
+    "status": {
+      "active": "Aktiv",
+      "inactive": "Inaktiv"
+    },
+    "table": {
+      "name": "Name",
+      "iban": "IBAN",
+      "status": "Status",
+      "actions": "Aktionen"
+    },
+    "deleteDialog": {
+      "title": "Konto löschen?",
+      "body": "Möchtest du <1>{{name}}</1> wirklich löschen? Dies kann nicht rückgängig gemacht werden."
+    },
+    "errors": {
+      "nameRequired": "Name ist erforderlich",
+      "ibanRequired": "IBAN ist erforderlich",
+      "ibanExists": "Ein Konto mit dieser IBAN existiert bereits",
+      "saveFailed": "Konto konnte nicht gespeichert werden",
+      "loadFailed": "Konten konnten nicht geladen werden. Bitte versuche es erneut.",
+      "toggleFailed": "Konto konnte nicht aktualisiert werden",
+      "deleteHasTransactions": "Dieses Konto hat noch Transaktionen. Deaktiviere es, anstatt es zu löschen.",
+      "deleteFailed": "Konto konnte nicht gelöscht werden"
+    },
+    "showAccountName": {
+      "label": "Kontoname bei Transaktionen anzeigen",
+      "description": "Fügt der Transaktionsliste eine Kontospalte hinzu."
+    }
+  }
+}

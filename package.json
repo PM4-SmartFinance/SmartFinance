@@ -3,23 +3,30 @@
   "private": true,
   "workspaces": [
     "frontend",
-    "backend"
+    "backend",
+    ".github/scripts"
   ],
   "scripts": {
-    "dev": "concurrently --names fe,be --prefix-colors cyan,green \"bun run dev --cwd frontend\" \"bun run dev --cwd backend\"",
+    "dev": "concurrently --names fe,be --prefix-colors cyan,green \"bun run --cwd=frontend dev\" \"bun run --cwd=backend dev\"",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky",
-    "test": "bun run --cwd=backend test && bun run --cwd=frontend test",
-    "test:coverage": "bun run --cwd=backend test:coverage && bun run --cwd=frontend test:coverage",
+    "test": "bun run --cwd=backend test && bun run --cwd=frontend test && bun run test:scripts",
+    "test:commit-msg": "bash scripts/test-commit-msg.sh",
+    "test:coverage": "bun run --cwd=backend test:coverage && bun run --cwd=frontend test:coverage && bun run test:scripts",
     "test:frontend": "bun run --cwd=frontend test",
-    "test:backend": "bun run --cwd=backend test"
+    "test:backend": "bun run --cwd=backend test",
+    "test:scripts": "vitest run --config .github/scripts/vitest.config.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui"
   },
   "devDependencies": {
     "@eslint-react/eslint-plugin": "^2.13.0",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.60.0",
     "@types/pg": "8.11.11",
     "@vitest/coverage-v8": "^4.1.1",
     "@vitest/eslint-plugin": "^1.6.13",
@@ -29,6 +36,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^14.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
     "prettier": "^3.8.1",
@@ -44,10 +52,5 @@
     "*.{json,md,yml,yaml,css,scss}": [
       "prettier --write"
     ]
-  },
-  "dependencies": {
-    "@fontsource-variable/inter": "^5.2.8",
-    "@prisma/client-runtime-utils": "^7.6.0",
-    "@radix-ui/react-slot": "^1.2.4"
   }
 }

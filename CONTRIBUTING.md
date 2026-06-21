@@ -32,7 +32,7 @@ Format: `<type>/<JIRA-ID>-<description>`
 
 We follow Conventional Commits to make our history readable. You must include the Jira ticket ID in your commit message. This ensures every individual code change is logged in the history of the Jira ticket.
 
-Format: `<type>(<scope>): [<JIRA-ID>] <subject>`
+Format: `<type>(<scope>)?: [<JIRA-ID>] <subject>`
 
 - **Types:**
   - `feat`: A new feature
@@ -42,8 +42,11 @@ Format: `<type>(<scope>): [<JIRA-ID>] <subject>`
   - `refactor`: A code change that neither fixes a bug nor adds a feature
   - `test`: Adding missing tests or correcting existing tests
   - `chore`: Changes to the build process or auxiliary tools
+  - `ci`: Changes to CI/CD configuration
+  - `build`: Changes that affect the build system or dependencies
+  - `perf`: Changes that improve performance
 
-- **Scopes (Optional):** Indicate the part of the monorepo affected (e.g., `frontend`, `backend`, `docker`, `db`, `root`).
+- **Scope (Optional):** Use lowercase scope text (letters and optional hyphens) to indicate the affected part of the monorepo (for example, `frontend`, `back-end`, `ci-cd`, `docker`, `db`, `root`, `infra`).
 
 - **Examples:**
   - `feat(backend): [KAN-10] implement RBAC middleware for protected routes`
@@ -59,6 +62,8 @@ Format: `<type>(<scope>): [<JIRA-ID>] <subject>`
 5. Address any feedback and update the branch.
 6. Once approved, use **Squash and Merge** to integrate your code into `develop`.
 7. Delete the feature branch after merging.
+
+**Code Ownership:** Critical security and authentication paths are protected by [`.github/CODEOWNERS`](.github/CODEOWNERS). PRs that modify these files will automatically request a review from the designated code owner. The CODEOWNERS approval is required before merge (enforced via branch protection on `develop`).
 
 **PR Deadline:** All PRs must be submitted by **Thursday 20:00** to allow sufficient review time before sprint closure. PRs submitted after this deadline will be deferred to the next sprint.
 
@@ -88,10 +93,57 @@ Use this template for all PR descriptions:
 <optional: trade-offs, follow-ups, or decisions for reviewers>
 ```
 
-## 5. Pre-commit Hooks and Linting
+## 5. Architecture Decision Records (ADRs)
+
+We use a small set of MADR-style ADRs stored in `docs/adr/` to capture important, long-lived architectural decisions (examples: auth model, layered architecture, transaction boundaries).
+
+### When to create an ADR
+
+- For decisions that affect multiple components, are hard to reverse, or require team alignment (e.g. switching auth model, changing DB schema conventions).
+- For trade-offs where the reasoning will help future maintainers.
+
+### How to create an ADR
+
+1. Copy an existing ADR in `docs/adr/` and give it the next number (e.g. `0007-my-decision.md`).
+2. Fill the sections: `Status`, `Date`, `Context`, `Decision`, `Consequences`, `Related ADRs`, and link to relevant code paths.
+3. Open a PR against `develop` with the ADR. Add reviewers and the relevant Jira ticket if applicable.
+4. After review, merge the ADR. Keep the status updated (e.g. `Accepted`, `Superseded`).
+
+### ADR Template
+
+```markdown
+# 000X — Short Title
+
+Status: Proposed | Accepted | Superseded
+
+Date: YYYY-MM-DD
+
+Context
+
+Decision
+
+Consequences
+
+Related code (link to files)
+
+Related ADRs
+```
+
+## 6. Pre-commit Hooks and Linting
 
 We use Husky and lint-staged to automatically format and lint code before it is committed.
 
 - When you run `git commit`, Prettier will format your staged files, and ESLint will check for structural errors.
 - If ESLint finds severe, unfixable errors, your commit will be safely blocked.
 - **How to handle failures:** Read the terminal output to locate the specific line causing the linting error. Fix the issue in your IDE, stage the file again using `git add <file>`, and re-run your `git commit` command. Do not use the `--no-verify` flag to bypass these checks.
+
+## 7. Test Coverage Requirements
+
+We enforce test coverage to prevent regressions. Key points:
+
+- **Minimum thresholds:** 70% for lines, functions, branches, and statements for the backend and frontend.
+- **Local checks:** Run `bun run --filter @smartfinance/backend test:coverage` or `bun run --filter @smartfinance/frontend test:coverage` to generate HTML and JSON reports in the `coverage/` directory.
+- **CI enforcement:** The CI pipeline runs coverage and will fail PRs if thresholds drop below the configured minimums.
+- **PR feedback:** CI posts a coverage summary as a PR comment and uploads the HTML report as a downloadable artifact.
+
+If you need to increase coverage for a change, add focused tests in the appropriate `test/` folder and re-run coverage locally before opening your PR.

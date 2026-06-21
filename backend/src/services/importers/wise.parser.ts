@@ -9,7 +9,7 @@ const COL = {
   DESCRIPTION: 5,
 } as const;
 
-const EXPECTED_HEADERS = [
+export const EXPECTED_HEADERS = [
   "TransferWise ID",
   "Date",
   "Date Time",

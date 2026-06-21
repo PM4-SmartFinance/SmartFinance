@@ -1,5 +1,8 @@
 import type { User } from "../lib/queries/users";
 import { Button } from "@/components/ui/button";
+import { SortableColumnHeader } from "./SortableColumnHeader";
+import { formatDate } from "@/lib/format";
+import { useTranslation } from "react-i18next";
 
 interface UserTableProps {
   users: User[];
@@ -8,6 +11,7 @@ interface UserTableProps {
   onEdit: (user: User) => void;
   onDeactivate: (user: User) => void;
   onDelete: (user: User) => void;
+  onResetPassword: (user: User) => void;
   sortBy?: "email" | "role" | "createdAt";
   sortOrder?: "asc" | "desc";
   onSort?: (column: "email" | "role" | "createdAt") => void;
@@ -20,10 +24,12 @@ export function UserTable({
   onEdit,
   onDeactivate,
   onDelete,
+  onResetPassword,
   sortBy = "email",
   sortOrder = "asc",
   onSort,
 }: UserTableProps) {
+  const { t, i18n } = useTranslation();
   if (isLoading) {
     return (
       <div className="space-y-2 p-4">
@@ -38,7 +44,7 @@ export function UserTable({
   if (users.length === 0) {
     return (
       <div className="p-6 text-center text-muted-foreground">
-        No users found. Create your first user to get started.
+        {t("components.userTable.empty", "No users found. Create your first user to get started.")}
       </div>
     );
   }
@@ -48,41 +54,35 @@ export function UserTable({
       <table className="w-full">
         <thead className="border-b border-border bg-muted">
           <tr>
-            <th scope="col" className="px-6 py-3 text-left">
-              <button
-                onClick={() => onSort?.("email")}
-                className="flex items-center gap-2 font-semibold text-foreground hover:text-foreground/80"
-              >
-                Email
-                {sortBy === "email" && <span>{sortOrder === "asc" ? "↑" : "↓"}</span>}
-              </button>
-            </th>
+            <SortableColumnHeader
+              column="email"
+              label={t("components.userTable.headers.email", "Email")}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSort={(col) => onSort?.(col)}
+            />
             <th scope="col" className="px-6 py-3 text-left font-semibold text-foreground">
-              Name
+              {t("components.userTable.headers.name", "Name")}
             </th>
-            <th scope="col" className="px-6 py-3 text-left">
-              <button
-                onClick={() => onSort?.("role")}
-                className="flex items-center gap-2 font-semibold text-foreground hover:text-foreground/80"
-              >
-                Role
-                {sortBy === "role" && <span>{sortOrder === "asc" ? "↑" : "↓"}</span>}
-              </button>
-            </th>
+            <SortableColumnHeader
+              column="role"
+              label={t("components.userTable.headers.role", "Role")}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSort={(col) => onSort?.(col)}
+            />
             <th scope="col" className="px-6 py-3 text-left font-semibold text-foreground">
-              Status
+              {t("components.userTable.headers.status", "Status")}
             </th>
-            <th scope="col" className="px-6 py-3 text-left">
-              <button
-                onClick={() => onSort?.("createdAt")}
-                className="flex items-center gap-2 font-semibold text-foreground hover:text-foreground/80"
-              >
-                Created
-                {sortBy === "createdAt" && <span>{sortOrder === "asc" ? "↑" : "↓"}</span>}
-              </button>
-            </th>
+            <SortableColumnHeader
+              column="createdAt"
+              label={t("components.userTable.headers.created", "Created")}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSort={(col) => onSort?.(col)}
+            />
             <th scope="col" className="px-6 py-3 text-left font-semibold text-foreground">
-              Actions
+              {t("components.userTable.headers.actions", "Actions")}
             </th>
           </tr>
         </thead>
@@ -93,7 +93,9 @@ export function UserTable({
               <td className="px-6 py-3 text-sm text-foreground">{user.name || "—"}</td>
               <td className="px-6 py-3 text-sm">
                 <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
-                  {user.role}
+                  {user.role === "ADMIN"
+                    ? t("common.roles.admin", "Admin")
+                    : t("common.roles.user", "User")}
                 </span>
               </td>
               <td className="px-6 py-3 text-sm">
@@ -102,32 +104,59 @@ export function UserTable({
                     user.active ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
                   }`}
                 >
-                  {user.active ? "Active" : "Deactivated"}
+                  {user.active
+                    ? t("components.userTable.status.active", "Active")
+                    : t("components.userTable.status.deactivated", "Deactivated")}
                 </span>
               </td>
               <td className="px-6 py-3 text-sm text-muted-foreground">
-                {new Date(user.createdAt).toLocaleDateString("en-US")}
+                {formatDate(user.createdAt, i18n.resolvedLanguage)}
               </td>
               <td className="px-6 py-3 text-sm">
                 {user.role === "ADMIN" && user.id !== currentUserId ? (
-                  <span className="text-xs text-muted-foreground">No actions available</span>
+                  <span className="text-xs text-muted-foreground">
+                    {t("components.userTable.noActions", "No actions available")}
+                  </span>
                 ) : (
-                  <div className="flex gap-2">
-                    <Button onClick={() => onEdit(user)} variant="outline" size="sm">
-                      Edit
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      onClick={() => {
+                        onEdit(user);
+                      }}
+                      variant="outline"
+                      size="sm"
+                    >
+                      {t("common.edit", "Edit")}
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        onResetPassword(user);
+                      }}
+                      variant="outline"
+                      size="sm"
+                    >
+                      {t("components.userTable.actions.resetPassword", "Reset Password")}
                     </Button>
                     {user.active && (
-                      <Button onClick={() => onDeactivate(user)} variant="destructive" size="sm">
-                        Deactivate
+                      <Button
+                        onClick={() => {
+                          void onDeactivate(user);
+                        }}
+                        variant="destructive"
+                        size="sm"
+                      >
+                        {t("components.userTable.actions.deactivate", "Deactivate")}
                       </Button>
                     )}
                     <Button
-                      onClick={() => onDelete(user)}
+                      onClick={() => {
+                        onDelete(user);
+                      }}
                       variant="ghost"
                       size="sm"
                       className="text-red-600 hover:text-red-700 hover:bg-red-50"
                     >
-                      Delete
+                      {t("common.delete", "Delete")}
                     </Button>
                   </div>
                 )}

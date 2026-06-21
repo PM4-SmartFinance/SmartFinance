@@ -6,15 +6,18 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { BudgetsPage } from "./pages/BudgetsPage";
 import { TransactionsPage } from "./pages/TransactionsPage";
 import { CategoriesPage } from "./pages/CategoriesPage";
-import { AdminUsersPage } from "./pages/AdminUsersPage";
-import { ProfilePage } from "./pages/ProfilePage";
+import { SettingsUsers } from "./pages/SettingsUsers";
+import { SettingsProfile } from "./pages/SettingsProfile";
+import { SettingsAccounts } from "./pages/SettingsAccounts";
+import { SettingsLayout } from "./pages/SettingsLayout";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
-import LoginWireframe from "./wireframes/LoginWireframe";
-import DashboardWireframe from "./wireframes/DashboardWireframe";
-import TransactionsWireframe from "./wireframes/TransactionsWireframe";
-import ReportsWireframe from "./wireframes/ReportsWireframe";
-import BudgetsWireframe from "./wireframes/BudgetsWireframe";
+import { ModulePage } from "./pages/ModulePage";
+import { LoginWireframe } from "./wireframes/LoginWireframe";
+import { DashboardWireframe } from "./wireframes/DashboardWireframe";
+import { TransactionsWireframe } from "./wireframes/TransactionsWireframe";
+import { ReportsWireframe } from "./wireframes/ReportsWireframe";
+import { BudgetsWireframe } from "./wireframes/BudgetsWireframe";
 
 export const router = createBrowserRouter([
   {
@@ -41,15 +44,30 @@ export const router = createBrowserRouter([
         element: <CategoriesPage />,
       },
       {
-        path: "/profile",
-        element: <ProfilePage />,
+        path: "/modules/:moduleId",
+        element: <ModulePage />,
       },
       {
-        element: <AdminRoute />,
+        path: "/settings",
+        element: <SettingsLayout />,
         children: [
+          { index: true, element: <Navigate to="/settings/profile" replace /> },
           {
-            path: "/admin/users",
-            element: <AdminUsersPage />,
+            path: "profile",
+            element: <SettingsProfile />,
+          },
+          {
+            path: "accounts",
+            element: <SettingsAccounts />,
+          },
+          {
+            element: <AdminRoute />,
+            children: [
+              {
+                path: "users",
+                element: <SettingsUsers />,
+              },
+            ],
           },
         ],
       },

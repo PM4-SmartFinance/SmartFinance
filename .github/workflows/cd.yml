@@ -12,14 +12,65 @@ on:
     - cron: "0 2 * * *" # Daily at 02:00 UTC from develop
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to verify (e.g. v6.0.0)"
+        required: true
+        type: string
+      dry_run:
+        description: "Skip the actual merge and log what would happen"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
 
 jobs:
-  docker:
+  sync-release:
+    name: Sync develop into main
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    outputs:
+      skipped: ${{ steps.sync-check.outputs.skipped }}
+    steps:
+      # Pin to develop so the sync-release script is loaded from the source of
+      # truth being validated, not the triggering ref (which is the tag's tree
+      # on release events).
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+
+      - name: Verify release source and healthy develop
+        id: sync-check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const syncRelease = require('./.github/scripts/sync-release.js');
+            const isDispatch = context.eventName === 'workflow_dispatch';
+            const release = context.payload.release;
+            const inputs = isDispatch
+              ? {
+                  releaseTag: context.payload.inputs.tag,
+                  targetCommitish: 'develop',
+                  dryRun: context.payload.inputs.dry_run !== 'false',
+                }
+              : {
+                  releaseTag: release.tag_name,
+                  targetCommitish: release.target_commitish || '',
+                  dryRun: false,
+                };
+            await syncRelease({ github, context, core, inputs });
+
+  docker-ci:
     name: Build & Push Docker Images
     runs-on: ubuntu-24.04
-    if: |
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
-      github.event_name == 'release'
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
     permissions:
       contents: read
       packages: write
@@ -82,26 +133,101 @@ jobs:
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 
-  deploy:
+  docker-release:
+    name: Build & Push Docker Images (release)
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'release' && needs.sync-release.outputs.skipped != 'true'
+    needs:
+      - sync-release
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/backend
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix=,format=short
+            type=raw,value=latest
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Extract metadata for frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/frontend
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix=,format=short
+            type=raw,value=latest
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+  deploy-release:
     name: Deploy to Production
     runs-on: ubuntu-24.04
-    needs: docker
+    needs:
+      - docker-release
     if: github.event_name == 'release'
     environment: production
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          REF_NAME: ${{ github.ref_name }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
+          envs: REF_NAME
           script: |
             set -euo pipefail
             cd /opt/smartfinance
-            IMAGE_TAG=${{ github.ref_name }} docker compose pull
-            IMAGE_TAG=${{ github.ref_name }} docker compose up -d --remove-orphans
-            IMAGE_TAG=${{ github.ref_name }} docker compose exec -T backend npx prisma migrate deploy
+            IMAGE_TAG=$(echo "$REF_NAME" | sed 's/^[vV]//')
+            [ -n "$IMAGE_TAG" ] || { echo "IMAGE_TAG is empty"; exit 1; }
+            IMAGE_TAG=$IMAGE_TAG docker compose pull
+            IMAGE_TAG=$IMAGE_TAG docker compose up -d --remove-orphans --scale backend=0
+            IMAGE_TAG=$IMAGE_TAG docker compose run --rm backend npx prisma migrate deploy
+            IMAGE_TAG=$IMAGE_TAG docker compose up -d --remove-orphans
             docker image prune -f
 
   docker-test:

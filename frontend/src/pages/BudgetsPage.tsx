@@ -1,14 +1,22 @@
 import { useState } from "react";
-import { useBudgets, useDeleteBudget } from "../lib/queries/budgets";
-import type { Budget } from "../lib/queries/budgets";
+import {
+  useBudgets,
+  useDeleteBudget,
+  getBudgetTypeLabel,
+  groupBudgetsByCategory,
+} from "../lib/queries/budgets";
+import type { Budget, BudgetsParams, PeriodFilter, CategorySpending } from "../lib/queries/budgets";
 import { ApiError } from "../lib/api";
 import { useCategories } from "../lib/queries/categories";
-import { BudgetProgressCard } from "../components/BudgetProgressCard";
+import { BudgetCategoryGroup } from "../components/BudgetProgressCard";
 import { CreateEditBudgetDialog } from "../components/CreateEditBudgetDialog";
-import { DeleteBudgetDialog } from "../components/DeleteBudgetDialog";
+import { ConfirmDeleteDialog } from "../components/ConfirmDeleteDialog";
+import { getDefaultDateRange } from "../lib/date";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router";
-import { ArrowLeft } from "lucide-react";
+import { NativeSelect } from "@/components/ui/native-select";
+import { BackToDashboardLink } from "@/components/BackToDashboardLink";
+import { UserMenu } from "@/components/UserMenu";
+import { Trans, useTranslation } from "react-i18next";
 
 export function BudgetsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -18,12 +26,35 @@ export function BudgetsPage() {
   const [budgetToDelete, setBudgetToDelete] = useState<{
     id: string;
     categoryName: string;
-    monthYear: string;
+    budgetLabel: string;
   } | null>(null);
+  const { t, i18n } = useTranslation();
 
-  const { data: budgets = [], isLoading, error } = useBudgets();
+  const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
+    { value: "DAILY", label: t("budgets.periods.daily", "Daily") },
+    { value: "MONTHLY", label: t("budgets.periods.monthly", "Monthly") },
+    { value: "YEARLY", label: t("budgets.periods.yearly", "Yearly") },
+    { value: "DATE_RANGE", label: t("budgets.periods.dateRange", "Date Range") },
+  ];
+
+  const [period, setPeriod] = useState<PeriodFilter>("MONTHLY");
+  const [dateRange, setDateRange] = useState(getDefaultDateRange);
+
+  const budgetParams: BudgetsParams =
+    period === "DATE_RANGE"
+      ? { period, startDate: dateRange.start, endDate: dateRange.end }
+      : { period };
+
+  const { data, isLoading, error } = useBudgets(budgetParams);
+  const budgets = data?.budgets ?? [];
+  const categorySpending = data?.categorySpending ?? [];
+
   const { data: categories = [], error: categoriesError } = useCategories();
   const { mutateAsync: deleteBudget, isPending: isDeleting } = useDeleteBudget();
+
+  const categorySpendingMap = new Map<string, CategorySpending>(
+    categorySpending.map((cs) => [cs.categoryId, cs]),
+  );
 
   const getCategoryName = (categoryId: string) => {
     const category = categories.find((c) => c.id === categoryId);
@@ -46,14 +77,17 @@ export function BudgetsPage() {
   };
 
   const handleDeleteClick = (budget: Budget) => {
-    const monthYear = new Date(budget.year, budget.month - 1).toLocaleDateString("en-US", {
-      month: "long",
-      year: "numeric",
-    });
+    setDeleteError("");
     setBudgetToDelete({
       id: budget.id,
       categoryName: getCategoryName(budget.categoryId),
-      monthYear,
+      budgetLabel: getBudgetTypeLabel(
+        budget.type,
+        budget.month,
+        budget.year,
+        t,
+        i18n.resolvedLanguage,
+      ),
     });
     setDeleteDialogOpen(true);
   };
@@ -67,8 +101,9 @@ export function BudgetsPage() {
     } catch (err) {
       const message =
         err instanceof ApiError
-          ? err.message || "Failed to delete budget. Please try again."
-          : "Failed to delete budget. Please try again.";
+          ? err.message ||
+            t("budgets.errors.deleteFailed", "Failed to delete budget. Please try again.")
+          : t("budgets.errors.deleteFailed", "Failed to delete budget. Please try again.");
       setDeleteError(message);
     }
   };
@@ -82,8 +117,10 @@ export function BudgetsPage() {
     return (
       <main className="min-h-screen bg-background">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <h1 className="text-4xl font-bold text-foreground">Budgets</h1>
-          <div className="mt-8 text-center text-muted-foreground">Loading budgets…</div>
+          <h1 className="text-4xl font-bold text-foreground">{t("budgets.heading", "Budgets")}</h1>
+          <div className="mt-8 text-center text-muted-foreground">
+            {t("budgets.loading", "Loading budgets…")}
+          </div>
         </div>
       </main>
     );
@@ -93,8 +130,10 @@ export function BudgetsPage() {
     return (
       <main className="min-h-screen bg-background">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <h1 className="text-4xl font-bold text-foreground">Budgets</h1>
-          <div className="mt-8 text-center text-destructive">Failed to load budgets</div>
+          <h1 className="text-4xl font-bold text-foreground">{t("budgets.heading", "Budgets")}</h1>
+          <div className="mt-8 text-center text-destructive">
+            {t("budgets.errors.loadFailed", "Failed to load budgets")}
+          </div>
         </div>
       </main>
     );
@@ -104,8 +143,10 @@ export function BudgetsPage() {
     return (
       <main className="min-h-screen bg-background">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <h1 className="text-4xl font-bold text-foreground">Budgets</h1>
-          <div className="mt-8 text-center text-destructive">Failed to load categories</div>
+          <h1 className="text-4xl font-bold text-foreground">{t("budgets.heading", "Budgets")}</h1>
+          <div className="mt-8 text-center text-destructive">
+            {t("errors.loadCategories", "Failed to load categories")}
+          </div>
         </div>
       </main>
     );
@@ -117,38 +158,90 @@ export function BudgetsPage() {
         {/* Page Header */}
         <header className="mb-8 flex items-center justify-between">
           <div className="flex flex-col gap-2">
-            <h1 className="text-4xl font-bold text-foreground">Budgets</h1>
+            <h1 className="text-4xl font-bold text-foreground">
+              {t("budgets.heading", "Budgets")}
+            </h1>
             <p className="text-sm text-muted-foreground">
-              Set spending limits per category and monitor progress
+              {t("budgets.description", "Set spending limits per category and monitor progress")}
             </p>
-            <Link
-              to="/"
-              className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="size-4" />
-              Back to Dashboard
-            </Link>
+            <BackToDashboardLink className="mt-2" />
           </div>
-          <Button onClick={handleCreate} size="sm">
-            Create Budget
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={handleCreate} size="sm">
+              {t("budgets.createBtn", "Create Budget")}
+            </Button>
+            <UserMenu />
+          </div>
         </header>
 
-        {/* Budget Grid */}
+        {/* Period Filter */}
+        <div className="mb-6 flex flex-wrap items-end gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="period-filter" className="text-sm font-medium text-foreground">
+              {t("budgets.filters.viewPeriod", "View Period")}
+            </label>
+            <NativeSelect
+              id="period-filter"
+              value={period}
+              onChange={(e) => setPeriod(e.target.value as PeriodFilter)}
+              className="w-auto"
+            >
+              {PERIOD_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </NativeSelect>
+          </div>
+
+          {period === "DATE_RANGE" && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="range-start" className="text-sm font-medium text-foreground">
+                  {t("common.startDate", "Start Date")}
+                </label>
+                <input
+                  id="range-start"
+                  type="date"
+                  value={dateRange.start}
+                  onChange={(e) => setDateRange((prev) => ({ ...prev, start: e.target.value }))}
+                  max={dateRange.end}
+                  className="rounded border border-input bg-background px-3 py-2 text-sm text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="range-end" className="text-sm font-medium text-foreground">
+                  {t("common.endDate", "End Date")}
+                </label>
+                <input
+                  id="range-end"
+                  type="date"
+                  value={dateRange.end}
+                  onChange={(e) => setDateRange((prev) => ({ ...prev, end: e.target.value }))}
+                  min={dateRange.start}
+                  className="rounded border border-input bg-background px-3 py-2 text-sm text-foreground [color-scheme:light] dark:[color-scheme:dark]"
+                />
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Budget Groups */}
         {budgets.length === 0 ? (
           <div className="text-center text-muted-foreground">
-            <p>No budgets yet. Create one to get started.</p>
+            <p>{t("budgets.emptyState", "No budgets yet. Create one to get started.")}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {budgets.map((budget) => (
-              <BudgetProgressCard
-                key={budget.id}
-                budget={budget}
-                categoryName={getCategoryName(budget.categoryId)}
+            {groupBudgetsByCategory(budgets).map(([categoryId, categoryBudgets]) => (
+              <BudgetCategoryGroup
+                key={categoryId}
+                categoryName={getCategoryName(categoryId)}
+                budgets={categoryBudgets}
+                categorySpending={categorySpendingMap.get(categoryId)}
                 onEdit={handleEdit}
                 onDelete={handleDeleteClick}
-                isDeleting={isDeleting && budgetToDelete?.id === budget.id}
+                deletingBudgetId={isDeleting ? budgetToDelete?.id : undefined}
               />
             ))}
           </div>
@@ -164,14 +257,20 @@ export function BudgetsPage() {
 
       {/* Delete Confirmation Dialog */}
       {budgetToDelete && (
-        <DeleteBudgetDialog
+        <ConfirmDeleteDialog
           isOpen={deleteDialogOpen}
-          budgetId={budgetToDelete.id}
-          categoryName={budgetToDelete.categoryName}
-          monthYear={budgetToDelete.monthYear}
+          title={t("budgets.deleteDialog.title", "Delete Budget?")}
+          description={
+            <Trans
+              i18nKey="budgets.deleteDialog.body"
+              values={{ type: budgetToDelete.budgetLabel, name: budgetToDelete.categoryName }}
+              components={{ 1: <strong />, 3: <strong /> }}
+            />
+          }
           isDeleting={isDeleting}
-          error={deleteError}
-          onConfirm={handleConfirmDelete}
+          error={deleteError || null}
+          size="sm"
+          onConfirm={() => void handleConfirmDelete(budgetToDelete.id)}
           onCancel={handleCancelDelete}
         />
       )}

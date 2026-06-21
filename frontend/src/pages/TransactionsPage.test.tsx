@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router";
 import { TransactionsPage } from "./TransactionsPage";
 import { useTransactionsStore } from "../store/transactionsStore";
+import { useAppStore } from "../store/appStore";
 import * as apiModule from "../lib/api";
 
 const mockTransactionsResponse = {
@@ -44,11 +45,32 @@ vi.mock("../lib/api", () => ({
   },
 }));
 
+vi.mock("../hooks/useAuth", async () => {
+  const { authMockFactory } = await import("../test/authFixtures");
+  return authMockFactory();
+});
+
+vi.mock("../hooks/useLogout", async () => {
+  const { logoutMockFactory } = await import("../test/authFixtures");
+  return logoutMockFactory();
+});
+
 vi.mock("../lib/queries/categories", () => ({
   useCategories: () => ({
     data: [
       { id: "cat-1", categoryName: "Groceries" },
       { id: "cat-2", categoryName: "Transport" },
+    ],
+    isLoading: false,
+    error: null,
+  }),
+}));
+
+vi.mock("../lib/queries/accounts", () => ({
+  useAccounts: () => ({
+    data: [
+      { id: "acc-1", name: "Main Account", iban: "CH00 0001", accountNumber: null, active: true },
+      { id: "acc-2", name: "Savings", iban: "CH00 0002", accountNumber: null, active: true },
     ],
     isLoading: false,
     error: null,
@@ -73,6 +95,7 @@ describe("TransactionsPage", () => {
       endDate: null,
       categoryId: null,
     });
+    useAppStore.setState({ showAccountName: false });
     vi.clearAllMocks();
   });
 
@@ -99,7 +122,7 @@ describe("TransactionsPage", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Filters" })).toBeInTheDocument();
     expect(screen.getByLabelText("Start Date")).toBeInTheDocument();
     expect(screen.getByLabelText("End Date")).toBeInTheDocument();
-    expect(screen.getByLabelText("Category")).toBeInTheDocument();
+    expect(screen.getByLabelText("Filter by Category")).toBeInTheDocument();
   });
 
   it("renders the table with transaction data", async () => {
@@ -110,9 +133,30 @@ describe("TransactionsPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Migros")).toBeInTheDocument();
       expect(screen.getByText("Bus")).toBeInTheDocument();
-      expect(screen.getByText("−CHF 42.50")).toBeInTheDocument();
-      expect(screen.getByText("−CHF 15.00")).toBeInTheDocument();
+      expect(screen.getByText("CHF-42.50")).toBeInTheDocument();
+      expect(screen.getByText("CHF-15.00")).toBeInTheDocument();
     });
+  });
+
+  it("hides the account column by default", async () => {
+    vi.mocked(apiModule.api.get).mockResolvedValueOnce(mockTransactionsResponse);
+
+    renderTransactionsPage();
+
+    await waitFor(() => expect(screen.getByText("Migros")).toBeInTheDocument());
+    expect(screen.queryByRole("columnheader", { name: "Account" })).not.toBeInTheDocument();
+  });
+
+  it("shows the account column with the account name when the preference is on", async () => {
+    useAppStore.setState({ showAccountName: true });
+    vi.mocked(apiModule.api.get).mockResolvedValueOnce(mockTransactionsResponse);
+
+    renderTransactionsPage();
+
+    await waitFor(() => expect(screen.getByText("Migros")).toBeInTheDocument());
+    expect(screen.getByRole("columnheader", { name: "Account" })).toBeInTheDocument();
+    // Both mocked transactions belong to acc-1 → "Main Account".
+    expect(screen.getAllByText("Main Account").length).toBeGreaterThan(0);
   });
 
   it("shows loading skeleton while fetching", () => {
@@ -190,7 +234,7 @@ describe("TransactionsPage", () => {
       expect(screen.getByText("Migros")).toBeInTheDocument();
     });
 
-    const categorySelect = screen.getByLabelText("Category") as HTMLSelectElement;
+    const categorySelect = screen.getByLabelText("Filter by Category") as HTMLSelectElement;
     await userEvent.selectOptions(categorySelect, "cat-1");
 
     const applyButton = screen.getByRole("button", { name: "Apply" });
@@ -340,20 +384,24 @@ describe("TransactionsPage", () => {
     renderTransactionsPage();
 
     await waitFor(() => {
-      expect(screen.getByText("−CHF 42.50")).toBeInTheDocument();
-      expect(screen.getByText("−CHF 15.00")).toBeInTheDocument();
+      expect(screen.getByText("CHF-42.50")).toBeInTheDocument();
+      expect(screen.getByText("CHF-15.00")).toBeInTheDocument();
     });
   });
 
-  it("formats dates correctly in table", async () => {
+  it("formats dates without leaking the raw ISO string", async () => {
     vi.mocked(apiModule.api.get).mockResolvedValueOnce(mockTransactionsResponse);
 
     renderTransactionsPage();
 
+    // formatDate uses the browser locale via Intl; assert the raw ISO string and
+    // "Invalid Date" sentinel are absent rather than pinning a specific locale.
     await waitFor(() => {
-      expect(screen.getByText("1.4.2026")).toBeInTheDocument(); // April 1, 2026 (de-CH)
-      expect(screen.getByText("31.3.2026")).toBeInTheDocument(); // March 31, 2026 (de-CH)
+      expect(screen.getByText("Migros")).toBeInTheDocument();
     });
+    expect(screen.queryByText(/^2026-04-01$/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^2026-03-31$/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Invalid Date/)).not.toBeInTheDocument();
   });
 
   it("shows error state when API fails", async () => {
@@ -428,6 +476,18 @@ describe("TransactionsPage", () => {
       expect(state.sortBy).toBe("amount");
       expect(state.sortOrder).toBe("desc");
     });
+  });
+
+  it("exposes Sign out from the user menu", async () => {
+    vi.mocked(apiModule.api.get).mockResolvedValue(mockTransactionsResponse);
+
+    renderTransactionsPage();
+
+    await waitFor(() => expect(screen.getByText("Migros")).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole("button", { name: "User menu" }));
+
+    expect(await screen.findByRole("menuitem", { name: /sign out/i })).toBeInTheDocument();
   });
 
   it("displays null categories as dash", async () => {

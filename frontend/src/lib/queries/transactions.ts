@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
 
 export interface Transaction {
@@ -30,6 +30,7 @@ export interface TransactionsFilters {
   startDate?: string | null | undefined;
   endDate?: string | null | undefined;
   categoryId?: string | null | undefined;
+  accountId?: string | null | undefined;
   minAmount?: number;
   maxAmount?: number;
   search?: string | null | undefined;
@@ -46,6 +47,7 @@ export const transactionsQueryConfig = (filters: TransactionsFilters = {}) => ({
     if (filters.startDate) params.append("startDate", filters.startDate);
     if (filters.endDate) params.append("endDate", filters.endDate);
     if (filters.categoryId) params.append("categoryId", filters.categoryId);
+    if (filters.accountId) params.append("accountId", filters.accountId);
     if (filters.minAmount !== undefined) params.append("minAmount", filters.minAmount.toString());
     if (filters.maxAmount !== undefined) params.append("maxAmount", filters.maxAmount.toString());
     if (filters.search) params.append("search", filters.search);
@@ -60,4 +62,46 @@ export const transactionsQueryConfig = (filters: TransactionsFilters = {}) => ({
 
 export function useTransactions(filters: TransactionsFilters = {}) {
   return useQuery(transactionsQueryConfig(filters));
+}
+
+export function useUpdateTransaction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      id: string;
+      // `null` clears the category and restores the post-import
+      // "uncategorized" state (KAN-156).
+      categoryId?: string | null;
+      notes?: string;
+      date?: string;
+      amount?: number;
+      reason?: string;
+    }) => {
+      const { id, ...update } = data;
+      return api.patch(`/transactions/${id}`, update);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      // Dashboard and budget aggregates depend on the transaction set.
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["budgets"] });
+    },
+  });
+}
+
+export function useDeleteTransaction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason?: string }) => {
+      // Reason travels in the request body, not the querystring, to keep
+      // free-text out of Pino/reverse-proxy access logs.
+      return api.delete(`/transactions/${id}`, reason ? { reason } : undefined);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      // Dashboard and budget aggregates depend on the transaction set.
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["budgets"] });
+    },
+  });
 }

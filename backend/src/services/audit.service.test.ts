@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { logEvent } from "./audit.service.js";
+import { logEvent, logEventCritical } from "./audit.service.js";
 import * as auditRepo from "../repositories/audit.repository.js";
 import * as loggerModule from "../logger.js";
 
@@ -22,34 +22,63 @@ describe("audit.service", () => {
   });
 
   it("creates an audit log entry via the repository", async () => {
-    await logEvent("USER_CREATED", "user-1", { email: "a@b.com" });
-
-    expect(auditRepo.createAuditLog).toHaveBeenCalledWith({
+    const params = {
       action: "USER_CREATED",
       userId: "user-1",
-      details: JSON.stringify({ email: "a@b.com" }),
-    });
+      changedValues: { email: "a@b.com" },
+    };
+    await logEvent(params);
+
+    expect(auditRepo.createAuditLog).toHaveBeenCalledWith(params);
   });
 
   it("stores null details when none are provided", async () => {
-    await logEvent("LOGOUT", "user-1");
+    const params = { action: "LOGOUT", userId: "user-1" };
+    await logEvent(params);
 
-    expect(auditRepo.createAuditLog).toHaveBeenCalledWith({
-      action: "LOGOUT",
-      userId: "user-1",
-      details: null,
-    });
+    expect(auditRepo.createAuditLog).toHaveBeenCalledWith(params);
   });
 
   it("logs an error instead of throwing when the repository fails", async () => {
     const dbError = new Error("connection refused");
     vi.mocked(auditRepo.createAuditLog).mockRejectedValueOnce(dbError);
 
-    await expect(logEvent("LOGIN_SUCCESS", "user-1")).resolves.toBeUndefined();
+    const params = {
+      action: "LOGIN_SUCCESS",
+      userId: "user-1",
+      changedValues: { email: "redacted@example.com" },
+    };
+    await expect(logEvent(params)).resolves.toBeUndefined();
 
+    // Only safe metadata — never `previousValues`/`changedValues`/`reason` —
+    // ends up in the Pino error meta. The audit-table failure must not leak
+    // PII into unstructured stdout logs.
     expect(mockError).toHaveBeenCalledWith(
-      { err: dbError, action: "LOGIN_SUCCESS", userId: "user-1" },
+      { err: dbError, action: "LOGIN_SUCCESS", userId: "user-1", transactionId: undefined },
       "Failed to write to audit log",
     );
+  });
+
+  describe("logEventCritical", () => {
+    it("rethrows when the repository fails", async () => {
+      const dbError = new Error("audit insert failed");
+      vi.mocked(auditRepo.createAuditLog).mockRejectedValueOnce(dbError);
+
+      await expect(
+        logEventCritical({ action: "TRANSACTION_DELETE", userId: "u-1", transactionId: "t-1" }),
+      ).rejects.toBe(dbError);
+    });
+
+    it("forwards the active transaction client to the repository", async () => {
+      const tx = { tag: "tx-sentinel" };
+      await logEventCritical(
+        { action: "TRANSACTION_EDIT", userId: "u-1", transactionId: "t-1" },
+        tx as never,
+      );
+      expect(auditRepo.createAuditLog).toHaveBeenCalledWith(
+        { action: "TRANSACTION_EDIT", userId: "u-1", transactionId: "t-1" },
+        tx,
+      );
+    });
   });
 });

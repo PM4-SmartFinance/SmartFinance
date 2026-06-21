@@ -10,7 +10,38 @@ on:
       - main
       - develop
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
+  commit-msg-validation:
+    name: Validate Commit Messages
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Test commit message regex (regression)
+        run: bash scripts/test-commit-msg.sh
+
+      - name: Enforce format on PR commits
+        if: github.event_name == 'pull_request'
+        run: |
+          PATTERN=$(grep "^pattern=" .husky/commit-msg | sed "s/^pattern='//" | sed "s/'$//")
+          FAILED=0
+          while IFS= read -r msg; do
+            [ -z "$msg" ] && continue
+            case "$msg" in Merge*|Revert*) continue ;; esac
+            if ! echo "$msg" | grep -qE "$PATTERN"; then
+              echo "INVALID: $msg"
+              FAILED=1
+            fi
+          done < <(git log "origin/${{ github.base_ref }}..HEAD" --format=%s)
+          exit $FAILED
+        shell: bash
+
   lint:
     name: Lint & Format
     runs-on: ubuntu-24.04
@@ -40,6 +71,37 @@ jobs:
       - name: Format check
         run: bun run format:check
 
+      - name: Validate Grafana dashboard datasource refs
+        run: bash scripts/check-grafana-dashboards.sh
+
+  test-workflow-scripts:
+    name: Workflow Scripts Tests
+    runs-on: ubuntu-24.04
+    needs: lint
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.11"
+
+      - name: Cache Bun download cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-cache-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-cache-${{ runner.os }}-
+
+      - name: Install dependencies
+        env:
+          HUSKY: "0"
+        run: bun install --frozen-lockfile
+
+      - name: Run workflow scripts tests
+        run: bun run test:scripts
+
   test-frontend:
     name: Frontend Tests
     runs-on: ubuntu-24.04
@@ -66,7 +128,15 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run frontend tests
-        run: bun run --filter @smartfinance/frontend test
+        run: bun run --filter @smartfinance/frontend test:coverage
+
+      - name: Upload frontend coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          retention-days: 7
 
   test:
     name: Backend Tests (≥70% coverage)
@@ -116,7 +186,7 @@ jobs:
         working-directory: backend
 
       - name: Run backend tests with coverage
-        run: bun run --filter @smartfinance/backend test
+        run: bun run --filter @smartfinance/backend test:coverage
 
       - name: Upload coverage report
         if: always()
@@ -125,6 +195,11 @@ jobs:
           name: backend-coverage
           path: backend/coverage/
           retention-days: 7
+
+      # NOTE: coverage reporting and badge generation has been moved to
+      # the `coverage-report` job which waits for both frontend and backend
+      # test jobs to complete. This avoids race conditions where frontend
+      # artifacts are not yet available when the backend job posts the PR comment.
 
   build:
     name: Build (frontend + backend)
@@ -175,6 +250,258 @@ jobs:
           ACME_EMAIL: "test@example.com"
           POSTGRES_PASSWORD: "dummy_password"
           SESSION_SECRET: "dummy_secret"
+          GRAFANA_ADMIN_PASSWORD: "dummy_password"
         run: |
           echo "Testing Docker infrastructure..."
           docker compose build
+
+  self-hosting-verify:
+    name: Verify Self-Hosting Setup
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # shellcheck ships preinstalled on GitHub-hosted ubuntu runners.
+      - name: Lint self-hosting shell scripts
+        run: shellcheck scripts/setup-user.sh scripts/start-user.sh scripts/stop-user.sh backend/docker-entrypoint.sh
+
+      - name: Validate self-hosted compose file
+        env:
+          POSTGRES_PASSWORD: "dummy_password"
+          SESSION_SECRET: "dummy_secret"
+        run: docker compose -f docker-compose.user.yml config >/dev/null
+
+  self-hosting-smoke:
+    name: Smoke-test Self-Hosting Stack
+    runs-on: ubuntu-24.04
+    env:
+      COMPOSE: docker-compose.user.yml
+      POSTGRES_PASSWORD: smoke_password
+      SESSION_SECRET: smoke_session_secret_at_least_32_chars
+      IMAGE_TAG: smoke
+      BOOTSTRAP_EMAIL: admin@smartfinance.local
+      BOOTSTRAP_PASSWORD: changeme123
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build images for the user stack
+        run: docker compose -f "$COMPOSE" build
+
+      - name: Migrate, then boot the full stack
+        run: |
+          set -euo pipefail
+          # DB first, then migrate, then the full stack — mirrors start-user.sh
+          # (and exercises the migration-before-traffic ordering).
+          docker compose -f "$COMPOSE" up -d --remove-orphans postgres
+          docker compose -f "$COMPOSE" run --rm --entrypoint /bin/sh backend \
+            -c "node_modules/.bin/prisma migrate deploy"
+          docker compose -f "$COMPOSE" up -d --remove-orphans --no-build
+
+      - name: Bootstrap admin — first run creates, re-run is idempotent (exit 3)
+        run: |
+          set -euo pipefail
+          run_bootstrap() {
+            docker compose -f "$COMPOSE" exec -T \
+              -e BOOTSTRAP_EMAIL="$BOOTSTRAP_EMAIL" \
+              -e BOOTSTRAP_PASSWORD="$BOOTSTRAP_PASSWORD" \
+              backend node --input-type=module < scripts/bootstrap-admin.mjs
+          }
+          rc=0; run_bootstrap || rc=$?
+          test "$rc" -eq 0 || { echo "first bootstrap must exit 0, got $rc"; exit 1; }
+          # Re-running setup against a populated DB must succeed, not abort: the
+          # backend returns 401 (not 409) to the unauthenticated POST, which the
+          # script treats as "already bootstrapped" → exit 3.
+          rc=0; run_bootstrap || rc=$?
+          test "$rc" -eq 3 || { echo "re-run bootstrap must exit 3 (already exists), got $rc"; exit 1; }
+
+      - name: Login through the nginx proxy returns a session cookie
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/login.json -w '%{http_code}' -c /tmp/cookies.txt \
+            -X POST http://127.0.0.1:3000/api/v1/auth/login \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"$BOOTSTRAP_EMAIL\",\"password\":\"$BOOTSTRAP_PASSWORD\"}")
+          test "$code" = "200" || { echo "login failed ($code):"; cat /tmp/login.json; exit 1; }
+          grep -q "session" /tmp/cookies.txt || { echo "no session cookie set"; cat /tmp/cookies.txt; exit 1; }
+
+      - name: nginx proxies a >1 MB upload without 413
+        run: |
+          set -euo pipefail
+          # 2 MB body: must pass nginx (client_max_body_size 10m) and reach the
+          # backend, which then rejects the bogus CSV — anything but 413 proves the
+          # body-size limit is not the gatekeeper.
+          head -c 2000000 /dev/zero | tr '\0' 'a' > /tmp/big.csv
+          code=$(curl -sS -o /dev/null -w '%{http_code}' -b /tmp/cookies.txt \
+            -X POST "http://127.0.0.1:3000/api/v1/transactions/import?format=neon" \
+            -F "file=@/tmp/big.csv;type=text/csv")
+          test "$code" != "413" || { echo "nginx returned 413 — client_max_body_size too small"; exit 1; }
+          echo "upload reached the backend (HTTP $code, not 413)"
+
+      - name: Stack logs on failure
+        if: failure()
+        run: docker compose -f "$COMPOSE" logs --tail=100
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f "$COMPOSE" down -v
+
+  coverage-report:
+    name: Coverage Report
+    runs-on: ubuntu-24.04
+    needs:
+      - test-frontend
+      - test
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download frontend coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-coverage
+          path: artifacts/frontend
+
+      - name: Download backend coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage
+          path: artifacts/backend
+
+      - name: Install jq and bc
+        run: sudo apt-get update -qq && sudo apt-get install -y jq bc
+
+      - name: Build coverage markdown
+        run: |
+          set -euo pipefail
+          BACK_SUM=$(find artifacts/backend -type f -name coverage-summary.json | head -n1)
+          FRONT_SUM=$(find artifacts/frontend -type f -name coverage-summary.json | head -n1)
+          BACK_BASE_FILE=".coverage-baselines/backend-summary.json"
+          FRONT_BASE_FILE=".coverage-baselines/frontend-summary.json"
+
+          if [ -z "$BACK_SUM" ] || [ ! -f "$BACK_SUM" ]; then
+            echo "::error::backend coverage-summary.json missing in downloaded artifact"
+            ls -R artifacts/backend || true
+            exit 1
+          fi
+          if [ -z "$FRONT_SUM" ] || [ ! -f "$FRONT_SUM" ]; then
+            echo "::error::frontend coverage-summary.json missing in downloaded artifact"
+            ls -R artifacts/frontend || true
+            exit 1
+          fi
+          jq empty "$BACK_SUM" || { echo "::error::malformed $BACK_SUM"; exit 1; }
+          jq empty "$FRONT_SUM" || { echo "::error::malformed $FRONT_SUM"; exit 1; }
+
+          {
+            echo "<!-- coverage-report -->"
+            echo "## Test Coverage Report"
+            echo ""
+            echo "| Module | Current | Baseline | Delta |"
+            echo "|--------|---------|----------|-------|"
+          } > coverage_report.md
+
+          BACK_CUR=$(jq -r '.total.lines.pct' "$BACK_SUM")
+          FRONT_CUR=$(jq -r '.total.lines.pct' "$FRONT_SUM")
+
+          if [ -f "$BACK_BASE_FILE" ]; then
+            BACK_BASE=$(jq -r '.total.lines.pct' "$BACK_BASE_FILE")
+            BACK_DELTA=$(LC_ALL=C printf "%.2f" "$(echo "$BACK_CUR - $BACK_BASE" | bc -l)")
+            echo "| Backend | ${BACK_CUR}% | ${BACK_BASE}% | ${BACK_DELTA}% |" >> coverage_report.md
+          else
+            echo "| Backend | ${BACK_CUR}% | - | - |" >> coverage_report.md
+          fi
+
+          if [ -f "$FRONT_BASE_FILE" ]; then
+            FRONT_BASE=$(jq -r '.total.lines.pct' "$FRONT_BASE_FILE")
+            FRONT_DELTA=$(LC_ALL=C printf "%.2f" "$(echo "$FRONT_CUR - $FRONT_BASE" | bc -l)")
+            echo "| Frontend | ${FRONT_CUR}% | ${FRONT_BASE}% | ${FRONT_DELTA}% |" >> coverage_report.md
+          else
+            echo "| Frontend | ${FRONT_CUR}% | - | - |" >> coverage_report.md
+          fi
+
+          {
+            echo ""
+            echo "<details><summary>Backend per-file coverage (lowest first)</summary>"
+            echo ""
+            jq -r 'to_entries[] | select(.key != "total") | [.value.lines.pct, .key] | "\(.[0])\t\(.[1])"' "$BACK_SUM" \
+              | sort -n \
+              | awk -F'\t' '{ printf("- **%s**: %s%%\n", $2, $1) }'
+            echo ""
+            echo "</details>"
+            echo ""
+            echo "<details><summary>Frontend per-file coverage (lowest first)</summary>"
+            echo ""
+            jq -r 'to_entries[] | select(.key != "total") | [.value.lines.pct, .key] | "\(.[0])\t\(.[1])"' "$FRONT_SUM" \
+              | sort -n \
+              | awk -F'\t' '{ printf("- **%s**: %s%%\n", $2, $1) }'
+            echo ""
+            echo "</details>"
+          } >> coverage_report.md
+
+      - name: Post sticky coverage comment
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: coverage-report
+          path: coverage_report.md
+
+      - name: Generate badges and stage baselines (on develop push)
+        if: github.ref == 'refs/heads/develop' && success()
+        run: |
+          set -euo pipefail
+          mkdir -p .coverage-baselines
+          BACK_SUM=$(find artifacts/backend -type f -name coverage-summary.json | head -n1)
+          FRONT_SUM=$(find artifacts/frontend -type f -name coverage-summary.json | head -n1)
+          [ -n "$BACK_SUM" ] || { echo "::error::backend coverage-summary.json missing in artifact"; exit 1; }
+          [ -n "$FRONT_SUM" ] || { echo "::error::frontend coverage-summary.json missing in artifact"; exit 1; }
+          cp "$BACK_SUM" .coverage-baselines/backend-summary.json
+          cp "$FRONT_SUM" .coverage-baselines/frontend-summary.json
+          jq empty .coverage-baselines/backend-summary.json
+          jq empty .coverage-baselines/frontend-summary.json
+          BACK_PCT=$(jq -r '.total.lines.pct | tostring | split(".")[0]' .coverage-baselines/backend-summary.json)
+          FRONT_PCT=$(jq -r '.total.lines.pct | tostring | split(".")[0]' .coverage-baselines/frontend-summary.json)
+          cat > backend-coverage-badge.svg <<EOF
+          <svg xmlns="http://www.w3.org/2000/svg" width="140" height="20">
+            <rect width="70" height="20" fill="#555" />
+            <rect x="70" width="70" height="20" fill="#4c1" />
+            <g fill="#fff" text-anchor="middle" font-family="Verdana" font-size="11">
+              <text x="35" y="14">backend</text>
+              <text x="105" y="14">${BACK_PCT}%</text>
+            </g>
+          </svg>
+          EOF
+          cat > frontend-coverage-badge.svg <<EOF
+          <svg xmlns="http://www.w3.org/2000/svg" width="140" height="20">
+            <rect width="70" height="20" fill="#555" />
+            <rect x="70" width="70" height="20" fill="#4c1" />
+            <g fill="#fff" text-anchor="middle" font-family="Verdana" font-size="11">
+              <text x="35" y="14">frontend</text>
+              <text x="105" y="14">${FRONT_PCT}%</text>
+            </g>
+          </svg>
+          EOF
+
+      - name: Open baseline-update PR (on develop push)
+        if: github.ref == 'refs/heads/develop' && success()
+        continue-on-error: true
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/coverage-baseline-update
+          base: develop
+          commit-message: "chore(ci): [KAN-140] update coverage baselines and badges"
+          title: "chore(ci): [KAN-140] update coverage baselines and badges"
+          body: |
+            Automated coverage baseline + badge update from latest develop run (commit ${{ github.sha }}).
+
+            Generated by the `coverage-report` job. Merge to refresh PR delta comparisons.
+          labels: |
+            chore
+            automated
+          add-paths: |
+            .coverage-baselines/backend-summary.json
+            .coverage-baselines/frontend-summary.json
+            backend-coverage-badge.svg
+            frontend-coverage-badge.svg
+          delete-branch: true

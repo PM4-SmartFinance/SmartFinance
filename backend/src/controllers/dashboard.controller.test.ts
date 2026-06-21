@@ -15,16 +15,21 @@ vi.mock("../services/dashboard.service.js", () => ({
 // per-test without rebuilding the app.
 let rejectAuth = false;
 
-vi.mock("../middleware/rbac.js", () => ({
-  requireRole: () => async (request: FastifyRequest) => {
-    if (rejectAuth) throw new ServiceError(401, "Unauthorized");
-    request.session.set("user", { id: "user-1", role: "USER", email: "test@example.com" });
-  },
-  requireOwnerOrAdmin: () => async (request: FastifyRequest) => {
-    if (rejectAuth) throw new ServiceError(401, "Unauthorized");
-    request.session.set("user", { id: "user-1", role: "USER", email: "test@example.com" });
-  },
-}));
+vi.mock("../middleware/rbac.js", async () => {
+  const actual =
+    await vi.importActual<typeof import("../middleware/rbac.js")>("../middleware/rbac.js");
+  return {
+    ...actual,
+    requireRole: () => async (request: FastifyRequest) => {
+      if (rejectAuth) throw new ServiceError(401, "Unauthorized");
+      request.session.set("user", { id: "user-1", role: "USER", email: "test@example.com" });
+    },
+    requireOwnerOrAdmin: () => async (request: FastifyRequest) => {
+      if (rejectAuth) throw new ServiceError(401, "Unauthorized");
+      request.session.set("user", { id: "user-1", role: "USER", email: "test@example.com" });
+    },
+  };
+});
 
 import { buildApp } from "../app.js";
 import * as dashboardService from "../services/dashboard.service.js";
@@ -142,6 +147,28 @@ describe("GET /api/v1/dashboard/summary", () => {
         "user-1",
         "2025-06-01",
         "2025-06-30",
+        undefined,
+      );
+    });
+
+    it("forwards the accountId query param to the service", async () => {
+      mockService.getDashboardSummary.mockResolvedValue({
+        totalIncome: 0,
+        totalExpenses: 0,
+        netBalance: 0,
+        transactionCount: 0,
+      });
+
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/dashboard/summary?startDate=2025-06-01&endDate=2025-06-30&accountId=11111111-1111-1111-1111-111111111111",
+      });
+
+      expect(mockService.getDashboardSummary).toHaveBeenCalledWith(
+        "user-1",
+        "2025-06-01",
+        "2025-06-30",
+        "11111111-1111-1111-1111-111111111111",
       );
     });
 
@@ -225,6 +252,7 @@ describe("GET /api/v1/dashboard/categories", () => {
         "user-1",
         "2025-01-01",
         "2025-01-31",
+        undefined,
       );
     });
 
@@ -296,8 +324,8 @@ describe("GET /api/v1/dashboard/trends", () => {
   describe("success", () => {
     it("returns 200 with trend data wrapped in { data }", async () => {
       const mockData = [
-        { year: 2025, month: 1, income: 5000, expenses: 2500 },
-        { year: 2025, month: 2, income: 4500, expenses: 2200 },
+        { date: "2025-01-15", income: 5000, expenses: 2500 },
+        { date: "2025-02-15", income: 4500, expenses: 2200 },
       ];
       mockService.getDashboardTrends.mockResolvedValue(mockData);
 
@@ -322,7 +350,21 @@ describe("GET /api/v1/dashboard/trends", () => {
         "user-1",
         "2025-03-01",
         "2025-08-31",
+        undefined,
       );
+    });
+
+    it("returns 400 when the service throws a ServiceError (e.g. inverted range)", async () => {
+      mockService.getDashboardTrends.mockRejectedValue(
+        new ServiceError(400, "startDate must not be after endDate"),
+      );
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/v1/dashboard/trends?startDate=2025-08-31&endDate=2025-03-01",
+      });
+
+      expect(response.statusCode).toBe(400);
     });
   });
 });

@@ -7,6 +7,9 @@ import type { Budget } from "./budgets";
 // default (30s) to reduce unnecessary refetches when switching between pages.
 const DASHBOARD_STALE_TIME = 5 * 60 * 1000; // 5 minutes
 
+// Query key for all dashboard-related queries
+export const DASHBOARD_QUERY_KEY = ["dashboard"] as const;
+
 // Type definitions for API responses
 export interface DashboardSummary {
   totalIncome: number;
@@ -15,32 +18,22 @@ export interface DashboardSummary {
   transactionCount: number;
 }
 
+/**
+ * One day of aggregated income/expenses. Backend `/dashboard/trends` returns these
+ * gap-filled across the entire selected range (a row per day, zero-filled where
+ * no transactions occurred).
+ */
 export interface TrendDataPoint {
   date: string; // YYYY-MM-DD
-  amount: number;
-}
-
-interface MonthlyTrendPoint {
-  year: number;
-  month: number;
   income: number;
   expenses: number;
 }
 
 export interface CategoryBreakdown {
-  categoryId: string;
+  categoryId: string | null;
   categoryName: string;
   total: number;
-}
-
-export function toTrendDataPoints(data: MonthlyTrendPoint[]): TrendDataPoint[] {
-  return data.map((point) => {
-    const month = String(point.month).padStart(2, "0");
-    return {
-      date: `${point.year}-${month}-01`,
-      amount: point.expenses,
-    };
-  });
+  isUncategorized?: boolean;
 }
 
 // Re-export for consumers that import Budget from dashboard queries
@@ -50,28 +43,32 @@ export type { Budget };
 export function useDashboardSummary() {
   const startDate = useAppStore((s) => s.startDate);
   const endDate = useAppStore((s) => s.endDate);
+  const accountId = useAppStore((s) => s.accountId);
 
   return useQuery({
-    queryKey: ["dashboard", "summary", { startDate, endDate }] as const,
+    queryKey: ["dashboard", "summary", { startDate, endDate, accountId }] as const,
     queryFn: () => {
       const params = new URLSearchParams({ startDate, endDate });
+      if (accountId) params.set("accountId", accountId);
       return api.get<DashboardSummary>(`/dashboard/summary?${params}`);
     },
     staleTime: DASHBOARD_STALE_TIME,
   });
 }
 
-// Monthly Trends Hook
+// Daily Trends Hook — backend already gap-fills across the requested range.
 export function useDashboardTrends() {
   const startDate = useAppStore((s) => s.startDate);
   const endDate = useAppStore((s) => s.endDate);
+  const accountId = useAppStore((s) => s.accountId);
 
   return useQuery({
-    queryKey: ["dashboard", "trends", { startDate, endDate }] as const,
+    queryKey: ["dashboard", "trends", { startDate, endDate, accountId }] as const,
     queryFn: async () => {
       const params = new URLSearchParams({ startDate, endDate });
-      const { data } = await api.get<{ data: MonthlyTrendPoint[] }>(`/dashboard/trends?${params}`);
-      return toTrendDataPoints(data);
+      if (accountId) params.set("accountId", accountId);
+      const { data } = await api.get<{ data: TrendDataPoint[] }>(`/dashboard/trends?${params}`);
+      return data;
     },
     staleTime: DASHBOARD_STALE_TIME,
   });
@@ -81,28 +78,18 @@ export function useDashboardTrends() {
 export function useDashboardCategories() {
   const startDate = useAppStore((s) => s.startDate);
   const endDate = useAppStore((s) => s.endDate);
+  const accountId = useAppStore((s) => s.accountId);
 
   return useQuery({
-    queryKey: ["dashboard", "categories", { startDate, endDate }] as const,
+    queryKey: ["dashboard", "categories", { startDate, endDate, accountId }] as const,
     queryFn: () => {
       const params = new URLSearchParams({ startDate, endDate });
+      if (accountId) params.set("accountId", accountId);
       return api.get<CategoryBreakdown[]>(`/dashboard/categories?${params}`);
     },
     staleTime: DASHBOARD_STALE_TIME,
   });
 }
 
-// Budgets Hook
-export function useDashboardBudgets() {
-  return useQuery({
-    queryKey: ["dashboard", "budgets"] as const,
-    queryFn: async () => {
-      const res = await api.get<{ budgets: Budget[] }>("/budgets");
-      if (!Array.isArray(res.budgets)) {
-        throw new Error("Unexpected response shape from /budgets endpoint");
-      }
-      return res.budgets;
-    },
-    staleTime: DASHBOARD_STALE_TIME,
-  });
-}
+// Budgets Hook — reuses the same query key as useBudgets for shared cache
+export { useBudgets as useDashboardBudgets } from "./budgets";

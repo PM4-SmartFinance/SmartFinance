@@ -1,13 +1,11 @@
 import type { FastifyInstance } from "fastify";
-import { requireRole } from "../middleware/rbac.js";
+import { requireRole, getSessionUser } from "../middleware/rbac.js";
 import * as categoryService from "../services/category.service.js";
-import { ServiceError } from "../errors.js";
 
 export async function categoryRoutes(app: FastifyInstance): Promise<void> {
-  // GET: List all categories (Global + User-specific)
+  // GET: List all categories for the authenticated user
   app.get("/categories", { preHandler: requireRole("USER") }, async (request, reply) => {
-    const user = request.session.get("user");
-    if (!user) throw new ServiceError(401, "Unauthorized");
+    const user = getSessionUser(request);
 
     const categories = await categoryService.getAllCategories(user.id);
     return reply.status(200).send({ categories });
@@ -30,8 +28,7 @@ export async function categoryRoutes(app: FastifyInstance): Promise<void> {
       },
     },
     async (request, reply) => {
-      const user = request.session.get("user");
-      if (!user) throw new ServiceError(401, "Unauthorized");
+      const user = getSessionUser(request);
 
       const { categoryName } = request.body;
       const newCategory = await categoryService.createCategory(categoryName, user.id);
@@ -60,8 +57,7 @@ export async function categoryRoutes(app: FastifyInstance): Promise<void> {
       },
     },
     async (request, reply) => {
-      const user = request.session.get("user");
-      if (!user) throw new ServiceError(401, "Unauthorized");
+      const user = getSessionUser(request);
 
       const { id } = request.params;
       const { categoryName } = request.body;
@@ -84,12 +80,40 @@ export async function categoryRoutes(app: FastifyInstance): Promise<void> {
       },
     },
     async (request, reply) => {
-      const user = request.session.get("user");
-      if (!user) throw new ServiceError(401, "Unauthorized");
+      const user = getSessionUser(request);
 
       const { id } = request.params;
       await categoryService.deleteCategory(id, user.id);
       return reply.status(204).send(); // 204 No Content
+    },
+  );
+
+  // POST: Bulk-clear category from every transaction in this personal category.
+  // Restores the post-import "uncategorized" state for those rows (KAN-156).
+  app.post<{ Params: { id: string } }>(
+    "/categories/:id/uncategorize-transactions",
+    {
+      preHandler: requireRole("USER"),
+      schema: {
+        params: {
+          type: "object",
+          properties: { id: { type: "string", format: "uuid" } },
+          required: ["id"],
+        },
+        response: {
+          200: {
+            type: "object",
+            properties: { uncategorized: { type: "integer" } },
+            required: ["uncategorized"],
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const user = getSessionUser(request);
+      const { id } = request.params;
+      const result = await categoryService.uncategorizeAllForCategory(id, user.id);
+      return reply.status(200).send(result);
     },
   );
 }

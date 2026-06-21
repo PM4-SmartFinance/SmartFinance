@@ -1,57 +1,17 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { DateRangePicker } from "../components/DateRangePicker";
-import { SummaryMetricsWidget } from "../components/SummaryMetricsWidget";
+import { useAppStore } from "../store/appStore";
 
-// Comprehensive mock data
-const mockSummaryData = {
-  totalIncome: 6500.0,
-  totalExpenses: -2840.5,
-  netBalance: 3659.5,
-  transactionCount: 42,
-};
-
-const mockTrendData = [
-  { date: "2025-12-01", amount: 2150.25 },
-  { date: "2025-12-08", amount: 1875.5 },
-  { date: "2025-12-15", amount: 2340.75 },
-  { date: "2025-12-22", amount: 2100.0 },
-  { date: "2025-12-29", amount: 1950.25 },
-  { date: "2026-01-05", amount: 2500.75 },
-  { date: "2026-01-12", amount: 2200.0 },
-  { date: "2026-01-19", amount: 2600.5 },
-  { date: "2026-01-26", amount: 2450.25 },
-  { date: "2026-02-02", amount: 2100.75 },
-  { date: "2026-02-09", amount: 2800.0 },
-  { date: "2026-02-16", amount: 2400.25 },
-];
-
-const mockCategoryData = [
-  { category: "Groceries", amount: 450.75 },
-  { category: "Transport", amount: 280.0 },
-  { category: "Dining", amount: 320.5 },
-  { category: "Entertainment", amount: 195.25 },
-  { category: "Utilities", amount: 125.0 },
-  { category: "Shopping", amount: 473.0 },
-];
-
-// Mock the api module
-vi.mock("../lib/api", () => ({
-  api: {
-    get: vi.fn((path) => {
-      if (path.includes("/dashboard/summary")) {
-        return Promise.resolve(mockSummaryData);
-      }
-      if (path.includes("/dashboard/trends")) {
-        return Promise.resolve(mockTrendData);
-      }
-      if (path.includes("/dashboard/categories")) {
-        return Promise.resolve(mockCategoryData);
-      }
-      return Promise.resolve({});
-    }),
-  },
+vi.mock("../lib/queries/accounts", () => ({
+  useAccounts: () => ({
+    data: [
+      { id: "acc-1", name: "Main", iban: "CH00 0001", accountNumber: null, active: true },
+      { id: "acc-2", name: "Old Savings", iban: "CH00 0002", accountNumber: null, active: false },
+    ],
+    error: null,
+  }),
 }));
 
 function renderWithQuery(component: React.ReactElement) {
@@ -63,23 +23,98 @@ function renderWithQuery(component: React.ReactElement) {
 
 describe("Dashboard Date Filter Integration", () => {
   beforeEach(() => {
+    useAppStore.setState({
+      startDate: "2026-04-04",
+      endDate: "2026-05-04",
+      activePresetKey: "30d",
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
     vi.clearAllMocks();
   });
 
-  it("renders the date range picker with default values", () => {
+  it("renders the date range picker with preset buttons", () => {
     renderWithQuery(<DateRangePicker />);
 
-    const startInput = screen.getByLabelText("Start Date") as HTMLInputElement;
-    const endInput = screen.getByLabelText("End Date") as HTMLInputElement;
+    expect(screen.getByRole("button", { name: "Last 7 days" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Last 30 days" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Last 3 months" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Last year" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Custom" })).toBeInTheDocument();
 
-    expect(startInput).toBeInTheDocument();
-    expect(endInput).toBeInTheDocument();
-    expect(startInput.value).toBeTruthy();
-    expect(endInput.value).toBeTruthy();
+    // Date inputs are hidden until Custom is selected
+    expect(screen.queryByLabelText("Start Date")).not.toBeInTheDocument();
   });
 
-  it("updates date range when inputs change", async () => {
+  it("marks the active preset with aria-pressed=true and others false", async () => {
     renderWithQuery(<DateRangePicker />);
+
+    expect(screen.getByRole("button", { name: "Last 30 days" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Last 7 days" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Last 7 days" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Last 7 days" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      expect(screen.getByRole("button", { name: "Last 30 days" })).toHaveAttribute(
+        "aria-pressed",
+        "false",
+      );
+    });
+  });
+
+  it("preset click writes correct dates and key to the store", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 4, 4));
+    renderWithQuery(<DateRangePicker />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Last 7 days" }));
+    let state = useAppStore.getState();
+    expect(state.startDate).toBe("2026-04-27");
+    expect(state.endDate).toBe("2026-05-04");
+    expect(state.activePresetKey).toBe("7d");
+
+    fireEvent.click(screen.getByRole("button", { name: "Last 3 months" }));
+    state = useAppStore.getState();
+    expect(state.startDate).toBe("2026-02-04");
+    expect(state.endDate).toBe("2026-05-04");
+    expect(state.activePresetKey).toBe("3m");
+
+    fireEvent.click(screen.getByRole("button", { name: "Last year" }));
+    state = useAppStore.getState();
+    expect(state.startDate).toBe("2025-05-04");
+    expect(state.endDate).toBe("2026-05-04");
+    expect(state.activePresetKey).toBe("1y");
+  });
+
+  it("3-month preset clamps day-of-month when source month is shorter", () => {
+    // From May 31 2026, 3 months back would naively land on Mar 3; expect Feb 28 floor.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 4, 31));
+    renderWithQuery(<DateRangePicker />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Last 3 months" }));
+    const state = useAppStore.getState();
+    expect(state.startDate).toBe("2026-02-28");
+    expect(state.endDate).toBe("2026-05-31");
+    expect(state.activePresetKey).toBe("3m");
+  });
+
+  it("updates date range and store state when inputs change in custom mode", async () => {
+    renderWithQuery(<DateRangePicker />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
 
     const startInput = screen.getByLabelText("Start Date") as HTMLInputElement;
     const endInput = screen.getByLabelText("End Date") as HTMLInputElement;
@@ -91,72 +126,68 @@ describe("Dashboard Date Filter Integration", () => {
       expect(startInput.value).toBe("2025-02-01");
       expect(endInput.value).toBe("2025-03-15");
     });
+    const state = useAppStore.getState();
+    expect(state.startDate).toBe("2025-02-01");
+    expect(state.endDate).toBe("2025-03-15");
+    expect(state.activePresetKey).toBe("custom");
   });
 
-  it("resets to 30-day range when reset button is clicked", async () => {
+  it("ignores empty-string input changes and keeps prior store state", () => {
     renderWithQuery(<DateRangePicker />);
 
+    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
     const startInput = screen.getByLabelText("Start Date") as HTMLInputElement;
+    const endInput = screen.getByLabelText("End Date") as HTMLInputElement;
 
-    // Change dates first
-    fireEvent.change(startInput, { target: { value: "2025-01-01" } });
+    const before = useAppStore.getState();
+    fireEvent.change(startInput, { target: { value: "" } });
+    fireEvent.change(endInput, { target: { value: "" } });
 
-    const resetButton = screen.getByText("Reset to 30d");
-    fireEvent.click(resetButton);
+    const after = useAppStore.getState();
+    expect(after.startDate).toBe(before.startDate);
+    expect(after.endDate).toBe(before.endDate);
+  });
+
+  it("hides date inputs and resets range when a preset is clicked", async () => {
+    renderWithQuery(<DateRangePicker />);
+
+    // Enter custom mode
+    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
+    expect(screen.getByLabelText("Start Date")).toBeInTheDocument();
+
+    // Click a preset — inputs should disappear
+    fireEvent.click(screen.getByRole("button", { name: "Last 30 days" }));
 
     await waitFor(() => {
-      // After reset, the value should represent approximately 30 days from today
-      expect(startInput.value).toBeTruthy();
+      expect(screen.queryByLabelText("Start Date")).not.toBeInTheDocument();
     });
   });
 
-  it("enforces min/max date constraints", () => {
+  it("enforces min/max date constraints in custom mode", () => {
     renderWithQuery(<DateRangePicker />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
 
     const startInput = screen.getByLabelText("Start Date") as HTMLInputElement;
     const endInput = screen.getByLabelText("End Date") as HTMLInputElement;
 
-    // End date min should be the start date
     expect(endInput.getAttribute("min")).toBe(startInput.value);
-
-    // Start date max should be the end date
     expect(startInput.getAttribute("max")).toBe(endInput.value);
   });
 
-  it("renders summary metrics widget with loading state initially", () => {
-    renderWithQuery(<SummaryMetricsWidget />);
+  it("offers only active accounts in the account filter and updates the store", () => {
+    renderWithQuery(<DateRangePicker />);
 
-    // Should show loading skeleton initially
-    const loadingMessages = screen.getAllByText(/loading/i);
-    expect(loadingMessages.length).toBeGreaterThan(0);
-  });
+    const select = screen.getByLabelText("Filter by Account") as HTMLSelectElement;
+    // "All Accounts" + the single active account; the inactive one is excluded.
+    expect(screen.getByRole("option", { name: "All Accounts" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Main" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Old Savings" })).not.toBeInTheDocument();
 
-  it("renders summary metrics with data after loading", async () => {
-    renderWithQuery(<SummaryMetricsWidget />);
+    fireEvent.change(select, { target: { value: "acc-1" } });
+    expect(useAppStore.getState().accountId).toBe("acc-1");
 
-    // Wait for data to load and display
-    await waitFor(
-      () => {
-        expect(screen.getByText("CHF 3'659.50")).toBeInTheDocument();
-      },
-      { timeout: 3000 },
-    );
-
-    expect(screen.getByText("Net Balance")).toBeInTheDocument();
-    expect(screen.getByText("Total Expenses")).toBeInTheDocument();
-    expect(screen.getByText("Total Income")).toBeInTheDocument();
-  });
-
-  it("formats currency values correctly", async () => {
-    renderWithQuery(<SummaryMetricsWidget />);
-
-    await waitFor(
-      () => {
-        expect(screen.getByText("CHF 3'659.50")).toBeInTheDocument();
-        expect(screen.getByText("CHF 2'840.50")).toBeInTheDocument();
-        expect(screen.getByText("CHF 6'500.00")).toBeInTheDocument();
-      },
-      { timeout: 3000 },
-    );
+    fireEvent.change(select, { target: { value: "" } });
+    expect(useAppStore.getState().accountId).toBeNull();
   });
 });

@@ -1,13 +1,30 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
+import { type TFunction } from "i18next";
+
+export type BudgetType =
+  | "DAILY"
+  | "MONTHLY"
+  | "YEARLY"
+  | "SPECIFIC_MONTH"
+  | "SPECIFIC_YEAR"
+  | "SPECIFIC_MONTH_YEAR";
+
+export type PeriodFilter = "DAILY" | "MONTHLY" | "YEARLY" | "DATE_RANGE";
 
 export interface Budget {
   id: string;
   categoryId: string;
+  type: BudgetType;
   month: number;
   year: number;
   limitAmount: string;
+  /** DB soft-delete flag — whether this budget record is enabled */
   active: boolean;
+  /** Computed by backend: whether this budget's time period includes the current date */
+  isActive: boolean;
+  /** Computed by backend: specificity rank (higher = more specific type) */
+  priority: number;
   currentSpending: string;
   percentageUsed: number;
   remainingAmount: string;
@@ -16,27 +33,57 @@ export interface Budget {
   updatedAt: string;
 }
 
+export interface CategorySpending {
+  categoryId: string;
+  spending: string;
+  /** Budget limit scaled to the view period (null only if no budget exists) */
+  scaledLimit: string | null;
+  sourceBudgetType: BudgetType | null;
+}
+
 export interface CreateBudgetInput {
   categoryId: string;
-  month: number;
-  year: number;
+  type: BudgetType;
   limitAmount: number;
+  month?: number;
+  year?: number;
 }
 
 export interface UpdateBudgetInput {
-  limitAmount: number;
+  limitAmount?: number;
+  categoryId?: string;
+  type?: BudgetType;
+  month?: number;
+  year?: number;
+  active?: boolean;
 }
 
-const BUDGETS_QUERY_KEY = ["budgets"] as const;
+export interface BudgetsParams {
+  period?: PeriodFilter;
+  startDate?: string;
+  endDate?: string;
+}
 
-export function useBudgets() {
+interface BudgetsResponse {
+  budgets: Budget[];
+  categorySpending?: CategorySpending[];
+}
+
+const BUDGETS_KEY_PREFIX = ["budgets"] as const;
+
+export function useBudgets(params?: BudgetsParams) {
   return useQuery({
-    queryKey: BUDGETS_QUERY_KEY,
+    queryKey: [...BUDGETS_KEY_PREFIX, params ?? {}] as const,
     queryFn: async () => {
-      const response = await api.get<{ budgets: Budget[] }>("/budgets");
-      return response.budgets;
+      const searchParams = new URLSearchParams();
+      if (params?.period) searchParams.set("period", params.period);
+      if (params?.startDate) searchParams.set("startDate", params.startDate);
+      if (params?.endDate) searchParams.set("endDate", params.endDate);
+      const qs = searchParams.toString();
+      const url = qs ? `/budgets?${qs}` : "/budgets";
+      return api.get<BudgetsResponse>(url);
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -45,15 +92,11 @@ export function useCreateBudget() {
 
   return useMutation({
     mutationFn: (input: CreateBudgetInput) => api.post<{ budget: Budget }>("/budgets", input),
-    onSuccess: (response) => {
-      queryClient.setQueryData<Budget[]>(BUDGETS_QUERY_KEY, (old) => {
-        return old ? [response.budget, ...old] : [response.budget];
-      });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: BUDGETS_KEY_PREFIX });
     },
-    onError: (error) => {
-      console.error("[useCreateBudget]", error);
-      queryClient.invalidateQueries({ queryKey: BUDGETS_QUERY_KEY });
-    },
+    // Failures are surfaced at the call site (CreateEditBudgetDialog awaits mutateAsync
+    // and renders the error in the form), so no global handler is needed here.
   });
 }
 
@@ -63,17 +106,11 @@ export function useUpdateBudget() {
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateBudgetInput }) =>
       api.patch<{ budget: Budget }>(`/budgets/${id}`, input),
-    onSuccess: (response) => {
-      queryClient.setQueryData<Budget[]>(BUDGETS_QUERY_KEY, (old) => {
-        return old
-          ? old.map((b) => (b.id === response.budget.id ? response.budget : b))
-          : [response.budget];
-      });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: BUDGETS_KEY_PREFIX });
     },
-    onError: (error) => {
-      console.error("[useUpdateBudget]", error);
-      queryClient.invalidateQueries({ queryKey: BUDGETS_QUERY_KEY });
-    },
+    // Failures are surfaced at the call site (CreateEditBudgetDialog awaits mutateAsync
+    // and renders the error in the form), so no global handler is needed here.
   });
 }
 
@@ -82,14 +119,78 @@ export function useDeleteBudget() {
 
   return useMutation({
     mutationFn: (id: string) => api.delete(`/budgets/${id}`),
-    onSuccess: (_, id) => {
-      queryClient.setQueryData<Budget[]>(BUDGETS_QUERY_KEY, (old) => {
-        return old ? old.filter((b) => b.id !== id) : [];
-      });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: BUDGETS_KEY_PREFIX });
     },
-    onError: (error) => {
-      console.error("[useDeleteBudget]", error);
-      queryClient.invalidateQueries({ queryKey: BUDGETS_QUERY_KEY });
-    },
+    // Failures are surfaced at the call site (BudgetsPage awaits deleteBudget and renders
+    // the error in the delete dialog), so no global handler is needed here.
   });
+}
+
+/** Pick the single most specific active budget from a list (highest priority wins).
+ *  Skips budgets where `active` (DB flag) is false or `isActive` (time-based) is false. */
+export function getMostSpecificActiveBudget(budgets: Budget[]): Budget | null {
+  let best: Budget | null = null;
+  for (const b of budgets) {
+    if (!b.active || !b.isActive) continue;
+    if (!best || b.priority > best.priority) {
+      best = b;
+    }
+  }
+  return best;
+}
+
+/** Group budgets by `categoryId`. Iteration order matches first-encounter order. */
+export function groupBudgetsByCategory(budgets: Budget[]): [string, Budget[]][] {
+  const groups = new Map<string, Budget[]>();
+  for (const b of budgets) {
+    const list = groups.get(b.categoryId) ?? [];
+    list.push(b);
+    groups.set(b.categoryId, list);
+  }
+  return [...groups.entries()];
+}
+
+/** For each category, return the most specific active budget (skips categories with none). */
+export function getMostSpecificBudgetsPerCategory(budgets: Budget[]): Budget[] {
+  const result: Budget[] = [];
+  for (const [, group] of groupBudgetsByCategory(budgets)) {
+    const best = getMostSpecificActiveBudget(group);
+    if (best) result.push(best);
+  }
+  return result;
+}
+
+/** Human-readable label for a budget type + month/year combo */
+export function getBudgetTypeLabel(
+  type: BudgetType,
+  month: number,
+  year: number,
+  t: TFunction,
+  lng?: string,
+): string {
+  const locale = lng || "en";
+
+  switch (type) {
+    case "DAILY":
+      return t("budgets.types.daily", "Daily Budget");
+    case "MONTHLY":
+      return t("budgets.types.monthly", "Monthly Budget");
+    case "YEARLY":
+      return t("budgets.types.yearly", "Yearly Budget");
+    case "SPECIFIC_MONTH": {
+      const monthName = new Intl.DateTimeFormat(locale, { month: "long" }).format(
+        new Date(2000, month - 1),
+      );
+      return t("budgets.types.specificMonth", "{{month}} (recurring)", { month: monthName });
+    }
+    case "SPECIFIC_YEAR":
+      return `${year}`;
+    case "SPECIFIC_MONTH_YEAR": {
+      return new Intl.DateTimeFormat(locale, {
+        month: "long",
+        year: "numeric",
+      }).format(new Date(year, month - 1));
+    }
+  }
 }

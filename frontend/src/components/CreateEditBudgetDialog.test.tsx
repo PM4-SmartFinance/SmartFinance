@@ -43,10 +43,13 @@ const mockPatch = vi.mocked(api.patch);
 const mockBudget: Budget = {
   id: "budget-1",
   categoryId: "cat-1",
-  month: 3,
-  year: 2026,
+  type: "MONTHLY",
+  month: 0,
+  year: 0,
   limitAmount: "500.00",
   active: true,
+  isActive: true,
+  priority: 1,
   currentSpending: "142.50",
   percentageUsed: 28.5,
   remainingAmount: "357.50",
@@ -188,7 +191,7 @@ describe("CreateEditBudgetDialog", () => {
       expect(screen.getByText("Please select a category")).toBeInTheDocument();
     });
 
-    it("shows error for missing month in create mode", async () => {
+    it("shows error for missing month and year in specific mode", async () => {
       const user = userEvent.setup();
       renderDialog({ isOpen: true, budget: null, onClose: vi.fn() });
 
@@ -197,24 +200,13 @@ describe("CreateEditBudgetDialog", () => {
       const limitInput = screen.getByLabelText("Spending Limit");
       await user.type(limitInput, "100");
       await user.selectOptions(screen.getByLabelText("Category"), "cat-1");
+      // Switch to specific mode
+      await user.click(screen.getByRole("button", { name: "Specific" }));
       await user.click(screen.getByRole("button", { name: "Create Budget" }));
 
-      expect(screen.getByText("Please select a month")).toBeInTheDocument();
-    });
-
-    it("shows error for missing year in create mode", async () => {
-      const user = userEvent.setup();
-      renderDialog({ isOpen: true, budget: null, onClose: vi.fn() });
-
-      await waitFor(() => expect(screen.getByText("Groceries")).toBeInTheDocument());
-
-      const limitInput = screen.getByLabelText("Spending Limit");
-      await user.type(limitInput, "100");
-      await user.selectOptions(screen.getByLabelText("Category"), "cat-1");
-      await user.selectOptions(screen.getByLabelText("Month"), "3");
-      await user.click(screen.getByRole("button", { name: "Create Budget" }));
-
-      expect(screen.getByText("Please select a year")).toBeInTheDocument();
+      expect(
+        screen.getByText("Please select at least a month or year for specific budgets"),
+      ).toBeInTheDocument();
     });
   });
 
@@ -230,16 +222,13 @@ describe("CreateEditBudgetDialog", () => {
       await waitFor(() => expect(screen.getByText("Groceries")).toBeInTheDocument());
 
       await user.selectOptions(screen.getByLabelText("Category"), "cat-1");
-      await user.selectOptions(screen.getByLabelText("Month"), "3");
-      await user.selectOptions(screen.getByLabelText("Year"), "2026");
       await user.type(screen.getByLabelText("Spending Limit"), "500");
       await user.click(screen.getByRole("button", { name: "Create Budget" }));
 
       await waitFor(() => expect(onClose).toHaveBeenCalled());
       expect(mockPost).toHaveBeenCalledWith("/budgets", {
         categoryId: "cat-1",
-        month: 3,
-        year: 2026,
+        type: "MONTHLY",
         limitAmount: 500,
       });
     });
@@ -258,26 +247,152 @@ describe("CreateEditBudgetDialog", () => {
       await user.click(screen.getByRole("button", { name: "Save Changes" }));
 
       await waitFor(() => expect(onClose).toHaveBeenCalled());
-      expect(mockPatch).toHaveBeenCalledWith("/budgets/budget-1", { limitAmount: 750 });
+      expect(mockPatch).toHaveBeenCalledWith("/budgets/budget-1", {
+        limitAmount: 750,
+        categoryId: "cat-1",
+        type: "MONTHLY",
+        active: true,
+      });
     });
 
     it("displays ApiError message on failed create", async () => {
       const user = userEvent.setup();
-      mockPost.mockRejectedValue(new ApiError(409, null, "Budget already exists for this period"));
+      mockPost.mockRejectedValue(
+        new ApiError(409, null, "Budget already exists for this category and type"),
+      );
 
       renderDialog({ isOpen: true, budget: null, onClose: vi.fn() });
 
       await waitFor(() => expect(screen.getByText("Groceries")).toBeInTheDocument());
 
       await user.selectOptions(screen.getByLabelText("Category"), "cat-1");
-      await user.selectOptions(screen.getByLabelText("Month"), "3");
-      await user.selectOptions(screen.getByLabelText("Year"), "2026");
       await user.type(screen.getByLabelText("Spending Limit"), "500");
       await user.click(screen.getByRole("button", { name: "Create Budget" }));
 
       await waitFor(() =>
-        expect(screen.getByText("Budget already exists for this period")).toBeInTheDocument(),
+        expect(
+          screen.getByText("Budget already exists for this category and type"),
+        ).toBeInTheDocument(),
       );
+    });
+
+    it("displays ApiError message on failed update", async () => {
+      const onClose = vi.fn();
+      const user = userEvent.setup();
+      mockPatch.mockRejectedValue(new ApiError(400, null, "Invalid limit amount"));
+
+      renderDialog({ isOpen: true, budget: mockBudget, onClose });
+
+      const limitInput = screen.getByLabelText("Spending Limit");
+      await user.clear(limitInput);
+      await user.type(limitInput, "750");
+      await user.click(screen.getByRole("button", { name: "Save Changes" }));
+
+      await waitFor(() => expect(screen.getByText("Invalid limit amount")).toBeInTheDocument());
+      expect(onClose).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("edit-mode initialization for SPECIFIC_* types", () => {
+    it("initializes form for SPECIFIC_MONTH_YEAR budget", () => {
+      const specificBudget: Budget = {
+        ...mockBudget,
+        type: "SPECIFIC_MONTH_YEAR",
+        month: 6,
+        year: 2026,
+      };
+
+      renderDialog({ isOpen: true, budget: specificBudget, onClose: vi.fn() });
+
+      expect(screen.getByRole("button", { name: "Specific" })).toHaveClass("bg-primary");
+      expect(screen.getByLabelText("Month (optional)")).toHaveValue("6");
+      expect(screen.getByLabelText("Year (optional)")).toHaveValue("2026");
+    });
+
+    it("initializes form for SPECIFIC_YEAR budget (year only)", () => {
+      const specificBudget: Budget = {
+        ...mockBudget,
+        type: "SPECIFIC_YEAR",
+        month: 0,
+        year: 2026,
+      };
+
+      renderDialog({ isOpen: true, budget: specificBudget, onClose: vi.fn() });
+
+      expect(screen.getByLabelText("Year (optional)")).toHaveValue("2026");
+      expect(screen.getByLabelText("Month (optional)")).toHaveValue("");
+    });
+
+    it("initializes form for SPECIFIC_MONTH budget (month only)", () => {
+      const specificBudget: Budget = {
+        ...mockBudget,
+        type: "SPECIFIC_MONTH",
+        month: 3,
+        year: 0,
+      };
+
+      renderDialog({ isOpen: true, budget: specificBudget, onClose: vi.fn() });
+
+      expect(screen.getByLabelText("Month (optional)")).toHaveValue("3");
+      expect(screen.getByLabelText("Year (optional)")).toHaveValue("");
+    });
+  });
+
+  describe("isDirty guard", () => {
+    it("preserves user edits when budget prop changes mid-edit (background refetch)", async () => {
+      const onClose = vi.fn();
+      const user = userEvent.setup();
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+      });
+
+      const { rerender } = renderDialog({ isOpen: true, budget: mockBudget, onClose }, queryClient);
+
+      const limitInput = screen.getByLabelText("Spending Limit");
+      await user.clear(limitInput);
+      await user.type(limitInput, "999");
+      expect(limitInput).toHaveValue(999);
+
+      // Simulate background refetch returning a new budget object with a different field.
+      const refetchedBudget: Budget = { ...mockBudget, active: false };
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <CreateEditBudgetDialog isOpen={true} budget={refetchedBudget} onClose={onClose} />
+        </QueryClientProvider>,
+      );
+
+      // User's unsaved edit must survive the prop change.
+      expect(screen.getByLabelText("Spending Limit")).toHaveValue(999);
+    });
+
+    it("resets dirty state on close so reopen syncs fresh", async () => {
+      const onClose = vi.fn();
+      const user = userEvent.setup();
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+      });
+
+      const { rerender } = renderDialog({ isOpen: true, budget: mockBudget, onClose }, queryClient);
+
+      const limitInput = screen.getByLabelText("Spending Limit");
+      await user.clear(limitInput);
+      await user.type(limitInput, "999");
+
+      // Close dialog.
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <CreateEditBudgetDialog isOpen={false} budget={mockBudget} onClose={onClose} />
+        </QueryClientProvider>,
+      );
+
+      // Reopen with same budget — form must show original value, not the dirty 999.
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <CreateEditBudgetDialog isOpen={true} budget={mockBudget} onClose={onClose} />
+        </QueryClientProvider>,
+      );
+
+      expect(screen.getByLabelText("Spending Limit")).toHaveValue(500);
     });
   });
 });

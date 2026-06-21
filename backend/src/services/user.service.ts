@@ -1,15 +1,13 @@
 import argon2 from "argon2";
-import { ServiceError } from "../errors.js";
+import { Prisma } from "@prisma/client";
+import { EmailConflictError, ServiceError } from "../errors.js";
 import * as userRepository from "../repositories/user.repository.js";
-import {
-  BootstrapForbiddenError,
-  BootstrapUnauthorizedError,
-  EmailConflictError,
-} from "../repositories/user.repository.js";
 import * as auditService from "./audit.service.js";
 import { logEvent } from "./audit.service.js";
 
 const DEFAULT_CURRENCY_CODE = "CHF";
+
+export const DEFAULT_CATEGORIES = ["Groceries", "Housing", "Transport", "Entertainment", "Income"];
 
 // --- Profile functions (from develop) ---
 
@@ -22,13 +20,30 @@ export async function getProfile(userId: string) {
 export async function updateProfile(
   userId: string,
   data: { displayName?: string; email?: string },
-) {
+): Promise<{
+  user: Awaited<ReturnType<typeof userRepository.findById>>;
+  emailChanged: boolean;
+}> {
+  // Read the row first so we can diff against the submitted values. Without the
+  // diff the form always submits both fields and the controller can't tell a
+  // real email change from a no-op submit — KAN-159 reproduces because the
+  // no-op path went through `updateProfileAtomic` and then refreshed the
+  // session, leaving the UI showing a misleading load-failed banner.
+  const current = await userRepository.findById(userId);
+  if (!current) return { user: null, emailChanged: false };
+
   const updateData: { name?: string; email?: string } = {};
-  if (data.displayName !== undefined) updateData.name = data.displayName;
-  if (data.email !== undefined) updateData.email = data.email;
+  let emailChanged = false;
+  if (data.displayName !== undefined && data.displayName !== current.name) {
+    updateData.name = data.displayName;
+  }
+  if (data.email !== undefined && data.email !== current.email) {
+    updateData.email = data.email;
+    emailChanged = true;
+  }
 
   if (Object.keys(updateData).length === 0) {
-    return userRepository.findById(userId);
+    return { user: current, emailChanged: false };
   }
 
   let updated;
@@ -39,11 +54,13 @@ export async function updateProfile(
     throw err;
   }
 
-  void auditService
-    .logEvent("PROFILE_UPDATED", userId, { fields: Object.keys(updateData) })
-    .catch(() => {});
+  void auditService.logEvent({
+    action: "PROFILE_UPDATED",
+    userId,
+    changedValues: { fields: Object.keys(updateData) },
+  });
 
-  return updated;
+  return { user: updated, emailChanged };
 }
 
 export async function changePassword(userId: string, currentPassword: string, newPassword: string) {
@@ -56,7 +73,34 @@ export async function changePassword(userId: string, currentPassword: string, ne
   const hashed = await argon2.hash(newPassword);
   await userRepository.updatePassword(userId, hashed);
 
-  void auditService.logEvent("PASSWORD_CHANGED", userId).catch(() => {});
+  void auditService.logEvent({ action: "PASSWORD_CHANGED", userId });
+}
+
+export async function resetUserPassword(
+  requestingUser: { id: string; role: string } | null,
+  targetUserId: string,
+  newPassword: string,
+) {
+  if (!requestingUser) throw new ServiceError(401, "Unauthorized");
+  if (requestingUser.role !== "ADMIN") throw new ServiceError(403, "Forbidden");
+
+  const target = await userRepository.findById(targetUserId);
+  if (!target) throw new ServiceError(404, "Not found");
+
+  // Peer-admin guard — mirror the protection used in updateUser/deleteUser.
+  // Admins cannot reset another admin's password; they may reset their own.
+  if (target.role === "ADMIN" && requestingUser.id !== targetUserId) {
+    throw new ServiceError(403, "Cannot reset another admin's password");
+  }
+
+  const hashed = await argon2.hash(newPassword);
+  await userRepository.updatePassword(targetUserId, hashed);
+
+  void auditService.logEvent({
+    action: "PASSWORD_RESET",
+    userId: requestingUser.id,
+    changedValues: { targetUserId },
+  });
 }
 
 export async function onboardUser(
@@ -70,31 +114,45 @@ export async function onboardUser(
     throw new ServiceError(500, `Default currency ${DEFAULT_CURRENCY_CODE} not configured`);
   }
 
-  let user;
+  let user: Awaited<ReturnType<typeof userRepository.createUserAtomic>>;
   try {
-    user = await userRepository.createUserAtomic(requestingUser, {
-      email: payload.email,
-      password: hashed,
-      defaultCurrencyId: currency.id,
-      ...(payload.displayName !== undefined && { name: payload.displayName }),
-      ...(payload.role !== undefined && { role: payload.role }),
-    });
+    user = await userRepository.createUserAtomic(
+      {
+        email: payload.email,
+        password: hashed,
+        defaultCurrencyId: currency.id,
+        ...(payload.displayName !== undefined && { name: payload.displayName }),
+        ...(payload.role !== undefined && { role: payload.role }),
+        defaultCategories: DEFAULT_CATEGORIES,
+      },
+      (count) => {
+        // Bootstrap policy: the very first user is created without a session
+        // (count === 0). After that, only an authenticated ADMIN may onboard
+        // additional users. Keeping the policy here — not in the repository —
+        // preserves layered separation of business rules from data access.
+        if (count > 0) {
+          if (!requestingUser) throw new ServiceError(401, "Unauthorized");
+          if (requestingUser.role !== "ADMIN") throw new ServiceError(403, "Forbidden");
+        }
+      },
+    );
   } catch (err) {
-    if (err instanceof BootstrapUnauthorizedError) throw new ServiceError(401, "Unauthorized");
-    if (err instanceof BootstrapForbiddenError) throw new ServiceError(403, "Forbidden");
     if (err instanceof EmailConflictError) throw new ServiceError(409, "Email already in use");
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034")
+      throw new ServiceError(503, "Transaction failed due to a write conflict");
     throw err;
   }
 
-  // Track the event — best-effort
-  void auditService
-    .logEvent("USER_CREATED", requestingUser?.id ?? null, {
+  void auditService.logEvent({
+    action: "USER_CREATED",
+    userId: requestingUser?.id ?? null,
+    changedValues: {
       targetUserId: user.id,
       email: user.email,
       role: user.role,
       isBootstrap: requestingUser === null,
-    })
-    .catch(() => {});
+    },
+  });
 
   return user;
 }
@@ -141,16 +199,19 @@ export async function updateUser(
     throw new ServiceError(400, "Invalid role");
   }
 
-  // Admins cannot change the role of other admins
+  // Admins cannot change the role of or deactivate other admins
   const target = await userRepository.findById(id);
   if (!target) throw new ServiceError(404, "Not found");
+  if (target.role === "ADMIN" && payload.active === false) {
+    throw new ServiceError(403, "Cannot deactivate an admin account");
+  }
   if (
     isAdmin &&
     requestingUser.id !== id &&
     target.role === "ADMIN" &&
     payload.role !== undefined
   ) {
-    throw new ServiceError(403, "Cannot change the role of another admin");
+    throw new ServiceError(403, "Cannot modify another admin account");
   }
 
   // Build update data only with allowed fields
@@ -166,11 +227,12 @@ export async function updateUser(
 
   // Emit ROLE_CHANGED audit event if role changed
   if (data.role !== undefined && data.role !== oldRole) {
-    void logEvent("ROLE_CHANGED", requestingUser.id, {
-      targetUserId: id,
-      oldRole,
-      newRole: data.role,
-    }).catch(() => {});
+    void logEvent({
+      action: "ROLE_CHANGED",
+      userId: requestingUser.id,
+      previousValues: { role: oldRole, targetUserId: id },
+      changedValues: { role: data.role, targetUserId: id },
+    });
   }
   return updated;
 }
@@ -185,16 +247,21 @@ export async function deleteUser(requestingUser: { id: string; role: string } | 
   const existing = await userRepository.findById(id);
   if (!existing) throw new ServiceError(404, "Not found");
 
-  if (isAdmin && requestingUser.id !== id && existing.role === "ADMIN") {
-    throw new ServiceError(403, "Cannot delete another admin");
+  // Admin accounts cannot be deleted — demote to USER first to remove the guard
+  if (existing.role === "ADMIN") {
+    throw new ServiceError(403, "Cannot delete an admin account");
   }
 
   await userRepository.updateUserById(id, { active: false });
 
-  void logEvent("USER_DELETED", requestingUser.id, {
-    targetUserId: id,
-    email: existing.email,
-  }).catch(() => {});
+  void logEvent({
+    action: "USER_DELETED",
+    userId: requestingUser.id,
+    changedValues: {
+      targetUserId: id,
+      email: existing.email,
+    },
+  });
 
   return;
 }

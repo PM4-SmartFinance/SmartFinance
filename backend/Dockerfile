@@ -1,16 +1,18 @@
 # syntax=docker/dockerfile:1
 
-FROM oven/bun:1.3.10-alpine AS builder
+FROM oven/bun:1.3.14-alpine AS builder
 WORKDIR /app
 
 # Copy workspace manifests for layer cache efficiency.
 COPY package.json bun.lock ./
 COPY backend/package.json ./backend/
 COPY frontend/package.json ./frontend/
+COPY .github/scripts/package.json ./.github/scripts/
 RUN bun install --frozen-lockfile
 
 COPY tsconfig.base.json ./
 COPY backend/tsconfig.json ./backend/
+COPY backend/tsconfig.seed.json ./backend/
 COPY backend/src ./backend/src
 COPY backend/prisma ./backend/prisma
 COPY backend/prisma.config.ts ./backend/prisma.config.ts
@@ -18,6 +20,7 @@ RUN cd backend && DATABASE_URL=postgresql://build:build@localhost/build bunx pri
 
 WORKDIR /app/backend
 RUN bun run build
+RUN bunx tsc --project tsconfig.seed.json
 
 # Use slim (Debian/glibc) so sodium-native can use its linux-arm64/linux-x64 prebuilts.
 FROM node:22-slim AS deps
@@ -31,6 +34,7 @@ RUN npm install --omit=dev && DATABASE_URL=postgresql://build:build@localhost/bu
 FROM node:22-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/backend/dist ./dist
 COPY --from=builder /app/backend/prisma ./prisma

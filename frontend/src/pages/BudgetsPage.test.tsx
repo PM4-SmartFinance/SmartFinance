@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { BudgetsPage } from "./BudgetsPage";
-import { Budget } from "../lib/queries/budgets";
+import type { Budget } from "../lib/queries/budgets";
 
 window.HTMLDialogElement.prototype.showModal = vi.fn(function (this: HTMLDialogElement) {
   this.setAttribute("open", "");
@@ -34,6 +35,16 @@ vi.mock("../lib/api", () => {
   };
 });
 
+vi.mock("../hooks/useAuth", async () => {
+  const { authMockFactory } = await import("../test/authFixtures");
+  return authMockFactory();
+});
+
+vi.mock("../hooks/useLogout", async () => {
+  const { logoutMockFactory } = await import("../test/authFixtures");
+  return logoutMockFactory();
+});
+
 import { api } from "../lib/api";
 
 const mockGet = vi.mocked(api.get);
@@ -41,10 +52,13 @@ const mockGet = vi.mocked(api.get);
 const baseBudget: Budget = {
   id: "b-1",
   categoryId: "cat-1",
+  type: "MONTHLY",
   month: 3,
   year: 2026,
   limitAmount: "500.00",
   active: true,
+  isActive: true,
+  priority: 1,
   currentSpending: "142.50",
   percentageUsed: 28.5,
   remainingAmount: "357.50",
@@ -89,7 +103,7 @@ function mockApiRoutes(overrides?: {
   const categories = overrides?.categories ?? mockCategories;
 
   mockGet.mockImplementation(((path: string) => {
-    if (path === "/budgets") {
+    if (path.startsWith("/budgets")) {
       return budgets instanceof Error ? Promise.reject(budgets) : Promise.resolve({ budgets });
     }
     if (path === "/categories") {
@@ -110,7 +124,7 @@ describe("BudgetsPage", () => {
     // Never resolve the budgets request
     mockGet.mockImplementation((path: string) => {
       if (path === "/categories") return Promise.resolve({ categories: mockCategories });
-      return new Promise(() => {});
+      return new Promise(() => {}); // never resolve budgets
     });
 
     renderPage();
@@ -145,7 +159,7 @@ describe("BudgetsPage", () => {
     });
 
     // Two budget cards rendered (each has Edit + Delete buttons)
-    expect(screen.getAllByRole("button", { name: "Edit" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: /^Edit / })).toHaveLength(2);
   });
 
   it("falls back to categoryId when category is not found", async () => {
@@ -166,7 +180,7 @@ describe("BudgetsPage", () => {
 
     renderPage();
 
-    await waitFor(() => expect(screen.getAllByRole("button", { name: "Edit" })).toHaveLength(2));
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /^Edit / })).toHaveLength(2));
     expect(screen.getByRole("link", { name: "Back to Dashboard" })).toBeInTheDocument();
 
     const showModalMock = vi.mocked(window.HTMLDialogElement.prototype.showModal);
@@ -183,5 +197,18 @@ describe("BudgetsPage", () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByText("Failed to load categories")).toBeInTheDocument());
+  });
+
+  it("exposes Sign out from the user menu", async () => {
+    mockApiRoutes();
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getAllByText("Groceries").length).toBeGreaterThanOrEqual(1));
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "User menu" }));
+
+    expect(await screen.findByRole("menuitem", { name: /sign out/i })).toBeInTheDocument();
   });
 });

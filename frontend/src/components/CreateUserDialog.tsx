@@ -1,9 +1,14 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useCreateUser, type CreateUserInput } from "../lib/queries/users";
 import { ApiError } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog } from "@/components/ui/dialog";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface CreateUserDialogProps {
   isOpen: boolean;
@@ -26,16 +31,8 @@ export function CreateUserDialog({ isOpen, onClose }: CreateUserDialogProps) {
     role: "USER",
     error: "",
   });
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const createMutation = useCreateUser();
-
-  useEffect(() => {
-    if (isOpen) {
-      dialogRef.current?.showModal();
-    } else {
-      dialogRef.current?.close();
-    }
-  }, [isOpen]);
+  const { t } = useTranslation();
 
   const handleDialogClose = () => {
     onClose();
@@ -46,17 +43,29 @@ export function CreateUserDialog({ isOpen, onClose }: CreateUserDialogProps) {
     setFormState((prev) => ({ ...prev, error: "" }));
 
     if (!formState.email) {
-      setFormState((prev) => ({ ...prev, error: "Email is required" }));
+      setFormState((prev) => ({
+        ...prev,
+        error: t("components.createUserDialog.errors.emailRequired", "Email is required"),
+      }));
       return;
     }
 
     if (!formState.password) {
-      setFormState((prev) => ({ ...prev, error: "Password is required" }));
+      setFormState((prev) => ({
+        ...prev,
+        error: t("components.createUserDialog.errors.passwordRequired", "Password is required"),
+      }));
       return;
     }
 
     if (formState.password.length < 8) {
-      setFormState((prev) => ({ ...prev, error: "Password must be at least 8 characters" }));
+      setFormState((prev) => ({
+        ...prev,
+        error: t(
+          "components.createUserDialog.errors.passwordLength",
+          "Password must be at least 8 characters",
+        ),
+      }));
       return;
     }
 
@@ -83,10 +92,16 @@ export function CreateUserDialog({ isOpen, onClose }: CreateUserDialogProps) {
     } catch (err) {
       if (err instanceof ApiError) {
         const message =
-          err.status === 409 ? "Email already exists" : err.message || "Failed to create user";
+          err.status === 409
+            ? t("components.createUserDialog.errors.emailExists", "Email already exists")
+            : err.message ||
+              t("components.createUserDialog.errors.createFailed", "Failed to create user");
         setFormState((prev) => ({ ...prev, error: message }));
       } else {
-        setFormState((prev) => ({ ...prev, error: "Failed to create user" }));
+        setFormState((prev) => ({
+          ...prev,
+          error: t("components.createUserDialog.errors.createFailed", "Failed to create user"),
+        }));
       }
     }
   };
@@ -94,86 +109,96 @@ export function CreateUserDialog({ isOpen, onClose }: CreateUserDialogProps) {
   const isSubmitting = createMutation.isPending;
 
   return (
-    <dialog
-      ref={dialogRef}
-      className="w-full max-w-md rounded-lg shadow-lg backdrop:bg-black/50 open:flex open:items-center open:justify-center"
-      onClose={handleDialogClose}
-    >
-      <div className="rounded-lg bg-background p-6 shadow-lg">
-        <h2 className="mb-6 text-xl font-semibold text-foreground">Create New User</h2>
+    <Dialog isOpen={isOpen} onClose={handleDialogClose}>
+      <h2 className="mb-6 text-xl font-semibold text-foreground">
+        {t("components.createUserDialog.title", "Create New User")}
+      </h2>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {formState.error && (
-            <div className="rounded bg-red-50 p-2 text-sm text-red-600">{formState.error}</div>
-          )}
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {formState.error && (
+          <Alert variant="destructive">
+            <AlertCircle className="size-4" />
+            <AlertDescription>{formState.error}</AlertDescription>
+          </Alert>
+        )}
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={formState.email}
-              onChange={(e) => setFormState((prev) => ({ ...prev, email: e.target.value }))}
-              placeholder="user@example.com"
-              disabled={isSubmitting}
-            />
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="email">{t("components.createUserDialog.emailLabel", "Email")}</Label>
+          <Input
+            id="email"
+            type="email"
+            value={formState.email}
+            onChange={(e) => setFormState((prev) => ({ ...prev, email: e.target.value }))}
+            placeholder="user@example.com"
+            disabled={isSubmitting}
+          />
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={formState.password}
-              onChange={(e) => setFormState((prev) => ({ ...prev, password: e.target.value }))}
-              placeholder="Minimum 8 characters"
-              disabled={isSubmitting}
-            />
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="password">
+            {t("components.createUserDialog.passwordLabel", "Password")}
+          </Label>
+          <Input
+            id="password"
+            type="password"
+            value={formState.password}
+            onChange={(e) => setFormState((prev) => ({ ...prev, password: e.target.value }))}
+            placeholder={t(
+              "components.createUserDialog.placeholders.password",
+              "Minimum 8 characters",
+            )}
+            disabled={isSubmitting}
+          />
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="displayName">Display Name</Label>
-            <Input
-              id="displayName"
-              type="text"
-              value={formState.displayName}
-              onChange={(e) => setFormState((prev) => ({ ...prev, displayName: e.target.value }))}
-              placeholder="John Doe (optional)"
-              disabled={isSubmitting}
-            />
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="displayName">
+            {t("components.createUserDialog.displayNameLabel", "Display Name")}
+          </Label>
+          <Input
+            id="displayName"
+            type="text"
+            value={formState.displayName}
+            onChange={(e) => setFormState((prev) => ({ ...prev, displayName: e.target.value }))}
+            placeholder={t(
+              "components.createUserDialog.placeholders.displayName",
+              "John Doe (optional)",
+            )}
+            disabled={isSubmitting}
+          />
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="role">Role</Label>
-            <select
-              id="role"
-              value={formState.role}
-              onChange={(e) =>
-                setFormState((prev) => ({ ...prev, role: e.target.value as "USER" | "ADMIN" }))
-              }
-              disabled={isSubmitting}
-              className="w-full rounded border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option value="USER">User</option>
-              <option value="ADMIN">Admin</option>
-            </select>
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="role">{t("components.createUserDialog.roleLabel", "Role")}</Label>
+          <NativeSelect
+            id="role"
+            value={formState.role}
+            onChange={(e) =>
+              setFormState((prev) => ({ ...prev, role: e.target.value as "USER" | "ADMIN" }))
+            }
+            disabled={isSubmitting}
+          >
+            <option value="USER">{t("common.roles.user", "User")}</option>
+            <option value="ADMIN">{t("common.roles.admin", "Admin")}</option>
+          </NativeSelect>
+        </div>
 
-          <div className="flex gap-2">
-            <Button type="submit" disabled={isSubmitting} className="flex-1">
-              {isSubmitting ? "Creating…" : "Create User"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleDialogClose}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </div>
-    </dialog>
+        <div className="flex gap-2">
+          <Button type="submit" disabled={isSubmitting} className="flex-1">
+            {isSubmitting
+              ? t("common.creating", "Creating…")
+              : t("components.createUserDialog.createBtn", "Create User")}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleDialogClose}
+            disabled={isSubmitting}
+          >
+            {t("common.cancel", "Cancel")}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }

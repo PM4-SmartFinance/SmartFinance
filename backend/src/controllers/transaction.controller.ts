@@ -1,12 +1,44 @@
 import type { FastifyInstance } from "fastify";
 import multipart from "@fastify/multipart";
-import { requireRole } from "../middleware/rbac.js";
+import { requireRole, getSessionUser } from "../middleware/rbac.js";
 import { ServiceError } from "../errors.js";
-import type { ImportFormat } from "../services/import.service.js";
-import { importTransactions, SUPPORTED_FORMATS } from "../services/import.service.js";
+import {
+  detectImport,
+  forceImport,
+  importTransactions,
+  listImportMappings,
+  resolveImportEncoding,
+  SUPPORTED_FORMATS,
+} from "../services/import.service.js";
+import { validateColumnMapping } from "../services/importers/generic.parser.js";
+import { getImporter, getAllPluginFormats } from "../services/importer-registry.service.js";
 import { decodeCSVBuffer } from "../services/importers/csv.utils.js";
 import type { SortBy, SortOrder } from "../services/transaction.service.js";
 import * as transactionService from "../services/transaction.service.js";
+
+type ImportFormat = (typeof SUPPORTED_FORMATS)[number];
+
+const BUILTIN_FORMAT_LABELS: Record<ImportFormat, string> = {
+  neon: "Neon",
+  zkb: "ZKB",
+  wise: "Wise",
+  ubs: "UBS",
+};
+
+/**
+ * Reads the string value of a named non-file multipart field. @fastify/multipart
+ * exposes earlier non-file parts on the file object's `fields`; the entry may be a
+ * single value or an array when repeated. Returns undefined when absent or a file.
+ */
+function readTextField(fields: unknown, name: string): string | undefined {
+  if (typeof fields !== "object" || fields === null) return undefined;
+  const entry = (fields as Record<string, unknown>)[name];
+  const candidate = Array.isArray(entry) ? entry[0] : entry;
+  if (typeof candidate !== "object" || candidate === null) return undefined;
+  const record = candidate as Record<string, unknown>;
+  if (record["type"] === "file") return undefined;
+  return typeof record["value"] === "string" ? record["value"] : undefined;
+}
 
 interface ListTransactionsQuery {
   page: number;
@@ -16,17 +48,56 @@ interface ListTransactionsQuery {
   startDate?: string;
   endDate?: string;
   categoryId?: string;
+  accountId?: string;
   minAmount?: number;
   maxAmount?: number;
   search?: string;
 }
 
-const FORMAT_ENCODING: Record<ImportFormat, string> = {
-  neon: "utf-8",
-  zkb: "utf-8",
-  wise: "utf-8",
-  ubs: "iso-8859-1",
-};
+interface UpdateTransactionBody {
+  categoryId?: string | null;
+  notes?: string;
+  date?: string;
+  amount?: number;
+  reason?: string;
+}
+
+const updateTransactionSchema = {
+  params: {
+    type: "object",
+    properties: { id: { type: "string", format: "uuid" } },
+    required: ["id"],
+  },
+  body: {
+    type: "object",
+    properties: {
+      // `null` clears the category and restores the post-import
+      // "uncategorized" state (KAN-156).
+      categoryId: { type: ["string", "null"], format: "uuid" },
+      notes: { type: "string", maxLength: 10000 },
+      date: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+      amount: { type: "number" },
+      reason: { type: "string", maxLength: 1000 },
+    },
+    minProperties: 1,
+    additionalProperties: false,
+  },
+} as const;
+
+const deleteTransactionSchema = {
+  params: {
+    type: "object",
+    properties: { id: { type: "string", format: "uuid" } },
+    required: ["id"],
+  },
+  body: {
+    type: ["object", "null"],
+    properties: {
+      reason: { type: "string", maxLength: 1000 },
+    },
+    additionalProperties: false,
+  },
+} as const;
 
 const listTransactionsSchema = {
   querystring: {
@@ -39,6 +110,7 @@ const listTransactionsSchema = {
       startDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
       endDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
       categoryId: { type: "string" },
+      accountId: { type: "string", format: "uuid" },
       minAmount: { type: "number" },
       maxAmount: { type: "number" },
       search: { type: "string", minLength: 1, maxLength: 200 },
@@ -54,8 +126,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       preHandler: requireRole("USER"),
     },
     async (request, reply) => {
-      const user = request.session.get("user");
-      if (!user) throw new ServiceError(401, "Unauthorized");
+      const user = getSessionUser(request);
 
       const result = await transactionService.listTransactions({
         userId: user.id,
@@ -71,6 +142,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
     {
       preHandler: requireRole("USER"),
       schema: {
+        body: { type: "null" },
         response: {
           200: {
             type: "object",
@@ -81,47 +153,285 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       },
     },
     async (request, reply) => {
-      const user = request.session.get("user");
-      if (!user) throw new ServiceError(401, "Unauthorized");
+      const user = getSessionUser(request);
       const result = await transactionService.autoCategorizeTransactions(user.id);
       return reply.send(result);
+    },
+  );
+
+  app.post<{ Body: { startDate: string; endDate: string } }>(
+    "/transactions/recategorize",
+    {
+      preHandler: requireRole("USER"),
+      schema: {
+        body: {
+          type: "object",
+          required: ["startDate", "endDate"],
+          properties: {
+            startDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+            endDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+          },
+          additionalProperties: false,
+        },
+        response: {
+          200: {
+            type: "object",
+            properties: { recategorized: { type: "integer" } },
+            required: ["recategorized"],
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const user = getSessionUser(request);
+      const { startDate, endDate } = request.body;
+      const result = await transactionService.recategorizeTransactionsInRange(
+        user.id,
+        startDate,
+        endDate,
+      );
+      return reply.send(result);
+    },
+  );
+
+  app.get<{ Params: { id: string } }>(
+    "/transactions/:id",
+    {
+      preHandler: requireRole("USER"),
+      schema: {
+        params: {
+          type: "object",
+          properties: { id: { type: "string", format: "uuid" } },
+          required: ["id"],
+        },
+      },
+    },
+    async (request, reply) => {
+      const user = getSessionUser(request);
+      const transaction = await transactionService.getTransaction(request.params.id, user.id);
+      return reply.send({ transaction });
+    },
+  );
+
+  app.patch<{ Params: { id: string }; Body: UpdateTransactionBody }>(
+    "/transactions/:id",
+    {
+      preHandler: requireRole("USER"),
+      schema: updateTransactionSchema,
+    },
+    async (request, reply) => {
+      const { id } = request.params;
+      const user = getSessionUser(request);
+      const isAdmin = user.role === "ADMIN";
+      const transaction = await transactionService.updateTransaction(
+        id,
+        user.id,
+        request.body,
+        isAdmin,
+      );
+      return reply.send({ transaction });
+    },
+  );
+
+  app.delete<{ Params: { id: string }; Body: { reason?: string } | null }>(
+    "/transactions/:id",
+    {
+      schema: deleteTransactionSchema,
+      preHandler: requireRole("USER"),
+    },
+    async (request, reply) => {
+      const { id } = request.params;
+      const reason = request.body?.reason;
+      const user = getSessionUser(request);
+      const isAdmin = user.role === "ADMIN";
+      await transactionService.deleteTransaction(id, user.id, reason, isAdmin);
+      return reply.status(204).send();
+    },
+  );
+
+  app.get(
+    "/transactions/import/formats",
+    { preHandler: requireRole("USER") },
+    async (_request, reply) => {
+      const builtin = SUPPORTED_FORMATS.map((f) => ({ value: f, label: BUILTIN_FORMAT_LABELS[f] }));
+      const plugins = getAllPluginFormats().map((p) => ({ value: p.format, label: p.label }));
+      return reply.send({ formats: [...builtin, ...plugins] });
+    },
+  );
+
+  // KAN-163: the user's named, reusable column mappings for the wizard dropdown.
+  app.get(
+    "/transactions/import/mappings",
+    { preHandler: requireRole("USER") },
+    async (request, reply) => {
+      const user = getSessionUser(request);
+      const mappings = await listImportMappings(user.id);
+      return reply.send({ mappings });
+    },
+  );
+
+  // KAN-163: import rows the user chose to keep despite the duplicate warning.
+  app.post<{
+    Body: {
+      accountId: string;
+      transactions: Array<{ date: string; amount: number; description: string; subject?: string }>;
+    };
+  }>(
+    "/transactions/import/force",
+    {
+      preHandler: requireRole("USER"),
+      schema: {
+        body: {
+          type: "object",
+          required: ["accountId", "transactions"],
+          additionalProperties: false,
+          properties: {
+            accountId: { type: "string", minLength: 1 },
+            transactions: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["date", "amount", "description"],
+                additionalProperties: false,
+                properties: {
+                  date: { type: "string", minLength: 1 },
+                  amount: { type: "number" },
+                  description: { type: "string" },
+                  subject: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const user = getSessionUser(request);
+      const { accountId, transactions } = request.body;
+      const result = await forceImport({
+        userId: user.id,
+        accountId,
+        transactions,
+        logger: request.log,
+      });
+      return reply.status(200).send(result);
     },
   );
 
   await app.register(async function importRoutes(importApp) {
     await importApp.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } }); // 10 MB
 
-    importApp.post<{ Querystring: { accountId: string; format: ImportFormat } }>(
+    // KAN-163: detect the importer from the uploaded header without persisting
+    // anything; returns the columns (for manual mapping) and any saved mapping.
+    importApp.post(
+      "/transactions/import/detect",
+      {
+        preHandler: requireRole("USER"),
+        schema: {
+          response: {
+            200: {
+              type: "object",
+              properties: {
+                detectedFormat: { type: ["string", "null"] },
+                confidence: { type: "number" },
+                columns: { type: "array", items: { type: "string" } },
+                headerSignature: { type: "string" },
+                sampleRow: { type: "array", items: { type: "string" } },
+                savedMapping: { type: ["object", "null"], additionalProperties: true },
+                savedMappingName: { type: ["string", "null"] },
+                suggestedAccountId: { type: ["string", "null"] },
+              },
+              required: ["detectedFormat", "confidence", "columns", "headerSignature"],
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        const user = getSessionUser(request);
+        const fileData = await request.file();
+        if (!fileData) {
+          throw new ServiceError(400, "No file uploaded");
+        }
+        const buffer = await fileData.toBuffer();
+        // Format (and thus its encoding) is unknown at detection time, so decode
+        // with an iso-8859-1 fallback: valid UTF-8 stays UTF-8, latin1 files
+        // (e.g. UBS, many German bank exports) keep their umlauts instead of
+        // turning into replacement characters in the column dropdown (KAN-163).
+        const csvText = decodeCSVBuffer(buffer, "iso-8859-1");
+        const result = await detectImport({ csvText, userId: user.id });
+        return reply.status(200).send(result);
+      },
+    );
+
+    importApp.post<{ Querystring: { accountId?: string; format: string } }>(
       "/transactions/import",
       {
         preHandler: requireRole("USER"),
         schema: {
           querystring: {
             type: "object",
-            required: ["accountId", "format"],
+            required: ["format"],
             properties: {
               accountId: { type: "string", minLength: 1 },
-              format: { type: "string", enum: SUPPORTED_FORMATS as unknown as string[] },
+              format: { type: "string", minLength: 1 },
             },
+            additionalProperties: false,
           },
         },
       },
       async (request, reply) => {
         const { accountId, format } = request.query;
-        const user = request.session.get("user");
-        if (!user) throw new ServiceError(401, "Unauthorized");
+        const user = getSessionUser(request);
+
+        // `custom` drives the generic mapping-driven parser; any other value
+        // must resolve to a built-in or registered plugin importer.
+        const isCustom = format === "custom";
+        if (!isCustom) {
+          const isBuiltin = (SUPPORTED_FORMATS as readonly string[]).includes(format);
+          const plugin = isBuiltin ? undefined : getImporter(format);
+          if (!isBuiltin && !plugin) {
+            throw new ServiceError(400, `Unsupported import format: ${format}`);
+          }
+        }
 
         const fileData = await request.file();
         if (!fileData) {
           throw new ServiceError(400, "No file uploaded");
         }
 
+        // The column mapping arrives as a multipart `mapping` field (JSON), with
+        // an optional `mappingName`, sent before the file part — so both are
+        // available on `fileData.fields`.
+        let mapping;
+        let mappingName: string | undefined;
+        if (isCustom) {
+          const rawMapping = readTextField(fileData.fields, "mapping");
+          if (!rawMapping) {
+            throw new ServiceError(400, "Custom import requires a 'mapping' field");
+          }
+          let parsedMapping: unknown;
+          try {
+            parsedMapping = JSON.parse(rawMapping);
+          } catch {
+            throw new ServiceError(400, "Invalid mapping JSON");
+          }
+          mapping = validateColumnMapping(parsedMapping);
+          mappingName = readTextField(fileData.fields, "mappingName")?.trim() || undefined;
+        }
+
+        // A custom mapping carries no declared encoding, so use the same
+        // iso-8859-1 fallback as detection (UTF-8 first, latin1 otherwise) to
+        // keep umlauts intact and consistent with the wizard preview (KAN-163).
+        const encoding = isCustom ? "iso-8859-1" : resolveImportEncoding(format);
+
         const buffer = await fileData.toBuffer();
-        const csvText = decodeCSVBuffer(buffer, FORMAT_ENCODING[format]);
+        const csvText = decodeCSVBuffer(buffer, encoding);
 
         const result = await importTransactions({
           csvText,
           format,
+          mapping,
+          mappingName,
           accountId,
           userId: user.id,
           logger: request.log,

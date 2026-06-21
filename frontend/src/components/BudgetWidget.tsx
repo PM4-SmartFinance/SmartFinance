@@ -1,55 +1,48 @@
-import { Link } from "react-router";
 import { useDashboardBudgets } from "../lib/queries/dashboard";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-
-export function getBudgetStatus(percentageUsed: number): "on-track" | "approaching" | "exceeded" {
-  if (percentageUsed >= 100) return "exceeded";
-  if (percentageUsed >= 70) return "approaching";
-  return "on-track";
-}
+import { getMostSpecificBudgetsPerCategory } from "../lib/queries/budgets";
+import { getBudgetStatus } from "./budgetUtils";
+import { CardContent, CardHeader, CardTitle } from "./ui/card";
+import { DashboardTileLink } from "./DashboardTileLink";
+import { useTranslation } from "react-i18next";
 
 export function BudgetWidget() {
   const { data, isLoading, error } = useDashboardBudgets();
+  const { t } = useTranslation();
 
   if (error) {
     return (
       <div className="rounded border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
-        Failed to load budget data. Please try again.
+        {t("components.budgetWidget.error", "Failed to load budget data. Please try again.")}
       </div>
     );
   }
 
   if (isLoading) {
     return (
-      <Link to="/budgets" className="block hover:opacity-90 transition-opacity">
-        <Card className="cursor-pointer">
-          <CardHeader>
-            <CardTitle className="text-xs font-semibold uppercase tracking-wider">
-              Budget Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-              <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-            </div>
-          </CardContent>
-        </Card>
-      </Link>
+      <DashboardTileLink
+        to="/budgets"
+        ariaLabel={t("components.budgetWidget.ariaView", "View budgets")}
+        linkClassName="block"
+      >
+        <CardHeader>
+          <CardTitle className="text-xs font-semibold uppercase tracking-wider">
+            {t("components.budgetWidget.title", "Budget Status")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+            <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+          </div>
+        </CardContent>
+      </DashboardTileLink>
     );
   }
 
-  // Get current month and year
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1;
-  const currentYear = now.getFullYear();
-
-  // Filter budgets for current month
-  const currentMonthBudgets =
-    data?.filter((b) => b.month === currentMonth && b.year === currentYear) || [];
+  const activeBudgets = getMostSpecificBudgetsPerCategory(data?.budgets ?? []);
 
   // Count budgets by status
-  const statusCounts = currentMonthBudgets.reduce(
+  const statusCounts = activeBudgets.reduce(
     (acc, b) => {
       const status = getBudgetStatus(b.percentageUsed);
       acc[status] += 1;
@@ -59,37 +52,42 @@ export function BudgetWidget() {
   );
 
   return (
-    <Link to="/budgets" className="block hover:opacity-90 transition-opacity">
-      <Card className="cursor-pointer">
-        <CardHeader>
-          <CardTitle className="text-xs font-semibold uppercase tracking-wider">
-            Budget Status
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {currentMonthBudgets.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No budgets set for {currentMonth}/{currentYear}. Click to create one.
+    <DashboardTileLink
+      to="/budgets"
+      ariaLabel={t("components.budgetWidget.ariaView", "View budgets")}
+      linkClassName="block"
+    >
+      <CardHeader>
+        <CardTitle className="text-xs font-semibold uppercase tracking-wider">
+          {t("components.budgetWidget.title", "Budget Status")}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {activeBudgets.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {t("components.budgetWidget.empty", "No active budgets. Click to create one.")}
+          </p>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-sm font-medium">
+              {t(
+                "components.budgetWidget.statusSummary",
+                "{{onTrack}} on track, {{approaching}} approaching limit, {{exceeded}} exceeded",
+                {
+                  onTrack: statusCounts["on-track"],
+                  approaching: statusCounts["approaching"],
+                  exceeded: statusCounts["exceeded"],
+                },
+              )}
             </p>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-sm font-medium">
-                {statusCounts["on-track"]} on track, {statusCounts["approaching"]} approaching
-                limit, {statusCounts["exceeded"]} exceeded
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {currentMonthBudgets.length} active budget
-                {currentMonthBudgets.length !== 1 ? "s" : ""} for {currentMonth}/{currentYear}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </Link>
+            <p className="text-xs text-muted-foreground">
+              {t("components.budgetWidget.activeCount", "{{count}} active budgets", {
+                count: activeBudgets.length,
+              })}
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </DashboardTileLink>
   );
-
-  // NOTE: Future enhancement (next sprint) — detailed granular view can be added here
-  // by creating a separate BudgetDetailedWidget component that shows individual
-  // budget cards, spending breakdown, and progress bars. Both would use the same
-  // useDashboardBudgets() hook and getBudgetStatus() helper for consistency.
 }

@@ -3,16 +3,38 @@ import type { FastifyInstance } from "fastify";
 import Fastify from "fastify";
 import { userRoutes } from "./user.controller.js";
 
-let sessionUser: { id: string; role: string; email: string } | undefined = {
+// pwdVersion must match the trailing 10 chars of the mocked password hash
+// returned by `prisma.dimUser.findUnique` below — verifySession fails closed
+// if the session has no pwdVersion or it doesn't match the stored hash.
+let sessionUser: { id: string; role: string; email: string; pwdVersion?: string } | undefined = {
   id: "user-1",
   role: "USER",
   email: "test@example.com",
+  pwdVersion: "1234567890",
 };
+
+vi.mock("../prisma.js", () => ({
+  prisma: {
+    dimUser: {
+      findUnique: vi.fn().mockResolvedValue({
+        active: true,
+        password: "mocked-hash-1234567890",
+        role: "USER",
+      }),
+    },
+  },
+}));
 
 vi.mock("../services/user.service.js", () => ({
   getProfile: vi.fn(),
   updateProfile: vi.fn(),
   changePassword: vi.fn(),
+  deleteUser: vi.fn(),
+  onboardUser: vi.fn(),
+  listUsers: vi.fn(),
+  getUserById: vi.fn(),
+  updateUser: vi.fn(),
+  resetUserPassword: vi.fn(),
 }));
 
 import * as userService from "../services/user.service.js";
@@ -20,6 +42,9 @@ import * as userService from "../services/user.service.js";
 const mockGetProfile = vi.mocked(userService.getProfile);
 const mockUpdateProfile = vi.mocked(userService.updateProfile);
 const mockChangePassword = vi.mocked(userService.changePassword);
+const mockDeleteUser = vi.mocked(userService.deleteUser);
+const mockUpdateUser = vi.mocked(userService.updateUser);
+const mockResetUserPassword = vi.mocked(userService.resetUserPassword);
 
 const profileFixture = {
   id: "user-1",
@@ -58,7 +83,12 @@ describe("GET /api/v1/users/me", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    sessionUser = { id: "user-1", role: "USER", email: "test@example.com" };
+    sessionUser = {
+      id: "user-1",
+      role: "USER",
+      email: "test@example.com",
+      pwdVersion: "1234567890",
+    };
   });
 
   it("returns 200 with the user profile", async () => {
@@ -90,9 +120,28 @@ describe("GET /api/v1/users/me", () => {
 
 describe("PATCH /api/v1/users/me", () => {
   let app: FastifyInstance;
+  // Hoisted so individual tests can assert on session lifecycle effects of
+  // the patch handler (`set` is unused in the current design but kept on the
+  // mock so we can lock the "no session writes from the patch path" contract;
+  // `delete` is what the email-changed branch invokes).
+  let sessionSetSpy: ReturnType<typeof vi.fn>;
+  let sessionDeleteSpy: ReturnType<typeof vi.fn>;
 
   beforeAll(async () => {
-    app = buildTestApp();
+    sessionSetSpy = vi.fn();
+    sessionDeleteSpy = vi.fn();
+    app = Fastify({ logger: false });
+    app.decorateRequest("session", null);
+    app.addHook("onRequest", async (request) => {
+      Object.defineProperty(request, "session", {
+        configurable: true,
+        value: {
+          get: () => sessionUser,
+          set: sessionSetSpy,
+          delete: sessionDeleteSpy,
+        },
+      });
+    });
     await app.register(userRoutes, { prefix: "/api/v1" });
     await app.ready();
   });
@@ -101,11 +150,21 @@ describe("PATCH /api/v1/users/me", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    sessionUser = { id: "user-1", role: "USER", email: "test@example.com" };
+    sessionSetSpy.mockClear();
+    sessionDeleteSpy.mockClear();
+    sessionUser = {
+      id: "user-1",
+      role: "USER",
+      email: "test@example.com",
+      pwdVersion: "1234567890",
+    };
   });
 
-  it("returns 200 with the updated profile", async () => {
-    mockUpdateProfile.mockResolvedValue({ ...profileFixture, name: "New Name" });
+  it("returns 200 with the updated profile and emailChanged=false on displayName-only change", async () => {
+    mockUpdateProfile.mockResolvedValue({
+      user: { ...profileFixture, name: "New Name" },
+      emailChanged: false,
+    });
 
     const response = await app.inject({
       method: "PATCH",
@@ -114,11 +173,17 @@ describe("PATCH /api/v1/users/me", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({ user: { name: "New Name" } });
+    expect(response.json()).toMatchObject({
+      user: { name: "New Name" },
+      emailChanged: false,
+    });
   });
 
   it("passes displayName and email to the service", async () => {
-    mockUpdateProfile.mockResolvedValue({ ...profileFixture, email: "new@example.com" });
+    mockUpdateProfile.mockResolvedValue({
+      user: { ...profileFixture, email: "new@example.com" },
+      emailChanged: true,
+    });
 
     await app.inject({
       method: "PATCH",
@@ -130,6 +195,69 @@ describe("PATCH /api/v1/users/me", () => {
       displayName: "X",
       email: "new@example.com",
     });
+  });
+
+  it("deletes the session and returns emailChanged=true when the email actually changed", async () => {
+    mockUpdateProfile.mockResolvedValue({
+      user: { ...profileFixture, email: "new@example.com" },
+      emailChanged: true,
+    });
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/users/me",
+      payload: { email: "new@example.com" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ emailChanged: true });
+    expect(sessionDeleteSpy).toHaveBeenCalledTimes(1);
+    expect(sessionSetSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not touch the session when only displayName changes", async () => {
+    mockUpdateProfile.mockResolvedValue({
+      user: { ...profileFixture, name: "Renamed" },
+      emailChanged: false,
+    });
+
+    await app.inject({
+      method: "PATCH",
+      url: "/api/v1/users/me",
+      payload: { displayName: "Renamed" },
+    });
+
+    expect(sessionSetSpy).not.toHaveBeenCalled();
+    expect(sessionDeleteSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not touch the session on a no-op submit (same email)", async () => {
+    mockUpdateProfile.mockResolvedValue({ user: profileFixture, emailChanged: false });
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/users/me",
+      payload: { displayName: profileFixture.name, email: profileFixture.email },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ emailChanged: false });
+    expect(sessionSetSpy).not.toHaveBeenCalled();
+    expect(sessionDeleteSpy).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when updateProfile resolves with a null user", async () => {
+    mockUpdateProfile.mockResolvedValue({ user: null, emailChanged: false });
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/users/me",
+      payload: { displayName: "X" },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(sessionSetSpy).not.toHaveBeenCalled();
+    expect(sessionDeleteSpy).not.toHaveBeenCalled();
   });
 
   it("returns 409 when the new email is already taken", async () => {
@@ -184,7 +312,12 @@ describe("POST /api/v1/users/me/change-password", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    sessionUser = { id: "user-1", role: "USER", email: "test@example.com" };
+    sessionUser = {
+      id: "user-1",
+      role: "USER",
+      email: "test@example.com",
+      pwdVersion: "1234567890",
+    };
   });
 
   it("returns 200 on success", async () => {
@@ -269,5 +402,319 @@ describe("POST /api/v1/users/me/change-password", () => {
     });
 
     expect(response.statusCode).toBe(401);
+  });
+});
+
+describe("DELETE /api/v1/users/:id", () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    app = buildTestApp();
+    await app.register(userRoutes, { prefix: "/api/v1" });
+    await app.ready();
+  });
+
+  afterAll(() => app.close());
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sessionUser = {
+      id: "admin-1",
+      role: "ADMIN",
+      email: "admin@example.com",
+      pwdVersion: "1234567890",
+    };
+  });
+
+  it("returns 204 when an admin deletes a regular user", async () => {
+    mockDeleteUser.mockResolvedValue(undefined);
+
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/api/v1/users/user-2",
+    });
+
+    expect(response.statusCode).toBe(204);
+    expect(mockDeleteUser).toHaveBeenCalledExactlyOnceWith(
+      { id: "admin-1", role: "ADMIN", email: "admin@example.com", pwdVersion: "1234567890" },
+      "user-2",
+    );
+  });
+
+  it("returns 403 when the service blocks an admin from deleting another admin", async () => {
+    const { ServiceError } = await import("../errors.js");
+    mockDeleteUser.mockRejectedValue(new ServiceError(403, "Cannot delete another admin"));
+
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/api/v1/users/admin-2",
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  it("returns 403 when a non-admin attempts to delete a different user", async () => {
+    sessionUser = {
+      id: "user-1",
+      role: "USER",
+      email: "user@example.com",
+      pwdVersion: "1234567890",
+    };
+
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/api/v1/users/user-99",
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(mockDeleteUser).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 when an admin attempts to delete themselves", async () => {
+    const { ServiceError } = await import("../errors.js");
+    mockDeleteUser.mockRejectedValue(new ServiceError(403, "Cannot delete an admin account"));
+
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/api/v1/users/admin-1",
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  it("returns 404 when the target user does not exist", async () => {
+    const { ServiceError } = await import("../errors.js");
+    mockDeleteUser.mockRejectedValue(new ServiceError(404, "Not found"));
+
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/api/v1/users/ghost-id",
+    });
+
+    expect(response.statusCode).toBe(404);
+  });
+
+  it("returns 401 when there is no session", async () => {
+    sessionUser = undefined;
+
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/api/v1/users/user-2",
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(mockDeleteUser).not.toHaveBeenCalled();
+  });
+});
+
+describe("PATCH /api/v1/users/:id", () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    app = buildTestApp();
+    await app.register(userRoutes, { prefix: "/api/v1" });
+    await app.ready();
+  });
+
+  afterAll(() => app.close());
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sessionUser = {
+      id: "admin-1",
+      role: "ADMIN",
+      email: "admin@example.com",
+      pwdVersion: "1234567890",
+    };
+  });
+
+  it("returns 200 when an admin deactivates a regular user", async () => {
+    const updated = {
+      id: "user-2",
+      role: "USER",
+      active: false,
+      email: "user@example.com",
+      name: "User",
+      createdAt: new Date(),
+    };
+    mockUpdateUser.mockResolvedValue(updated);
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/users/user-2",
+      payload: { active: false },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(mockUpdateUser).toHaveBeenCalledExactlyOnceWith(
+      { id: "admin-1", role: "ADMIN", email: "admin@example.com", pwdVersion: "1234567890" },
+      "user-2",
+      { active: false },
+    );
+  });
+
+  it("returns 403 when the service blocks admin deactivation of an admin", async () => {
+    const { ServiceError } = await import("../errors.js");
+    mockUpdateUser.mockRejectedValue(new ServiceError(403, "Cannot deactivate an admin account"));
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/users/admin-2",
+      payload: { active: false },
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  it("returns 403 when a non-admin attempts to patch a different user", async () => {
+    sessionUser = {
+      id: "user-1",
+      role: "USER",
+      email: "user@example.com",
+      pwdVersion: "1234567890",
+    };
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/users/user-99",
+      payload: { name: "Hacked" },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(mockUpdateUser).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 when there is no session", async () => {
+    sessionUser = undefined;
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/v1/users/user-2",
+      payload: { active: false },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(mockUpdateUser).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/v1/users/:id/reset-password", () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    app = buildTestApp();
+    await app.register(userRoutes, { prefix: "/api/v1" });
+    await app.ready();
+  });
+
+  afterAll(() => app.close());
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sessionUser = {
+      id: "admin-1",
+      role: "ADMIN",
+      email: "admin@example.com",
+      pwdVersion: "1234567890",
+    };
+  });
+
+  it("returns 200 and forwards the session user to the service", async () => {
+    mockResetUserPassword.mockResolvedValue(undefined);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/users/user-2/reset-password",
+      payload: { newPassword: "NewPass1!" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ ok: true });
+    expect(mockResetUserPassword).toHaveBeenCalledExactlyOnceWith(
+      { id: "admin-1", role: "ADMIN", email: "admin@example.com", pwdVersion: "1234567890" },
+      "user-2",
+      "NewPass1!",
+    );
+  });
+
+  it("returns 400 when newPassword is missing", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/users/user-2/reset-password",
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(mockResetUserPassword).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when newPassword is shorter than 8 characters", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/users/user-2/reset-password",
+      payload: { newPassword: "short" },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(mockResetUserPassword).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 when there is no session", async () => {
+    sessionUser = undefined;
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/users/user-2/reset-password",
+      payload: { newPassword: "NewPass1!" },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(mockResetUserPassword).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 when a non-admin attempts to reset a password", async () => {
+    sessionUser = {
+      id: "user-1",
+      role: "USER",
+      email: "user@example.com",
+      pwdVersion: "1234567890",
+    };
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/users/user-2/reset-password",
+      payload: { newPassword: "NewPass1!" },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(mockResetUserPassword).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 when the service rejects a peer-admin reset", async () => {
+    const { ServiceError } = await import("../errors.js");
+    mockResetUserPassword.mockRejectedValue(
+      new ServiceError(403, "Cannot reset another admin's password"),
+    );
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/users/admin-2/reset-password",
+      payload: { newPassword: "NewPass1!" },
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  it("returns 404 when the target user does not exist", async () => {
+    const { ServiceError } = await import("../errors.js");
+    mockResetUserPassword.mockRejectedValue(new ServiceError(404, "Not found"));
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/users/ghost/reset-password",
+      payload: { newPassword: "NewPass1!" },
+    });
+
+    expect(response.statusCode).toBe(404);
   });
 });

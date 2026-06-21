@@ -245,11 +245,41 @@ describe("User management endpoints", () => {
     expect(body.user).not.toHaveProperty("password");
 
     expect(spy).toHaveBeenCalled();
-    const calledWith = spy.mock.calls.find((c) => c[0] === "ROLE_CHANGED");
+    const calledWith = spy.mock.calls.find(
+      (c) => (c[0] as { action: string }).action === "ROLE_CHANGED",
+    );
     expect(calledWith).toBeDefined();
 
     // cleanup spy
     spy.mockRestore();
+  });
+
+  it("admin cannot delete another admin — returns 403 with message (admin deletion guard)", async () => {
+    const adminLogin = await app.inject({
+      method: "POST",
+      url: "/api/v1/auth/login",
+      payload: { email: ADMIN_EMAIL, password: "AdminPass1!" },
+    });
+    const cookies = adminLogin.cookies as unknown as Array<{ name: string; value: string }>;
+    const session = cookies.find((c) => c.name === "session");
+
+    // Set up precondition explicitly — don't depend on the previous test's PATCH side effect.
+    const userB = await prisma.dimUser.update({
+      where: { email: USER_B_EMAIL },
+      data: { role: "ADMIN" },
+    });
+    expect(userB.role).toBe("ADMIN");
+
+    const res = await app.inject({
+      method: "DELETE",
+      url: `/api/v1/users/${userB.id}`,
+      cookies: { session: session!.value },
+    });
+    expect(res.statusCode).toBe(403);
+    // Contract shape: error responses wrap details in an "error" object with a message
+    const body = res.json();
+    expect(body).toHaveProperty("error");
+    expect(body.error).toHaveProperty("message");
   });
 
   it("admin can delete user and USER_DELETED audit is emitted", async () => {
@@ -277,7 +307,9 @@ describe("User management endpoints", () => {
     });
     expect(res.statusCode).toBe(204);
     expect(spy).toHaveBeenCalled();
-    const calledWith = spy.mock.calls.find((c) => c[0] === "USER_DELETED");
+    const calledWith = spy.mock.calls.find(
+      (c) => (c[0] as { action: string }).action === "USER_DELETED",
+    );
     expect(calledWith).toBeDefined();
 
     spy.mockRestore();
