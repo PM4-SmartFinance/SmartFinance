@@ -177,39 +177,61 @@ module.exports = async function syncRelease({ github, context, core, inputs }) {
 
   if (dryRun) {
     core.info(
-      `[dry-run] Would merge ${releaseTagSha} into main (${mainRef.object.sha}) for release ${releaseTag}. Skipping actual merge.`,
+      `[dry-run] Would open a release PR to sync develop (${releaseTagSha}) into main (${mainRef.object.sha}) for release ${releaseTag}. Skipping PR creation.`,
     );
     core.setOutput("skipped", "true");
     return { skipped: true };
   }
 
+  // `main` is protected by a repository ruleset that requires every change to
+  // land through a pull request, so we cannot merge develop into main directly
+  // via the API (that returns a 409 "Changes must be made through a pull
+  // request"). Open — or reuse — a release PR instead; the Project Owner
+  // reviews and merges it to complete the release. The PR head is the develop
+  // branch, so it promotes whatever develop points at when the PR is merged;
+  // this is safe because CI was verified green on the develop tip above and a
+  // human approves the PR before it lands.
   try {
-    // Pin the merge to the verified commit SHA, not the branch ref, so a feature
-    // PR that lands on develop between the SHA-equality check above and this
-    // call cannot be silently promoted into main.
-    await github.rest.repos.merge({
+    const { data: existingPrs } = await github.rest.pulls.list({
       owner: context.repo.owner,
       repo: context.repo.repo,
       base: "main",
-      head: releaseTagSha,
-      commit_message: `Sync develop into main for release ${releaseTag}`,
+      head: `${context.repo.owner}:develop`,
+      state: "open",
     });
 
-    core.info(`Synced develop (${releaseTagSha}) into main for release ${releaseTag}.`);
+    if (existingPrs.length > 0) {
+      const pr = existingPrs[0];
+      core.info(
+        `Release PR already open for release ${releaseTag}: ${pr.html_url} (#${pr.number}). Nothing to do.`,
+      );
+      core.setOutput("skipped", "true");
+      return { skipped: true };
+    }
+
+    const { data: pr } = await github.rest.pulls.create({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      base: "main",
+      head: "develop",
+      title: `Sync develop into main for release ${releaseTag}`,
+      body:
+        `Automated release PR promoting develop (\`${releaseTagSha}\`) into main for release ${releaseTag}.\n\n` +
+        `CI was verified green on the develop tip before this PR was opened. ` +
+        `Approve and merge to complete the release.`,
+    });
+
+    core.info(
+      `Opened release PR ${pr.html_url} (#${pr.number}) to sync develop (${releaseTagSha}) into main for release ${releaseTag}.`,
+    );
     core.setOutput("skipped", "false");
     return { skipped: false };
   } catch (error) {
     const status = error.status ?? "unknown";
     const body = error.response?.data?.message ?? error.message;
-    if (error.status === 409) {
-      core.setFailed(
-        `Merge conflict syncing develop (${releaseTagSha}) into main (${mainRef.object.sha}) for release ${releaseTag}: ${body}. Resolve conflicts manually before retrying.`,
-      );
-    } else {
-      core.setFailed(
-        `Failed to sync develop into main for release ${releaseTag} (commit ${releaseTagSha}): ${body} (HTTP ${status}).`,
-      );
-    }
+    core.setFailed(
+      `Failed to open release PR for ${releaseTag} (develop ${releaseTagSha} → main ${mainRef.object.sha}): ${body} (HTTP ${status}).`,
+    );
     return { skipped: false };
   }
 };

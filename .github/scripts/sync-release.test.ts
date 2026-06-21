@@ -27,8 +27,9 @@ type GithubMock = {
     actions: {
       listWorkflowRuns: ReturnType<typeof vi.fn>;
     };
-    repos: {
-      merge: ReturnType<typeof vi.fn>;
+    pulls: {
+      list: ReturnType<typeof vi.fn>;
+      create: ReturnType<typeof vi.fn>;
     };
   };
 };
@@ -52,7 +53,8 @@ function makeGithub(opts: {
   tagObject?: { object: { sha: string } };
   tagRuns?: unknown[] | Error;
   branchRuns?: unknown[] | Error;
-  mergeError?: Error;
+  existingPrs?: unknown[];
+  createPrError?: Error;
 }): GithubMock {
   const refs: RefMap = opts.refs ?? {
     "heads/develop": { object: { sha: DEVELOP_SHA, type: "commit" } },
@@ -98,10 +100,16 @@ function makeGithub(opts: {
           },
         ),
       },
-      repos: {
-        merge: vi.fn(async () => {
-          if (opts.mergeError) throw opts.mergeError;
-          return { data: { sha: "merge-commit-sha" } };
+      pulls: {
+        list: vi.fn(async () => ({ data: opts.existingPrs ?? [] })),
+        create: vi.fn(async () => {
+          if (opts.createPrError) throw opts.createPrError;
+          return {
+            data: {
+              number: 99,
+              html_url: "https://github.com/PM4-SmartFinance/SmartFinance/pull/99",
+            },
+          };
         }),
       },
     },
@@ -168,10 +176,10 @@ describe("sync-release", () => {
 
     expect(core.setFailed).toHaveBeenCalledOnce();
     expect(core.setFailed.mock.calls[0][0]).toContain("only syncs releases created from develop");
-    expect(github.rest.repos.merge).not.toHaveBeenCalled();
+    expect(github.rest.pulls.create).not.toHaveBeenCalled();
   });
 
-  it("happy path with tag-SHA hit merges using release tag SHA", async () => {
+  it("happy path with tag-SHA hit opens a release PR develop → main", async () => {
     const refs: RefMap = {
       "heads/develop": { object: { sha: TAG_COMMIT_SHA, type: "commit" } },
       "heads/main": { object: { sha: MAIN_SHA, type: "commit" } },
@@ -197,11 +205,15 @@ describe("sync-release", () => {
     expect(github.rest.actions.listWorkflowRuns.mock.calls[1][0]).toEqual(
       expect.objectContaining({ workflow_id: "ci.yml", branch: "develop" }),
     );
-    expect(github.rest.repos.merge).toHaveBeenCalledOnce();
-    const mergeArgs = github.rest.repos.merge.mock.calls[0][0];
-    expect(mergeArgs.base).toBe("main");
-    expect(mergeArgs.head).toBe(TAG_COMMIT_SHA);
-    expect(mergeArgs.head).not.toBe("develop");
+    expect(github.rest.pulls.create).toHaveBeenCalledOnce();
+    const prArgs = github.rest.pulls.create.mock.calls[0][0];
+    expect(prArgs.base).toBe("main");
+    expect(prArgs.head).toBe("develop");
+    expect(prArgs.title).toContain("v1.0.0");
+    // We check for an existing open PR before creating a new one.
+    expect(github.rest.pulls.list).toHaveBeenCalledWith(
+      expect.objectContaining({ base: "main", head: "PM4-SmartFinance:develop", state: "open" }),
+    );
     expect(core.setOutput).toHaveBeenCalledWith("skipped", "false");
   });
 
@@ -222,7 +234,7 @@ describe("sync-release", () => {
     expect(msg).toContain(TAG_COMMIT_SHA);
     expect(msg).toContain("conclusion: failure");
     expect(msg).toContain("https://github.com");
-    expect(github.rest.repos.merge).not.toHaveBeenCalled();
+    expect(github.rest.pulls.create).not.toHaveBeenCalled();
   });
 
   it("develop success overrides a failing tag run for the same commit", async () => {
@@ -242,8 +254,8 @@ describe("sync-release", () => {
 
     expect(result).toEqual({ skipped: false });
     expect(core.setFailed).not.toHaveBeenCalled();
-    expect(github.rest.repos.merge).toHaveBeenCalledOnce();
-    expect(github.rest.repos.merge.mock.calls[0][0].head).toBe(TAG_COMMIT_SHA);
+    expect(github.rest.pulls.create).toHaveBeenCalledOnce();
+    expect(github.rest.pulls.create.mock.calls[0][0].head).toBe("develop");
   });
 
   it("tag-SHA empty triggers branch fallback (uses 'develop tip' wording on failure)", async () => {
@@ -266,7 +278,7 @@ describe("sync-release", () => {
     expect(core.setFailed.mock.calls[0][0]).toContain("conclusion: cancelled");
   });
 
-  it("tag-SHA empty + branch fallback hit merges", async () => {
+  it("tag-SHA empty + branch fallback hit opens a release PR", async () => {
     const refs: RefMap = {
       "heads/develop": { object: { sha: TAG_COMMIT_SHA, type: "commit" } },
       "heads/main": { object: { sha: MAIN_SHA, type: "commit" } },
@@ -292,8 +304,8 @@ describe("sync-release", () => {
       }),
     );
     expect(github.rest.actions.listWorkflowRuns.mock.calls[1][0]).not.toHaveProperty("head_sha");
-    expect(github.rest.repos.merge).toHaveBeenCalledOnce();
-    expect(github.rest.repos.merge.mock.calls[0][0].head).toBe(TAG_COMMIT_SHA);
+    expect(github.rest.pulls.create).toHaveBeenCalledOnce();
+    expect(github.rest.pulls.create.mock.calls[0][0].head).toBe("develop");
   });
 
   it("tag-SHA throws 404 → falls back to branch lookup", async () => {
@@ -314,7 +326,7 @@ describe("sync-release", () => {
     expect(result).toEqual({ skipped: false });
     expect(core.setFailed).not.toHaveBeenCalled();
     expect(core.info.mock.calls.some((c) => String(c[0]).includes("falling back"))).toBe(true);
-    expect(github.rest.repos.merge).toHaveBeenCalledOnce();
+    expect(github.rest.pulls.create).toHaveBeenCalledOnce();
   });
 
   it("branch lookup throws 500 → aborts without promoting", async () => {
@@ -333,7 +345,7 @@ describe("sync-release", () => {
     expect(failure).toContain("internal server error");
     // We should have attempted both lookups (tag then branch)
     expect(github.rest.actions.listWorkflowRuns).toHaveBeenCalledTimes(2);
-    expect(github.rest.repos.merge).not.toHaveBeenCalled();
+    expect(github.rest.pulls.create).not.toHaveBeenCalled();
   });
 
   it("per_page semantics: latest tag run-only is authoritative (do not scan history)", async () => {
@@ -359,7 +371,7 @@ describe("sync-release", () => {
     // Confirm we only requested the latest run by checking we asked for per_page:1
     const calls = github.rest.actions.listWorkflowRuns.mock.calls;
     expect(calls[0][0]).toHaveProperty("per_page", 1);
-    expect(github.rest.repos.merge).not.toHaveBeenCalled();
+    expect(github.rest.pulls.create).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -392,7 +404,7 @@ describe("sync-release", () => {
     // Branch fallback must NOT be called.
     const calls = github.rest.actions.listWorkflowRuns.mock.calls;
     expect(calls).toHaveLength(1);
-    expect(github.rest.repos.merge).not.toHaveBeenCalled();
+    expect(github.rest.pulls.create).not.toHaveBeenCalled();
   });
 
   it("both lookups empty → fails with all 3 SHAs", async () => {
@@ -453,7 +465,7 @@ describe("sync-release", () => {
     expect(msg).toContain("Release tag v1.0.0 points to");
     expect(msg).toContain(TAG_COMMIT_SHA);
     expect(msg).toContain(DEVELOP_SHA);
-    expect(github.rest.repos.merge).not.toHaveBeenCalled();
+    expect(github.rest.pulls.create).not.toHaveBeenCalled();
   });
 
   it("branch fallback run head_sha matches develop tip but tag != develop tip still fails", async () => {
@@ -476,7 +488,7 @@ describe("sync-release", () => {
     expect(msg).toContain("Release tag v1.0.0 points to");
     expect(msg).toContain(TAG_COMMIT_SHA);
     expect(msg).toContain(DEVELOP_SHA);
-    expect(github.rest.repos.merge).not.toHaveBeenCalled();
+    expect(github.rest.pulls.create).not.toHaveBeenCalled();
   });
 
   it("annotated tag dereferences to underlying commit", async () => {
@@ -496,8 +508,8 @@ describe("sync-release", () => {
 
     expect(result).toEqual({ skipped: false });
     expect(github.rest.git.getTag).toHaveBeenCalledOnce();
-    const mergeArgs = github.rest.repos.merge.mock.calls[0][0];
-    expect(mergeArgs.head).toBe(TAG_COMMIT_SHA);
+    expect(github.rest.pulls.create).toHaveBeenCalledOnce();
+    expect(github.rest.pulls.create.mock.calls[0][0].head).toBe("develop");
   });
 
   it("main already matches develop → skipped, no merge", async () => {
@@ -513,10 +525,10 @@ describe("sync-release", () => {
 
     expect(result).toEqual({ skipped: true });
     expect(core.setOutput).toHaveBeenCalledWith("skipped", "true");
-    expect(github.rest.repos.merge).not.toHaveBeenCalled();
+    expect(github.rest.pulls.create).not.toHaveBeenCalled();
   });
 
-  it("merge 409 conflict → setFailed with conflict message + body", async () => {
+  it("an open release PR already exists → skipped, no new PR created", async () => {
     const refs: RefMap = {
       "heads/develop": { object: { sha: TAG_COMMIT_SHA, type: "commit" } },
       "heads/main": { object: { sha: MAIN_SHA, type: "commit" } },
@@ -526,19 +538,43 @@ describe("sync-release", () => {
     const github = makeGithub({
       refs,
       tagRuns: [successRun(TAG_COMMIT_SHA)],
-      mergeError: octokitError(409, "Merge conflict"),
+      existingPrs: [
+        { number: 7, html_url: "https://github.com/PM4-SmartFinance/SmartFinance/pull/7" },
+      ],
+    });
+
+    const result = await syncRelease({ github, context, core, inputs: baseInputs });
+
+    expect(result).toEqual({ skipped: true });
+    expect(github.rest.pulls.create).not.toHaveBeenCalled();
+    expect(core.info.mock.calls.some((c) => String(c[0]).includes("already open"))).toBe(true);
+    expect(core.setOutput).toHaveBeenCalledWith("skipped", "true");
+  });
+
+  it("PR creation blocked by ruleset (403) → setFailed with body", async () => {
+    const refs: RefMap = {
+      "heads/develop": { object: { sha: TAG_COMMIT_SHA, type: "commit" } },
+      "heads/main": { object: { sha: MAIN_SHA, type: "commit" } },
+      "tags/v1.0.0": { object: { sha: TAG_COMMIT_SHA, type: "commit" } },
+    };
+    const core = makeCore();
+    const github = makeGithub({
+      refs,
+      tagRuns: [successRun(TAG_COMMIT_SHA)],
+      createPrError: octokitError(403, "Resource not accessible by integration"),
     });
 
     await syncRelease({ github, context, core, inputs: baseInputs });
 
     expect(core.setFailed).toHaveBeenCalledOnce();
     const msg = core.setFailed.mock.calls[0][0];
-    expect(msg).toContain("Merge conflict");
+    expect(msg).toContain("Failed to open release PR");
+    expect(msg).toContain("Resource not accessible by integration");
+    expect(msg).toContain("HTTP 403");
     expect(msg).toContain(TAG_COMMIT_SHA);
-    expect(msg).toContain(MAIN_SHA);
   });
 
-  it("merge non-409 error → setFailed with status + body", async () => {
+  it("PR creation non-403 error → setFailed with status + body", async () => {
     const refs: RefMap = {
       "heads/develop": { object: { sha: TAG_COMMIT_SHA, type: "commit" } },
       "heads/main": { object: { sha: MAIN_SHA, type: "commit" } },
@@ -548,7 +584,7 @@ describe("sync-release", () => {
     const github = makeGithub({
       refs,
       tagRuns: [successRun(TAG_COMMIT_SHA)],
-      mergeError: octokitError(500, "internal server error"),
+      createPrError: octokitError(500, "internal server error"),
     });
 
     await syncRelease({ github, context, core, inputs: baseInputs });
@@ -560,7 +596,7 @@ describe("sync-release", () => {
     expect(msg).toContain(TAG_COMMIT_SHA);
   });
 
-  it("dry-run skips merge but passes all checks", async () => {
+  it("dry-run skips PR creation but passes all checks", async () => {
     const refs: RefMap = {
       "heads/develop": { object: { sha: TAG_COMMIT_SHA, type: "commit" } },
       "heads/main": { object: { sha: MAIN_SHA, type: "commit" } },
@@ -578,7 +614,7 @@ describe("sync-release", () => {
 
     expect(result).toEqual({ skipped: true });
     expect(core.info.mock.calls.some((c) => String(c[0]).includes("[dry-run]"))).toBe(true);
-    expect(github.rest.repos.merge).not.toHaveBeenCalled();
+    expect(github.rest.pulls.create).not.toHaveBeenCalled();
     expect(core.setOutput).toHaveBeenCalledWith("skipped", "true");
   });
 
