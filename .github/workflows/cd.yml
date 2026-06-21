@@ -212,7 +212,10 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         env:
-          REF_NAME: ${{ github.ref_name }}
+          # Read the tag from the release payload, not github.ref_name, which
+          # renders empty on release events here and made IMAGE_TAG empty,
+          # aborting the deploy. release.tag_name is always populated.
+          REF_NAME: ${{ github.event.release.tag_name }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}

@@ -15,6 +15,10 @@ COPY frontend/tsconfig.json ./frontend/
 COPY frontend/tsconfig.app.json ./frontend/
 COPY frontend/tsconfig.node.json ./frontend/
 COPY frontend/src ./frontend/src
+# public/ holds i18n locale JSON and other static assets that Vite copies into
+# dist/ at build time. Without it the build ships no /locales/<lng>/translation.json,
+# so nginx serves index.html for those paths and i18n fails with a JSON parse error.
+COPY frontend/public ./frontend/public
 COPY frontend/index.html ./frontend/
 COPY frontend/vite.config.ts ./frontend/
 
