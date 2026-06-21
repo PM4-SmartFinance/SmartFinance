@@ -351,6 +351,9 @@ jobs:
     needs:
       - test-frontend
       - test
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
 
@@ -481,6 +484,7 @@ jobs:
 
       - name: Open baseline-update PR (on develop push)
         if: github.ref == 'refs/heads/develop' && success()
+        continue-on-error: true
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
