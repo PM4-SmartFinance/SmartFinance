@@ -1,339 +1,76 @@
-{
-  "total": {
-    "lines": { "total": 1314, "covered": 1151, "skipped": 0, "pct": 87.59 },
-    "statements": { "total": 1458, "covered": 1259, "skipped": 0, "pct": 86.35 },
-    "functions": { "total": 498, "covered": 409, "skipped": 0, "pct": 82.12 },
-    "branches": { "total": 960, "covered": 772, "skipped": 0, "pct": 80.41 },
-    "branchesTrue": { "total": 0, "covered": 0, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/AdminRoute.tsx": {
-    "lines": { "total": 6, "covered": 6, "skipped": 0, "pct": 100 },
-    "functions": { "total": 1, "covered": 1, "skipped": 0, "pct": 100 },
-    "statements": { "total": 6, "covered": 6, "skipped": 0, "pct": 100 },
-    "branches": { "total": 6, "covered": 6, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/BackToDashboardLink.tsx": {
-    "lines": { "total": 2, "covered": 2, "skipped": 0, "pct": 100 },
-    "functions": { "total": 1, "covered": 1, "skipped": 0, "pct": 100 },
-    "statements": { "total": 2, "covered": 2, "skipped": 0, "pct": 100 },
-    "branches": { "total": 2, "covered": 2, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/BudgetProgressCard.tsx": {
-    "lines": { "total": 34, "covered": 25, "skipped": 0, "pct": 73.52 },
-    "functions": { "total": 10, "covered": 9, "skipped": 0, "pct": 90 },
-    "statements": { "total": 38, "covered": 29, "skipped": 0, "pct": 76.31 },
-    "branches": { "total": 40, "covered": 17, "skipped": 0, "pct": 42.5 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/BudgetProgressWidget.tsx": {
-    "lines": { "total": 69, "covered": 69, "skipped": 0, "pct": 100 },
-    "functions": { "total": 21, "covered": 20, "skipped": 0, "pct": 95.23 },
-    "statements": { "total": 78, "covered": 75, "skipped": 0, "pct": 96.15 },
-    "branches": { "total": 47, "covered": 43, "skipped": 0, "pct": 91.48 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/BudgetWidget.tsx": {
-    "lines": { "total": 11, "covered": 11, "skipped": 0, "pct": 100 },
-    "functions": { "total": 2, "covered": 2, "skipped": 0, "pct": 100 },
-    "statements": { "total": 11, "covered": 11, "skipped": 0, "pct": 100 },
-    "branches": { "total": 10, "covered": 8, "skipped": 0, "pct": 80 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/CategoryBreakdownChart.tsx": {
-    "lines": { "total": 14, "covered": 13, "skipped": 0, "pct": 92.85 },
-    "functions": { "total": 5, "covered": 4, "skipped": 0, "pct": 80 },
-    "statements": { "total": 15, "covered": 14, "skipped": 0, "pct": 93.33 },
-    "branches": { "total": 19, "covered": 19, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/ConfirmDeleteDialog.tsx": {
-    "lines": { "total": 1, "covered": 1, "skipped": 0, "pct": 100 },
-    "functions": { "total": 1, "covered": 1, "skipped": 0, "pct": 100 },
-    "statements": { "total": 1, "covered": 1, "skipped": 0, "pct": 100 },
-    "branches": { "total": 9, "covered": 8, "skipped": 0, "pct": 88.88 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/CreateEditBudgetDialog.tsx": {
-    "lines": { "total": 73, "covered": 59, "skipped": 0, "pct": 80.82 },
-    "functions": { "total": 34, "covered": 23, "skipped": 0, "pct": 67.64 },
-    "statements": { "total": 93, "covered": 71, "skipped": 0, "pct": 76.34 },
-    "branches": { "total": 97, "covered": 74, "skipped": 0, "pct": 76.28 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/CreateUserDialog.tsx": {
-    "lines": { "total": 33, "covered": 24, "skipped": 0, "pct": 72.72 },
-    "functions": { "total": 17, "covered": 10, "skipped": 0, "pct": 58.82 },
-    "statements": { "total": 43, "covered": 29, "skipped": 0, "pct": 67.44 },
-    "branches": { "total": 18, "covered": 11, "skipped": 0, "pct": 61.11 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/CsvImportCard.tsx": {
-    "lines": { "total": 69, "covered": 67, "skipped": 0, "pct": 97.1 },
-    "functions": { "total": 21, "covered": 19, "skipped": 0, "pct": 90.47 },
-    "statements": { "total": 75, "covered": 72, "skipped": 0, "pct": 96 },
-    "branches": { "total": 58, "covered": 50, "skipped": 0, "pct": 86.2 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/DashboardTileLink.tsx": {
-    "lines": { "total": 4, "covered": 4, "skipped": 0, "pct": 100 },
-    "functions": { "total": 1, "covered": 1, "skipped": 0, "pct": 100 },
-    "statements": { "total": 4, "covered": 4, "skipped": 0, "pct": 100 },
-    "branches": { "total": 2, "covered": 2, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/DateRangePicker.tsx": {
-    "lines": { "total": 18, "covered": 18, "skipped": 0, "pct": 100 },
-    "functions": { "total": 10, "covered": 10, "skipped": 0, "pct": 100 },
-    "statements": { "total": 24, "covered": 24, "skipped": 0, "pct": 100 },
-    "branches": { "total": 10, "covered": 10, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/EditUserDialog.tsx": {
-    "lines": { "total": 34, "covered": 14, "skipped": 0, "pct": 41.17 },
-    "functions": { "total": 11, "covered": 2, "skipped": 0, "pct": 18.18 },
-    "statements": { "total": 40, "covered": 14, "skipped": 0, "pct": 35 },
-    "branches": { "total": 33, "covered": 14, "skipped": 0, "pct": 42.42 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/NewRuleForm.tsx": {
-    "lines": { "total": 22, "covered": 21, "skipped": 0, "pct": 95.45 },
-    "functions": { "total": 11, "covered": 10, "skipped": 0, "pct": 90.9 },
-    "statements": { "total": 23, "covered": 22, "skipped": 0, "pct": 95.65 },
-    "branches": { "total": 16, "covered": 13, "skipped": 0, "pct": 81.25 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/RecentTransactionsWidget.tsx": {
-    "lines": { "total": 16, "covered": 15, "skipped": 0, "pct": 93.75 },
-    "functions": { "total": 5, "covered": 5, "skipped": 0, "pct": 100 },
-    "statements": { "total": 16, "covered": 15, "skipped": 0, "pct": 93.75 },
-    "branches": { "total": 19, "covered": 18, "skipped": 0, "pct": 94.73 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/ResetPasswordDialog.tsx": {
-    "lines": { "total": 40, "covered": 38, "skipped": 0, "pct": 95 },
-    "functions": { "total": 10, "covered": 10, "skipped": 0, "pct": 100 },
-    "statements": { "total": 40, "covered": 38, "skipped": 0, "pct": 95 },
-    "branches": { "total": 29, "covered": 27, "skipped": 0, "pct": 93.1 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/RuleRow.tsx": {
-    "lines": { "total": 14, "covered": 10, "skipped": 0, "pct": 71.42 },
-    "functions": { "total": 8, "covered": 4, "skipped": 0, "pct": 50 },
-    "statements": { "total": 16, "covered": 11, "skipped": 0, "pct": 68.75 },
-    "branches": { "total": 20, "covered": 12, "skipped": 0, "pct": 60 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/SortableColumnHeader.tsx": {
-    "lines": { "total": 3, "covered": 3, "skipped": 0, "pct": 100 },
-    "functions": { "total": 2, "covered": 2, "skipped": 0, "pct": 100 },
-    "statements": { "total": 3, "covered": 3, "skipped": 0, "pct": 100 },
-    "branches": { "total": 9, "covered": 9, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/SpendingTrendChart.tsx": {
-    "lines": { "total": 117, "covered": 112, "skipped": 0, "pct": 95.72 },
-    "functions": { "total": 29, "covered": 27, "skipped": 0, "pct": 93.1 },
-    "statements": { "total": 135, "covered": 130, "skipped": 0, "pct": 96.29 },
-    "branches": { "total": 94, "covered": 86, "skipped": 0, "pct": 91.48 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/SummaryMetricsWidget.tsx": {
-    "lines": { "total": 5, "covered": 5, "skipped": 0, "pct": 100 },
-    "functions": { "total": 2, "covered": 2, "skipped": 0, "pct": 100 },
-    "statements": { "total": 5, "covered": 5, "skipped": 0, "pct": 100 },
-    "branches": { "total": 12, "covered": 12, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/UserTable.tsx": {
-    "lines": { "total": 14, "covered": 10, "skipped": 0, "pct": 71.42 },
-    "functions": { "total": 10, "covered": 7, "skipped": 0, "pct": 70 },
-    "statements": { "total": 14, "covered": 10, "skipped": 0, "pct": 71.42 },
-    "branches": { "total": 18, "covered": 16, "skipped": 0, "pct": 88.88 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/budgetUtils.ts": {
-    "lines": { "total": 3, "covered": 3, "skipped": 0, "pct": 100 },
-    "functions": { "total": 1, "covered": 1, "skipped": 0, "pct": 100 },
-    "statements": { "total": 5, "covered": 5, "skipped": 0, "pct": 100 },
-    "branches": { "total": 4, "covered": 4, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/ui/alert.tsx": {
-    "lines": { "total": 5, "covered": 3, "skipped": 0, "pct": 60 },
-    "functions": { "total": 4, "covered": 2, "skipped": 0, "pct": 50 },
-    "statements": { "total": 5, "covered": 3, "skipped": 0, "pct": 60 },
-    "branches": { "total": 0, "covered": 0, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/ui/badge.tsx": {
-    "lines": { "total": 2, "covered": 2, "skipped": 0, "pct": 100 },
-    "functions": { "total": 1, "covered": 1, "skipped": 0, "pct": 100 },
-    "statements": { "total": 2, "covered": 2, "skipped": 0, "pct": 100 },
-    "branches": { "total": 0, "covered": 0, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/ui/button.tsx": {
-    "lines": { "total": 2, "covered": 2, "skipped": 0, "pct": 100 },
-    "functions": { "total": 1, "covered": 1, "skipped": 0, "pct": 100 },
-    "statements": { "total": 2, "covered": 2, "skipped": 0, "pct": 100 },
-    "branches": { "total": 2, "covered": 2, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/ui/card.tsx": {
-    "lines": { "total": 7, "covered": 5, "skipped": 0, "pct": 71.42 },
-    "functions": { "total": 7, "covered": 5, "skipped": 0, "pct": 71.42 },
-    "statements": { "total": 7, "covered": 5, "skipped": 0, "pct": 71.42 },
-    "branches": { "total": 1, "covered": 1, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/ui/dialog.tsx": {
-    "lines": { "total": 3, "covered": 3, "skipped": 0, "pct": 100 },
-    "functions": { "total": 1, "covered": 1, "skipped": 0, "pct": 100 },
-    "statements": { "total": 3, "covered": 3, "skipped": 0, "pct": 100 },
-    "branches": { "total": 1, "covered": 1, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/ui/input.tsx": {
-    "lines": { "total": 1, "covered": 1, "skipped": 0, "pct": 100 },
-    "functions": { "total": 1, "covered": 1, "skipped": 0, "pct": 100 },
-    "statements": { "total": 1, "covered": 1, "skipped": 0, "pct": 100 },
-    "branches": { "total": 0, "covered": 0, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/ui/label.tsx": {
-    "lines": { "total": 1, "covered": 1, "skipped": 0, "pct": 100 },
-    "functions": { "total": 1, "covered": 1, "skipped": 0, "pct": 100 },
-    "statements": { "total": 1, "covered": 1, "skipped": 0, "pct": 100 },
-    "branches": { "total": 0, "covered": 0, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/ui/native-select.tsx": {
-    "lines": { "total": 2, "covered": 2, "skipped": 0, "pct": 100 },
-    "functions": { "total": 1, "covered": 1, "skipped": 0, "pct": 100 },
-    "statements": { "total": 2, "covered": 2, "skipped": 0, "pct": 100 },
-    "branches": { "total": 0, "covered": 0, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/ui/select.tsx": {
-    "lines": { "total": 10, "covered": 7, "skipped": 0, "pct": 70 },
-    "functions": { "total": 9, "covered": 6, "skipped": 0, "pct": 66.66 },
-    "statements": { "total": 10, "covered": 7, "skipped": 0, "pct": 70 },
-    "branches": { "total": 6, "covered": 6, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/components/ui/skeleton.tsx": {
-    "lines": { "total": 1, "covered": 1, "skipped": 0, "pct": 100 },
-    "functions": { "total": 1, "covered": 1, "skipped": 0, "pct": 100 },
-    "statements": { "total": 1, "covered": 1, "skipped": 0, "pct": 100 },
-    "branches": { "total": 0, "covered": 0, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/hooks/useAuth.ts": {
-    "lines": { "total": 4, "covered": 4, "skipped": 0, "pct": 100 },
-    "functions": { "total": 2, "covered": 2, "skipped": 0, "pct": 100 },
-    "statements": { "total": 4, "covered": 4, "skipped": 0, "pct": 100 },
-    "branches": { "total": 4, "covered": 4, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/hooks/useDialog.ts": {
-    "lines": { "total": 12, "covered": 12, "skipped": 0, "pct": 100 },
-    "functions": { "total": 2, "covered": 2, "skipped": 0, "pct": 100 },
-    "statements": { "total": 12, "covered": 12, "skipped": 0, "pct": 100 },
-    "branches": { "total": 14, "covered": 14, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/hooks/useLogout.ts": {
-    "lines": { "total": 10, "covered": 10, "skipped": 0, "pct": 100 },
-    "functions": { "total": 4, "covered": 4, "skipped": 0, "pct": 100 },
-    "statements": { "total": 10, "covered": 10, "skipped": 0, "pct": 100 },
-    "branches": { "total": 5, "covered": 5, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/lib/api.ts": {
-    "lines": { "total": 23, "covered": 19, "skipped": 0, "pct": 82.6 },
-    "functions": { "total": 7, "covered": 4, "skipped": 0, "pct": 57.14 },
-    "statements": { "total": 23, "covered": 19, "skipped": 0, "pct": 82.6 },
-    "branches": { "total": 16, "covered": 13, "skipped": 0, "pct": 81.25 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/lib/date.ts": {
-    "lines": { "total": 17, "covered": 17, "skipped": 0, "pct": 100 },
-    "functions": { "total": 6, "covered": 6, "skipped": 0, "pct": 100 },
-    "statements": { "total": 17, "covered": 17, "skipped": 0, "pct": 100 },
-    "branches": { "total": 0, "covered": 0, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/lib/datePresets.ts": {
-    "lines": { "total": 5, "covered": 5, "skipped": 0, "pct": 100 },
-    "functions": { "total": 4, "covered": 4, "skipped": 0, "pct": 100 },
-    "statements": { "total": 5, "covered": 5, "skipped": 0, "pct": 100 },
-    "branches": { "total": 0, "covered": 0, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/lib/format.ts": {
-    "lines": { "total": 8, "covered": 8, "skipped": 0, "pct": 100 },
-    "functions": { "total": 2, "covered": 2, "skipped": 0, "pct": 100 },
-    "statements": { "total": 10, "covered": 10, "skipped": 0, "pct": 100 },
-    "branches": { "total": 6, "covered": 6, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/lib/utils.ts": {
-    "lines": { "total": 3, "covered": 3, "skipped": 0, "pct": 100 },
-    "functions": { "total": 2, "covered": 2, "skipped": 0, "pct": 100 },
-    "statements": { "total": 3, "covered": 3, "skipped": 0, "pct": 100 },
-    "branches": { "total": 0, "covered": 0, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/lib/queries/budgets.ts": {
-    "lines": { "total": 47, "covered": 47, "skipped": 0, "pct": 100 },
-    "functions": { "total": 18, "covered": 17, "skipped": 0, "pct": 94.44 },
-    "statements": { "total": 52, "covered": 50, "skipped": 0, "pct": 96.15 },
-    "branches": { "total": 28, "covered": 26, "skipped": 0, "pct": 92.85 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/lib/queries/categories.ts": {
-    "lines": { "total": 59, "covered": 54, "skipped": 0, "pct": 91.52 },
-    "functions": { "total": 33, "covered": 33, "skipped": 0, "pct": 100 },
-    "statements": { "total": 61, "covered": 55, "skipped": 0, "pct": 90.16 },
-    "branches": { "total": 10, "covered": 6, "skipped": 0, "pct": 60 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/lib/queries/dashboard.ts": {
-    "lines": { "total": 18, "covered": 18, "skipped": 0, "pct": 100 },
-    "functions": { "total": 12, "covered": 12, "skipped": 0, "pct": 100 },
-    "statements": { "total": 24, "covered": 24, "skipped": 0, "pct": 100 },
-    "branches": { "total": 0, "covered": 0, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/lib/queries/transactions.ts": {
-    "lines": { "total": 16, "covered": 16, "skipped": 0, "pct": 100 },
-    "functions": { "total": 3, "covered": 3, "skipped": 0, "pct": 100 },
-    "statements": { "total": 27, "covered": 24, "skipped": 0, "pct": 88.88 },
-    "branches": { "total": 24, "covered": 17, "skipped": 0, "pct": 70.83 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/lib/queries/users.ts": {
-    "lines": { "total": 24, "covered": 22, "skipped": 0, "pct": 91.66 },
-    "functions": { "total": 11, "covered": 9, "skipped": 0, "pct": 81.81 },
-    "statements": { "total": 24, "covered": 22, "skipped": 0, "pct": 91.66 },
-    "branches": { "total": 6, "covered": 4, "skipped": 0, "pct": 66.66 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/pages/BudgetsPage.tsx": {
-    "lines": { "total": 56, "covered": 35, "skipped": 0, "pct": 62.5 },
-    "functions": { "total": 18, "covered": 6, "skipped": 0, "pct": 33.33 },
-    "statements": { "total": 59, "covered": 36, "skipped": 0, "pct": 61.01 },
-    "branches": { "total": 29, "covered": 19, "skipped": 0, "pct": 65.51 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/pages/CategoriesPage.tsx": {
-    "lines": { "total": 173, "covered": 153, "skipped": 0, "pct": 88.43 },
-    "functions": { "total": 50, "covered": 45, "skipped": 0, "pct": 90 },
-    "statements": { "total": 180, "covered": 159, "skipped": 0, "pct": 88.33 },
-    "branches": { "total": 87, "covered": 73, "skipped": 0, "pct": 83.9 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/pages/DashboardPage.tsx": {
-    "lines": { "total": 6, "covered": 5, "skipped": 0, "pct": 83.33 },
-    "functions": { "total": 3, "covered": 2, "skipped": 0, "pct": 66.66 },
-    "statements": { "total": 6, "covered": 5, "skipped": 0, "pct": 83.33 },
-    "branches": { "total": 4, "covered": 2, "skipped": 0, "pct": 50 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/pages/LoginPage.tsx": {
-    "lines": { "total": 18, "covered": 11, "skipped": 0, "pct": 61.11 },
-    "functions": { "total": 6, "covered": 1, "skipped": 0, "pct": 16.66 },
-    "statements": { "total": 20, "covered": 13, "skipped": 0, "pct": 65 },
-    "branches": { "total": 12, "covered": 7, "skipped": 0, "pct": 58.33 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/pages/SettingsLayout.tsx": {
-    "lines": { "total": 4, "covered": 4, "skipped": 0, "pct": 100 },
-    "functions": { "total": 2, "covered": 2, "skipped": 0, "pct": 100 },
-    "statements": { "total": 4, "covered": 4, "skipped": 0, "pct": 100 },
-    "branches": { "total": 4, "covered": 3, "skipped": 0, "pct": 75 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/pages/SettingsProfile.tsx": {
-    "lines": { "total": 44, "covered": 44, "skipped": 0, "pct": 100 },
-    "functions": { "total": 16, "covered": 15, "skipped": 0, "pct": 93.75 },
-    "statements": { "total": 45, "covered": 44, "skipped": 0, "pct": 97.77 },
-    "branches": { "total": 52, "covered": 39, "skipped": 0, "pct": 75 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/pages/SettingsUsers.tsx": {
-    "lines": { "total": 56, "covered": 36, "skipped": 0, "pct": 64.28 },
-    "functions": { "total": 13, "covered": 7, "skipped": 0, "pct": 53.84 },
-    "statements": { "total": 58, "covered": 36, "skipped": 0, "pct": 62.06 },
-    "branches": { "total": 26, "covered": 16, "skipped": 0, "pct": 61.53 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/pages/TransactionsPage.tsx": {
-    "lines": { "total": 58, "covered": 55, "skipped": 0, "pct": 94.82 },
-    "functions": { "total": 31, "covered": 28, "skipped": 0, "pct": 90.32 },
-    "statements": { "total": 73, "covered": 70, "skipped": 0, "pct": 95.89 },
-    "branches": { "total": 47, "covered": 43, "skipped": 0, "pct": 91.48 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/store/appStore.ts": {
-    "lines": { "total": 7, "covered": 7, "skipped": 0, "pct": 100 },
-    "functions": { "total": 3, "covered": 3, "skipped": 0, "pct": 100 },
-    "statements": { "total": 8, "covered": 8, "skipped": 0, "pct": 100 },
-    "branches": { "total": 0, "covered": 0, "skipped": 0, "pct": 100 }
-  },
-  "/Users/maximilian/programming/SmartFinance/frontend/src/store/transactionsStore.ts": {
-    "lines": { "total": 10, "covered": 9, "skipped": 0, "pct": 90 },
-    "functions": { "total": 10, "covered": 9, "skipped": 0, "pct": 90 },
-    "statements": { "total": 12, "covered": 11, "skipped": 0, "pct": 91.66 },
-    "branches": { "total": 4, "covered": 4, "skipped": 0, "pct": 100 }
-  }
+{"total": {"lines":{"total":1835,"covered":1590,"skipped":0,"pct":86.64},"statements":{"total":2038,"covered":1744,"skipped":0,"pct":85.57},"functions":{"total":656,"covered":536,"skipped":0,"pct":81.7},"branches":{"total":1406,"covered":1104,"skipped":0,"pct":78.52},"branchesTrue":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/public/locales/de/translation.json": {"lines":{"total":0,"covered":0,"skipped":0,"pct":0},"functions":{"total":0,"covered":0,"skipped":0,"pct":0},"statements":{"total":0,"covered":0,"skipped":0,"pct":0},"branches":{"total":0,"covered":0,"skipped":0,"pct":0}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/public/locales/en/translation.json": {"lines":{"total":0,"covered":0,"skipped":0,"pct":0},"functions":{"total":0,"covered":0,"skipped":0,"pct":0},"statements":{"total":0,"covered":0,"skipped":0,"pct":0},"branches":{"total":0,"covered":0,"skipped":0,"pct":0}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/public/locales/fr/translation.json": {"lines":{"total":0,"covered":0,"skipped":0,"pct":0},"functions":{"total":0,"covered":0,"skipped":0,"pct":0},"statements":{"total":0,"covered":0,"skipped":0,"pct":0},"branches":{"total":0,"covered":0,"skipped":0,"pct":0}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/public/locales/it/translation.json": {"lines":{"total":0,"covered":0,"skipped":0,"pct":0},"functions":{"total":0,"covered":0,"skipped":0,"pct":0},"statements":{"total":0,"covered":0,"skipped":0,"pct":0},"branches":{"total":0,"covered":0,"skipped":0,"pct":0}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/public/locales/rm/translation.json": {"lines":{"total":0,"covered":0,"skipped":0,"pct":0},"functions":{"total":0,"covered":0,"skipped":0,"pct":0},"statements":{"total":0,"covered":0,"skipped":0,"pct":0},"branches":{"total":0,"covered":0,"skipped":0,"pct":0}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/AccountFormDialog.tsx": {"lines":{"total":35,"covered":30,"skipped":0,"pct":85.71},"functions":{"total":8,"covered":7,"skipped":0,"pct":87.5},"statements":{"total":38,"covered":33,"skipped":0,"pct":86.84},"branches":{"total":30,"covered":22,"skipped":0,"pct":73.33}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/AdminRoute.tsx": {"lines":{"total":7,"covered":7,"skipped":0,"pct":100},"functions":{"total":1,"covered":1,"skipped":0,"pct":100},"statements":{"total":7,"covered":7,"skipped":0,"pct":100},"branches":{"total":6,"covered":6,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/BackToDashboardLink.tsx": {"lines":{"total":3,"covered":3,"skipped":0,"pct":100},"functions":{"total":1,"covered":1,"skipped":0,"pct":100},"statements":{"total":3,"covered":3,"skipped":0,"pct":100},"branches":{"total":2,"covered":2,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/BudgetProgressCard.tsx": {"lines":{"total":39,"covered":28,"skipped":0,"pct":71.79},"functions":{"total":11,"covered":9,"skipped":0,"pct":81.81},"statements":{"total":43,"covered":32,"skipped":0,"pct":74.41},"branches":{"total":40,"covered":17,"skipped":0,"pct":42.5}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/BudgetProgressWidget.tsx": {"lines":{"total":50,"covered":50,"skipped":0,"pct":100},"functions":{"total":13,"covered":13,"skipped":0,"pct":100},"statements":{"total":56,"covered":55,"skipped":0,"pct":98.21},"branches":{"total":41,"covered":36,"skipped":0,"pct":87.8}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/BudgetWidget.tsx": {"lines":{"total":12,"covered":12,"skipped":0,"pct":100},"functions":{"total":2,"covered":2,"skipped":0,"pct":100},"statements":{"total":12,"covered":12,"skipped":0,"pct":100},"branches":{"total":8,"covered":7,"skipped":0,"pct":87.5}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/CategoryBreakdownChart.tsx": {"lines":{"total":16,"covered":15,"skipped":0,"pct":93.75},"functions":{"total":5,"covered":4,"skipped":0,"pct":80},"statements":{"total":17,"covered":16,"skipped":0,"pct":94.11},"branches":{"total":19,"covered":19,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/ConfirmDeleteDialog.tsx": {"lines":{"total":11,"covered":11,"skipped":0,"pct":100},"functions":{"total":3,"covered":3,"skipped":0,"pct":100},"statements":{"total":11,"covered":11,"skipped":0,"pct":100},"branches":{"total":24,"covered":23,"skipped":0,"pct":95.83}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/CreateEditBudgetDialog.tsx": {"lines":{"total":74,"covered":60,"skipped":0,"pct":81.08},"functions":{"total":34,"covered":23,"skipped":0,"pct":67.64},"statements":{"total":94,"covered":72,"skipped":0,"pct":76.59},"branches":{"total":97,"covered":74,"skipped":0,"pct":76.28}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/CreateUserDialog.tsx": {"lines":{"total":34,"covered":25,"skipped":0,"pct":73.52},"functions":{"total":17,"covered":10,"skipped":0,"pct":58.82},"statements":{"total":44,"covered":30,"skipped":0,"pct":68.18},"branches":{"total":18,"covered":11,"skipped":0,"pct":61.11}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/CsvImportCard.tsx": {"lines":{"total":36,"covered":32,"skipped":0,"pct":88.88},"functions":{"total":11,"covered":8,"skipped":0,"pct":72.72},"statements":{"total":39,"covered":35,"skipped":0,"pct":89.74},"branches":{"total":22,"covered":17,"skipped":0,"pct":77.27}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/CsvImportWizard.tsx": {"lines":{"total":195,"covered":177,"skipped":0,"pct":90.76},"functions":{"total":53,"covered":49,"skipped":0,"pct":92.45},"statements":{"total":221,"covered":197,"skipped":0,"pct":89.14},"branches":{"total":211,"covered":160,"skipped":0,"pct":75.82}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/DashboardTileLink.tsx": {"lines":{"total":4,"covered":4,"skipped":0,"pct":100},"functions":{"total":1,"covered":1,"skipped":0,"pct":100},"statements":{"total":4,"covered":4,"skipped":0,"pct":100},"branches":{"total":2,"covered":2,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/DateRangePicker.tsx": {"lines":{"total":25,"covered":25,"skipped":0,"pct":100},"functions":{"total":15,"covered":15,"skipped":0,"pct":100},"statements":{"total":34,"covered":34,"skipped":0,"pct":100},"branches":{"total":18,"covered":17,"skipped":0,"pct":94.44}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/EditTransactionDialog.tsx": {"lines":{"total":29,"covered":24,"skipped":0,"pct":82.75},"functions":{"total":8,"covered":4,"skipped":0,"pct":50},"statements":{"total":31,"covered":24,"skipped":0,"pct":77.41},"branches":{"total":20,"covered":14,"skipped":0,"pct":70}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/EditUserDialog.tsx": {"lines":{"total":35,"covered":15,"skipped":0,"pct":42.85},"functions":{"total":11,"covered":2,"skipped":0,"pct":18.18},"statements":{"total":41,"covered":15,"skipped":0,"pct":36.58},"branches":{"total":33,"covered":14,"skipped":0,"pct":42.42}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/I18nErrorBoundary.tsx": {"lines":{"total":7,"covered":7,"skipped":0,"pct":100},"functions":{"total":4,"covered":4,"skipped":0,"pct":100},"statements":{"total":7,"covered":7,"skipped":0,"pct":100},"branches":{"total":4,"covered":3,"skipped":0,"pct":75}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/ModuleWidgetCard.tsx": {"lines":{"total":8,"covered":7,"skipped":0,"pct":87.5},"functions":{"total":3,"covered":3,"skipped":0,"pct":100},"statements":{"total":8,"covered":7,"skipped":0,"pct":87.5},"branches":{"total":16,"covered":15,"skipped":0,"pct":93.75}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/NewRuleForm.tsx": {"lines":{"total":16,"covered":15,"skipped":0,"pct":93.75},"functions":{"total":8,"covered":7,"skipped":0,"pct":87.5},"statements":{"total":16,"covered":15,"skipped":0,"pct":93.75},"branches":{"total":19,"covered":17,"skipped":0,"pct":89.47}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/RecentTransactionsWidget.tsx": {"lines":{"total":16,"covered":15,"skipped":0,"pct":93.75},"functions":{"total":5,"covered":5,"skipped":0,"pct":100},"statements":{"total":16,"covered":15,"skipped":0,"pct":93.75},"branches":{"total":16,"covered":15,"skipped":0,"pct":93.75}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/RegexHelper.tsx": {"lines":{"total":18,"covered":18,"skipped":0,"pct":100},"functions":{"total":5,"covered":5,"skipped":0,"pct":100},"statements":{"total":19,"covered":19,"skipped":0,"pct":100},"branches":{"total":20,"covered":19,"skipped":0,"pct":95}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/ResetPasswordDialog.tsx": {"lines":{"total":41,"covered":39,"skipped":0,"pct":95.12},"functions":{"total":10,"covered":10,"skipped":0,"pct":100},"statements":{"total":41,"covered":39,"skipped":0,"pct":95.12},"branches":{"total":29,"covered":27,"skipped":0,"pct":93.1}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/RuleRow.tsx": {"lines":{"total":15,"covered":11,"skipped":0,"pct":73.33},"functions":{"total":8,"covered":4,"skipped":0,"pct":50},"statements":{"total":17,"covered":12,"skipped":0,"pct":70.58},"branches":{"total":33,"covered":21,"skipped":0,"pct":63.63}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/SortableColumnHeader.tsx": {"lines":{"total":3,"covered":3,"skipped":0,"pct":100},"functions":{"total":2,"covered":2,"skipped":0,"pct":100},"statements":{"total":3,"covered":3,"skipped":0,"pct":100},"branches":{"total":9,"covered":9,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/SpendingTrendChart.tsx": {"lines":{"total":125,"covered":120,"skipped":0,"pct":96},"functions":{"total":32,"covered":29,"skipped":0,"pct":90.62},"statements":{"total":143,"covered":137,"skipped":0,"pct":95.8},"branches":{"total":87,"covered":82,"skipped":0,"pct":94.25}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/SummaryMetricsWidget.tsx": {"lines":{"total":7,"covered":7,"skipped":0,"pct":100},"functions":{"total":2,"covered":2,"skipped":0,"pct":100},"statements":{"total":7,"covered":7,"skipped":0,"pct":100},"branches":{"total":12,"covered":12,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/UserMenu.tsx": {"lines":{"total":25,"covered":25,"skipped":0,"pct":100},"functions":{"total":11,"covered":11,"skipped":0,"pct":100},"statements":{"total":31,"covered":31,"skipped":0,"pct":100},"branches":{"total":18,"covered":15,"skipped":0,"pct":83.33}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/UserTable.tsx": {"lines":{"total":15,"covered":11,"skipped":0,"pct":73.33},"functions":{"total":10,"covered":7,"skipped":0,"pct":70},"statements":{"total":15,"covered":11,"skipped":0,"pct":73.33},"branches":{"total":20,"covered":18,"skipped":0,"pct":90}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/budgetUtils.ts": {"lines":{"total":11,"covered":9,"skipped":0,"pct":81.81},"functions":{"total":3,"covered":3,"skipped":0,"pct":100},"statements":{"total":13,"covered":11,"skipped":0,"pct":84.61},"branches":{"total":10,"covered":8,"skipped":0,"pct":80}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/ui/alert.tsx": {"lines":{"total":5,"covered":3,"skipped":0,"pct":60},"functions":{"total":4,"covered":2,"skipped":0,"pct":50},"statements":{"total":5,"covered":3,"skipped":0,"pct":60},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/ui/avatar.tsx": {"lines":{"total":2,"covered":2,"skipped":0,"pct":100},"functions":{"total":2,"covered":2,"skipped":0,"pct":100},"statements":{"total":2,"covered":2,"skipped":0,"pct":100},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/ui/badge.tsx": {"lines":{"total":2,"covered":2,"skipped":0,"pct":100},"functions":{"total":1,"covered":1,"skipped":0,"pct":100},"statements":{"total":2,"covered":2,"skipped":0,"pct":100},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/ui/button.tsx": {"lines":{"total":2,"covered":2,"skipped":0,"pct":100},"functions":{"total":1,"covered":1,"skipped":0,"pct":100},"statements":{"total":2,"covered":2,"skipped":0,"pct":100},"branches":{"total":2,"covered":2,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/ui/card.tsx": {"lines":{"total":7,"covered":5,"skipped":0,"pct":71.42},"functions":{"total":7,"covered":5,"skipped":0,"pct":71.42},"statements":{"total":7,"covered":5,"skipped":0,"pct":71.42},"branches":{"total":1,"covered":1,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/ui/dialog.tsx": {"lines":{"total":3,"covered":3,"skipped":0,"pct":100},"functions":{"total":1,"covered":1,"skipped":0,"pct":100},"statements":{"total":3,"covered":3,"skipped":0,"pct":100},"branches":{"total":1,"covered":1,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/ui/input.tsx": {"lines":{"total":1,"covered":1,"skipped":0,"pct":100},"functions":{"total":1,"covered":1,"skipped":0,"pct":100},"statements":{"total":1,"covered":1,"skipped":0,"pct":100},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/ui/label.tsx": {"lines":{"total":1,"covered":1,"skipped":0,"pct":100},"functions":{"total":1,"covered":1,"skipped":0,"pct":100},"statements":{"total":1,"covered":1,"skipped":0,"pct":100},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/ui/native-select.tsx": {"lines":{"total":2,"covered":2,"skipped":0,"pct":100},"functions":{"total":1,"covered":1,"skipped":0,"pct":100},"statements":{"total":2,"covered":2,"skipped":0,"pct":100},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/components/ui/skeleton.tsx": {"lines":{"total":1,"covered":1,"skipped":0,"pct":100},"functions":{"total":1,"covered":1,"skipped":0,"pct":100},"statements":{"total":1,"covered":1,"skipped":0,"pct":100},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/hooks/useAuth.ts": {"lines":{"total":4,"covered":4,"skipped":0,"pct":100},"functions":{"total":2,"covered":2,"skipped":0,"pct":100},"statements":{"total":4,"covered":4,"skipped":0,"pct":100},"branches":{"total":4,"covered":4,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/hooks/useDebouncedCallback.ts": {"lines":{"total":11,"covered":11,"skipped":0,"pct":100},"functions":{"total":6,"covered":6,"skipped":0,"pct":100},"statements":{"total":13,"covered":13,"skipped":0,"pct":100},"branches":{"total":4,"covered":3,"skipped":0,"pct":75}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/hooks/useDialog.ts": {"lines":{"total":12,"covered":12,"skipped":0,"pct":100},"functions":{"total":2,"covered":2,"skipped":0,"pct":100},"statements":{"total":12,"covered":12,"skipped":0,"pct":100},"branches":{"total":14,"covered":14,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/hooks/useLogout.ts": {"lines":{"total":10,"covered":10,"skipped":0,"pct":100},"functions":{"total":4,"covered":4,"skipped":0,"pct":100},"statements":{"total":10,"covered":10,"skipped":0,"pct":100},"branches":{"total":5,"covered":5,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/lib/api.ts": {"lines":{"total":23,"covered":19,"skipped":0,"pct":82.6},"functions":{"total":7,"covered":4,"skipped":0,"pct":57.14},"statements":{"total":23,"covered":19,"skipped":0,"pct":82.6},"branches":{"total":18,"covered":13,"skipped":0,"pct":72.22}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/lib/date.ts": {"lines":{"total":17,"covered":17,"skipped":0,"pct":100},"functions":{"total":6,"covered":6,"skipped":0,"pct":100},"statements":{"total":17,"covered":17,"skipped":0,"pct":100},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/lib/datePresets.ts": {"lines":{"total":5,"covered":5,"skipped":0,"pct":100},"functions":{"total":4,"covered":4,"skipped":0,"pct":100},"statements":{"total":5,"covered":5,"skipped":0,"pct":100},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/lib/format.ts": {"lines":{"total":23,"covered":23,"skipped":0,"pct":100},"functions":{"total":4,"covered":4,"skipped":0,"pct":100},"statements":{"total":25,"covered":25,"skipped":0,"pct":100},"branches":{"total":16,"covered":15,"skipped":0,"pct":93.75}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/lib/moduleQueries.ts": {"lines":{"total":4,"covered":4,"skipped":0,"pct":100},"functions":{"total":2,"covered":2,"skipped":0,"pct":100},"statements":{"total":4,"covered":4,"skipped":0,"pct":100},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/lib/regex.ts": {"lines":{"total":11,"covered":10,"skipped":0,"pct":90.9},"functions":{"total":2,"covered":2,"skipped":0,"pct":100},"statements":{"total":13,"covered":12,"skipped":0,"pct":92.3},"branches":{"total":10,"covered":9,"skipped":0,"pct":90}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/lib/utils.ts": {"lines":{"total":1,"covered":1,"skipped":0,"pct":100},"functions":{"total":1,"covered":1,"skipped":0,"pct":100},"statements":{"total":1,"covered":1,"skipped":0,"pct":100},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/lib/queries/accounts.ts": {"lines":{"total":23,"covered":23,"skipped":0,"pct":100},"functions":{"total":12,"covered":12,"skipped":0,"pct":100},"statements":{"total":23,"covered":23,"skipped":0,"pct":100},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/lib/queries/budgets.ts": {"lines":{"total":47,"covered":47,"skipped":0,"pct":100},"functions":{"total":15,"covered":15,"skipped":0,"pct":100},"statements":{"total":52,"covered":50,"skipped":0,"pct":96.15},"branches":{"total":30,"covered":27,"skipped":0,"pct":90}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/lib/queries/categories.ts": {"lines":{"total":63,"covered":56,"skipped":0,"pct":88.88},"functions":{"total":36,"covered":34,"skipped":0,"pct":94.44},"statements":{"total":65,"covered":57,"skipped":0,"pct":87.69},"branches":{"total":12,"covered":8,"skipped":0,"pct":66.66}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/lib/queries/dashboard.ts": {"lines":{"total":24,"covered":24,"skipped":0,"pct":100},"functions":{"total":15,"covered":15,"skipped":0,"pct":100},"statements":{"total":36,"covered":33,"skipped":0,"pct":91.66},"branches":{"total":6,"covered":3,"skipped":0,"pct":50}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/lib/queries/transactions.ts": {"lines":{"total":30,"covered":21,"skipped":0,"pct":70},"functions":{"total":9,"covered":5,"skipped":0,"pct":55.55},"statements":{"total":42,"covered":29,"skipped":0,"pct":69.04},"branches":{"total":28,"covered":18,"skipped":0,"pct":64.28}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/lib/queries/users.ts": {"lines":{"total":24,"covered":22,"skipped":0,"pct":91.66},"functions":{"total":11,"covered":9,"skipped":0,"pct":81.81},"statements":{"total":24,"covered":22,"skipped":0,"pct":91.66},"branches":{"total":6,"covered":4,"skipped":0,"pct":66.66}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/pages/BudgetsPage.tsx": {"lines":{"total":57,"covered":36,"skipped":0,"pct":63.15},"functions":{"total":18,"covered":6,"skipped":0,"pct":33.33},"statements":{"total":60,"covered":37,"skipped":0,"pct":61.66},"branches":{"total":29,"covered":19,"skipped":0,"pct":65.51}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/pages/CategoriesPage.tsx": {"lines":{"total":173,"covered":144,"skipped":0,"pct":83.23},"functions":{"total":47,"covered":41,"skipped":0,"pct":87.23},"statements":{"total":182,"covered":151,"skipped":0,"pct":82.96},"branches":{"total":79,"covered":63,"skipped":0,"pct":79.74}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/pages/DashboardPage.tsx": {"lines":{"total":11,"covered":11,"skipped":0,"pct":100},"functions":{"total":4,"covered":4,"skipped":0,"pct":100},"statements":{"total":11,"covered":11,"skipped":0,"pct":100},"branches":{"total":8,"covered":7,"skipped":0,"pct":87.5}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/pages/LoginPage.tsx": {"lines":{"total":18,"covered":11,"skipped":0,"pct":61.11},"functions":{"total":6,"covered":1,"skipped":0,"pct":16.66},"statements":{"total":20,"covered":13,"skipped":0,"pct":65},"branches":{"total":12,"covered":7,"skipped":0,"pct":58.33}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/pages/ModulePage.tsx": {"lines":{"total":8,"covered":8,"skipped":0,"pct":100},"functions":{"total":4,"covered":4,"skipped":0,"pct":100},"statements":{"total":10,"covered":10,"skipped":0,"pct":100},"branches":{"total":10,"covered":10,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/pages/NotFoundPage.tsx": {"lines":{"total":2,"covered":2,"skipped":0,"pct":100},"functions":{"total":1,"covered":1,"skipped":0,"pct":100},"statements":{"total":2,"covered":2,"skipped":0,"pct":100},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/pages/SettingsAccounts.tsx": {"lines":{"total":34,"covered":27,"skipped":0,"pct":79.41},"functions":{"total":16,"covered":9,"skipped":0,"pct":56.25},"statements":{"total":37,"covered":29,"skipped":0,"pct":78.37},"branches":{"total":32,"covered":20,"skipped":0,"pct":62.5}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/pages/SettingsLayout.tsx": {"lines":{"total":5,"covered":5,"skipped":0,"pct":100},"functions":{"total":2,"covered":2,"skipped":0,"pct":100},"statements":{"total":5,"covered":5,"skipped":0,"pct":100},"branches":{"total":4,"covered":3,"skipped":0,"pct":75}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/pages/SettingsProfile.tsx": {"lines":{"total":61,"covered":61,"skipped":0,"pct":100},"functions":{"total":19,"covered":19,"skipped":0,"pct":100},"statements":{"total":62,"covered":62,"skipped":0,"pct":100},"branches":{"total":62,"covered":48,"skipped":0,"pct":77.41}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/pages/SettingsUsers.tsx": {"lines":{"total":57,"covered":37,"skipped":0,"pct":64.91},"functions":{"total":13,"covered":7,"skipped":0,"pct":53.84},"statements":{"total":59,"covered":37,"skipped":0,"pct":62.71},"branches":{"total":26,"covered":16,"skipped":0,"pct":61.53}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/pages/TransactionsPage.tsx": {"lines":{"total":87,"covered":73,"skipped":0,"pct":83.9},"functions":{"total":47,"covered":34,"skipped":0,"pct":72.34},"statements":{"total":107,"covered":92,"skipped":0,"pct":85.98},"branches":{"total":75,"covered":62,"skipped":0,"pct":82.66}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/store/appStore.ts": {"lines":{"total":41,"covered":29,"skipped":0,"pct":70.73},"functions":{"total":13,"covered":11,"skipped":0,"pct":84.61},"statements":{"total":44,"covered":31,"skipped":0,"pct":70.45},"branches":{"total":24,"covered":16,"skipped":0,"pct":66.66}}
+,"/home/runner/work/SmartFinance/SmartFinance/frontend/src/store/transactionsStore.ts": {"lines":{"total":11,"covered":10,"skipped":0,"pct":90.9},"functions":{"total":11,"covered":10,"skipped":0,"pct":90.9},"statements":{"total":13,"covered":12,"skipped":0,"pct":92.3},"branches":{"total":4,"covered":4,"skipped":0,"pct":100}}
 }
